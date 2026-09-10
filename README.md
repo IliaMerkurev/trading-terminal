@@ -4,7 +4,7 @@ Trading Terminal is a planned Windows desktop application for historical strateg
 
 ## Development status
 
-**Specification and engineering preparation.** There is no runnable application, selected backtesting engine, installer, or implemented trading/research feature yet. The repository currently provides the product specification, proposed architecture, engine evaluation criteria, and development guidance.
+**Engine foundations under development.** NautilusTrader 1.231.0 is the first implementation engine. Sixteen Windows tests cover synthetic accounting, a risk adapter, causal partial-hour evaluation, a native strategy example and worker cancellation. There is no runnable desktop application or complete research workflow yet. See the [engine decision and limitations](docs/adr/0001-engine.md).
 
 ## Planned V1 capabilities
 
@@ -27,7 +27,7 @@ V1 does not include live trading, exchange credentials, optimization, DCA, parti
 
 ## Running the project
 
-No application launch command is available yet. Development setup and test commands will be documented as executable components are introduced. Proposed dependencies are not evidence of a working build.
+No application launch command is available yet. In the documented Windows Python environment, run the foundation tests with `.venv/Scripts/python.exe -m unittest discover -s tests -v`. Setup requirements and limitations are recorded in the [development guide](docs/DEVELOPMENT.md).
 
 ## License
 

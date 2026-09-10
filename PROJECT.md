@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Version 0.5. Status: requirements specified; application implementation has not started. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
+Version 0.5. Status: requirements specified; engine foundations under implementation. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
 
 ## 1. Purpose and delivery target
 

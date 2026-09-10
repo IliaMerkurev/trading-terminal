@@ -1,6 +1,6 @@
 # Development guide
 
-Status: specification stage. No application build or launch command is available yet.
+Status: engine foundations under implementation. No application launch command is available yet. The initial Windows suite runs with `.venv/Scripts/python.exe -m unittest discover -s tests -v`; [ADR 0001](adr/0001-engine.md) records the actual environment and evidence.
 
 ## Preparation
 

@@ -1,6 +1,6 @@
 # Proposed architecture
 
-Status: proposal, not an implemented application. [PROJECT.md](../PROJECT.md) is the authoritative specification; these notes describe its component boundaries.
+Status: component proposal with initial engine foundations; not an implemented application. [PROJECT.md](../PROJECT.md) is the authoritative specification; [ADR 0001](adr/0001-engine.md) selects the first runtime and records measured limitations.
 
 | Component | Baseline | Responsibility |
 | --- | --- | --- |
@@ -11,7 +11,7 @@ Status: proposal, not an implemented application. [PROJECT.md](../PROJECT.md) is
 | Application layer | Python and Pydantic | Validation, projects, data, worker orchestration |
 | Storage | SQLite and Parquet | Metadata and reproducible historical datasets |
 | Strategy representation | Versioned JSON IR plus native Python | Two distinct strategy inputs |
-| Runtime | Engine adapter, engine undecided | Calculation in a cancellable worker |
+| Runtime | NautilusTrader 1.231.0 with simulation adapter | Calculation in a cancellable worker |
 | Environment | uv and pinned dependencies | Reproducible Python setup |
 
 The UI never independently computes financial results. The worker receives an immutable run snapshot and returns normalized results with engine artifacts and assumptions. Protocol output is isolated from native strategy stdout. Messages, errors, cancellation, and schema versions are explicit. Large table payloads are bounded.
