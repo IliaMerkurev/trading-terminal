@@ -1,46 +1,30 @@
-# Первый этап: выбор движка и проверяемое основание
+# Engine evaluation
 
-**Статус:** поручение для Astra; движок не выбран; эксперименты не выполнены.  
-**Полномочия:** выбрать первый движок самостоятельно в рамках PROJECT.md. Не спрашивать автора, какая библиотека ему больше нравится.
+Status: no engine selected; runtime experiments not yet performed. Requirements are defined in [PROJECT.md](../PROJECT.md). Freqtrade, Jesse, and NautilusTrader have no preset ranking. Other candidates require a reason for inclusion.
 
-## Цель
+## Evaluation process
 
-Выбрать первый runtime для согласованного бэктестера по проверяемой совместимости, инженерной стоимости и доступности готовых стратегий. Не выбирать по репутации, одному красивому демо или старому предпочтению ассистента.
+1. Verify Windows and Python compatibility, distribution requirements, and package/example licenses using version-specific primary sources.
+2. Compare requirements using native / configuration / small adapter / deep fork / unsupported / unverified. Unverified does not mean unsupported.
+3. Select one candidate for a minimal experiment; avoid building several integrations at once. Prefer a stable release. Explain any pre-release choice and rollback path.
+4. Test key risks with independent expected outcomes. Move to another candidate only for a concrete limitation.
+5. Record a proposed, provisional, or accepted ADR with exact versions, alternatives, matrix, commands/results, sources, adapters, limitations, and reconsideration conditions.
 
-## Порядок
+## Selection criteria
 
-1. Осмотреть локальную среду Windows, Git и имеющиеся файлы. Записать доступные команды. Не устанавливать все компоненты Tauri до доказанной необходимости.
-2. По актуальным первичным источникам сопоставить Freqtrade, Jesse, NautilusTrader; другой движок разрешён с причиной включения. Указывать точные версии и состояние выпуска. Прочитать лицензии самого ядра и используемых примеров.
-3. Для возможностей из PROJECT.md разделов 3–7 и 11 составить краткую матрицу: native / configuration / small adapter / deep fork / unsupported / unverified. Не приравнивать unverified к unsupported.
-4. Выбрать наиболее подходящий вариант для минимального локального эксперимента. Другие не интегрировать параллельно. При блокере документировать его и проверить следующего.
-5. Создать маленькие fixture-сценарии и исполняемые тесты ключевых рисков. По итогам записать решение и объём собственных адаптаций.
-6. Обновить docs/STATUS.md и продолжить следующий проверяемый этап по AUTONOMOUS_RUN.md без дополнительного подтверждения. Большой пользовательский интерфейс начинать после подтверждения расчётного пути; завершение исследования не завершает автономный запуск.
+Windows packaging; Python ABI; infrastructure burden; native strategy API and licensed examples; unleveraged spot and perpetual long/short; fees/slippage/funding; mark price; initial/maintenance margin and liquidation; causal partial bars; cancellation; reproducibility; and the cost of avoiding a permanent fork.
 
-## Риски, которые должны влиять на выбор
+## Minimum experiments
 
-Windows-поставка; используемая версия Python; объём внешней инфраструктуры; native Python strategy API и доступные лицензированные примеры; обычный spot, long/short USDT perpetual; параметризуемые расходы; funding и Mark Price; выбранная ограниченная модель маржи и принудительного закрытия; причинная обработка partial-свечей; отмена и повторяемость; возможность избежать постоянного форка ядра.
+A spot trade, perpetual long and short, fees/slippage, funding timing, mark movement with unchanged last price, intrabar signals that disappear by hourly close, future-data perturbation, and Windows worker cancellation. Include one vetted licensed native example without changing strategy semantics. Do not download arbitrary community strategy collections.
 
-Нельзя подменять пересчёт H1-стратегии каждую минуту более точным исполнением заранее рассчитанного H1-сигнала. Нельзя использовать H1 high/low/close, ещё не известные на текущем M1-шаге.
+Recalculating a forming H1 strategy on M1 steps must not become M1 indicator logic or only more precise execution of a fixed signal. Record every missing requirement as open. A partial experiment yields a provisional selection, not full integration evidence.
 
-## Минимальная демонстрация выбора
+## Primary source entry points
 
-Сначала независимо задать маленькие ожидаемые примеры: одна spot-сделка, long и short; комиссия и slippage; funding в заданный момент; изменение mark при неизменной last-price; внутрисвечный сигнал, исчезающий к закрытию часа; изменение будущего участка без изменения прошлого; отмена worker. Отдельный лицензированный native Python-пример нужен для проверки пути импорта без переписывания сигнальной логики. Не тратить старт на массовое скачивание неизвестных стратегий.
+These links are research entry points, not verified capability claims.
 
-У каждого сценария указать точную команду запуска, ожидание, фактический результат и необходимые адаптации. Если обязательный тест ещё не реализован, выбор обозначить provisional, перечислить доказательства и блокеры и не выдавать весь этап за завершённый. Небольшой эксперимент допустим до полного решения вопроса, большой GUI — после подтверждения основного пути.
-
-## Решение: docs/decisions/0001-backtest-engine.md
-
-Структура: статус (proposed/provisional/accepted); выбранная версия; требования и альтернативы; матрица возможностей; результаты реально выполненных тестов; источники и даты проверки; нужные адаптации; ограничения; причина отказа от альтернатив; условия пересмотра.
-
-Принятый режим маржи может быть одним из будущих двух. Применённые модели и исторические допущения явно зафиксировать. При несоответствии требованиям нельзя удалять их из PROJECT.md; потребуется решение автора об изменении продукта.
-
-## Официальные точки входа для исследования
-
-Это список источников, а не проверенные в этом пакете утверждения об их текущих возможностях. Следовать документации конкретного выбранного выпуска.
-
-- Freqtrade: <https://www.freqtrade.io/en/stable/>; <https://github.com/freqtrade/freqtrade>
-- Jesse: <https://docs.jesse.trade/>; <https://github.com/jesse-ai/jesse>
-- NautilusTrader: <https://nautilustrader.io/docs/latest/>; <https://github.com/nautechsystems/nautilus_trader>
-- Bybit V5 market data: <https://bybit-exchange.github.io/docs/v5/market/kline>
-- Bybit Mark Price: <https://bybit-exchange.github.io/docs/v5/market/mark-kline>
-- Bybit funding history: <https://bybit-exchange.github.io/docs/v5/market/history-fund-rate>
+- [Freqtrade documentation](https://www.freqtrade.io/en/stable/) and [repository](https://github.com/freqtrade/freqtrade)
+- [Jesse documentation](https://docs.jesse.trade/) and [repository](https://github.com/jesse-ai/jesse)
+- [NautilusTrader documentation](https://nautilustrader.io/docs/latest/) and [repository](https://github.com/nautechsystems/nautilus_trader)
+- [Bybit OHLCV](https://bybit-exchange.github.io/docs/v5/market/kline), [Mark Price](https://bybit-exchange.github.io/docs/v5/market/mark-kline), and [funding history](https://bybit-exchange.github.io/docs/v5/market/history-fund-rate)
