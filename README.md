@@ -4,7 +4,7 @@ Trading Terminal is a planned Windows desktop application for historical strateg
 
 ## Development status
 
-**Engine foundations under development.** NautilusTrader 1.231.0 is the first implementation engine. Sixteen Windows tests cover synthetic accounting, a risk adapter, causal partial-hour evaluation, a native strategy example and worker cancellation. There is no runnable desktop application or complete research workflow yet. See the [engine decision and limitations](docs/adr/0001-engine.md).
+**Calculation foundations under development.** NautilusTrader 1.231.0 is the first implementation engine. Windows regression tests cover the explicit spot/perpetual simulation profile, a risk adapter, causal partial-hour evaluation, a native strategy example and worker cancellation. There is no runnable desktop application or complete research workflow yet. See the [engine decision](docs/adr/0001-engine.md) and [simulation profile and limitations](docs/adr/0002-simulation-profile.md).
 
 ## Planned V1 capabilities
 
