@@ -1,0 +1,54 @@
+# Secrets and local account files
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+secrets/
+# Agent configuration / local-only diagnostics
+.codex/
+.local/
+.local-tools/
+.private/
+# Python, Node, Rust and test artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.uv-cache/
+node_modules/
+.npm-cache/
+.pnpm-store/
+target/
+dist/
+build/
+coverage/
+.coverage
+htmlcov/
+*.egg-info/
+# User data, fetched market data, raw reports and logs
+user_data/
+data/raw/
+data/cache/
+.local-data/
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+# Keep only deliberately selected, small, distributable fixtures under tests/fixtures
+# OS/editor local state
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
