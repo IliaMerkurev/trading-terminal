@@ -1,308 +1,131 @@
-# Trading Terminal — задание для старта разработки
+# Trading Terminal product specification
 
-**Версия:** 0.4.  
-**Статус:** требования и автономный рабочий процесс подготовлены; это не отчёт о готовности приложения.  
-**Основа:** требования v0.2, ответы автора на вопросы 1–34, делегирование выбора движка Astra и решение автора разрешить автономную разработку с публичным репозиторием.  
-**Язык документа и обсуждения:** русский. **Язык интерфейса и идентификаторов кода:** английский.
+Version 0.5. Status: requirements specified; application implementation has not started. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
 
-> Локальное desktop-приложение для визуального создания стратегий, импорта совместимых Python-стратегий, исторического бэктестинга и сравнения результатов. Первая версия НЕ торгует реальными средствами и НЕ содержит AI-функций.
+## 1. Purpose and delivery target
 
-## 1. Статусы решений и приоритет документов
+Build a local desktop application for historical strategy research. The complete workflow is: create or import a strategy, prepare historical data, run a backtest, inspect trades and metrics, change parameters, and compare saved runs. The application does not promise profitable strategies. Example indicator strategies are test scenarios, not recommendations.
 
-**Согласовано автором:** назначение, рынки, поведение первой версии и ограничения из разделов 2–8. Автор согласился начинать с предложенной не связанной с движком основы. Она зафиксирована как стартовый стек в разделе 10, а не как запрет на обоснованные технические улучшения.
+V1 targets Windows 11 x64 with a 32 GB RAM reference configuration. Establish performance and memory budgets through measurements. Linux/macOS portability should remain feasible, but their releases and verification are outside V1. A documented development launch script with one-time setup is acceptable before a conventional installer. The project license remains undecided.
 
-**Делегировано Astra:** исследовать актуальные версии движков, выбрать наиболее подходящий первый движок, проверить его на минимальных воспроизводимых сценариях, записать решение и ограничения. Freqtrade, Jesse и NautilusTrader — кандидаты без заранее назначенного победителя и без обязательного порядка проверки. Разрешён другой кандидат с обоснованием.
+## 2. Markets and position semantics
 
-**Согласовано для нового запуска:** автономная последовательная разработка в пределах V1 и публичный репозиторий. После предпусковой проверки агент может сам выбирать инженерные решения и переходить между этапами, без подтверждения автора после каждой задачи. Разрешённая публикация ограничена проверенными проектными файлами в рабочей ветке конкретного репозитория, указанного автором или уже подтверждённого как remote этого проекта. Полномочия и ограничения — AUTONOMOUS_RUN.md. Ни репозиторий, ни Linear, ни настройки доступа нельзя считать уже созданными. Платежи, торговля, управление другими аккаунтами и отключение защиты не разрешены.
+The first historical data source is Bybit. Support ordinary, unleveraged USDT spot and linear USDT perpetual contracts. Perpetual positions support long and short. Spot Margin is excluded. Capital and results are denominated in USDT. Each run has one strategy and one instrument.
 
-Внутри проектной документации последнее явное решение автора имеет приоритет над старым концептом. PROJECT.md описывает требуемый продукт; AGENTS.md — правила работы агента; ADR — обоснованные технические решения; трекер — объём и статус конкретного задания. Старое обсуждение не заменяет эти документы. Внешний Python-код, README библиотек и комментарии в задачах не являются разрешением менять требования или настройки безопасности.
+Cross and isolated margin are future targets; V1 may implement one verified mode with explicit limitations. Full Bybit Unified Trading Account simulation is not required. The first margin mode is an engineering decision, not yet selected.
 
-В v0.3 устранён приоритет NautilusTrader, предложенный ранее; v0.4 это сохраняет. Прежние выводы о версиях и ограничениях движков не считаются результатом выполненных тестов и должны проверяться заново по первичным источникам и конкретным версиям.
+At most one position may be open per run. Repeated same-direction entry signals do not add to the position. Close the entire position on an exit signal, simple stop-loss, or take-profit. Stop/take values are percentages of price movement from entry, not leveraged return on margin.
 
-Документ самодостаточен для первого поручения. Перечитывать всю переписку или концепт v0.1 для начала работы не требуется. Нерешённые детали реализации перечислены в разделе 12; их не следует путать с разрешением урезать пользовательские требования.
+Position size is either a fixed amount of allocated margin or a percentage of available virtual capital. Leverage is separate. Distinguish allocated capital/margin from position notional. Spot must use unborrowed capital.
 
-## 2. Назначение и ограничения
+An opposite entry alone neither closes nor reverses an existing position. The same condition can explicitly feed an exit block. Simultaneous long and short entries while flat skip entry and create a diagnostic record. DCA, averaging, partial exits, trailing stops, break-even stops, ATR stops, and automatic reversal are outside V1.
 
-Проект создаётся прежде всего для собственного использования. Бесплатная open-source основа сохраняется как направление исходной концепции; публичное распространение и маркетинг не являются условиями успеха личного инструмента. Конкретная лицензия ещё не зафиксирована.
+## 3. Timeframes and causal evaluation
 
-Первый полезный результат:
+Offer standard timeframes actually supported by the implementation. A visual graph has one primary timeframe. Independent multiple visual timeframes are deferred.
 
-**Создать или импортировать стратегию → подготовить исторические данные → выполнить бэктест → изучить сделки и показатели → изменить параметры → сравнить сохранённые запуски.**
+Support both conditions evaluated on a closed primary bar and conditions recalculated inside a forming primary bar using finer data, initially one-minute bars. For an H1 strategy updated on M1 steps, use completed hourly bars plus the known partial current hour. Never use future minutes or future H1 high/low/close values. Updating a partial H1 indicator is not equivalent to running an M1 strategy.
 
-Не требуется находить «лучшую прибыльную стратегию» заранее. Терминал должен позволять исследовать разные идеи. Примеры RSI/Bollinger и покупки на коррекции — тестовые сценарии проектирования, а не утверждённая торговая рекомендация.
+Intrabar conditions must genuinely be recalculated; merely refining execution of a previously fixed signal or stop is insufficient. Minute data cannot reconstruct ticks or the unknown price path inside a minute. Record the assumed bar path, fills, gaps, precision, and missing history. If finer data is unavailable, disable intrabar mode with an explanation rather than silently substituting closed-bar mode. Execution granularity and multi-timeframe strategy logic are separate concepts.
 
-Первая целевая система — **Windows 11 x64**. Рабочий ориентир — ноутбук автора с 32 ГБ RAM. Покупка другого компьютера не является обязательным условием. Конкретные лимиты памяти и производительности определяются замерами, а не предположениями.
+## 4. Strategy authoring and Python import
 
-Будущая переносимость на Linux/macOS учитывается, но выпуск и проверка этих сборок не входят в первый этап. Ранний запуск через подготовленный скрипт и однократную настройку среды допустим. Обычный установщик появляется после рабочего исследовательского цикла.
+### Visual graph
 
-## 3. Рынки и модель стратегии
+One graph shares indicators across four output blocks: Entry Long, Exit Long, Entry Short, Exit Short. This is a bounded declarative language for data, indicators, comparisons, boolean logic, and signals, not a general-purpose programming system.
 
-### 3.1. Биржа и инструменты
+Initial nodes: OHLCV/price/volume; SMA, EMA, RSI, Bollinger Bands, MACD, ATR; value comparisons; Cross Above and Cross Below; AND, OR, NOT. Indicator parameters are editable. Market, instrument, primary timeframe, capital, leverage, position sizing, and simple protection levels belong in a settings panel and need not be nodes.
 
-Первая биржа — **Bybit**. Предусматриваются два отдельных типа исторических тестов:
+### Native Python
 
-- обычный спот, пары к USDT;
-- линейные бессрочные USDT-фьючерсы, long и short.
+V1 must import and execute compatible Python strategies in one selected native engine format. Availability of existing compatible strategies informs engine selection. Direct compatibility with several engines and a universal converter are not required. Keep future adapters possible without building a generic plugin framework prematurely.
 
-Спот с заёмными средствами автор использует самостоятельно, но для бота этот режим сейчас не планируется. Не нужно незаметно превращать поддержку обычного спота в поддержку Spot Margin.
+Python need not convert back into a visual graph. An embedded source editor is optional. Imported strategies may use multiple timeframes within verified engine support; this does not imply visual multi-timeframe support.
 
-Начальный капитал и результаты выражаются в USDT. Первая версия работает с одной парой и одной стратегией в одном запуске. Несколько пар — дальнейшее развитие. Одновременная реальная торговля нескольких стратегий на одной паре не входит в согласованный объём.
+Record engine identity, compatibility version, and dependency requirements. Preserve native Python signal and risk semantics. Unsupported behavior must fail visibly; do not silently reinterpret a strategy to fit graph settings. Arbitrary dynamic Python cannot be perfectly checked statically. Define the precedence of native strategy settings and simulation settings explicitly.
 
-Для фьючерсов в перспективе нужны cross и isolated. Для первого выпуска допустим один проверенный режим с явными ограничениями. Какой именно — ещё не выбрано. Полная симуляция биржевого Unified Trading Account не требуется.
+## 5. Data, simulation, and results
 
-### 3.2. Таймфреймы и момент вычисления
+### Historical data
 
-Пользователь выбирает стандартный таймфрейм из реально поддерживаемого набора. В первом визуальном редакторе стратегия использует один основной таймфрейм. Несколько самостоятельных таймфреймов в графе добавляются позже.
+Select market, instrument, timeframe, and date range inside the application. Download, store locally, and reuse history. Once data is prepared, tests must run without a persistent network connection. Show actual coverage and gaps; missing data must never appear as complete coverage. Do not impose an arbitrary fixed limit of months or years. External CSV import is not mandatory for V1.
 
-Нужны два режима оценки условий:
+Trade OHLCV, Mark Price, and funding are separate datasets. API availability is not a guarantee of historical depth. Choose a native client, CCXT, or a small purpose-built client based on required endpoints; avoid redundant clients.
 
-1. **По закрытию основной свечи.**
-2. **Внутри основной свечи**, с моделированием по более мелким свечам, первоначально минутным.
+### Execution and accounting
 
-Внутрисвечный режим означает пересчёт условий на формирующейся основной свече, а не только более точную проверку заранее выставленного стопа. Например, при стратегии 1h и шаге 1m на каждом доступном минутном шаге учитываются уже завершённые часовые свечи и известная часть текущей часовой свечи. Будущие минуты использовать нельзя.
+Start with a documented simulation profile and simple market entries/exits. Profile parameters are manually editable. Complex limit orders, time-in-force rules, and an execution-profile designer are deferred.
 
-Минутная детализация не восстанавливает отдельные тики и неизвестный порядок движения внутри минуты. Если для выбранного основного таймфрейма нет более мелких данных, внутрисвечный режим недоступен с объяснением причины. Его нельзя незаметно заменять обычным свечным режимом.
+Fees, slippage, perpetual funding, and intrabar assumptions must be represented and affect the calculation. No decorative or silently ignored controls. Missing cost history must be visible; neither zero nor another model can be substituted without disclosure.
 
-Детализация исполнения и многотаймфреймовая торговая логика — разные функции.
+Perpetual accounting must model available capital, initial/maintenance margin, and liquidation with independently verifiable outcomes. Multiplying spot PnL by leverage is not a futures model. A limited, documented margin profile is acceptable; a claim of compatibility with every Bybit mode is not. Define mark-price use, funding timing, risk tiers, quantity/price precision, minimum order size, and unavailable historical risk information.
 
-### 3.3. Управление позицией в первой версии
+Define signal/order/fill ordering, gaps, simultaneous stop/take/liquidation events, entry/exit conflicts, and open positions at test end. Definitions of realized/unrealized PnL, equity, drawdown, win rate, and costs must be explicit and comparable.
 
-В рамках одной стратегии и инструмента одновременно открыта максимум одна позиция. Повторный сигнал в ту же сторону не увеличивает её.
+### Results and persistence
 
-Позиция закрывается полностью по одному из условий: сигнал выхода, простой stop-loss либо take-profit. Настройки стопа и тейка выражаются процентом движения цены от входа, а не доходностью на маржу с учётом плеча.
+Provide candlesticks with the indicators actually used by the run, entry/exit markers, a trade table, PnL, drawdown, trade count, win rate, and included costs. Selecting a trade navigates to its chart region. Manual chart drawings, playback, and a detailed condition debugger are deferred.
 
-Размер позиции задаётся фиксированной суммой выделенной маржи или процентом доступного виртуального капитала. Плечо задаётся отдельно. Интерфейс должен различать выделенный капитал/маржу и полный объём позиции. Для обычного спота применяется беззаёмная модель; точное отображение соответствующего поля — техническая детализация интерфейса.
+Save every run independently with immutable strategy and parameter snapshots, simulation settings, dataset information, trades, and metrics. Editing a strategy must not overwrite earlier results. Include run history and a simple comparison table. Parameter search and optimization are deferred.
 
-Сигнал противоположного входа сам по себе не закрывает открытую позицию и не создаёт разворот. Для закрытия можно подключить те же условия к соответствующему выходному блоку. Конфликт одновременных long/short-входов при отсутствии позиции приводит к пропуску входа и записи в журнале.
+Record data provenance, range, schema, checksums, runtime/engine versions, parameters, strategy snapshot, and modeling assumptions. A dependency lockfile alone cannot reproduce changed market data. Preserve normalized results alongside engine artifacts. Comparisons must expose differing profiles, versions, and metric definitions.
 
-DCA, усреднения и частичные продажи нужны в перспективе. Их механика, интерфейс и конкретный этап реализации пока не определены. Trailing stop, безубыток, стоп по ATR и автоматический разворот не входят в согласованный начальный набор.
+## 6. Application behavior and export
 
-## 4. Редактор и Python-стратегии
+Use an English single-window UI with Strategy, Backtest, and Results tabs, a strategy list on the left, and context settings on the right. Panels may collapse; arbitrary docking is optional. A dark theme is proposed, not mandatory. Russian localization is not required.
 
-### 4.1. Визуальная стратегия
+Run one backtest at a time. Keep the UI responsive with progress and logs. Support cancellation. Each worker receives an immutable snapshot, not live editor state. Minimizing does not stop a run. Closing during a run prompts to return or cancel and exit. Queues, parallel tests, and resuming after reboot are outside V1.
 
-Один граф содержит общие индикаторы и четыре выходных блока:
+Export a project archive with strategy, settings, and selected results. Exclude secrets. Historical datasets are not copied by default; include their description. Optional data inclusion is deferred. A description cannot replace the data, and importing an archive without recoverable history cannot guarantee rerunning it. Distinguish viewing saved results from recalculation.
 
-- Entry Long;
-- Exit Long;
-- Entry Short;
-- Exit Short.
+## 7. Trust and security
 
-Визуальная логика прежде всего декларативная: данные, индикаторы, сравнения, логические связи, итоговые сигналы. Не требуется универсальный аналог всех возможностей Unreal Blueprints.
+Require explicit trust before loading an imported Python module. Selection, preview, opening, and reopening must not execute imported code. Missing dependencies produce actionable errors; installing them requires permission. An embedded package manager is not required.
 
-Начальный набор: OHLCV/цена и объём, SMA, EMA, RSI, Bollinger Bands, MACD, ATR; сравнения значений; Cross Above/Cross Below; AND/OR/NOT. Параметры индикаторов настраиваются.
+Worker processes improve lifecycle control and responsiveness but are not a security sandbox. Stronger isolation and network/filesystem restrictions require separate design before wider execution of untrusted strategies. A warning alone does not neutralize malicious Python.
 
-Рынок, инструмент, основной таймфрейм, капитал, плечо, размер позиции и простые защитные уровни находятся в панели настроек, а не обязаны быть нодами.
+The historical module does not accept exchange credentials. Use a bounded, versioned IPC command set. Validate archive paths and contents, reject traversal and unsafe destinations, and enforce size/resource limits. Do not expose eval/exec through graph nodes. Record strategy/dependency provenance and license obligations.
 
-### 4.2. Импорт программной стратегии
+## 8. Proposed architecture
 
-Импорт и запуск совместимых чужих Python-стратегий нужен в первой версии. Источник стратегий ещё не выбран. Доступность готовых стратегий является критерием выбора движка, но прямую совместимость с несколькими движками на старте не реализуем.
+The baseline is Tauri 2; React, TypeScript, and Vite; React Flow; Lightweight Charts; Python; Pydantic; JSON Strategy IR; SQLite metadata; Parquet data; uv with pinned dependencies. The backtesting engine is undecided. Exact package versions, Python ABI, Node/Rust toolchains, SQLite access, validation, and test tools require compatibility checks. A simpler reliable replacement is possible with evidence in an ADR; product behavior must remain intact.
 
-Первая версия поддерживает один выбранный формат программной стратегии. Возможность последующего добавления адаптеров предусматривается архитектурой, но универсальный конвертер не обещается.
+UI communicates through bounded Tauri IPC with a Python application layer and a managed backtest worker. A separate REST/FastAPI server is not mandatory. Externally accessible servers require a concrete reason and security design. Do not mix protocol messages with arbitrary imported Python stdout. Use explicit messages for errors and cancellation; bound table payloads. Windows cancellation must not leave uncontrolled child processes.
 
-Python-файл не обязан автоматически превращаться в визуальный граф. Встроенный редактор исходного кода пока не является отдельным обязательным требованием.
+Strategy IR must describe trading semantics independently of React Flow coordinates: schema version, stable node IDs, typed ports, graph validation, crossing semantics, and partial-bar semantics. Visual IR and native Python are separate inputs. Convert graphs through an adapter or generated engine code; choose the mechanism through experiments. Candidate adapter operations include capabilities, validation, preparation, execution, cancellation, and normalized result retrieval.
 
-Многотаймфреймовые возможности импортированной стратегии допустимы в пределах проверенной поддержки выбранного движка. Это не означает, что соответствующие возможности уже есть в визуальном редакторе.
+Charts must use run indicator values. Any independent UI indicator computation with different initialization or partial-bar behavior must be clearly separate. Do not add a second calculation engine, Docker requirement, server database, Kubernetes, cloud backend, AI SDK, or extra plugins without a justified decision within scope.
 
-**Техническое предложение:** хранить у программной стратегии идентификатор движка, версию совместимости и перечень зависимостей. Не менять её сигнальную логику ради соответствия настройкам визуального графа. Неподдерживаемые функции должны давать объяснимую ошибку. Динамический произвольный Python не всегда позволяет обнаружить все проблемы до выполнения; не обещать совершенную статическую проверку.
+See [architecture notes](docs/ARCHITECTURE.md) and [engine evaluation](docs/ENGINE_SELECTION.md).
 
-## 5. Данные, бэктест и результаты
+## 9. Required validation
 
-### 5.1. История рынка
+Use tiny synthetic fixtures with independently derived expected results and future-perturbation tests. A successful upstream example is not proof of product correctness.
 
-Выбор рынка, инструмента, таймфрейма и периода происходит в приложении. История загружается, сохраняется локально и используется повторно. После подготовки данных исторический тест должен работать без постоянного сетевого доступа.
+| Area | Required evidence |
+| --- | --- |
+| Windows | Pinned environment installation, launch, and managed shutdown on Windows |
+| Markets | Spot trade and perpetual long/short; spot never borrows |
+| Capital | Sizing, rounding, fees, slippage, funding change fills/balances correctly |
+| Margin | Independently expected initial/maintenance margin and liquidation in both directions |
+| Mark price | Mark changes can cause liquidation with unchanged last price |
+| Intrabar | A signal appears within an H1 bar and disappears by its close; modes differ as expected |
+| Causality | Perturbing future data cannot change earlier outputs |
+| Indicators | Repeated partial H1 updates do not append fictitious closed bars or become M1 indicators |
+| Execution | Documented causal ordering and stop/take/liquidation/gap assumptions |
+| Python | Licensed native example runs without semantic rewrites and only after trust |
+| Reproducibility | Identical inputs and versions yield identical outputs within stated precision |
+| Cancellation | A cancelled run is not successful and incomplete output is not final |
+| UI/export | Responsive research workflow, comparison differences, validated archives and reproducible Windows instructions |
 
-Нужно показывать фактическое покрытие периода и обнаруженные пропуски. Нельзя молча выдавать отсутствующий участок за полностью доступную историю. Конкретная максимальная глубина истории не утверждена; произвольный лимит в несколько месяцев или лет не вводится.
+Distinguish native engine behavior from adapter behavior, synthetic demos from integrated tests, Linux checks from Windows checks, and automated verification from user acceptance. Unknown tiers require explicit assumptions. Never remove a requirement to make a test pass.
 
-Импорт сторонних CSV-наборов не является обязательным для первого этапа.
+## 10. Open engineering decisions
 
-### 5.2. Исполнение и расходы
+Record the selected engine/version, Python/dependencies, first margin mode, bar/indicator availability times, timezone and boundaries, warm-up and gaps, signal/order/fill ordering, protection conflicts, end-of-run positions, capital/precision/minimum-size rules, mark/funding behavior, indicator initialization, partial-bar crossings, native risk-setting precedence, IR/export versions, metric definitions, archive limits, and measured performance budgets in ADRs and executable tests. Unresolved details do not prevent small bounded experiments, but must not be presented as validated financial modeling.
 
-Начинаем с готового профиля моделирования и простых рыночных входов/выходов. Параметры профиля можно менять вручную. Сложные лимитные заявки, сроки действия и отдельный конструктор исполнения откладываются.
+## 11. Deferred scope
 
-В условиях теста должны быть представлены комиссии, проскальзывание, funding для бессрочных контрактов и допущения внутрисвечного исполнения. Реализация должна либо учитывать заявленную величину, либо честно обозначать ограничение. Нельзя добавить поле «slippage», которое не влияет на расчёт.
+After V1: market signals, Telegram, Windows/audio notifications, dry-run and live execution, multiple pairs, DCA/partial exits, visual multi-timeframe graphs, batch experiments and optimization, other engines, stronger isolation, installers, and other OS releases. Telegram remains a required future notification channel. Background-service deployment and playback are outside V1.
 
-Если исторических данных для определённого расхода нет, это явно отображается. Подстановка нуля или иной модели не должна происходить незаметно.
-
-Фьючерсный тест обязан включать проверяемую модель доступного капитала, начальной/поддерживающей маржи и ликвидации. Простого умножения spot-PnL на плечо недостаточно. Допустим ограниченный режим с описанными допущениями, но не фиктивная совместимость со всеми режимами Bybit.
-
-### 5.3. Просмотр результата
-
-Первый набор: свечной график с индикаторами и отметками входов/выходов, таблица сделок и итоговые показатели — прибыль/убыток, просадка, число сделок, доля прибыльных сделок, учтённые расходы.
-
-Выбор сделки переводит к соответствующему участку графика. Ручное рисование уровней, линий и зон пока не нужно. Пошаговое воспроизведение и подробный отладчик условий также отложены.
-
-Каждый запуск сохраняется отдельно со снимком стратегии, её параметрами, настройками теста, сведениями об использованном наборе данных, сделками и показателями. Изменение стратегии не перезаписывает предыдущий результат.
-
-История запусков и простая сравнительная таблица входят в первую версию. Автоматический перебор параметров/оптимизация добавляется позднее.
-
-### 5.4. Выполнение заданий
-
-Одновременно рассчитывается один тест. Интерфейс остаётся доступным, показывает этап и журнал. Нужна отмена. Запуск использует неизменяемый снимок, а не редактируемую в данный момент стратегию.
-
-Сворачивание окна не прекращает тест. Закрытие приложения при активном расчёте вызывает предупреждение: вернуться или отменить расчёт и выйти. Очередь, параллельные тесты и возобновление после перезагрузки не входят в первую версию.
-
-## 6. Интерфейс, хранение и перенос
-
-Интерфейс — **английский**. Русская локализация не требуется. Не нужно считать это решением перевести текущее обсуждение или документ на английский.
-
-Принята рабочая компоновка: одно окно, вкладки Strategy, Backtest и Results; слева список стратегий, справа контекстные настройки; панели можно сворачивать. Полноценная система произвольного докинга не обязательна. Тёмная тема остаётся предложенным оформлением, а не отдельным подтверждённым выбором автора.
-
-Экспорт проекта собирает стратегию, настройки и выбранные результаты в один архив. Секреты не включаются. Исторические данные по умолчанию не копируются: сохраняется описание использованного набора. Отдельное включение самих данных можно добавить позднее.
-
-Описание набора не равнозначно самим данным: перенос архива без истории не гарантирует повторение теста, если тот же набор невозможно восстановить. Интерфейс должен различать просмотр сохранённого отчёта и повторный расчёт.
-
-## 7. Безопасность
-
-Для личного прототипа принят режим **доверенных Python-стратегий**. Код запускается только после явного разрешения пользователя. Открытие проекта, просмотр исходника и выбор импортированного файла не должны автоматически выполнять его код.
-
-Импортированные зависимости не устанавливаются без разрешения. Если библиотек не хватает, допустима понятная ошибка и ручная настройка среды. Встроенный менеджер произвольных пакетов не обязателен.
-
-Отдельный процесс нужен для управляемости и устойчивости интерфейса, но не является полноценной песочницей. Усиленную изоляцию, доступ к файлам/сети и систему безопасности предстоит проработать отдельно до расширенного использования непроверенного кода и реальной торговли.
-
-**Технические предложения для начального этапа:** не подключать торговые ключи к историческому модулю; ограничить набор IPC-команд; валидировать пути и содержимое импортируемых архивов; не предоставлять графу произвольный eval/exec; хранить зависимости и происхождение стратегий; не считать предупреждение достаточной защитой от вредоносного кода.
-
-## 8. Отложенные возможности
-
-После первого исследовательского выпуска: текущие рыночные сигналы, Telegram, звук, уведомления Windows; dry-run и автоматическая реальная торговля; несколько пар; DCA и частичные выходы; многотаймфреймовый визуальный граф; пакетные эксперименты и оптимизация; дополнительные движки; расширенная изоляция; установщики и другие ОС.
-
-Telegram остаётся обязательным каналом будущих оповещений. Сейчас отсутствие уведомлений не означает отказ от них.
-
-AI добавляется только в самом конце, как необязательная функция: собственный API пользователя либо оплачиваемая функция, покрывающая расходы. Автор не оплачивает токены бесплатных пользователей. Локальная модель — возможная опция, не обязательная зависимость. Основной продукт полностью работает без AI.
-
-Выбор первого движка делегирован Astra в Codex. Предлагаемый порядок работы и отслеживания задач вынесен в раздел 13 и docs/WORKFLOW.md; фактическое создание проекта Linear и Git-репозитория не подтверждено.
-
-## 9. Выбор первого движка — полномочия Astra
-
-Цель — выбрать минимально сложный путь к согласованному исследовательскому приложению, а не самый функциональный движок вообще. Подробное первое поручение находится в docs/ENGINE_SELECTION.md.
-
-Кандидат должен оцениваться по Windows-совместимости, лицензии и условиям будущего распространения, формату и доступности готовых стратегий, полноте модели spot/perpetual, марже и ликвидации, историческим расходам, частичным свечам, воспроизводимости, управлению worker и объёму собственной интеграции.
-
-Для каждой обязательной возможности различать: работает штатно; требует настройки; требует ограниченного адаптера; требует глубокого форка; не поддерживается; ещё не проверено. Прямую совместимость Python разных движков не подразумевать. Схожесть метрик в таблице не означает идентичную семантику разных симуляторов.
-
-Начать с документального отсева. Запустить минимальный эксперимент для наиболее подходящего кандидата. Не строить полные интеграции всех движков одновременно. Переходить к другому кандидату при конкретном блокере, а не ради бесконечного сравнения.
-
-Astra вправе самостоятельно зафиксировать первый движок после проверки, не запрашивая у автора выбор из названий библиотек. Обычные инженерные развилки и обратимые изменения компонентов стартового стека решает самостоятельно, с ADR и проверками. Удаление обязательных функций, платная инфраструктура и смена целевой ОС не входят в мандат: записать блокер и продолжить независимую разрешённую работу, не выдавая ограниченный результат за готовую V1.
-
-Результат выбора: файл docs/decisions/0001-backtest-engine.md с точной версией, ссылками на официальные документы и лицензии, выполненными командами и тестами, списком собственных адаптаций, известными ограничениями и условиями пересмотра. Предпочитать стабильный выпуск; выбор pre-release требует явного обоснования и оценки воспроизводимости, обновлений и пути отката. Не смешивать документацию и примеры разных major-версий.
-
-## 10. Стартовая техническая основа
-
-| Слой | Стартовый выбор | Назначение |
-|---|---|---|
-| Desktop | Tauri 2 | Окно, диалоги, управление Python-процессами и ограниченный IPC |
-| Frontend | React + TypeScript + Vite | Интерфейс, а не расчёт PnL или торговых индикаторов |
-| Визуальный редактор | React Flow / @xyflow/react | Отображение и редактирование графа |
-| Графики | Lightweight Charts | Цена, индикаторы и сделки конкретного теста |
-| Сервис приложения | Python | Проекты, данные, запуск заданий, адаптер движка |
-| Валидация | Pydantic / единая схема контракта | Версионируемые структуры и проверка входных данных |
-| Стратегия | JSON / Strategy IR | Торговая семантика отдельно от координат нод |
-| Метаданные | SQLite | Каталог проектов, запусков и наборов данных |
-| Табличные наборы | Parquet | История рынка и объёмные результаты |
-| Python-окружение | uv и lockfile | Изолированная и воспроизводимая среда |
-| Движок | Выбирает Astra | Не предрешён |
-
-Это отправная точка, а не требование устанавливать все зависимости в первом задании. Точные версии, Python ABI, Node/Rust toolchain, драйвер SQLite, средства валидации TypeScript и тестовые инструменты определяются после проверки совместимости. UI-библиотеку готовых компонентов можно выбрать отдельно; не вводить её ради предположительного будущего использования.
-
-### 10.1. Границы компонентов
-
-```text
-React UI
-  ↕ команды и события приложения
-Tauri: desktop и управление процессами
-  ↕ локальный IPC
-Python: проекты, валидация, история данных, управление заданиями
-  ↕ EngineAdapter
-Выбранный backtest engine в управляемом worker-процессе
-```
-
-Отдельный REST-сервер/FastAPI не обязателен для локального режима. Добавлять сервер или доступ к нему извне только при конкретной необходимости и с описанием безопасности. Локальный IPC должен быть версионированным; сообщения, ошибки и отмена — явными. Не смешивать служебные JSON-сообщения с произвольным stdout импортированного Python-кода.
-
-Python-сервис не должен зависать вместе с расчётом. Worker получает неизменяемый снимок запуска. Большие таблицы передаются в UI ограниченными выборками. Механизм завершения worker должен работать на Windows и не оставлять неконтролируемые дочерние процессы.
-
-### 10.2. Strategy IR и адаптер
-
-IR — самостоятельное описание ограниченного языка визуальных стратегий. React Flow JSON не является единственным источником торговой логики. Требуются версия схемы, стабильные идентификаторы нод, типы входов/выходов, проверка связей и явная семантика пересечений и незавершённой свечи. Не строить универсальный язык программирования.
-
-Предлагаемые операции адаптера: запрос возможностей, проверка стратегии/профиля, подготовка запуска, выполнение, отмена и чтение нормализованного результата. Список операций уточняется экспериментом; не строить общий плагинный фреймворк заранее.
-
-Визуальный IR и нативный Python — два разных входных формата. Граф преобразуется в исполняемую форму выбранного ядра через генерацию кода или адаптер; конкретный способ выбирается технически. Произвольный Python обратно в граф автоматически не конвертируется.
-
-Индикаторы на графике должны соответствовать значениям данного теста. Независимый расчёт UI с другой инициализацией или обработкой partial-свечи недопустим без явно отдельного режима.
-
-### 10.3. Данные и воспроизводимость
-
-Торговые OHLCV, Mark Price и funding — отдельные наборы. Наличие API не равно гарантированной глубине истории. Выбор native-клиента, CCXT или собственного небольшого клиента делается по реально нужным источникам; не дублировать клиентов без причины.
-
-Сохранять происхождение, временной диапазон, схему, контрольные суммы данных и использованные предположения. Runtime/engine versions, параметры, снимок стратегии и профиль моделирования входят в манифест запуска. Одного lockfile недостаточно для повторяемости при изменившихся данных.
-
-Нормализованный отчёт сохраняется вместе с исходными артефактами движка. Для сравнения должны быть видны различия профилей и версий; не скрывать несовместимые определения метрик.
-
-### 10.4. Что не добавляем автоматически
-
-VectorBT и второй расчётный движок, Docker как обязательную среду пользователя, серверные базы данных, Kubernetes, облачный backend, AI SDK и многочисленные плагины не включать без доказанной необходимости и ADR в пределах разрешённой локальной архитектуры; расширение V1 и платные сервисы запрещены. Codex/Astra используется как инструмент разработки, а не как AI-функция терминала.
-
-## 11. Контрольные проверки до большого интерфейса
-
-Предлагаемый первый инженерный этап должен проверить основание проекта. Успешный запуск готового примера библиотеки недостаточен. Использовать небольшие синтетические данные с независимо рассчитанными ожиданиями, затем ограниченную реальную историю там, где она нужна для проверки загрузки.
-
-| Сценарий | Что подтвердить |
-|---|---|
-| Windows | Установка выбранного выпуска, запуск, воспроизводимое окружение и управляемое завершение |
-| Spot/perpetual | Отдельные сценарии обычного спота, фьючерсного long и short; отсутствие скрытого заёмного спота |
-| Капитал | Размер позиции, округление, комиссии, slippage и funding меняют сделки и баланс |
-| Маржа | Доступный капитал, выбранный ограниченный режим и ликвидация проверяются независимо от направления сделки |
-| Mark Price | Изменение Mark Price при неизменной торговой цене может вызвать предусмотренное моделью принудительное закрытие |
-| Partial-свеча | Сигнал появляется внутри часа и исчезает к его закрытию; внутрисвечный и закрытый режимы дают ожидаемо разные результаты |
-| Без будущих данных | Изменение будущих свечей не меняет результаты до границы изменения |
-| Индикаторы | Partial H1 не превращается в RSI по M1; обновления не добавляют ложные завершённые H1-бары |
-| Исполнение | Сигнал, создание заявки и fill имеют причинно корректный порядок; stop/take/ликвидация и гэпы имеют документированную обработку |
-| Python-импорт | Лицензионно допустимый совместимый пример работает без переписывания сигнальной логики; импорт требует явного разрешения |
-| Повторяемость | Одинаковые данные, версии и профиль дают одинаковый результат в установленной точности |
-| Отмена | Отменённый тест не отмечается успешным; частичный результат не выдаётся за финальный |
-
-Часть сценариев может потребовать нашего адаптера. Тогда отделить «поддержано движком» от «проверено нашей реализацией». В первом выборе ядра разрешены минимальные адаптации; полную механику проверять до соответствующей пользовательской функции.
-
-Нельзя выдавать упрощённую модель за полное воспроизведение Bybit UTA. При неизвестных исторических tiers или иных параметрах применять явно обозначенный профиль. Нельзя тихо удалить обязательное требование, чтобы тест стал зелёным.
-
-## 12. Технические решения, которые предстоит записать
-
-Эти вопросы не требуют нового длинного продуктового интервью. Astra должна предложить правила, обосновать их и закрепить тестами. Изменения обещанного поведения или существенного объёма записывать как нерешённые продуктовые вопросы. В автономном запуске не ждать ответа по обычным инженерным деталям; выбирать обратимое решение и документировать его. Неразрешённые изменения требований не выполнять.
-
-- Версия движка, Python и набор зависимостей; выбранный первый режим маржи.
-- Моменты доступности свечи и индикатора; границы таймфреймов и timezone; warm-up и пропуски.
-- Момент сигнала, заявки и исполнения; гэпы; одновременные stop/take/ликвидация; конфликт входа и выхода; обработка открытой позиции в конце теста.
-- Определение доступного капитала, округление цены/количества, минимальный размер ордера, mark/funding и профиль маржи.
-- Параметры и инициализация индикаторов, Cross Above/Cross Below на формирующемся баре, правила экспорта и версии IR.
-- Какие настройки можно менять у нативной Python-стратегии; приоритет её собственного риск-менеджмента и интерфейсного профиля. Нельзя менять чужую логику молча.
-- Определения PnL, equity, drawdown и winrate, реализованный/нереализованный результат, расходы и сравнимость запусков.
-- Пределы импорта архивов, пути, защита от выполнения кода при просмотре и доверенные зависимости.
-- Измеримые бюджеты производительности на машине автора после первых замеров.
-
-До завершения этих проверок не называть всё приложение готовым к полноценному финансовому моделированию. При этом отсутствие завершённой спецификации всех внутренних функций не блокирует локальный эксперимент выбора ядра.
-
-## 13. Автономная организация разработки
-
-Владелец разрешил самостоятельную реализацию согласованной V1 без промежуточных продуктовых интервью. Работа остаётся последовательностью проверяемых задач, но новые сообщения «продолжай» между ними не нужны. Один основной агент изменяет рабочую копию; отдельный reviewer может читать изменения. Не запускать бесконечные циклы, автоматические повторные сессии, дополнительные платные модели или конкурирующих писателей.
-
-Git хранит код, требования, ADR и результаты проверок. Репозиторий должен быть публичным по выбору автора; конкретный URL и доступ проверяются перед push. Публичная рабочая ветка не является приватной. Публикуются только проектные материалы после проверки секретов и прав на сторонний код; не публикуются личные данные, ключи, сырые локальные журналы и пользовательские базы.
-
-Linear остаётся предполагаемым трекером, но его окончательная настройка не является условием этого запуска. Разрешено читать уже подключённый проект Trading Terminal. Записи допускаются только в однозначно определённый, отдельно разрешённый автором проект. Иначе пользоваться docs/TASKS.md и docs/STATUS.md; не создавать команды, не менять workspace и не заводить массовые задачи ради подготовки.
-
-Порядок: предпусковая проверка → выбор и эксперимент движка → расчётная семантика и тесты → Strategy IR → история и манифесты → управляемый бэктест → доверенный Python-импорт → desktop UI → сравнение и экспорт → проверка V1. Делить этапы на небольшие изменения. После выполненной проверки продолжать следующий доступный этап автоматически.
-
-Переходить к независимым частям при локальном блокере; не подменять расчёты заглушками ради завершения экрана. В финале отделять завершённые требования, частичную реализацию и непроверенное поведение. Пользовательскую приёмку нельзя отмечать выполненной без автора.
-
-Правила автономного запуска — AUTONOMOUS_RUN.md; первое сообщение — BOOTSTRAP_PROMPT.md; подготовка среды — docs/PREFLIGHT.md; полномочия процессов — docs/PERMISSIONS.md; проверка ядра — docs/ENGINE_SELECTION.md. Автономность не отменяет ограничения клиента, лимиты использования и реальные ошибки среды.
-
-## 14. Источники и история изменений
-
-Пользовательские требования перенесены из Trading_Terminal_Requirements_v0.2.md, разделов 2–8, с изменением только организационного статуса в конце раздела 8. Основание — интервью в этой переписке. Старый концепт и документы v0.1/v0.2 не удалены, но не задают приоритет конкретного движка.
-
-Новые разделы 9–13 описывают делегирование выбора и предлагаемый инженерный процесс; это не отчёт о уже проведённой разработке. Актуальные свойства внешних библиотек нужно проверять у их авторов при выборе версии. Ссылки для проверки движков собраны в docs/ENGINE_SELECTION.md; проверенные инструкции по Codex/Linear — в docs/WORKFLOW.md.
-
-**0.1:** объединённая концепция.  
-**0.2:** ответы 1–34 и предварительное сравнение технологий.  
-**0.3:** выбор ядра передан Astra без приоритетного кандидата; не связанный с ядром стек принят за стартовую основу; подготовлен самостоятельный пакет передачи в Codex и предложен рабочий цикл. Код, GitHub-репозиторий и Linear-задачи этим обновлением не созданы.
-
-**0.4:** автор разрешил автономную разработку в пределах V1 и выбрал публичный репозиторий. Убраны остановки после каждого этапа, уточнены разрешённые публикации и предпусковая проверка. Продуктовые требования разделов 2–8 сохранены. Созданы только файлы документации; внешние сервисы и настройки компьютера не изменялись.
+AI is an optional final-stage extension, using user-supplied API access or a paid option that covers its costs; a local model is optional. Core research functionality must work without AI. No provider-funded token usage for free users is assumed. These roadmap items do not authorize their implementation in V1.

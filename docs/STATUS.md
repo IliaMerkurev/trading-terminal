@@ -1,30 +1,15 @@
-# Текущее состояние Trading Terminal
+# Implementation status
 
-**Версия пакета: 0.4. Статус: подготовлена документация, разработка этим пакетом не выполнена.**
+## Available
 
-## Решения
-Продуктовые требования сохранены. Выбор движка делегирован Astra. Владелец разрешил автономную последовательную разработку V1 и выбрал публичный репозиторий. Прежний запрет продолжать после каждого этапа снят в пределах AUTONOMOUS_RUN.md.
+- Product specification and acceptance requirements.
+- Proposed component architecture.
+- Engine evaluation criteria and development workflow.
 
-## Не проверено
-Среда Windows; версия и режим Codex; наличие модели в клиенте; GitHub-авторизация; репозиторий/ветка/remote; Linear; инструменты сборки; любые runtime-проверки. Внешние объекты не созданы этим обновлением. Код приложения отсутствует.
+## Not implemented or verified
 
-## Следующий шаг
-PREFLIGHT_ONLY из BOOTSTRAP_PROMPT.md при владельце. Затем самостоятельное выполнение AUTONOMOUS_RUN.md после отдельного стартового сообщения, без остановок после каждой задачи. Если старый проект уже существует, сначала сравнить состояние и сохранить сделанные изменения.
+There is no runnable desktop application, selected engine, imported-strategy execution, historical data pipeline, backtest/accounting implementation, chart UI, comparison/export implementation, or installer. No application test suite has been run. Runtime compatibility and modeling behavior remain unverified.
 
-## Поля последующего отчёта
-Фактическая задача / состояние Git / выполненные действия / команды и результаты тестов / ограничения / возможность продолжения / следующий шаг. Не выводить секреты, личные пути и несуществующие ссылки.
+## Next milestone
 
-## Настройка Git/GitHub — 2026-09-11
-Только инструменты и репозиторий; разработка приложения не начата.
-- Windows: Git 2.53.0.windows.3 уже доступен в runtime Codex; Git Credential Manager 2.7.3 сохранён.
-- GitHub CLI 2.100.0 установлен через winget GitHub.cli; winget 1.29.290 уже установлен.
-- PATH командного процесса дополнен отсутствующими зарегистрированными путями без изменения постоянного PATH.
-- gh auth status: IliaMerkurev, active, keyring, HTTPS. Токены не выводились и не записывались в проект.
-- Создан пустой PUBLIC https://github.com/IliaMerkurev/trading-terminal; owner API и repo view проверены.
-- Локальный Git инициализирован в корне проекта; ветка main без коммитов, origin установлен на HTTPS-адрес указанного репозитория.
-- Существующий helper manager сохранён; Git Credential Manager подтвердил аккаунт IliaMerkurev. git ls-remote origin: exit 0, пустой remote.
-- Gitleaks 8.30.1 (MIT), официальный Windows x64 release, SHA256 D29144DEFF3A68AA93CED33DDDF84B7FDC26070ADD4AA0F4513094C8332AFC4E. Инструмент находится в исключённой .local-tools.
-- Проверка выбранных стартовых файлов: Gitleaks exit 0, секретов не найдено. Общая проверка каталога нашла два примера в README самого скачанного Gitleaks; эти сторонние файлы исключены из публикации. Проверка исключений .env, окружений, зависимостей, логов и рыночных данных прошла.
-- Noreply-адрес подтверждён владельцем по GitHub Settings. Локальный автор: IliaMerkurev, 69294684+IliaMerkurev@users.noreply.github.com. Для проекта закреплено системное хранилище wincredman; helper manager сохранён. Commit/push на момент этого checkpoint ещё не выполнены.
-- Следующий шаг: проверить финальные файлы и историю, выполнить первый push main и создать codex/bootstrap-v1.
-- Полный preflight разработки не выполнялся. Лицензия проекта не выбрана; сторонний код не публикуется.
+Verify a pinned engine candidate on Windows using the independent scenarios in [engine evaluation](ENGINE_SELECTION.md), then record the decision and limitations. [PROJECT.md](../PROJECT.md) remains the authoritative scope.

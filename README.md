@@ -1,29 +1,34 @@
-# Trading Terminal — автономный старт v0.4
+# Trading Terminal
 
-Пакет содержит согласованную спецификацию и инструкции для Codex/Astra. Приложение, репозиторий, подключения и тесты им не созданы. В архиве нет активного config.toml, установщика или скриптов изменения разрешений.
+Trading Terminal is a planned Windows desktop application for historical strategy research: create a visual strategy or import a compatible Python strategy, run a reproducible backtest, inspect trades, and compare saved results.
 
-## Изменение относительно v0.3
-Владелец разрешил самостоятельные инженерные решения и переходы между этапами V1; репозиторий выбирается публичным. Старый промпт «только выбрать движок и остановиться» заменён. Продуктовые требования сохранены.
+## Development status
 
-## Запуск
-Распаковать пакет в отдельную папку проекта. Если v0.3 уже распакован или есть код, сравнить файлы и обновить инструкции, не затирая чужие изменения, готовый код и актуальный STATUS.md. AGENTS.md должен быть в корне открытого проекта. Не класть этот пакет просто в подпапку старых инструкций.
+**Specification and engineering preparation.** There is no runnable application, selected backtesting engine, installer, or implemented trading/research feature yet. The repository currently provides the product specification, proposed architecture, engine evaluation criteria, and development guidance.
 
-Открыть папку в локальном Codex, выбрать Astra, подключить только нужный репозиторий. Рекомендация по разрешениям — sandbox + Approve for me, а не безусловный Full Access на личном ноутбуке. Подробности и fallback — docs/PERMISSIONS.md.
+## Planned V1 capabilities
 
-При владельце выполнить первое сообщение из BOOTSTRAP_PROMPT.md — preflight. Создать/указать точный публичный репозиторий и проверить авторизацию; отсутствие remote не мешает локальной работе. После подготовки отправить второе сообщение. Если клиент поддерживает /goal, использовать его для той же измеримой цели.
+- Visual strategy graphs and one supported native Python strategy format.
+- Bybit USDT spot and linear perpetual historical tests, including long/short perpetual positions.
+- Closed-bar and causal intrabar condition evaluation.
+- Explicit fees, slippage, funding, margin, liquidation, and execution assumptions.
+- Local historical data, reproducible run snapshots, charts, trade tables, comparisons, and export.
+- A responsive English interface with cancellable backtests.
 
-## Состав
-- PROJECT.md — единая спецификация V1.
-- AGENTS.md — постоянные правила для агента.
-- AUTONOMOUS_RUN.md — полномочия, границы и цель автономного запуска.
-- BOOTSTRAP_PROMPT.md — два готовых сообщения: подготовка и запуск.
-- docs/ENGINE_SELECTION.md — нейтральное исследование ядра.
-- docs/PREFLIGHT.md — проверки до ухода владельца.
-- docs/PERMISSIONS.md — настройки и официальные источники.
-- docs/WORKFLOW.md — порядок работы и публикации.
-- docs/TASKS.md — этапы с критериями; не реальные Linear issues.
-- docs/STATUS.md — текущее состояние и продолжение.
-- docs/RUN_REPORT.md — отчёт, который должен заполнить работающий агент.
-- .gitignore — начальные исключения для данных, окружений и секретов; требует проверки перед публикацией.
+V1 does not include live trading, exchange credentials, optimization, DCA, partial exits, multiple simultaneous instruments, or AI features.
 
-Перед уходом: питание, рабочий интернет, компьютер не спит, OAuth/установки завершены, режим разрешений проверен, лимиты и автопополнение проверены владельцем. Новые покупки не разрешены. Объём результата и длительность автономной работы не гарантируются.
+## Documentation
+
+- [Product specification](PROJECT.md): authoritative scope and acceptance requirements.
+- [Architecture](docs/ARCHITECTURE.md): proposed components and boundaries.
+- [Engine evaluation](docs/ENGINE_SELECTION.md): selection criteria and required experiments.
+- [Development guide](docs/DEVELOPMENT.md): contribution workflow and validation.
+- [Implementation status](docs/STATUS.md): verified capabilities and current limitations.
+
+## Running the project
+
+No application launch command is available yet. Development setup and test commands will be documented as executable components are introduced. Proposed dependencies are not evidence of a working build.
+
+## License
+
+A project license has not been selected. Public availability does not grant an open-source license. Third-party code requires a license review before inclusion.
