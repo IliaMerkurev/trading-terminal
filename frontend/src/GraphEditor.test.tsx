@@ -6,6 +6,12 @@ import {exampleGraph} from './model';
 const mock=vi.hoisted(()=>({convert:vi.fn(),fitView:vi.fn(),props:null as any}));
 vi.mock('@xyflow/react',()=>({Position:{Left:'left',Right:'right'},Handle:()=>null,Background:()=>null,Controls:()=>null,
  ReactFlow:(props:any)=>{mock.props=props;useEffect(()=>{props.onInit({screenToFlowPosition:mock.convert,fitView:mock.fitView});},[]);return <div data-testid="pane" onContextMenu={props.onPaneContextMenu}>{props.children}</div>;}}));
+it('retains measured node dimensions without committing a graph edit',()=>{
+ const change=vi.fn();render(<GraphEditor graph={exampleGraph()} layout={{}} onChange={change} onSelect={()=>{}} onCreate={()=>{}} selected={null} locate={null} onBegin={()=>{}} onEnd={()=>{}}/>);
+ act(()=>mock.props.onNodesChange([{type:'dimensions',id:'mean',dimensions:{width:200,height:110}}]));
+ act(()=>mock.props.onNodesChange([{type:'select',id:'mean',selected:true}]));
+ expect(mock.props.nodes.find((n:any)=>n.id==='mean').measured).toEqual({width:200,height:110});expect(change).not.toHaveBeenCalled();
+});
 it.each([{x:800,y:600,world:{x:123,y:-55}},{x:1800,y:1300,world:{x:-320,y:900}}])('freezes library-converted original click coordinates independently of popup clamping (%s)',({x,y,world})=>{
  mock.convert.mockReturnValue(world);const create=vi.fn(),change=vi.fn();
  render(<GraphEditor graph={exampleGraph()} layout={{}} onChange={change} onSelect={()=>{}} onCreate={create} selected={null} locate={null} onBegin={()=>{}} onEnd={()=>{}}/>);

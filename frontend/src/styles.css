@@ -16,3 +16,15 @@
 .graph-editor { width:100%; height:100%; min-height:0; position:relative; outline:none; }
 .delete-node-menu { position:fixed; z-index:1000; padding:8px; min-width:170px; background:#202735; border:1px solid #4a5974; border-radius:8px; }
 .delete-node-menu button { width:100%; }
+
+.live-workspace { overflow:auto; padding:24px; flex:1; min-height:0; }
+.live-workspace header,.live-controls { display:flex; align-items:center; flex-wrap:wrap; gap:14px; }
+.live-workspace section { border-top:1px solid #303848; padding:18px 0; }
+.live-workspace input[type=checkbox] { width:auto; margin-right:8px; }
+.live-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:12px; margin:18px 0; }
+.live-metrics article { background:#1b2230; border:1px solid #303848; border-radius:8px; padding:14px; }
+.live-metrics strong,.live-metrics small { display:block; margin:5px 0; }
+.live-workspace h2 small { font-size:12px; color:#97b3a9; }
+.live-workspace form { display:grid; gap:10px; padding:16px 0; max-width:500px; }
+.live-event-log { max-height:280px; overflow:auto; padding-left:20px; }
+.live-event-log time { color:#8fa4be; }

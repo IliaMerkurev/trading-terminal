@@ -41,3 +41,4 @@ export function graphProblems(graph:Graph):GraphProblem[]{
   graph.nodes.forEach(n=>visit(n.id));return problems;
 }
 export function isTextEditing(target:EventTarget|null){return target instanceof HTMLElement&&!!target.closest('input,textarea,select,[contenteditable="true"],[role="textbox"]');}
+export function shortcutKey(event:Pick<KeyboardEvent,'key'|'code'>){return /^Key[A-Z]$/.test(event.code)?event.code.slice(3).toLowerCase():event.key.toLowerCase();}

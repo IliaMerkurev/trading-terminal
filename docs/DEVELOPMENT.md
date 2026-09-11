@@ -4,9 +4,9 @@ Read [PROJECT.md](../PROJECT.md), [architecture](ARCHITECTURE.md), [status](STAT
 
 ## Product versions and working branches
 
-The current product is **0.2 development build**, displayed as `0.2-dev`. Product 0.1 was the first working milestone; 0.3, 0.4 and later functional milestones remain future work. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
+The development product is **0.3 development build**, displayed as `0.3-dev`. Product 0.1 was the first working milestone; 0.2 is the accepted research baseline; 0.4 and later functional milestones remain future work. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
 
-`src-tauri/Cargo.toml` package version is the single product-version source (`0.2.0-dev` in SemVer). Tauri uses it when its configuration omits a version override; the existing UI badge reads Tauri app metadata. The private frontend package does not declare another product version. Update the root package entry in Cargo.lock alongside a version bump; do not change dependency versions. Window title and executable name stay `Trading Terminal` and `trading-terminal.exe`.
+`src-tauri/Cargo.toml` package version is the single product-version source (`0.3.0-dev` in SemVer). Tauri uses it when its configuration omits a version override; the existing UI badge reads Tauri app metadata. The private frontend package does not declare another product version. Update the root package entry in Cargo.lock alongside a version bump; do not change dependency versions. Window title and executable name stay `Trading Terminal` and `trading-terminal.exe`.
 
 Use the main project checkout for the current build, with its existing `.venv`, `node_modules`, local Cargo cache and ordinary `.local-data`. After feature acceptance, return it to current `main`; temporary worktrees are optional isolation tools, not required launch dependencies. Archive their private data separately before removing them. Never merge synthetic demo databases into the ordinary user database.
 
@@ -27,7 +27,7 @@ If necessary, pass an installed CPython 3.12 x64 executable to `setup.ps1 -Pytho
 
 The launcher uses the configured tools recorded during setup if Node/Cargo are absent from the current shell. It builds frontend assets and the embedded Windows executable with locked offline Cargo dependencies, then opens it. Moving the checkout requires rebuilding. Close the application before rebuilding its executable. No execution-policy or security-policy bypass is part of these commands. Run from a shell permitted to execute local project scripts.
 
-## 0.2 launcher and separate demonstration
+## Launcher and separate demonstrations
 
 After project setup, the calling pinned Python can launch without PowerShell script execution:
 
@@ -65,3 +65,11 @@ The demo creates four labeled synthetic cases with independently checked expecte
 Application databases, downloaded data, WebView state, exports and worker artifacts are under ignored `.local-data/`. Environments and build caches are also ignored. Native source consent is local and is not exported. Back up local data with the application closed; never commit raw datasets, private instructions or credentials.
 
 Inspect exact staged files and diffs, scan all outgoing commits with the pinned established secret scanner, and review privacy/license obligations before publication. Ordinary deletion never removes content from previous commits. Do not assign a project license or distribute third-party binaries without the applicable license review.
+
+## Live development and acceptance
+
+See [the 0.3 demonstration](DEMO_03.md). Use an absolute isolated `--data-root` for public-stream probes, synthetic paper fixtures and notification tests. Never merge these journals into user research data. Public subscriptions require network access but no exchange credentials. Confirmed M1 candles drive shared historical/live/replay IR; forming primary bars still advance on minute closes, not every tick.
+
+`websockets==15.0.1` is pinned by wheel hash in the runtime lock (BSD-3-Clause). It has no runtime dependencies. Windows notification bindings use the already locked `windows` Rust crate; credentials use the Windows API through Python ctypes. Do not add a cloud backend. Telegram secrets must enter only the application password-field flow and never command lines, fixtures or test logs.
+
+Reconnect and account goldens run offline in the Python suite. A successful toast API/mock call does not prove a visible toast; sound audibility and owner-configured Telegram delivery are separate acceptance checks. Native notification settings are respected, never changed by the application. Ordinary shutdown stops monitoring; this is not a background service.

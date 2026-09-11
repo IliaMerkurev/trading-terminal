@@ -1,8 +1,9 @@
 import {describe,it,expect} from 'vitest';
-import {createNode,deleteNodes,duplicateNodes,graphProblems,searchNodes} from './editor';
+import {createNode,deleteNodes,duplicateNodes,graphProblems,searchNodes,shortcutKey} from './editor';
 import {exampleGraph} from './model';
 import {GraphHistory} from './useGraphHistory';
 describe('graph editing contracts',()=>{
+ it('recognizes physical shortcuts under non-Latin layouts',()=>{expect(shortcutKey({key:'я',code:'KeyZ'})).toBe('z');expect(shortcutKey({key:'н',code:'KeyY'})).toBe('y');expect(shortcutKey({key:'в',code:'KeyD'})).toBe('d');});
  it('deletes multiple nodes and connections in one reversible transaction, preserving outputs',()=>{
   const graph=exampleGraph(),layout={close:{x:10,y:20},above:{x:50,y:60},'out:entry_long':{x:90,y:80}};
   const h=new GraphHistory({graph,layout});const result=deleteNodes(graph,layout,['close','above','out:entry_long'])!;

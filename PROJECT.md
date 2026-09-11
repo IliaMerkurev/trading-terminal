@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Product version: 0.3 development build (implementation in progress; not yet accepted). Product 0.2 remains the accepted main baseline. Sections 1–11 retain the 0.1 contract; sections 12–18 retain 0.2; section 19 defines the authorized 0.3 extension and supersedes earlier deferral of live monitoring, notifications and paper trading. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
+Product version: 0.3 development build (prepared for owner acceptance; not yet accepted). Product 0.2 remains the accepted main baseline. Sections 1–11 retain the 0.1 contract; sections 12–18 retain 0.2; section 19 defines the authorized 0.3 extension and supersedes earlier deferral of live monitoring, notifications and paper trading. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
 
 ## 1. Purpose and delivery target
 
