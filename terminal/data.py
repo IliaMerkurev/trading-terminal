@@ -236,12 +236,17 @@ class DatasetStore:
         write_new(directory/"manifest.json",canonical(manifest))
         return manifest
 
-    def load(self,dataset_id):
+    def describe(self,dataset_id):
         if not re.fullmatch(r"[a-f0-9]{64}",dataset_id): raise DataError("Invalid dataset ID")
         directory=self.root/dataset_id
         manifest=json.loads((directory/"manifest.json").read_bytes())
         payload={k:v for k,v in manifest.items() if k not in ("id","files_sha256")}
         if digest(payload)!=dataset_id: raise DataError("Dataset manifest checksum mismatch")
+        return manifest
+
+    def load(self,dataset_id):
+        manifest=self.describe(dataset_id)
+        directory=self.root/dataset_id
         content={}
         for name in ("trade","mark","funding"):
             raw=(directory/(name+".parquet")).read_bytes()
@@ -256,6 +261,11 @@ class DatasetStore:
 
     def for_run(self,dataset_id,profile):
         manifest,trade,marks,funding=self.load(dataset_id)
+        self.check_profile(manifest,profile)
+        return manifest,trade,marks,funding
+
+    @staticmethod
+    def check_profile(manifest,profile):
         if manifest["market"]!=profile.market or manifest["symbol"]!=profile.symbol:
             raise DataError("Dataset market/instrument differs from the run profile")
         if not manifest["coverage"]["trade"]["complete"] and (profile.evaluation=="intrabar" or profile.gap_policy=="reject"):
@@ -265,7 +275,6 @@ class DatasetStore:
                 raise DataError("Mark coverage is incomplete")
             if profile.funding_mode=="history" and not manifest["coverage"]["funding"]["complete_against_current_interval"]:
                 raise DataError("Funding coverage cannot be verified against the declared interval; choose an explicit cost assumption")
-        return manifest,trade,marks,funding
 
 
 def prepare_dataset(client,store,market,symbol,start,end,progress=lambda *_:None):

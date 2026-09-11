@@ -1,0 +1,154 @@
+"""Local SQLite metadata and immutable run artifacts."""
+from datetime import datetime,timezone
+from contextlib import contextmanager
+import hashlib
+import json
+from pathlib import Path
+import re
+import sqlite3
+import uuid
+
+from terminal.data import canonical,write_new
+
+SERIES=("fills","trades","events","equity","indicators","diagnostics","candles","engine_orders")
+
+
+def identifier(value):
+    if not isinstance(value,str) or not re.fullmatch(r"[a-f0-9]{32}",value):
+        raise ValueError("Invalid local object identifier")
+    return value
+
+
+class RunStore:
+    def __init__(self,root):
+        self.root=Path(root).resolve()
+        self.root.mkdir(parents=True,exist_ok=True)
+        self.database=self.root/"terminal.sqlite3"
+        with self.connect() as db:
+            db.executescript("""
+                PRAGMA journal_mode=WAL;
+                CREATE TABLE IF NOT EXISTS runs(
+                    id TEXT PRIMARY KEY, created_at TEXT NOT NULL, status TEXT NOT NULL,
+                    manifest TEXT NOT NULL, error TEXT, result_hash TEXT, summary TEXT);
+                CREATE TABLE IF NOT EXISTS series(
+                    run_id TEXT NOT NULL, kind TEXT NOT NULL, row_index INTEGER NOT NULL,
+                    value TEXT NOT NULL, PRIMARY KEY(run_id,kind,row_index));
+                CREATE TABLE IF NOT EXISTS strategies(
+                    id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL,
+                    document TEXT NOT NULL, updated_at TEXT NOT NULL);
+            """)
+
+    @contextmanager
+    def connect(self):
+        db=sqlite3.connect(self.database,timeout=15)
+        db.row_factory=sqlite3.Row
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
+
+    def directory(self,run_id):
+        return self.root/"runs"/identifier(run_id)
+
+    def create(self,manifest):
+        run_id=uuid.uuid4().hex
+        write_new(self.directory(run_id)/"snapshot.json",canonical(manifest))
+        with self.connect() as db:
+            db.execute("INSERT INTO runs(id,created_at,status,manifest) VALUES(?,?,?,?)",
+                       (run_id,datetime.now(timezone.utc).isoformat(),"created",canonical(manifest).decode()))
+        return run_id
+
+    def status(self,run_id,status,error=None):
+        if status not in ("created","running","cancel_requested","cancelled","failed","interrupted"):
+            raise ValueError("Invalid worker status")
+        with self.connect() as db:
+            changed=db.execute("UPDATE runs SET status=?,error=? WHERE id=? AND status!='completed'",
+                               (status,error,identifier(run_id))).rowcount
+            if not changed: raise ValueError("Unknown run or immutable completed run")
+
+    def get(self,run_id):
+        with self.connect() as db:
+            row=db.execute("SELECT * FROM runs WHERE id=?",(identifier(run_id),)).fetchone()
+        if row is None: raise ValueError("Run does not exist")
+        result=dict(row)
+        result["manifest"]=json.loads(result["manifest"])
+        result["summary"]=json.loads(result["summary"]) if result["summary"] else None
+        return result
+
+    def recent(self,limit=100):
+        if type(limit) is not int or not 1<=limit<=100: raise ValueError("Run list limit must be 1–100")
+        with self.connect() as db:
+            rows=db.execute("SELECT id,created_at,status,error,summary FROM runs ORDER BY created_at DESC LIMIT ?",(limit,)).fetchall()
+        return [{**dict(row),"summary":json.loads(row["summary"]) if row["summary"] else None} for row in rows]
+
+    def complete(self,run_id,result):
+        run=self.get(run_id)
+        if run["status"]!="running": raise ValueError("Only a running, uncancelled worker can complete")
+        if result.get("status")!="completed" or result.get("manifest_sha256")!=run["manifest"]["snapshot_sha256"]:
+            raise ValueError("Worker result does not match the immutable snapshot")
+        if result.get("schema_version")!=1 or any(not isinstance(result.get(kind),list) for kind in SERIES):
+            raise ValueError("Invalid normalized result schema")
+        raw=canonical(result)
+        write_new(self.directory(run_id)/"result.json",raw)
+        summary={"metrics":result["metrics"],"profile":result["profile"],"engine":result["engine"],
+                 "engine_version":result["engine_version"],"metric_version":result["metric_version"],
+                 "dataset":run["manifest"]["dataset"]["id"],"snapshot":result["manifest_sha256"]}
+        with self.connect() as db:
+            state=db.execute("SELECT status FROM runs WHERE id=?",(run_id,)).fetchone()[0]
+            if state!="running": raise ValueError("Run cancelled before completion")
+            for kind in SERIES:
+                db.executemany("INSERT INTO series VALUES(?,?,?,?)",
+                    ((run_id,kind,index,canonical(row).decode()) for index,row in enumerate(result[kind])))
+            db.execute("UPDATE runs SET status='completed',result_hash=?,summary=? WHERE id=?",
+                       (hashlib.sha256(raw).hexdigest(),canonical(summary).decode(),run_id))
+
+    def page(self,run_id,kind,offset=0,limit=200):
+        identifier(run_id)
+        if kind not in SERIES or type(offset) is not int or offset<0 or type(limit) is not int or not 1<=limit<=1000:
+            raise ValueError("Invalid bounded result-page request")
+        if self.get(run_id)["status"]!="completed": raise ValueError("No completed result available")
+        with self.connect() as db:
+            rows=db.execute("SELECT value FROM series WHERE run_id=? AND kind=? AND row_index>=? ORDER BY row_index LIMIT ?",
+                            (run_id,kind,offset,limit)).fetchall()
+            count=db.execute("SELECT COUNT(*) FROM series WHERE run_id=? AND kind=?",(run_id,kind)).fetchone()[0]
+        selected=[];size=0
+        for row in rows:
+            size+=len(row["value"].encode())
+            if size>512*1024:
+                if not selected: raise ValueError("Individual result row exceeds IPC budget")
+                break
+            selected.append(json.loads(row["value"]))
+        next_offset=offset+len(selected)
+        return {"rows":selected,"total":count,"offset":offset,"next":next_offset if next_offset<count else None}
+
+    def result(self,run_id):
+        run=self.get(run_id)
+        if run["status"]!="completed": raise ValueError("Run is not completed")
+        raw=(self.directory(run_id)/"result.json").read_bytes()
+        if hashlib.sha256(raw).hexdigest()!=run["result_hash"]: raise ValueError("Saved result checksum mismatch")
+        return json.loads(raw)
+
+    def save_strategy(self,name,kind,document,strategy_id=None):
+        if not isinstance(name,str) or not name.strip() or len(name)>120 or kind not in ("graph","native"):
+            raise ValueError("Invalid strategy name or format")
+        if len(canonical(document))>1024*1024: raise ValueError("Strategy exceeds size budget")
+        strategy_id=identifier(strategy_id) if strategy_id else uuid.uuid4().hex
+        with self.connect() as db:
+            db.execute("INSERT INTO strategies VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,kind=excluded.kind,document=excluded.document,updated_at=excluded.updated_at",
+                       (strategy_id,name,kind,canonical(document).decode(),datetime.now(timezone.utc).isoformat()))
+        return strategy_id
+
+    def strategies(self):
+        with self.connect() as db:
+            return [dict(row) for row in db.execute("SELECT id,name,kind,updated_at FROM strategies ORDER BY updated_at DESC")]
+
+    def strategy(self,strategy_id):
+        with self.connect() as db:
+            row=db.execute("SELECT * FROM strategies WHERE id=?",(identifier(strategy_id),)).fetchone()
+        if row is None: raise ValueError("Strategy does not exist")
+        return {**dict(row),"document":json.loads(row["document"])}
+
+    def recover(self):
+        with self.connect() as db:
+            db.execute("UPDATE runs SET status='interrupted',error='Application exited before worker completion' WHERE status IN ('created','running','cancel_requested')")

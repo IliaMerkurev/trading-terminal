@@ -49,12 +49,13 @@ def make_instrument(profile):
 
 
 class ProfileStrategy(Strategy):
-    def __init__(self, asset, profile, candles, evaluator):
+    def __init__(self, asset, profile, candles, evaluator, progress):
         super().__init__(StrategyConfig(order_id_tag="001"))
         self.asset, self.profile = asset, profile
         self.bar_type = BarType.from_str(f"{asset.id}-1-MINUTE-LAST-EXTERNAL")
         self.candles = candles
         self.evaluator = evaluator
+        self.progress, self.seen = progress, 0
         self.frames = PartialBars(profile.primary_minutes)
         self.fills, self.diagnostics, self.indicators = [], [], []
         self.reason = "entry"
@@ -68,6 +69,9 @@ class ProfileStrategy(Strategy):
         self.close_all_positions(self.asset.id)
 
     def on_bar(self, bar):
+        self.seen += 1
+        if self.seen == 1 or self.seen % 256 == 0 or self.seen == len(self.candles):
+            self.progress(self.seen/len(self.candles))
         candle = self.candles[bar.ts_init]
         _, complete = self.frames.update(candle)
         if self.profile.evaluation == "closed" and not complete:
@@ -201,7 +205,7 @@ class Protections(SimulationModule):
         self.events, self.equity = [], []
 
 
-def run_backtest(candles, profile, evaluator, *, marks=None, funding=None):
+def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progress=lambda _:None):
     if not candles:
         raise ValueError("No minute history available")
     if not isinstance(profile, Profile):
@@ -237,7 +241,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None):
         candle_map[ts] = candle
         bars.append(Bar(bar_type, *(Price(float(getattr(candle,k)),asset.price_precision) for k in ("open","high","low","close")),
                         Quantity(float(candle.volume),asset.size_precision), ts, ts))
-    strategy = ProfileStrategy(asset, profile, candle_map, evaluator)
+    strategy = ProfileStrategy(asset, profile, candle_map, evaluator, progress)
     funding_ns = {int(t)*NS:rate for t,rate in (funding or {}).items()} if profile.funding_mode == "history" else {}
     protection = Protections(profile, strategy, samples, funding_ns)
     strategy.protections = protection
@@ -256,6 +260,11 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None):
     try:
         engine.run()
         guard.assert_supported()
+        engine_artifacts=[{"instrument":str(order.instrument_id),"side":order.side.name,
+                           "type":order.order_type.name,"status":order.status.name,
+                           "quantity":str(order.quantity),"filled_quantity":str(order.filled_qty),
+                           "average_price":order.avg_px,"submitted_ns":order.ts_init}
+                          for order in engine.cache.orders()]
         final_cash, final_equity = protection.balance_and_equity()
         if engine.cache.positions_open():
             raise RuntimeError("End-of-run close failed; result is incomplete")
@@ -288,7 +297,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None):
                 "win_rate":sum(dec(t["net_pnl"])>0 for t in trades)/len(trades) if trades else None,
                 "fees":str(sum((dec(f["fee"]) for f in fills),Decimal(0))),
                 "funding":str(sum((dec(e["amount"]) for e in protection.events if e["type"]=="funding"),Decimal(0)))},
-            "fills":fills, "trades":trades, "events":protection.events, "equity":points,
+            "fills":fills, "trades":trades, "events":protection.events, "equity":points, "engine_orders":engine_artifacts,
             "indicators":strategy.indicators, "diagnostics":strategy.diagnostics + [{"message":d} for d in guard.denials],
             "gaps":gaps, "candles":[asdict(c) for c in candles]}
     finally:
