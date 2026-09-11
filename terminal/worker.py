@@ -31,6 +31,14 @@ def main():
         profile=Profile(**snapshot["profile"])
         _,bars,marks,funding=DatasetStore(root/"datasets").for_run(snapshot["dataset"]["id"],profile)
         strategy=snapshot["strategy"]
+        window=snapshot.get('research',{}).get('window')
+        if window:
+            from terminal.experiments import validate_range
+            validate_range([window['start'],window['end']],snapshot['dataset']['range'],'Trading window')
+            if type(window['warmup_start']) is not int or window['warmup_start']%60 or not snapshot['dataset']['range'][0]<=window['warmup_start']<=window['start']:raise ValueError('Invalid warmup range')
+            bars=[b for b in bars if window['warmup_start']<=b.time<window['end']]
+            marks={t:c for t,c in marks.items() if window['warmup_start']<=t<window['end']}
+            funding={t:r for t,r in funding.items() if window['start']<=t<window['end']}
         if strategy.get("engine")=="nautilus_trader":
             from terminal.native import trust_identity,load_trusted
             if not RunStore(root).is_trusted(trust_identity(strategy)):
@@ -38,8 +46,11 @@ def main():
             result=run_backtest(bars,profile,None,marks=marks,funding=funding,progress=progress,
                 native_factory=lambda asset:load_trusted(strategy,directory,asset.id),native_timeframes=strategy["bar_minutes"])
         else:
-            result=run_backtest(bars,profile,GraphEvaluator(strategy),marks=marks,funding=funding,progress=progress)
+            result=run_backtest(bars,profile,GraphEvaluator(strategy),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None)
         result["manifest_sha256"]=snapshot["snapshot_sha256"]
+        if snapshot.get('research',{}).get('experiment'):
+            result['candles_reference']={'dataset_id':snapshot['dataset']['id'],'range':[window['start'],window['end']]}
+            result['candles']=[]  # The immutable dataset is shared by all combinations.
         write_new(directory/"worker-result.json",canonical(result))
     except Exception as exc:
         write_new(directory/"worker-error.json",canonical({"version":1,"type":"error","message":str(exc)[:2000]}))

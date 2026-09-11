@@ -15,8 +15,9 @@ from terminal.windows_job import WindowsJob
 
 class JobManager:
     def __init__(self,root):
-        self.store=RunStore(root)
-        self.instance_file=(self.store.root/"instance.lock").open("a+b")
+        workspace=Path(root).resolve()
+        workspace.mkdir(parents=True,exist_ok=True)
+        self.instance_file=(workspace/"instance.lock").open("a+b")
         self.instance_file.seek(0,2)
         if self.instance_file.tell()==0:
             self.instance_file.write(b"0");self.instance_file.flush()
@@ -25,12 +26,17 @@ class JobManager:
         except OSError:
             self.instance_file.close()
             raise ValueError("Another application instance already owns this local workspace")
+        try: self.store=RunStore(workspace)
+        except Exception:
+            self.instance_file.close()
+            raise
         self.datasets=DatasetStore(self.store.root/"datasets")
         self.lock=threading.RLock()
         self.active=None
+        self.reservation=None
         self.store.recover()
 
-    def start(self,strategy,profile,dataset_id):
+    def start(self,strategy,profile,dataset_id,*,research=None,owner=None,expected_runtime=None):
         native=isinstance(strategy,dict) and strategy.get("engine")=="nautilus_trader"
         if native:
             from terminal.native import preview
@@ -43,7 +49,15 @@ class JobManager:
         manifest=self.datasets.describe(dataset_id)
         self.datasets.check_profile(manifest,profile)
         snapshot=run_manifest(strategy,profile,manifest)
+        if expected_runtime is not None and snapshot['runtime']!=expected_runtime:raise ValueError('Runtime changed since experiment preparation')
+        if research is not None:
+            from terminal.data import digest
+            snapshot.pop('snapshot_sha256')
+            snapshot['research']=research
+            snapshot=json.loads(canonical(snapshot))
+            snapshot['snapshot_sha256']=digest(snapshot)
         with self.lock:
+            if self.reservation is not None and self.reservation!=owner:raise ValueError('A parameter experiment owns the calculation slot')
             if self.active is not None: raise ValueError("One backtest is already active")
             run_id=self.store.create(snapshot)
             job=WindowsJob()

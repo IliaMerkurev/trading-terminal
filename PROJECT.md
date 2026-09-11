@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Version 0.5. Status: V1 development build implemented; owner acceptance pending. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
+Version 0.6. Status: V1 baseline retained; agreed V2 under implementation. Sections 1–11 retain the V1 contract; sections 12–18 define the V2 extension. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
 
 ## 1. Purpose and delivery target
 
@@ -66,7 +66,7 @@ Define signal/order/fill ordering, gaps, simultaneous stop/take/liquidation even
 
 Provide candlesticks with the indicators actually used by the run, entry/exit markers, a trade table, PnL, drawdown, trade count, win rate, and included costs. Selecting a trade navigates to its chart region. Manual chart drawings, playback, and a detailed condition debugger are deferred.
 
-Save every run independently with immutable strategy and parameter snapshots, simulation settings, dataset information, trades, and metrics. Editing a strategy must not overwrite earlier results. Include run history and a simple comparison table. Parameter search and optimization are deferred.
+Save every run independently with immutable strategy and parameter snapshots, simulation settings, dataset information, trades, and metrics. Editing a strategy must not overwrite earlier results. Include run history and a simple comparison table. Parameter search was deferred in V1; V2 permits only the bounded visual-strategy experiments in section 16.
 
 Record data provenance, range, schema, checksums, runtime/engine versions, parameters, strategy snapshot, and modeling assumptions. A dependency lockfile alone cannot reproduce changed market data. Preserve normalized results alongside engine artifacts. Comparisons must expose differing profiles, versions, and metric definitions.
 
@@ -126,6 +126,69 @@ Record the selected engine/version, Python/dependencies, first margin mode, bar/
 
 ## 11. Deferred scope
 
-After V1: market signals, Telegram, Windows/audio notifications, dry-run and live execution, multiple pairs, DCA/partial exits, visual multi-timeframe graphs, batch experiments and optimization, other engines, stronger isolation, installers, and other OS releases. Telegram remains a required future notification channel. Background-service deployment and playback are outside V1.
+After V1: market signals, Telegram, Windows/audio notifications, dry-run and live execution, multiple pairs, DCA/partial exits, visual multi-timeframe graphs, general optimization beyond the bounded V2 experiments, other engines, stronger isolation, installers, and other OS releases. Telegram remains a required future notification channel. Background-service deployment and playback are outside V1.
 
 AI is an optional final-stage extension, using user-supplied API access or a paid option that covers its costs; a local model is optional. Core research functionality must work without AI. No provider-funded token usage for free users is assumed. These roadmap items do not authorize their implementation in V1.
+
+
+## 12. V2 scope and preservation
+
+Extend the existing engine and Windows stack. Preserve V1 markets, position semantics, causal graph evaluation, native Python import/trust and immutable reports. V2 adds graph authoring improvements, readable results, a versioned protection model, sequential visual-strategy parameter experiments and explicit later-period validation. An experiment owns a finite sequential queue; there is no general background job server.
+
+Use a consistent SQLite snapshot and preserve referenced immutable artifacts before migration. Verify migration on a copy, including unchanged V1 strategy/result values and readable archives. Tests, bulk experiments and demonstrations use separate data roots. Keep working V1 runtime sources and executable available; a separate build/worktree must not automatically open the V1 database. Existing V1 reports remain viewable without executing code or recalculating them. Opening/copying an old strategy creates new results only after an explicit run.
+
+Still excluded: live orders/current-market signals, paper trading, Telegram/system notifications, AI, DCA/partial exits, new margin modes, visual multiple timeframes, multiple instruments per run, a second engine, arbitrary Python optimization, distributed/parallel calculation, walk-forward optimization, installers and other OS releases. These remain future scope rather than being removed from the roadmap.
+
+## 13. V2 graph authoring
+
+Right-click on empty canvas opens a searchable node catalog near the cursor and suppresses the browser menu only there. Focus search immediately; match existing short/full names case-insensitively, group the catalog when empty and show no-match feedback. Arrow keys select, Enter creates, Escape/outside click close. Search/text inputs retain normal editing shortcuts. The four fixed outputs are not catalog entries.
+
+Create exactly one node with a fresh ID/default parameters at the original invocation point converted through the installed React Flow screen-to-graph transform. Pan, zoom, canvas offset, collapsed panels and DPI must not shift that position. Clamp the menu independently to the viewport; do not clip it in parent panels. Select the new node and open settings; do not alter existing nodes or auto-connect it. Node menus may duplicate/delete ordinary nodes while respecting fixed outputs.
+
+Bounded Undo/Redo covers creation, deletion, duplication, parameter edits, connections and positions. One drag is one history action. History is isolated per strategy and shortcuts do not intercept text editing. Selection duplication gives fresh IDs, remaps internal references and deep-copies mutable objects. Create strategy copy produces an independent saved strategy; previous reports and new Python execution consent are not inherited.
+
+Validation identifies the faulty node/port/field and supports navigation. Incomplete drafts remain editable, while invalid runs fail clearly. Preserve typed connections, cycle rejection and all four output semantics.
+
+## 14. V2 interface and chart behavior
+
+Dense fills must remain countable/readable with compact markers and hover/selection detail or explicit grouping. Never remove trades or conceal multiple fills in one candle. Preserve meaningful viewport across unrelated renders and verify zoom, trade navigation, pane height and indicator switching. Chart window changes do not change strategy timeframe, and displayed indicators remain saved run values.
+
+Comparison uses human-readable field labels and units while retaining complete data/profile/runtime differences in details. Keep the current tabs/layout and add the targeted Experiments workspace rather than redesigning the application. Check ordinary window sizes and available Windows scaling 100/125/150%; report any unperformed visual checks honestly.
+
+Revisit native file-picker import and cancellation before work finishes using a bounded controlled-duration test. A completed-before-click run is not evidence of cancellation. Native checks unavailable in the current environment remain explicit manual acceptance items.
+
+## 15. V2 versioned execution
+
+Retain V1's discrete O/L/H/C contract under its original version. A new profile distinguishes protective-level crossing inside an assumed continuous segment from a gap or first available observation already beyond the level. Support both O-L-H-C and O-H-L-C. Record assumed path and conditional crossing time; neither is recovered tick data.
+
+Define signal observation, order creation/activation and fill ordering. No order may fill on a segment before it exists. A stop/take-triggered market exit must not silently become a limit order. Within a continuous modeled segment, trigger at the crossed level; across a gap use the first available executable trade price with adverse slippage, not a guaranteed stop price. Document both directions, fee/tick/quantity precision and funding/liquidation/protection conflicts. Mark-price triggers are separate from executable trade prices; no full exchange liquidation-mechanism equivalence is claimed. Preserve primary-timeframe causality and minute-close partial-H1 evaluation.
+
+Independent no-cost example: long entry100, stop95/take105, next minute O100/L80/H120/C100 exits at95 on OLHC and105 on OHLC. A next open below95 must not guarantee95. Add short, gap, activation, costs and conflict examples with independent expectations; compare V1/V2 on identical inputs. Explain baseline changes by contract rather than changing expectations to match output.
+
+Version profile semantics in snapshots, comparisons and calculation/cache identity. Preserve old reports/metrics. A new run is a new record with explicit profile choice. Only claim old-profile replay when its semantics remain supported; otherwise explain unavailable old runtime without blocking report viewing.
+
+## 16. V2 parameter experiments
+
+Experiments select a saved visual strategy, instrument/dataset, range and execution profile, then finite lists of node parameters and allowed risk controls such as stop/take. Address stable node IDs and fields through typed schemas, never executable expressions. Costs, data and execution model are fixed across the batch; do not optimize fees/funding/execution quality or introspect arbitrary Python.
+
+Validate integers, percentages, enums and bounds; deduplicate equivalent values before counting. Check product size before materializing it. Preview count, inputs and warnings before start. Document and measure a finite combination/resource limit, independent of historical range limits. RSI periods[14,21,28], thresholds[25,30,35], stops[1%,2%,3%] form27 unique combinations.
+
+Freeze grid, graph, dataset/ranges, versions, fixed profile and varied fields before execution. Each combination uses the ordinary calculation path, independent flat state/capital and its own immutable snapshot. Later editor changes cannot affect queued combinations. One worker globally within the application: a standalone run cannot overlap a batch. Sequential progress reports completed/total, current parameters, errors and cancellation. Cancel stops current and future work while retaining completed reports. Close prompts return or cancel batch/exit. Interrupted rows never become success or automatically resume after restart.
+
+Results show parameters, Net PnL(USDT), Max drawdown, Trades, Win rate, Costs and status; support sorting and drawdown/min-trades filters. Failed/cancelled rows are excluded from successful rankings and no-trade win rate remains undefined. Do not label any result a profitable strategy or recommendation. Open normal reports and create independent strategy copies from chosen results. Persist experiment/grid/run IDs/selected values using existing storage; avoid duplicating raw candle arrays per combination. Selected-result archives retain essential experiment provenance, not the whole dataset or arbitrary code/trust.
+
+## 17. V2 out-of-sample validation
+
+Predeclare in-sample selection range and a strictly later disjoint out-of-sample range in UTC. Enumerate/rank only in-sample results; selection tables do not receive OOS metrics. After explicit candidate choice and validation action, freeze parameters/profile/candidate identity and run that attempt once through the same calculation path. No automatic reselection based on OOS performance.
+
+Permitted preceding-data warmup must not create trades, costs/funding for absent positions or OOS statistics. Start OOS with fresh flat state and explicit capital, not IS positions/wealth. Explain boundaries, coverage and insufficient warmup. Report IS/OOS separately without concatenating equity or PnL. Parameter changes create new versions/attempts and retain old ones. Warn that repeatedly inspecting the same period does not create a fresh untouched holdout.
+
+An automated demo uses a predeclared synthetic candidate rather than selecting the observed OOS maximum. Perturbing OOS data must not change the IS grid, ranking or frozen selected snapshot. The OOS run equals a standalone run with the same range/warmup/execution contract.
+
+## 18. V2 required validation
+
+Verify node creation coordinates and single insertion after pan/zoom/resize/panel changes; cancel leaves graph intact. Undo/Redo restores nodes/parameters/edges/layout, copies are independent and invalid fields are navigable. Dense-fill displays retain all executions.
+
+Independent protective execution tests cover both versions, directions, paths, crossing/gaps, activation, costs and conflicts. Migration preserves exact V1 strategy/result values and archive readability. A2x2 batch produces four unique results identical to corresponding single runs including trades/costs. Test editor mutation, invalid parameters, worker failures, cancellation and interruption without losing completed runs or starting extra work.
+
+OOS never participates in selection; verify causal warmup/fresh capital and future perturbation. Build Windows separately, reopen results, check import/navigation/active-batch cancellation and child cleanup. Distinguish component/automated/native checks from manual acceptance. Document exact commands, actual outcomes, bounded time/memory observations and limitations. Prepare an independent-data V2 demo; preserve V1 golden tests or explicitly version changed contracts. Do not expand into V3.

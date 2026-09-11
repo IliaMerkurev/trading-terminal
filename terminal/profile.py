@@ -40,7 +40,7 @@ class Profile:
     version: int = 1
 
     def __post_init__(self):
-        if self.version != 1 or self.market not in ("spot", "linear"):
+        if type(self.version) is not int or self.version not in (1,2) or self.market not in ("spot", "linear"):
             raise ValueError("Unsupported profile version or market")
         if not re.fullmatch(r"[A-Z0-9]{1,24}USDT", self.symbol):
             raise ValueError("Expected an uppercase USDT symbol")

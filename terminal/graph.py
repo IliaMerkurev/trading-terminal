@@ -42,10 +42,10 @@ def number(value):
     return value
 
 
-def validate_graph(graph):
+def validate_graph(graph,allow_incomplete=False):
     if not isinstance(graph,dict) or set(graph) != {"version","nodes","outputs"} or type(graph["version"]) is not int or graph["version"] != 1:
         raise GraphError("Expected Strategy IR version 1; layout is stored separately")
-    if not isinstance(graph["nodes"],list) or not 1 <= len(graph["nodes"]) <= 128:
+    if not isinstance(graph["nodes"],list) or not (0 if allow_incomplete else 1) <= len(graph["nodes"]) <= 128:
         raise GraphError("Graph must contain 1–128 nodes")
     nodes = {}
     for node in graph["nodes"]:
@@ -83,7 +83,7 @@ def validate_graph(graph):
         return ident
     dependencies = {}
     for ident,node in nodes.items():
-        dependencies[ident] = [reference(ref,INPUTS[node["type"]][port]) for port,ref in node["inputs"].items()]
+        dependencies[ident] = [reference(ref,INPUTS[node["type"]][port]) for port,ref in node["inputs"].items() if not (allow_incomplete and ref=='')]
     if not isinstance(graph["outputs"],dict) or set(graph["outputs"]) != set(OUTPUTS):
         raise GraphError("Graph must define all four output blocks (unused blocks may be null)")
     for ref in graph["outputs"].values():

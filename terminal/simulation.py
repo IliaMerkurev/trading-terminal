@@ -49,7 +49,7 @@ def make_instrument(profile):
 
 
 class ProfileStrategy(Strategy):
-    def __init__(self, asset, profile, candles, evaluator, progress):
+    def __init__(self, asset, profile, candles, evaluator, progress,trade_start=None):
         super().__init__(StrategyConfig(order_id_tag="001"))
         self.asset, self.profile = asset, profile
         self.bar_type = BarType.from_str(f"{asset.id}-1-MINUTE-LAST-EXTERNAL")
@@ -60,6 +60,7 @@ class ProfileStrategy(Strategy):
         self.fills, self.diagnostics, self.indicators = [], [], []
         self.reason = "entry"
         self.protections = None
+        self.trade_start=trade_start
 
     def on_start(self):
         self.subscribe_bars(self.bar_type)
@@ -79,6 +80,7 @@ class ProfileStrategy(Strategy):
         if not self.frames.count:
             return
         result = self.evaluator(self.frames.snapshot(), candle.time + 60, complete)
+        if self.trade_start is not None and candle.time<self.trade_start:return
         signals = result.get("signals", {})
         self.indicators.append({"time":candle.time + 60, "values":result.get("values", {}), "signals":signals})
         if self.protections.exit_minute == candle.time:
@@ -199,14 +201,14 @@ class Protections(SimulationModule):
                     if quantity * mark > dec(self.profile.max_notional):
                         raise ProfileViolation("Mark notional exceeds the declared constant risk tier")
                     close_fee = quantity * mark * dec(self.profile.fee_rate)
-                    if equity <= maintenance + close_fee:
+                    if equity <= maintenance + close_fee or self.sample.get('trigger')=='liquidation':
                         self.events.append({"time_ns":ts_now, "type":"liquidation", "equity":str(equity), "maintenance":str(maintenance)})
                         self.strategy.close("liquidation")
                         self.exit_minute = self.sample["minute"]
                         continue
                 entry = dec(position.avg_px_open)
                 movement = side * (trade-entry) / entry
-                reason = None
+                reason = self.sample.get('trigger')
                 if dec(self.profile.stop_loss) and movement <= -dec(self.profile.stop_loss):
                     reason = "stop_loss"
                 elif dec(self.profile.take_profit) and movement >= dec(self.profile.take_profit):
@@ -239,11 +241,14 @@ class Protections(SimulationModule):
 
 
 def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progress=lambda _:None,
-                 native_factory=None,native_timeframes=(1,)):
+                 native_factory=None,native_timeframes=(1,),trade_start=None):
     if not candles:
         raise ValueError("No minute history available")
     if not isinstance(profile, Profile):
         profile = Profile(**profile)
+    if trade_start is not None and (native_factory is not None or type(trade_start) is not int or trade_start%60 or not candles[0].time<=trade_start<=candles[-1].time):
+        raise ValueError('Invalid visual-strategy trading window')
+    if native_factory is not None and profile.version!=1:raise ValueError('Native strategies retain execution profile version 1; V2 protections apply to visual graphs')
     if native_factory is not None and (dec(profile.stop_loss) or dec(profile.take_profit) or profile.evaluation!="closed"):
         raise ValueError("Native strategies require their own protection/signal semantics; graph intrabar and stop/take controls are unavailable")
     if any(b.time % 60 for b in candles) or any(b.time <= a.time for a,b in zip(candles, candles[1:])):
@@ -288,7 +293,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
                             Quantity(float(candle.volume),asset.size_precision), ts, ts))
     if not bars: raise ValueError("No complete native bars available for declared timeframes")
     native = native_factory(asset) if native_factory else None
-    strategy = NativeController(asset,profile,native) if native else ProfileStrategy(asset, profile, candle_map, evaluator, progress)
+    strategy = NativeController(asset,profile,native) if native else ProfileStrategy(asset, profile, candle_map, evaluator, progress,trade_start)
     funding_ns = {int(t)*NS:rate for t,rate in (funding or {}).items()} if profile.funding_mode == "history" else {}
     protection = Protections(profile, strategy, samples, funding_ns, progress)
     strategy.protections = protection
@@ -306,10 +311,39 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
     engine.add_strategy(native or strategy)
     # Observe the engine event stream, including fills emitted while on_stop runs.
     engine.kernel.msgbus.subscribe("events.order.*", strategy.record_order_event)
-    engine.add_data(quotes)
-    engine.add_data(bars)
     try:
-        engine.run()
+        if profile.version==2 and not native:
+            from terminal.execution_v2 import first_crossing
+            def consume(items):
+                engine.add_data(items)
+                engine.run(start=items[0].ts_init,end=items[-1].ts_init+1,streaming=True)
+                engine.clear_data()
+            for i,candle in enumerate(candles):
+                minute_quotes=quotes[i*4:i*4+4]
+                # The observed open applies gaps, funding and liquidation first.
+                consume([minute_quotes[0]])
+                for index in range(1,4):
+                    previous,current=minute_quotes[index-1],minute_quotes[index]
+                    positions=engine.cache.positions_open(instrument_id=asset.id)
+                    crossing=first_crossing(samples[previous.ts_init],samples[current.ts_init],positions[0] if positions else None,
+                        profile,engine.cache.account_for_venue(VENUE).balance_total(USDT).as_decimal())
+                    chunk=[]
+                    if crossing:
+                        timestamp=previous.ts_init+max(1,min(current.ts_init-previous.ts_init-1,int((crossing.pop('fraction')*(current.ts_init-previous.ts_init)).to_integral_value(rounding=ROUND_CEILING))))
+                        price=crossing['price']
+                        bid=(price*(1-slip)/tick).to_integral_value(rounding=ROUND_FLOOR)*tick
+                        ask=(price*(1+slip)/tick).to_integral_value(rounding=ROUND_CEILING)*tick
+                        samples[timestamp]=crossing
+                        chunk.append(QuoteTick(asset.id,Price(float(bid),asset.price_precision),Price(float(ask),asset.price_precision),
+                            Quantity(1_000_000_000,asset.size_precision),Quantity(1_000_000_000,asset.size_precision),timestamp,timestamp))
+                    chunk.append(current)
+                    if index==3:chunk.append(bars[i])
+                    consume(chunk)
+            engine.end()
+        else:
+            engine.add_data(quotes)
+            engine.add_data(bars)
+            engine.run()
         guard.assert_supported()
         if data_guard: data_guard.assert_supported()
         engine_artifacts=[{"instrument":str(order.instrument_id),"side":order.side.name,
@@ -330,7 +364,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             fees = dec(entry["fee"])+dec(exit_fill["fee"])
             cashflow = sum((dec(e["amount"]) for e in protection.events if e["type"] == "funding" and entry["time_ns"] < e["time_ns"] <= exit_fill["time_ns"]),Decimal(0))
             trades.append({"entry":entry, "exit":exit_fill, "gross_pnl":str(gross), "fees":str(fees), "funding":str(cashflow), "net_pnl":str(gross-fees+cashflow)})
-        points = protection.equity[:]
+        points = [p for p in protection.equity if trade_start is None or p['time_ns']>=trade_start*NS]
         final_point = {"time_ns":quotes[-1].ts_init, "cash":str(final_cash), "equity":str(final_equity),
                        "initial_margin":"0", "maintenance_margin":"0", "available":str(final_cash)}
         if points and points[-1]["time_ns"] == final_point["time_ns"]:
@@ -352,6 +386,6 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
                 "funding":str(sum((dec(e["amount"]) for e in protection.events if e["type"]=="funding"),Decimal(0)))},
             "fills":fills, "trades":trades, "events":protection.events, "equity":points, "engine_orders":engine_artifacts,
             "indicators":strategy.indicators, "diagnostics":strategy.diagnostics + [{"message":d} for d in guard.denials],
-            "gaps":gaps, "candles":[asdict(c) for c in candles]}
+            "gaps":[g for g in gaps if trade_start is None or g[1]>=trade_start], "candles":[asdict(c) for c in candles if trade_start is None or c.time>=trade_start]}
     finally:
         engine.dispose()
