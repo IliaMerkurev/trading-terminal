@@ -17,8 +17,10 @@ A local Windows desktop application for strategy research, public market monitor
 - Sequential bounded parameter grids, immutable inputs, sortable in-sample results and separately frozen later-period validation.
 
 - One public Bybit spot/linear live session with confirmed-minute Strategy IR evaluation, durable signal transitions, reconnect and history recovery.
-- Windows/sound notification channels and direct Telegram notifications with Windows-protected local credentials.
+- Verified Windows and sound notifications. Telegram integration uses Windows-protected local credentials, but Test notification delivery failed owner acceptance and remains a known issue.
 - Observed-price paper execution through the retained engine, explicit fees/slippage/mark/funding assumptions, restart revalidation and recorded-signal replay.
+
+**Known issue — Telegram:** integration is implemented, but Test notification does not currently deliver in owner acceptance despite configured credentials. Automated transport tests do not prove delivery. Investigation is tracked in [ILI-37](https://linear.app/ilia-merkurev/issue/ILI-37/fix-telegram-notification-delivery-after-03-owner-acceptance); Windows and sound notifications are verified.
 
 ## Windows launch
 

@@ -35,9 +35,11 @@ Use only a disposable test session for network interruption experiments. Do not 
 
 ## Notifications
 
+**Owner acceptance:** Windows notifications and sound are verified. Telegram notification integration is implemented, but owner acceptance is currently failing: Test notification did not deliver despite configured credentials. Telegram delivery remains a known issue for investigation in [ILI-37](https://linear.app/ilia-merkurev/issue/ILI-37/fix-telegram-notification-delivery-after-03-owner-acceptance). Passing automated transport tests do not replace real delivery acceptance.
+
 Windows, sound and Telegram have separate Test controls. The event log distinguishes queued, dispatched and failed delivery. A failure never stops strategy evaluation. Windows honors existing notification settings; the application does not enable disabled permissions. The native opt-in integration test checks that Windows retained this application's toast, not that a banner was visible or a sound was heard.
 
-Configure Telegram only through the password fields in Live. Save writes token and chat ID to Windows Credential Manager; saved values are not returned to the UI. Test Telegram sends directly from this computer to the official Bot API. Clear stored credentials removes only this data root's credential. Never put credentials in commands, screenshots, exports or issue comments. An owner with no configured bot can leave this manual check pending.
+Configure Telegram only through the password fields in Live. Save writes token and chat ID to Windows Credential Manager; saved values are not returned to the UI. Test Telegram attempts delivery directly from this computer to the official Bot API. Clear stored credentials removes only this data root's credential. Never put credentials in commands, screenshots, exports or issue comments. Successful delivery must be demonstrated after the known issue is resolved.
 
 Delivery claims are durable and at-most-once: an uncertain attempt after a crash is not automatically retried. This prevents duplicate alerts at the cost of possibly missing an external notification. The saved signal event remains available. Recovered historical events are labeled and do not send old notifications.
 
