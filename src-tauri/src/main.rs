@@ -91,7 +91,7 @@ fn main(){
         .invoke_handler(tauri::generate_handler![research_request,close_application,open_exports])
         .setup(move |app|{
             WebviewWindowBuilder::new(app,"main",WebviewUrl::App("index.html".into()))
-                .title("Trading Terminal V2").inner_size(1440.0,940.0).min_inner_size(1000.0,700.0)
+                .title("Trading Terminal").inner_size(1440.0,940.0).min_inner_size(1000.0,700.0)
                 .data_directory(storage_root(&root).map_err(std::io::Error::other)?.join("webview")).build()?;
             Ok(())
         }).build(tauri::generate_context!()).expect("Desktop host failed to build");

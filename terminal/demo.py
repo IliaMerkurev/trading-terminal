@@ -23,7 +23,7 @@ def prepare(root):
         start=1704067200  # 2024-01-01 00:00:00 UTC, independent synthetic input.
         def dataset(prices,market='spot'):
             bars=[Candle(start+i*60,p,p,p,p,100) for i,p in enumerate(prices)]
-            return manager.datasets.save(market,'BTCUSDT',start,start+len(bars)*60,bars,[],{},metadata={},provenance=[],source='Synthetic V1 verification fixture')['id']
+            return manager.datasets.save(market,'BTCUSDT',start,start+len(bars)*60,bars,[],{},metadata={},provenance=[],source='Synthetic 0.1 verification fixture')['id']
         causal=graph([node('p','price',field='close'),node('s','sma',{'source':'p.value'},period=2),node('k','constant',value=110),node('above','compare',{'left':'s.value','right':'k.value'},operator='>'),node('below','compare',{'left':'s.value','right':'k.value'},operator='<')],entry_long='above.value',exit_long='below.value')
         simple=graph([node('p','price',field='close'),node('entry','constant',value=100),node('exit','constant',value=110),node('enter','compare',{'left':'p.value','right':'entry.value'},operator='>='),node('leave','compare',{'left':'p.value','right':'exit.value'},operator='>=')],entry_long='enter.value',exit_long='leave.value')
         short=graph([node('p','price',field='close'),node('entry','constant',value=100),node('exit','constant',value=90),node('enter','compare',{'left':'p.value','right':'entry.value'},operator='>='),node('leave','compare',{'left':'p.value','right':'exit.value'},operator='<=')],entry_short='enter.value',exit_short='leave.value')

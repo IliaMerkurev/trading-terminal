@@ -16,16 +16,16 @@ The engine's documented streaming `run(streaming=True)`, `clear_data()` and `end
 
 ## Alternatives and limitations
 
-Keeping only extreme observations preserves V1 but gives an 80 exit for an already active 95 stop on an O=100/L=80 segment. Replacing engine accounting or multiplying spot PnL by leverage would violate the agreed model. Precomputing levels from future entry prices was rejected because it could introduce observations before activation. Streaming uses the existing engine without adding another engine or dependency.
+Keeping only extreme observations preserves execution profile 1 but gives an 80 exit for an already active 95 stop on an O=100/L=80 segment. Replacing engine accounting or multiplying spot PnL by leverage would violate the agreed model. Precomputing levels from future entry prices was rejected because it could introduce observations before activation. Streaming uses the existing engine without adding another engine or dependency.
 
 Profile version is part of immutable snapshot identity and comparisons. Existing snapshots, metrics and hashes are never migrated to version 2. Version-1 behavior is covered by the retained regression suite. Historical snapshots also contain an implementation/runtime checksum; current code is not claimed to be the identical old runtime. Viewing/exporting them does not rerun them. Run a fresh snapshot with explicit version 1 for behavioral comparison.
 
 ## Independent checks
 
-An existing long at 100 with stop 95 and take 105, followed by O=100/L=80/H=120/C=100, exits at 95 under OLHC and 105 under OHLC before costs. Equivalent short fixtures verify the opposite reasons. Version 1 retains 80/120. Other fixtures cover opening gaps, absence of pre-entry triggers, actual fees/slippage, mark/trade separation and funding-induced liquidation. See `tests/test_execution_v2.py` and retained V1 risk/causality tests.
+An existing long at 100 with stop 95 and take 105, followed by O=100/L=80/H=120/C=100, exits at 95 under OLHC and 105 under OHLC before costs. Equivalent short fixtures verify the opposite reasons. Version 1 retains 80/120. Other fixtures cover opening gaps, absence of pre-entry triggers, actual fees/slippage, mark/trade separation and funding-induced liquidation. See `tests/test_execution_v2.py` and retained product 0.1 risk/causality tests.
 
 ## References
 
 - [NautilusTrader streaming lifecycle (nightly reference; implementation verified against installed 1.231.0)](https://nautilustrader.io/docs/nightly/concepts/backtesting/apis-and-runs/)
 - Installed pinned `nautilus_trader/backtest/engine.pyx` documents the streaming lifecycle used here.
-- [V1 simulation profile](0002-simulation-profile.md)
+- [Execution profile 1](0002-simulation-profile.md)

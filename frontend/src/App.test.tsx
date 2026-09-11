@@ -8,10 +8,12 @@ vi.mock('./GraphEditor',()=>({default:()=> <div>Graph workspace</div>}));
 vi.mock('./api',()=>({isDesktop:()=>true,api:vi.fn(async(command:string)=>command.startsWith('list_')?[]:{strategy_id:'saved'})}));
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async(fn:any)=>{windowMock.close=fn;return ()=>{windowMock.close=null;};}})}));
 vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn(async()=>{})}));
+vi.mock('@tauri-apps/api/app',()=>({getVersion:vi.fn(async()=>'0.2.0-dev')}));
 describe('research workspace',()=>{
   it('saves a graph snapshot and exposes all required tabs',async()=>{
     render(<App/>);
     await screen.findByText('Graph workspace');
+    await screen.findByText('RESEARCH 0.2-dev');
     fireEvent.change(screen.getByLabelText('Strategy name'),{target:{value:'Causal trend'}});
     fireEvent.click(screen.getByText('Save',{selector:'button'}));
     await waitFor(()=>expect(api).toHaveBeenCalledWith('save_graph',expect.objectContaining({name:'Causal trend',graph:expect.objectContaining({version:1})})));

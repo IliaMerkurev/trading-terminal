@@ -2,7 +2,17 @@
 
 Read [PROJECT.md](../PROJECT.md), [architecture](ARCHITECTURE.md), [status](STATUS.md) and [AGENTS.md](../AGENTS.md). Preserve existing changes. Windows x64 is the verified target; other platforms and a conventional installer are deferred.
 
-## Prerequisites and setup
+## Product versions and working branches
+
+The current product is **0.2 development build**, displayed as `0.2-dev`. Product 0.1 was the first working milestone; 0.3, 0.4 and later functional milestones remain future work. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
+
+`src-tauri/Cargo.toml` package version is the single product-version source (`0.2.0-dev` in SemVer). Tauri uses it when its configuration omits a version override; the existing UI badge reads Tauri app metadata. The private frontend package does not declare another product version. Update the root package entry in Cargo.lock alongside a version bump; do not change dependency versions. Window title and executable name stay `Trading Terminal` and `trading-terminal.exe`.
+
+Use the main project checkout for the current build, with its existing `.venv`, `node_modules`, local Cargo cache and ordinary `.local-data`. After feature acceptance, return it to current `main`; temporary worktrees are optional isolation tools, not required launch dependencies. Archive their private data separately before removing them. Never merge synthetic demo databases into the ordinary user database.
+
+The historical branches `codex/v1` and `codex/v2` remain unchanged: their product milestones are now called 0.1 and 0.2. Future branches use `codex/03` for product 0.3, `codex/04` for 0.4, and so on. Naming a future branch does not authorize starting it. Existing `DEMO_V2.md` and `terminal.demo_v2` names remain compatibility entry points for the 0.2 demonstration; execution `v2` module/test names mean internal profile 2. Existing saved labels and historical Git/PR text are not rewritten.
+
+## Verified toolchain
 
 The verified environment uses CPython 3.12.14 x64, Node 24.19.0, pnpm 11.19.0, Rust/Cargo 1.98.1 with the x86_64-pc-windows-msvc toolchain, MSVC 2019 16.11.40, Windows SDK 10.0.19041 and an installed WebView2 Runtime. The build succeeds with these existing Microsoft tools; system updates are not part of setup. `node`, `pnpm` and `cargo` must be available in the setup shell.
 
@@ -17,7 +27,7 @@ If necessary, pass an installed CPython 3.12 x64 executable to `setup.ps1 -Pytho
 
 The launcher uses the configured tools recorded during setup if Node/Cargo are absent from the current shell. It builds frontend assets and the embedded Windows executable with locked offline Cargo dependencies, then opens it. Moving the checkout requires rebuilding. Close the application before rebuilding its executable. No execution-policy or security-policy bypass is part of these commands. Run from a shell permitted to execute local project scripts.
 
-## V2 launcher and separate demonstration
+## 0.2 launcher and separate demonstration
 
 After project setup, the calling pinned Python can launch without PowerShell script execution:
 
@@ -27,7 +37,7 @@ After project setup, the calling pinned Python can launch without PowerShell scr
 
 Omit `--build` when reopening. `--no-launch` verifies/builds only. `--data-root` accepts an absolute isolated data directory; `--cargo-home` can reuse an existing locked project cache. An isolated checkout can be invoked with another verified environment's Python executable. No dependency or system setting is changed. The existing setup scripts remain available in shells permitted to execute them.
 
-See [V2 demonstration](DEMO_V2.md) for the separate synthetic data root. To check additive migrations, pass a consistent backup and a **new** destination to `scripts/verify_migration.py`; it refuses to overwrite a destination. Never run migration experiments on the active user database.
+See [0.2 demonstration](DEMO_V2.md) for the separate synthetic data root. To check additive migrations, pass a consistent backup and a **new** destination to `scripts/verify_migration.py`; it refuses to overwrite a destination. Never run migration experiments on the active user database.
 
 ## Validation commands
 

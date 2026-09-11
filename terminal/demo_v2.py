@@ -1,4 +1,4 @@
-"""Bounded synthetic V2 demonstration, using a separate default data directory."""
+"""Bounded synthetic 0.2 demonstration, using a separate default data directory."""
 import argparse
 import ctypes
 from ctypes import wintypes
@@ -49,9 +49,9 @@ def main():
         # Deliberately independent, small candle fixtures; no downloaded history.
         start=1735689600
         bars=[Candle(start+i*60,100+i%12,103+i%12,97+i%12,100+i%12,100) for i in range(240)]
-        dataset=service.datasets.save('spot','BTCUSDT',start,start+240*60,bars,[],{},metadata={},provenance=[],source='Synthetic V2 parameter experiment')
+        dataset=service.datasets.save('spot','BTCUSDT',start,start+240*60,bars,[],{},metadata={},provenance=[],source='Synthetic 0.2 parameter experiment')
         graph=example_graph();profile=Profile(version=2,primary_minutes=1,fee_rate='.001').snapshot()
-        strategy=service.store.save_strategy('Synthetic V2: fixed grid and later validation','graph',{'graph':graph,'layout':{}},None,profile=profile)
+        strategy=service.store.save_strategy('Synthetic 0.2: fixed grid and later validation','graph',{'graph':graph,'layout':{}},None,profile=profile)
         experiment=service.experiments.start(strategy_id=strategy,dataset_id=dataset['id'],profile=profile,is_range=[start+30*60,start+150*60],oos_range=[start+180*60,start+240*60],axes=[{'key':'node.mean.period','values':[2,3,4,5]},{'key':'profile.stop_loss','values':['0','.02','.04','.06']}])['experiment_id']
         wait(lambda:service.experiments.active is None)
         report=service.experiments.get(experiment)

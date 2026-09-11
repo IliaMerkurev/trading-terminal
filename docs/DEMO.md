@@ -1,4 +1,4 @@
-# V1 demonstration and acceptance
+# 0.1 demonstration and acceptance
 
 Use the [Windows setup and launch instructions](DEVELOPMENT.md). The prepared development build is for owner acceptance, not a release or a claim of financial-model equivalence with every exchange account mode.
 

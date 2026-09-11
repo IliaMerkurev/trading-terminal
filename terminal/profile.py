@@ -68,7 +68,7 @@ class Profile:
             raise ValueError("Unsupported primary timeframe")
         for step in (self.tick_size, self.quantity_step):
             if -dec(step).normalize().as_tuple().exponent > 8:
-                raise ValueError("V1 supports at most eight price/quantity decimal places")
+                raise ValueError("This profile supports at most eight price/quantity decimal places")
 
     def snapshot(self):
         return asdict(self)

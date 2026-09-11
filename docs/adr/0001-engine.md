@@ -1,6 +1,6 @@
 # ADR 0001: NautilusTrader as the first engine, with an explicit simulation adapter
 
-Status: accepted for continued V1 implementation; the complete application and
+Status: accepted for continued 0.1 implementation; the complete application and
 exchange profile are not yet validated. Version: NautilusTrader 1.231.0,
 Windows x64, CPython 3.12.14. Scope: [PROJECT sections 2–5 and 9](../../PROJECT.md).
 
@@ -35,7 +35,7 @@ selection criterion.
 | Causal forming H1 | Application aggregation plus native SMA; known partial hour replaces the forming bar. Future perturbation and disappearing intrabar signal verified. Full graph adapter remains open. |
 | Native Python | Installed official EMACross executed unchanged on a vetted synthetic scenario. Import trust workflow and compatibility diagnostics remain open. |
 | Windows cancellation | Engine worker and its spawned child both terminate through a Windows Job Object. This is lifetime control, not security isolation. |
-| Complex orders / scaling / partial exits | Outside the V1 profile. Unsupported commands are denied and recorded as fatal profile violations; no valid result may be published. |
+| Complex orders / scaling / partial exits | Outside the 0.1 profile. Unsupported commands are denied and recorded as fatal profile violations; no valid result may be published. |
 | Historical tiers, data coverage, UI, persistence | Unverified; subsequent milestones, not inferred from engine tests. |
 
 The risk gateway uses the named `RiskEngine.execute` MessageBus endpoint and
@@ -72,7 +72,7 @@ Known compatibility warning: upstream uses deprecated Pandas `Timestamp.utcnow`.
 The warning is not suppressed and does not fail the current numerical checks.
 The partial-SMA probe rebuilds its short input history; it is not a performance
 implementation for large datasets. Wider profile, precision, gap and native
-compatibility checks are still required before V1 acceptance.
+compatibility checks are still required before 0.1 acceptance.
 
 ## Sources and license boundaries
 

@@ -1,6 +1,6 @@
 # Engine evaluation
 
-Status: NautilusTrader 1.231.0 selected for continued implementation after Windows runtime experiments. The selected engine is integrated with the V1 adapter; current acceptance evidence is in [status](STATUS.md). See [ADR 0001](adr/0001-engine.md) for comparisons, actual evidence, required adapters and reconsideration conditions. Requirements are defined in [PROJECT.md](../PROJECT.md).
+Status: NautilusTrader 1.231.0 selected for continued implementation after Windows runtime experiments. The selected engine is integrated with the 0.1 adapter; current acceptance evidence is in [status](STATUS.md). See [ADR 0001](adr/0001-engine.md) for comparisons, actual evidence, required adapters and reconsideration conditions. Requirements are defined in [PROJECT.md](../PROJECT.md).
 
 ## Evaluation process
 

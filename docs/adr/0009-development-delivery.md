@@ -2,7 +2,7 @@
 
 ## Decision
 
-Deliver V1 as a documented Windows development build with a one-time setup and a launch script. A relocatable installer, binary release and license assignment are deferred. Use the existing validated MSVC/SDK rather than require a system upgrade.
+Deliver 0.1 as a documented Windows development build with a one-time setup and a launch script. A relocatable installer, binary release and license assignment are deferred. Use the existing validated MSVC/SDK rather than require a system upgrade.
 
 For the bounded Python application protocol, use dataclasses, Decimal and explicit strict field/type checks rather than add Pydantic to the proposed baseline. The Strategy IR, profile, native descriptor and archive validators have focused negative-input and correctness tests. This avoids a second validation dependency without changing product behavior. Reconsider a schema library if protocol expansion makes the handwritten checks difficult to audit.
 

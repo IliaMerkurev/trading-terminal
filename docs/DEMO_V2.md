@@ -1,10 +1,10 @@
-# V2 demonstration and acceptance
+# 0.2 demonstration and acceptance
 
-V2 is a Windows development build. Keep V1 data/builds separate during acceptance. Use the already configured, pinned Python environment; no system policy change is needed.
+0.2 is an early Windows development build. Use the normal main checkout and its configured pinned Python environment. Keep synthetic acceptance data separate from the ordinary user database; no parallel product checkout or system policy change is needed.
 
 ## Prepare and open the separate synthetic workspace
 
-From the V2 checkout, with its configured environment:
+From the main project checkout, with its configured environment:
 
 ```powershell
 .\.venv\Scripts\python.exe -m terminal.demo_v2
@@ -34,10 +34,10 @@ The bounded demo creates one synthetic visual strategy, 16 fixed combinations, o
 
 Dense executions use compact grouped markers with complete fill details and trade rows. Pan/zoom a saved chart, change its recorded indicator, then toggle panels: the viewport should remain stable. Indicator values must match the saved report, and no primary timeframe changes through chart controls. Comparison labels show units while retaining raw input/version identifiers.
 
-Export a completed candidate report and import it through the Windows picker into a separate acceptance workspace. Imported reports retain experiment/selection provenance, omit raw candles and never run or grant native source trust. Reopen/export a copied V1 report and compare its recorded result checksum.
+Export a completed candidate report and import it through the Windows picker into a separate acceptance workspace. Imported reports retain experiment/selection provenance, omit raw candles and never run or grant native source trust. Reopen/export a copied 0.1 report and compare its recorded result checksum.
 
 Native Windows picker interaction, cancel-and-exit while visibly calculating, and Windows 100%/125%/150% scaling are manual acceptance items unless an actual observation is recorded in status. Component mocks and worker tests do not establish these UI observations. Do not change other applications or system scaling solely for automated verification.
 
 ## Expected evidence
 
-Independent protection goldens are in `tests/test_execution_v2.py`: V2 OLHC/OHLC exits at 95/105, V1 retains 80/120, gaps use available prices, and costs/mark liquidation remain explicit. `tests/test_experiments.py` verifies actual worker grid equivalence, warmup/window behavior, freeze, future-holdout perturbation, errors, cancellation and interruption. See [status](STATUS.md) for actual timings/results and the [execution ADR](adr/0010-execution-v2.md) for model limits.
+Independent protection goldens are in `tests/test_execution_v2.py`: profile 2 OLHC/OHLC exits at 95/105, profile 1 retains 80/120, gaps use available prices, and costs/mark liquidation remain explicit. `tests/test_experiments.py` verifies actual worker grid equivalence, warmup/window behavior, freeze, future-holdout perturbation, errors, cancellation and interruption. See [status](STATUS.md) for actual timings/results and the [execution ADR](adr/0010-execution-v2.md) for model limits.

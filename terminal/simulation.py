@@ -248,7 +248,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         profile = Profile(**profile)
     if trade_start is not None and (native_factory is not None or type(trade_start) is not int or trade_start%60 or not candles[0].time<=trade_start<=candles[-1].time):
         raise ValueError('Invalid visual-strategy trading window')
-    if native_factory is not None and profile.version!=1:raise ValueError('Native strategies retain execution profile version 1; V2 protections apply to visual graphs')
+    if native_factory is not None and profile.version!=1:raise ValueError('Native strategies retain execution profile version 1; profile 2 protections apply to visual graphs')
     if native_factory is not None and (dec(profile.stop_loss) or dec(profile.take_profit) or profile.evaluation!="closed"):
         raise ValueError("Native strategies require their own protection/signal semantics; graph intrabar and stop/take controls are unavailable")
     if any(b.time % 60 for b in candles) or any(b.time <= a.time for a,b in zip(candles, candles[1:])):

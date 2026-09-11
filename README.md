@@ -2,7 +2,7 @@
 
 A local Windows desktop application for historical strategy research. Create a visual strategy or explicitly trust a compatible native Python strategy, prepare Bybit history, run a backtest, inspect trades, and compare saved results.
 
-**V2 is accepted and available on main, preserving the V1 workflow.** It uses NautilusTrader 1.231.0 with explicit, independently tested versioned execution. This is a historical research tool; it does not submit live orders. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0010-execution-v2.md), and the [V2 demonstration guide](docs/DEMO_V2.md). Owner acceptance remains distinct from automated verification.
+**Trading Terminal 0.2 is an early development build.** It preserves the 0.1 workflow and uses NautilusTrader 1.231.0 with explicit, independently tested versioned execution. It is not production-ready or a stable release. This is a historical research tool; it does not submit live orders. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0010-execution-v2.md), and the [0.2 demonstration guide](docs/DEMO_V2.md). Owner acceptance remains distinct from automated verification.
 
 ## Available workflow
 
@@ -13,7 +13,7 @@ A local Windows desktop application for historical strategy research. Create a v
 - Cancellable workers, immutable run history, recorded indicators, charts, trade navigation, comparison and validated project archives.
 - Source-only native Python preview with explicit execution consent. Workers are not a security sandbox.
 - Right-click node search, reversible graph edits, selected-node duplication and navigable validation.
-- Explicit V1 discrete and V2 continuous-segment protection models, with gap/cost/mark-price assumptions preserved.
+- Execution profile 1 discrete and profile 2 continuous-segment protection models introduced in product 0.2, with gap/cost/mark-price assumptions preserved.
 - Sequential bounded parameter grids, immutable inputs, sortable in-sample results and separately frozen later-period validation.
 
 ## Windows launch
@@ -28,12 +28,12 @@ The launcher builds this checkout's desktop assets and starts the application us
 
 ## Scope and documentation
 
-Live trading, exchange credentials, optimization beyond the bounded V2 grid, DCA, partial exits, multiple simultaneous instruments, AI and background services remain deferred. Historical minute bars cannot reveal the true tick path; risk-tier history may be unavailable. Imported reports are viewable without their raw history but are not guaranteed rerunnable. Repeated holdout use weakens independence; the application does not recommend a profitable strategy.
+Live trading, exchange credentials, optimization beyond the bounded 0.2 grid, DCA, partial exits, multiple simultaneous instruments, AI and background services remain deferred. Historical minute bars cannot reveal the true tick path; risk-tier history may be unavailable. Imported reports are viewable without their raw history but are not guaranteed rerunnable. Repeated holdout use weakens independence; the application does not recommend a profitable strategy.
 
 - [PROJECT.md](PROJECT.md): authoritative product specification and deferred scope.
 - [Architecture](docs/ARCHITECTURE.md) and [engine evaluation](docs/ENGINE_SELECTION.md).
 - [Implementation status](docs/STATUS.md) and [development guidance](docs/DEVELOPMENT.md).
-- [V2 demonstration and owner acceptance](docs/DEMO_V2.md), and [retained V1 demonstration](docs/DEMO.md).
+- [0.2 demonstration and owner acceptance](docs/DEMO_V2.md), and [retained 0.1 demonstration](docs/DEMO.md).
 
 ## License
 

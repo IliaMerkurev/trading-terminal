@@ -48,7 +48,7 @@ class RiskGateway:
     def execute(self, command):
         if isinstance(command, SubmitOrderList):
             for order in command.order_list.orders:
-                self.deny(order, "Order lists are outside the V1 market-order profile", fatal=True)
+                self.deny(order, "Order lists are outside the supported market-order profile", fatal=True)
             return
         if not isinstance(command, SubmitOrder):
             self.original(command)

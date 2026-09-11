@@ -2,5 +2,5 @@
   "identifier": "main-window",
   "description": "Local research window events only; no filesystem or shell plugin exposed to web content.",
   "windows": ["main"],
-  "permissions": ["core:event:default", "core:window:allow-close"]
+  "permissions": ["core:event:default", "core:window:allow-close", "core:app:allow-version"]
 }

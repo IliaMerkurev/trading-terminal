@@ -20,6 +20,6 @@ A separate REST server is not required. Runtime selection must precede a large i
 
 See [engine evaluation](ENGINE_SELECTION.md) and [development guide](DEVELOPMENT.md).
 
-V2 retains this stack. [Execution versioning](adr/0010-execution-v2.md) adds causal protection crossings through the same engine. [Experiments](adr/0011-experiments.md) reserve the global calculation slot and reuse ordinary workers with frozen windows and shared source datasets. [Editor/runtime isolation](adr/0012-editor-and-isolation.md) documents reversible authoring and separate data/build roots. Migrations add tables without rewriting V1 snapshots.
+0.2 retains this stack. [Execution versioning](adr/0010-execution-v2.md) adds causal protection crossings through the same engine. [Experiments](adr/0011-experiments.md) reserve the global calculation slot and reuse ordinary workers with frozen windows and shared source datasets. [Editor/runtime isolation](adr/0012-editor-and-isolation.md) documents reversible authoring and separate data/build roots. Migrations add tables without rewriting 0.1 snapshots.
 
 [ADR 0009](adr/0009-development-delivery.md) records the validated installation path, explicit-validation choice and acceptance boundaries.
