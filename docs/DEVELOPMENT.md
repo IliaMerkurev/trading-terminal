@@ -17,6 +17,18 @@ If necessary, pass an installed CPython 3.12 x64 executable to `setup.ps1 -Pytho
 
 The launcher uses the configured tools recorded during setup if Node/Cargo are absent from the current shell. It builds frontend assets and the embedded Windows executable with locked offline Cargo dependencies, then opens it. Moving the checkout requires rebuilding. Close the application before rebuilding its executable. No execution-policy or security-policy bypass is part of these commands. Run from a shell permitted to execute local project scripts.
 
+## V2 launcher and separate demonstration
+
+After project setup, the calling pinned Python can launch without PowerShell script execution:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\desktop.py --build
+```
+
+Omit `--build` when reopening. `--no-launch` verifies/builds only. `--data-root` accepts an absolute isolated data directory; `--cargo-home` can reuse an existing locked project cache. An isolated checkout can be invoked with another verified environment's Python executable. No dependency or system setting is changed. The existing setup scripts remain available in shells permitted to execute them.
+
+See [V2 demonstration](DEMO_V2.md) for the separate synthetic data root. To check additive migrations, pass a consistent backup and a **new** destination to `scripts/verify_migration.py`; it refuses to overwrite a destination. Never run migration experiments on the active user database.
+
 ## Validation commands
 
 ```powershell

@@ -27,7 +27,7 @@ export const defaultProfile: Profile = {
   market:'spot',symbol:'BTCUSDT',capital:'1000',leverage:'1',sizing:'fixed',allocation:'100',fee_rate:'0.001',slippage:'0',
   stop_loss:'0',take_profit:'0',tick_size:'0.01',quantity_step:'0.001',min_quantity:'0.001',max_quantity:'1000000000',
   min_notional:'1',max_notional:'1000000',maintenance_rate:'0.005',primary_minutes:60,evaluation:'closed',path:'OLHC',
-  funding_mode:'history',mark_mode:'history',gap_policy:'reject',tier_assumption:'Manual constant tier; historical risk tiers are not known',version:1,
+  funding_mode:'history',mark_mode:'history',gap_policy:'reject',tier_assumption:'Manual constant tier; historical risk tiers are not known',version:2,
 };
 export function exampleGraph(): Graph {
   return {version:1,nodes:[

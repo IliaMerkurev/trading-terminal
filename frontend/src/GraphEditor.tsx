@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
-import { ReactFlow, Background, Controls, Handle, Position, type Connection, type NodeProps, type Node, type Edge, type NodeChange } from '@xyflow/react';
+import { useEffect, useMemo, useState } from 'react';
+import { ReactFlow, Background, Controls, Handle, Position, type ReactFlowInstance, type Connection, type NodeProps, type Node, type Edge, type NodeChange } from '@xyflow/react';
+import NodeMenu from './NodeMenu';
+import {duplicateNodes,isTextEditing} from './editor';
 import '@xyflow/react/dist/style.css';
 import { catalog, labels, outputNames, canConnect, type Graph, type Layout, type NodeKind, type OutputName } from './model';
 
@@ -15,9 +17,15 @@ function StrategyNode({data,selected}:NodeProps<Node<FlowData>>) {
   </div>;
 }
 const nodeTypes={strategy:StrategyNode};
-export default function GraphEditor({graph,layout,onChange,onSelect}:{graph:Graph;layout:Layout;onChange:(g:Graph,l:Layout)=>void;onSelect:(id:string|null)=>void}) {
+export default function GraphEditor({graph,layout,onChange,onSelect,onCreate,selected,locate,onBegin,onEnd}:{graph:Graph;layout:Layout;onChange:(g:Graph,l:Layout)=>void;onSelect:(id:string|null)=>void;onCreate:(kind:NodeKind,position:{x:number;y:number})=>void;selected:string|null;locate:{id:string;request:number}|null;onBegin:()=>void;onEnd:()=>void}) {
   const [selectedNodes,setSelectedNodes]=useState<string[]>([]);
   const [selectedEdges,setSelectedEdges]=useState<string[]>([]);
+  const [flow,setFlow]=useState<ReactFlowInstance<Node<FlowData>>|null>(null);
+  const [menu,setMenu]=useState<{screen:{x:number;y:number};graph:{x:number;y:number}}|null>(null);
+  useEffect(()=>{if(selected)setSelectedNodes(ids=>ids.includes(selected)?ids:[selected]);},[selected]);
+  useEffect(()=>{if(locate&&flow){setSelectedNodes([locate.id]);flow.fitView({nodes:[{id:locate.id}],duration:200,maxZoom:1.2});}},[locate,flow]);
+  function duplicate(){if(graph.nodes.length+selectedNodes.filter(id=>!id.startsWith('out:')).length>128)return;const result=duplicateNodes(graph,layout,selectedNodes);if(!result.selected.length)return;onChange(result.graph,result.layout);setSelectedNodes(result.selected);onSelect(result.selected[0]);}
+  useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if(!menu&&!isTextEditing(event.target)&&(event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='d'){event.preventDefault();duplicate();}};document.addEventListener('keydown',shortcut);return()=>document.removeEventListener('keydown',shortcut);});
   const nodes=useMemo<Node<FlowData>[]>(()=>[
     ...graph.nodes.map((n,i)=>({id:n.id,type:'strategy',data:{label:labels[n.type],kind:n.type,params:n.params},position:layout[n.id]??{x:60+(i%3)*260,y:70+Math.floor(i/3)*180}})),
     ...outputNames.map((name,i)=>({id:`out:${name}`,type:'strategy',deletable:false,data:{label:labels[name],kind:'output' as const,params:{}},position:layout[`out:${name}`]??{x:920,y:30+i*135}})),
@@ -62,9 +70,11 @@ export default function GraphEditor({graph,layout,onChange,onSelect}:{graph:Grap
     }
     onChange(next,layout);
   }
-  return <ReactFlow nodes={nodes.map(n=>({...n,selected:selectedNodes.includes(n.id)}))} edges={edges.map(e=>({...e,selected:selectedEdges.includes(e.id)}))} nodeTypes={nodeTypes} onConnect={connect} onNodesChange={changeNodes} onEdgesDelete={removeEdges}
+  return <><ReactFlow onInit={setFlow} nodes={nodes.map(n=>({...n,selected:selectedNodes.includes(n.id)}))} edges={edges.map(e=>({...e,selected:selectedEdges.includes(e.id)}))} nodeTypes={nodeTypes} onConnect={connect} onNodesChange={changeNodes} onEdgesDelete={removeEdges}
+    onNodeDragStart={onBegin} onNodeDragStop={onEnd} onBeforeDelete={async()=>{onBegin();return true;}} onDelete={onEnd}
+    onPaneContextMenu={event=>{event.preventDefault();if(flow){const screen={x:event.clientX,y:event.clientY};setMenu({screen,graph:flow.screenToFlowPosition(screen)});}}}
     onEdgesChange={changes=>changes.forEach(c=>{if(c.type==='select')setSelectedEdges(ids=>c.selected?[...new Set([...ids,c.id])]:ids.filter(id=>id!==c.id));})}
     onNodeClick={(_,n)=>onSelect(n.id.startsWith('out:')?null:n.id)} onPaneClick={()=>onSelect(null)}
     isValidConnection={c=>!!c.source&&!!c.target&&!!c.sourceHandle&&!!c.targetHandle&&canConnect(graph,c.source,c.sourceHandle,c.target,c.targetHandle)}
-    fitView minZoom={0.25} maxZoom={2} colorMode="dark" proOptions={{hideAttribution:false}}><Background gap={24}/><Controls/></ReactFlow>;
+    fitView minZoom={0.25} maxZoom={2} colorMode="dark" proOptions={{hideAttribution:false}}><Background gap={24}/><Controls/><div className="duplicate-tool"><button disabled={!selectedNodes.some(id=>!id.startsWith('out:'))} onClick={duplicate}>Duplicate selection</button></div></ReactFlow>{menu&&<NodeMenu at={menu.screen} onClose={()=>setMenu(null)} onChoose={kind=>{onCreate(kind,menu.graph);setMenu(null);}}/>}</>;
 }
