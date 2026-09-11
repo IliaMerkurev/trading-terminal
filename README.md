@@ -2,7 +2,7 @@
 
 A local Windows desktop application for historical strategy research. Create a visual strategy or explicitly trust a compatible native Python strategy, prepare Bybit history, run a backtest, inspect trades, and compare saved results.
 
-**V2 development build is available for acceptance testing, preserving the V1 workflow.** It uses NautilusTrader 1.231.0 with explicit, independently tested versioned execution. This is a historical research tool; it does not submit live orders. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0010-execution-v2.md), and the [V2 demonstration guide](docs/DEMO_V2.md). Native UI/scaling acceptance remains separate from automated verification.
+**V2 is accepted and available on main, preserving the V1 workflow.** It uses NautilusTrader 1.231.0 with explicit, independently tested versioned execution. This is a historical research tool; it does not submit live orders. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0010-execution-v2.md), and the [V2 demonstration guide](docs/DEMO_V2.md). Owner acceptance remains distinct from automated verification.
 
 ## Available workflow
 

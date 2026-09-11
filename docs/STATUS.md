@@ -1,6 +1,10 @@
 # Implementation status
 
-V2 is implemented as a separate Windows development build and prepared for owner acceptance. V1 behavior and data remain supported. The [product specification](../PROJECT.md) remains authoritative. The [V2 demonstration](DEMO_V2.md) and [retained V1 demonstration](DEMO.md) distinguish automated verification from native/manual acceptance.
+V2 passed owner acceptance and was squash-merged into main through [PR #2](https://github.com/IliaMerkurev/trading-terminal/pull/2), commit `1309b4a1f97e2cb889240f510abf707ee94e6740`, on 2026-09-11. V1 behavior and data remain supported. The [product specification](../PROJECT.md) remains authoritative. The [V2 demonstration](DEMO_V2.md) and [retained V1 demonstration](DEMO.md) distinguish automated verification from native/manual acceptance.
+
+The mandatory pre-merge checks were rerun on the exact accepted V2 head: **92 Python tests passed in 73.457s**, **20 frontend tests passed in 34.68s**, TypeScript/Vite passed, and a separate offline locked Windows/Rust build passed in **1m 35s**. Runtime verification and `pip check` passed. Gitleaks 8.30.1 found no secrets in either outgoing V2 commit. The existing frontend bundle-size advisory remains. No installed dependency, user database or running build was replaced.
+
+The owner reported successful manual V2 verification and accepted the remaining review items. The observations below retain the original automated/native evidence and its limitations; owner acceptance does not retroactively turn unperformed automation scenarios into executed tests. No installer, release or V3 scope is included.
 
 ## V2 evidence — 2026-09-11
 
@@ -45,7 +49,7 @@ A seven-day, 10,080-minute synthetic intrabar fixture measured **1.464s**, **260
 
 The model implements one single-position cross-margin profile, not full Bybit UTA or isolated margin. Minute paths and historical precision/risk-tier assumptions are explicit. Historical tier changes remain unknown. Native workers are not security sandboxes. Unsupported orders/feeds or unavailable dependencies fail visibly. Archives omit raw history and logs; checksums do not authenticate imported performance claims. No installer or binary release is provided; the project license remains undecided.
 
-## Owner acceptance still pending
+## Historical V1 acceptance notes
 
 The native Windows file-picker import and a cancel-and-exit click before a desktop calculation finishes remain manual acceptance checks. The automation helper could not address the WebView-owned picker; bounded calculations completed before the exit click. Backend archive roundtrip, browser File transfer, close-dialog IPC ordering and actual worker cancellation pass independently. These observations do not establish that the unperformed native actions were tested.
 

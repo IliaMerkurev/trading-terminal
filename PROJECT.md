@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Version 0.6. Status: V1 baseline retained; agreed V2 implemented as a development build, with manual acceptance pending. Sections 1–11 retain the V1 contract; sections 12–18 define the V2 extension. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
+Version 0.6. Status: V1 baseline retained; agreed V2 accepted and merged into main. Sections 1–11 retain the V1 contract; sections 12–18 define the V2 extension. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
 
 ## 1. Purpose and delivery target
 
