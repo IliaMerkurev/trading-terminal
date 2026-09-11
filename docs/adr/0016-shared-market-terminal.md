@@ -16,6 +16,8 @@ The existing Lightweight Charts dependency displays a bounded window of 2,880 re
 
 REST and WebSocket confirmed candles share the journal's unique minute keys and validation. Forming candles never replace an already finalized minute. UTC display buckets use interval-end labels. Changing a display interval changes only this projection: it does not save a profile, restart a subscription or change frozen Strategy IR inputs.
 
+If the retained minute window starts inside a coarse display interval, omit that leading partial bucket rather than inventing its opening price or implying full high/low coverage. The latest bucket may remain forming. This can leave only one daily candle with one day of initial context.
+
 Each new evaluation stores its actual IR values atomically with the confirmed candle and signal events. The chart selects the last recorded numeric value within a display bucket; it never recalculates an indicator. Selecting 1H display does not turn an M1 strategy's SMA into an H1 SMA. Older sessions without recorded evaluation rows have no fabricated historical indicator overlay. Signals and paper fills retain their observed timestamps and are placed in their display buckets. Paper entry/protection and fresh last/mark lines are presentation only.
 
 ## Alternatives and limits

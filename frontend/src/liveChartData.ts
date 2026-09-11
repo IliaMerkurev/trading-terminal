@@ -9,7 +9,9 @@ export function displayCandles(recorded:LiveCandle[],forming:LiveCandle|undefine
     const end=Math.floor(c.time/width)*width+width,old=buckets.get(end);
     buckets.set(end,old?{...old,high:Math.max(old.high,c.high),low:Math.min(old.low,c.low),close:c.close,volume:old.volume+c.volume}:{...c,time:end});
   }
-  return [...buckets.values()].slice(-600);
+  // A bounded M1 window may begin mid-interval. Do not invent that interval's open.
+  const first=Math.min(...rows.keys());
+  return [...buckets.values()].filter(c=>c.time-width>=first).slice(-600);
 }
 export function displayIndicator(evaluations:any[],key:string,minutes:number){
   const values=new Map<number,{time:number;value:number;observed:number}>();

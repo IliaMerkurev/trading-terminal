@@ -21,7 +21,7 @@ export default function LiveChart({sessionId,forming,paper,price,mark,fresh,late
   if(!candleRef.current)return;
   const candles=displayCandles(data.candles??[],forming,minutes);
   candleRef.current.setData(candles.map(c=>({...c,time:c.time as UTCTimestamp})));
-  lineRef.current.setData(displayIndicator(data.evaluations??[],indicator,minutes).map(p=>({...p,time:p.time as UTCTimestamp})));
+  lineRef.current.setData(displayIndicator(data.evaluations??[],indicator,minutes).filter(p=>candles.length&&p.time>=candles[0].time&&p.time<=candles.at(-1)!.time).map(p=>({...p,time:p.time as UTCTimestamp})));
   lineRef.current.applyOptions({title:indicator||'Recorded IR',visible:!!indicator});
   lineRef.current.moveToPane(indicator?1:0);
   markerRef.current.setMarkers(liveMarkers(data,minutes).filter(m=>candles.length&&m.time>=candles[0].time&&m.time<=candles.at(-1)!.time));

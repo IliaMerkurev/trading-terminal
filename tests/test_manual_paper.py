@@ -17,7 +17,7 @@ class ManualPaperTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.credentials=patch('terminal.live.WindowsCredentials');self.credentials.start();self.addCleanup(self.credentials.stop)
         self.manager=LiveManager(RunStore(Path(self.temp.name)));self.addCleanup(self.manager.close)
-        self.profile=Profile(primary_minutes=1,allocation='100',fee_rate='.001',stop_loss='.05',take_profit='.1')
+        self.profile=Profile(primary_minutes=1,allocation='100',fee_rate='.001',stop_loss='.05',take_profit='.2')
         self.sid=self.manager.journal.create(example_graph(),self.profile,'fixture','Synthetic manual PAPER')
         self.manager.session_id=self.sid;self.manager.thread=Mock();self.manager.thread.is_alive.return_value=True
         self.manager.journal.state(self.sid,'CONNECTED','Fixture synchronized')
@@ -43,6 +43,7 @@ class ManualPaperTests(unittest.TestCase):
         self.assertEqual(self.paper.snapshot()['equity'],'1009.79')
         self.assertEqual(self.paper.snapshot()['fees'],'0.21')
         self.assertIsNone(self.paper.snapshot()['position'])
+        self.assertEqual(self.paper.snapshot()['fills'][0]['reason'],'signal')
 
     def test_source_position_spot_and_stale_guards(self):
         with self.assertRaisesRegex(ValueError,'Spot'):self.manager.manual(self.sid,'sell','3'*32)
@@ -101,3 +102,12 @@ class ManualPaperTests(unittest.TestCase):
         self.assertEqual(restored.manual(self.sid,'buy','e'*32)['status'],'cancelled_restart')
         self.assertEqual(restored.journal.get(self.sid)['status'],'PAUSED')
         self.assertEqual(self.paper.sequence,0)
+
+    def test_manual_position_still_uses_observed_price_protections(self):
+        self.execute('buy','a1'*16,'100',100)
+        self.paper.append({'observed_ms':160000,'provider_ms':160000,'price':'90','mark':None})
+        self.paper.process()
+        self.assertIsNone(self.paper.snapshot()['position'])
+        self.assertEqual(self.paper.snapshot()['fills'][0]['reason'],'stop_loss')
+        self.assertEqual(self.paper.snapshot()['fills'][0]['price'],'90.00')
+        self.assertEqual(self.paper.snapshot()['equity'],'989.81')

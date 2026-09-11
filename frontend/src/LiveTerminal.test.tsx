@@ -68,3 +68,15 @@ it('indicator display samples only recorded IR values without recomputing indica
  const points=[{time:60,values:{rsi:28.7}},{time:120,values:{rsi:30.2}},{time:360,values:{rsi:55}}];
  expect(displayIndicator(points,'rsi',5)).toEqual([{time:300,value:30.2,observed:120},{time:600,value:55,observed:360}]);
 });
+
+it('formats small funding rates without floating-point tails',async()=>{
+ const s=state();s.market.ticker={...s.market.ticker,fundingRate:'0.00000423'} as typeof s.market.ticker;
+ mock.api.mockResolvedValue(s);render(<Live strategyId="s" profile={defaultProfile}/>);
+ expect(await screen.findByText('0.000423%')).toBeTruthy();
+});
+
+it('does not fabricate a coarse candle from truncated leading history',()=>{
+ const bars=[60,120,180,240,300,360].map(time=>({time,open:100,high:110,low:90,close:105,volume:1}));
+ expect(displayCandles(bars,undefined,5)).toEqual([{time:600,open:100,high:110,low:90,close:105,volume:2}]);
+ expect(displayCandles(bars,undefined,1)).toHaveLength(6);
+});
