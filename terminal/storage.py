@@ -11,6 +11,7 @@ import uuid
 from terminal.data import canonical,write_new
 
 SERIES=("fills","trades","events","equity","indicators","diagnostics","candles","engine_orders")
+TIME_SQL="CASE WHEN kind IN ('candles','indicators') THEN json_extract(value,'$.time') ELSE json_extract(value,'$.time_ns')/1000000000.0 END"
 
 
 def identifier(value):
@@ -38,6 +39,7 @@ class RunStore:
                     document TEXT NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS native_trust(identity TEXT PRIMARY KEY, granted_at TEXT NOT NULL);
             """)
+            db.execute(f"CREATE INDEX IF NOT EXISTS series_time ON series(run_id,kind,({TIME_SQL}))")
 
     @contextmanager
     def connect(self):
@@ -129,6 +131,24 @@ class RunStore:
         raw=(self.directory(run_id)/"result.json").read_bytes()
         if hashlib.sha256(raw).hexdigest()!=run["result_hash"]: raise ValueError("Saved result checksum mismatch")
         return json.loads(raw)
+
+    def chart_window(self,run_id,start=None,minutes=240):
+        run=self.get(run_id)
+        if run["status"]!="completed": raise ValueError("No completed result available")
+        if type(minutes) is not int or not 30<=minutes<=480 or (start is not None and (type(start) is not int or start%60)):
+            raise ValueError("Chart requests require aligned start and 30–480 minutes")
+        first,last=run["manifest"]["dataset"]["range"]
+        start=first if start is None else max(first,min(start,max(first,last-60)))
+        end=min(last,start+minutes*60)
+        result={"start":start,"end":end,"range":[first,last],"series":{}}
+        with self.connect() as db:
+            for kind in ("candles","indicators","fills","equity"):
+                # Candle timestamps are interval starts; indicators are availability times.
+                lower,upper=(start,end) if kind=="candles" else (start+1e-6,end+1e-6)
+                rows=db.execute(f"SELECT value FROM series WHERE run_id=? AND kind=? AND ({TIME_SQL})>=? AND ({TIME_SQL})<? ORDER BY ({TIME_SQL}),row_index LIMIT 4000",(run_id,kind,lower,upper)).fetchall()
+                result["series"][kind]=[json.loads(row[0]) for row in rows]
+        if len(canonical(result))>900*1024: raise ValueError("Chart window exceeds payload budget; choose a shorter window")
+        return result
 
     def save_strategy(self,name,kind,document,strategy_id=None):
         if not isinstance(name,str) or not name.strip() or len(name)>120 or kind not in ("graph","native"):

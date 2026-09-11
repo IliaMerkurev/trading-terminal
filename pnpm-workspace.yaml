@@ -1,0 +1,7 @@
+packages:
+  - .
+onlyBuiltDependencies: []
+storeDir: .local-tools/pnpm-store
+cacheDir: .local-tools/pnpm-cache
+stateDir: .local-tools/pnpm-state
+minimumReleaseAgeStrict: true

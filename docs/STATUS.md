@@ -13,10 +13,12 @@
 - [Managed workers and persistence](adr/0005-workers-storage.md): one test at a time, immutable snapshots, versioned local pipe IPC, cancellation, SQLite run history and bounded result pages.
 - [Trusted native import](adr/0006-native-import.md): AST-only preview, source-bound consent, unchanged native Strategy/Config execution in workers, declared multiple bar timeframes and visible compatibility failures.
 
+- [Windows desktop host](adr/0007-desktop.md): React Flow editor, editable simulation settings, native preview/consent, local pipe IPC, prepared-data controls and saved-result charts.
+
 ## Not implemented or verified
 
-There is no runnable desktop application, chart UI, comparison/export workflow, or installer. Seventy-one Windows regression tests have passed; these are calculation/data/service foundations, not V1 acceptance. Desktop import/trust controls remain to integrate. Historical Bybit tier changes remain unknown. One real BTCUSDT day was downloaded for spot and perpetuals; both cached datasets produced identical repeated offline results. A seven-day synthetic intrabar fixture measured 1.464s and 260.5 MiB peak working set on Windows.
+The Windows desktop host builds and launches, and graph save was verified through the actual desktop UI into SQLite. Seventy-three Python tests and four frontend tests pass. Download/chart integration and active-run desktop shutdown still need end-to-end verification. Comparison/export and final demonstration are unfinished; there is no installer. These checks do not establish complete V1 acceptance. Historical Bybit tier changes remain unknown. One real BTCUSDT day was downloaded for spot and perpetuals; both cached datasets produced identical repeated offline results. A seven-day synthetic intrabar fixture measured 1.464s and 260.5 MiB peak working set on Windows.
 
 ## Next milestone
 
-Implement the desktop graph editor (ILI-11), integrated Backtest/Results workflow (ILI-12), comparison/export (ILI-13) and Windows demonstration/acceptance checks (ILI-14). [PROJECT.md](../PROJECT.md) remains the authoritative scope.
+Finish integrated Windows checks for ILI-11/ILI-12, then comparison/export (ILI-13) and Windows demonstration/acceptance checks (ILI-14). [PROJECT.md](../PROJECT.md) remains the authoritative scope.

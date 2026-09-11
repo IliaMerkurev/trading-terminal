@@ -126,6 +126,15 @@ class JobManager:
             except (OSError,ValueError): pass
         return {"id":run_id,"status":record["status"],"error":record["error"],"progress":progress,"summary":record["summary"]}
 
+    def logs(self,run_id):
+        self.store.get(run_id)
+        file=self.store.directory(run_id)/"worker.log"
+        if not file.exists(): return {"text":"Worker preparation; no output yet.","truncated":False}
+        with file.open("rb") as stream:
+            size=file.stat().st_size
+            stream.seek(max(0,size-16384))
+            return {"text":stream.read(16384).decode("utf-8",errors="replace"),"truncated":size>16384}
+
     def close(self):
         with self.lock:
             active=self.active

@@ -1,5 +1,6 @@
 """Versioned application IPC dispatch; no arbitrary methods, paths or code."""
-from terminal.data import DatasetStore,canonical
+from terminal.data import DatasetStore,canonical,metadata_profile_fields
+from terminal.downloads import DownloadManager
 from terminal.graph import validate_graph
 from terminal.jobs import JobManager
 
@@ -9,6 +10,7 @@ class AppService:
         self.jobs=JobManager(root)
         self.store=self.jobs.store
         self.datasets=DatasetStore(self.store.root/"datasets")
+        self.downloads=DownloadManager(self.store.root)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -24,13 +26,17 @@ class AppService:
                 "list_strategies":set(),"save_graph":{"name","graph","layout","strategy_id"},
                 "get_strategy":{"strategy_id"},"list_datasets":set(),"run_manifest":{"run_id"},
                 "preview_native":{"document"},"save_native":{"name","document","strategy_id"},
-                "trust_native":{"document","expected_sha256","acknowledge_user_permissions"}}
+                "trust_native":{"document","expected_sha256","acknowledge_user_permissions"},
+                "dataset_profile":{"dataset_id"},"download_start":{"market","symbol","start","end"},
+                "download_status":set(),"download_cancel":set(),"chart_window":{"run_id","start","minutes"},"run_logs":{"run_id"}}
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command=="list_runs": result=self.store.recent()
             elif command=="run_status": result=self.jobs.status(p["run_id"])
+            elif command=="run_logs": result=self.jobs.logs(p["run_id"])
             elif command=="run_manifest": result=self.store.get(p["run_id"])["manifest"]
             elif command=="result_page": result=self.store.page(**p)
+            elif command=="chart_window": result=self.store.chart_window(**p)
             elif command=="start_run": result={"run_id":self.jobs.start(p["strategy"],p["profile"],p["dataset_id"])}
             elif command=="cancel_run": result=self.jobs.cancel(p["run_id"])
             elif command=="list_strategies": result=self.store.strategies()
@@ -50,6 +56,10 @@ class AppService:
                 result["trusted"]=self.store.is_trusted(result["trust_sha256"])
             elif command=="list_datasets":
                 result=[{k:m[k] for k in ("id","market","symbol","range","coverage")} for m in self.datasets.list()]
+            elif command=="dataset_profile": result=metadata_profile_fields(self.datasets.describe(p["dataset_id"]))
+            elif command=="download_start": result=self.downloads.start(**p)
+            elif command=="download_status": result=self.downloads.status()
+            elif command=="download_cancel": result=self.downloads.cancel()
             response={"version":1,"id":request_id,"type":"result","result":result}
             if len(canonical(response))>1024*1024: raise ValueError("Response exceeds IPC budget; request a smaller page")
             return response
@@ -58,3 +68,4 @@ class AppService:
 
     def close(self):
         self.jobs.close()
+        self.downloads.close()
