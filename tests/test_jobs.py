@@ -88,10 +88,11 @@ class JobTests(unittest.TestCase):
             return service.handle({"version":1,"id":"test","command":command,"params":params})
         self.assertEqual(call("eval",{"code":"raise Exception()"})["type"],"error")
         self.assertEqual(call("list_runs",{"path":"outside"})["type"],"error")
-        response=call("save_graph",{"name":"Example","graph":example_graph(),"layout":{"close":{"x":1,"y":2}},"strategy_id":None})
+        response=call("save_graph",{"name":"Example","graph":example_graph(),"layout":{"close":{"x":1,"y":2}},"strategy_id":None,"profile":Profile().snapshot()})
         self.assertEqual(response["type"],"result",response)
         saved=call("get_strategy",{"strategy_id":response["result"]["strategy_id"]})
         self.assertEqual(saved["result"]["document"]["graph"],example_graph())
+        self.assertEqual(saved["result"]["profile"],Profile().snapshot())
         self.assertEqual(call("result_page",{"run_id":"bad","kind":"candles","offset":0,"limit":100000})["type"],"error")
 
     def test_second_application_cannot_recover_a_live_workspaces_jobs(self):

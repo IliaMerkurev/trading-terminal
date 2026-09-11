@@ -4,7 +4,7 @@ use std::{io::{BufRead,BufReader,Write}, path::PathBuf, process::{Child,ChildStd
 use std::os::windows::process::CommandExt;
 use tauri::{WebviewUrl,WebviewWindowBuilder};
 
-struct Exchange { input: Option<ChildStdin>, responses: mpsc::Receiver<Result<Value,String>> }
+struct Exchange { input: Option<ChildStdin>, responses: mpsc::Receiver<Result<Value,String>>, failed: bool }
 struct Backend { exchange: Mutex<Exchange>, process: Mutex<Child> }
 impl Backend {
     fn start(root: &PathBuf) -> Result<Self,String> {
@@ -29,16 +29,20 @@ impl Backend {
                 }
             }
         });
-        Ok(Self{exchange:Mutex::new(Exchange{input:Some(input),responses:rx}),process:Mutex::new(child)})
+        Ok(Self{exchange:Mutex::new(Exchange{input:Some(input),responses:rx,failed:false}),process:Mutex::new(child)})
     }
     fn request(&self,message:Value)->Result<Value,String> {
         let raw=serde_json::to_vec(&message).map_err(|e|e.to_string())?;
         if raw.len()>1024*1024{return Err("Request exceeds 1 MiB".into());}
         let mut exchange=self.exchange.lock().map_err(|_|"Service lock failed")?;
+        if exchange.failed{return Err("Service connection failed. Restart the application and inspect saved history before retrying a write.".into());}
         let input=exchange.input.as_mut().ok_or("Service is closed")?;
         input.write_all(&raw).and_then(|_|input.write_all(b"\n")).and_then(|_|input.flush()).map_err(|e|e.to_string())?;
-        let response=exchange.responses.recv_timeout(Duration::from_secs(30)).map_err(|_|"Research service did not respond within 30 seconds")??;
-        if response.get("id")!=message.get("id"){return Err("Service response identifier mismatch".into());}
+        let response=match exchange.responses.recv_timeout(Duration::from_secs(30)){
+            Ok(Ok(value))=>value,
+            _=>{exchange.failed=true;return Err("Research service response failed or exceeded 30 seconds. The operation may have completed; restart and inspect saved history before retrying.".into());}
+        };
+        if response.get("id")!=message.get("id"){exchange.failed=true;return Err("Service response identifier mismatch; restart the application".into());}
         Ok(response)
     }
     fn shutdown(&self) {
@@ -60,12 +64,19 @@ async fn close_application(app:tauri::AppHandle,state:tauri::State<'_,Arc<Backen
     tauri::async_runtime::spawn_blocking(move || backend.shutdown()).await.map_err(|e|e.to_string())?;
     app.exit(0);Ok(())
 }
+#[tauri::command]
+fn open_exports()->Result<(),String>{
+    let folder=PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join(".local-data/exports");
+    std::fs::create_dir_all(&folder).map_err(|e|e.to_string())?;
+    Command::new("explorer.exe").arg(folder).spawn().map_err(|e|e.to_string())?;
+    Ok(())
+}
 fn main(){
     let root=PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
     let backend=Arc::new(Backend::start(&root).expect("Local research service failed to start"));
     let exit_backend=Arc::clone(&backend);
     let application=tauri::Builder::default().manage(backend)
-        .invoke_handler(tauri::generate_handler![research_request,close_application])
+        .invoke_handler(tauri::generate_handler![research_request,close_application,open_exports])
         .setup(move |app|{
             WebviewWindowBuilder::new(app,"main",WebviewUrl::App("index.html".into()))
                 .title("Trading Terminal").inner_size(1440.0,940.0).min_inner_size(1000.0,700.0)

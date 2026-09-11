@@ -1,8 +1,11 @@
 """Versioned application IPC dispatch; no arbitrary methods, paths or code."""
 from terminal.data import DatasetStore,canonical,metadata_profile_fields
 from terminal.downloads import DownloadManager
+from terminal.archives import ArchiveManager
+from terminal.comparison import compare_runs
 from terminal.graph import validate_graph
 from terminal.jobs import JobManager
+from terminal.profile import Profile
 
 
 class AppService:
@@ -11,6 +14,7 @@ class AppService:
         self.store=self.jobs.store
         self.datasets=DatasetStore(self.store.root/"datasets")
         self.downloads=DownloadManager(self.store.root)
+        self.archives=ArchiveManager(self.store)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -23,12 +27,14 @@ class AppService:
             p=message["params"]; command=message["command"]
             fields={"list_runs":set(),"run_status":{"run_id"},"result_page":{"run_id","kind","offset","limit"},
                 "start_run":{"strategy","profile","dataset_id"},"cancel_run":{"run_id"},
-                "list_strategies":set(),"save_graph":{"name","graph","layout","strategy_id"},
+                "list_strategies":set(),"save_graph":{"name","graph","layout","strategy_id","profile"},
                 "get_strategy":{"strategy_id"},"list_datasets":set(),"run_manifest":{"run_id"},
-                "preview_native":{"document"},"save_native":{"name","document","strategy_id"},
+                "preview_native":{"document"},"save_native":{"name","document","strategy_id","profile"},
                 "trust_native":{"document","expected_sha256","acknowledge_user_permissions"},
                 "dataset_profile":{"dataset_id"},"download_start":{"market","symbol","start","end"},
-                "download_status":set(),"download_cancel":set(),"chart_window":{"run_id","start","minutes"},"run_logs":{"run_id"}}
+                "download_status":set(),"download_cancel":set(),"chart_window":{"run_id","start","minutes"},"run_logs":{"run_id"},
+                "compare_runs":{"run_ids"},"archive_export":{"strategy","profile","run_ids"},"archive_begin":{"size"},
+                "archive_append":{"upload_id","offset","data"},"archive_finish":{"upload_id"},"archive_cancel":set()}
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command=="list_runs": result=self.store.recent()
@@ -43,23 +49,31 @@ class AppService:
             elif command=="get_strategy": result=self.store.strategy(p["strategy_id"])
             elif command=="save_graph":
                 validate_graph(p["graph"])
-                result={"strategy_id":self.store.save_strategy(p["name"],"graph",{"graph":p["graph"],"layout":p["layout"]},p["strategy_id"])}
+                profile=Profile(**p['profile']).snapshot()
+                result={"strategy_id":self.store.save_strategy(p["name"],"graph",{"graph":p["graph"],"layout":p["layout"]},p["strategy_id"],profile=profile)}
             elif command in ("preview_native","save_native","trust_native"):
                 from terminal.native import preview
                 result=preview(p["document"])
                 if command=="save_native":
-                    result["strategy_id"]=self.store.save_strategy(p["name"],"native",p["document"],p["strategy_id"])
+                    profile=Profile(**p['profile']).snapshot()
+                    result["strategy_id"]=self.store.save_strategy(p["name"],"native",p["document"],p["strategy_id"],profile=profile)
                 elif command=="trust_native":
                     if p["acknowledge_user_permissions"] is not True or p["expected_sha256"]!=result["trust_sha256"]:
                         raise ValueError("Explicit confirmation must match the previewed Python source")
                     self.store.trust_native(result["trust_sha256"])
                 result["trusted"]=self.store.is_trusted(result["trust_sha256"])
             elif command=="list_datasets":
-                result=[{k:m[k] for k in ("id","market","symbol","range","coverage")} for m in self.datasets.list()]
+                result=[{k:m[k] for k in ("id","market","symbol","range","coverage","source")} for m in self.datasets.list()]
             elif command=="dataset_profile": result=metadata_profile_fields(self.datasets.describe(p["dataset_id"]))
             elif command=="download_start": result=self.downloads.start(**p)
             elif command=="download_status": result=self.downloads.status()
             elif command=="download_cancel": result=self.downloads.cancel()
+            elif command=="compare_runs": result=compare_runs(self.store,p['run_ids'])
+            elif command=="archive_export": result=self.archives.export(**p)
+            elif command=="archive_begin": result=self.archives.begin(**p)
+            elif command=="archive_append": result=self.archives.append(**p)
+            elif command=="archive_finish": result=self.archives.finish(**p)
+            elif command=="archive_cancel": result=self.archives.cancel()
             response={"version":1,"id":request_id,"type":"result","result":result}
             if len(canonical(response))>1024*1024: raise ValueError("Response exceeds IPC budget; request a smaller page")
             return response

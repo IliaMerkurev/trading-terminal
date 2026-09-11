@@ -40,6 +40,8 @@ class RunStore:
                 CREATE TABLE IF NOT EXISTS native_trust(identity TEXT PRIMARY KEY, granted_at TEXT NOT NULL);
             """)
             db.execute(f"CREATE INDEX IF NOT EXISTS series_time ON series(run_id,kind,({TIME_SQL}))")
+            if 'profile' not in {row[1] for row in db.execute('PRAGMA table_info(strategies)')}:
+                db.execute('ALTER TABLE strategies ADD COLUMN profile TEXT')
 
     @contextmanager
     def connect(self):
@@ -63,7 +65,7 @@ class RunStore:
         return run_id
 
     def status(self,run_id,status,error=None):
-        if status not in ("created","running","cancel_requested","cancelled","failed","interrupted"):
+        if status not in ("created","running","cancel_requested","cancelled","failed","interrupted","importing"):
             raise ValueError("Invalid worker status")
         with self.connect() as db:
             changed=db.execute("UPDATE runs SET status=?,error=? WHERE id=? AND status!='completed'",
@@ -85,9 +87,10 @@ class RunStore:
             rows=db.execute("SELECT id,created_at,status,error,summary FROM runs ORDER BY created_at DESC LIMIT ?",(limit,)).fetchall()
         return [{**dict(row),"summary":json.loads(row["summary"]) if row["summary"] else None} for row in rows]
 
-    def complete(self,run_id,result):
+    def complete(self,run_id,result,origin='local'):
         run=self.get(run_id)
-        if run["status"]!="running": raise ValueError("Only a running, uncancelled worker can complete")
+        required='running' if origin=='local' else 'importing' if origin=='imported' else None
+        if required is None or run["status"]!=required: raise ValueError("Only a matching active worker or validated import can complete")
         if result.get("status")!="completed" or result.get("manifest_sha256")!=run["manifest"]["snapshot_sha256"]:
             raise ValueError("Worker result does not match the immutable snapshot")
         if result.get("schema_version")!=1 or any(not isinstance(result.get(kind),list) for kind in SERIES):
@@ -96,10 +99,10 @@ class RunStore:
         write_new(self.directory(run_id)/"result.json",raw)
         summary={"metrics":result["metrics"],"profile":result["profile"],"engine":result["engine"],
                  "engine_version":result["engine_version"],"metric_version":result["metric_version"],
-                 "dataset":run["manifest"]["dataset"]["id"],"snapshot":result["manifest_sha256"]}
+                 "dataset":run["manifest"]["dataset"]["id"],"snapshot":result["manifest_sha256"],"origin":origin,"history_omitted":result.get('history_omitted',False)}
         with self.connect() as db:
             state=db.execute("SELECT status FROM runs WHERE id=?",(run_id,)).fetchone()[0]
-            if state!="running": raise ValueError("Run cancelled before completion")
+            if state!=required: raise ValueError("Run cancelled before completion")
             for kind in SERIES:
                 db.executemany("INSERT INTO series VALUES(?,?,?,?)",
                     ((run_id,kind,index,canonical(row).decode()) for index,row in enumerate(result[kind])))
@@ -150,14 +153,14 @@ class RunStore:
         if len(canonical(result))>900*1024: raise ValueError("Chart window exceeds payload budget; choose a shorter window")
         return result
 
-    def save_strategy(self,name,kind,document,strategy_id=None):
+    def save_strategy(self,name,kind,document,strategy_id=None,profile=None):
         if not isinstance(name,str) or not name.strip() or len(name)>120 or kind not in ("graph","native"):
             raise ValueError("Invalid strategy name or format")
         if len(canonical(document))>1024*1024: raise ValueError("Strategy exceeds size budget")
         strategy_id=identifier(strategy_id) if strategy_id else uuid.uuid4().hex
         with self.connect() as db:
-            db.execute("INSERT INTO strategies VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,kind=excluded.kind,document=excluded.document,updated_at=excluded.updated_at",
-                       (strategy_id,name,kind,canonical(document).decode(),datetime.now(timezone.utc).isoformat()))
+            db.execute("INSERT INTO strategies(id,name,kind,document,updated_at,profile) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,kind=excluded.kind,document=excluded.document,updated_at=excluded.updated_at,profile=COALESCE(excluded.profile,strategies.profile)",
+                       (strategy_id,name,kind,canonical(document).decode(),datetime.now(timezone.utc).isoformat(),canonical(profile).decode() if profile is not None else None))
         return strategy_id
 
     def strategies(self):
@@ -168,11 +171,11 @@ class RunStore:
         with self.connect() as db:
             row=db.execute("SELECT * FROM strategies WHERE id=?",(identifier(strategy_id),)).fetchone()
         if row is None: raise ValueError("Strategy does not exist")
-        return {**dict(row),"document":json.loads(row["document"])}
+        return {**dict(row),"document":json.loads(row["document"]),"profile":json.loads(row['profile']) if row['profile'] else None}
 
     def recover(self):
         with self.connect() as db:
-            db.execute("UPDATE runs SET status='interrupted',error='Application exited before worker completion' WHERE status IN ('created','running','cancel_requested')")
+            db.execute("UPDATE runs SET status='interrupted',error='Application exited before worker or import completion' WHERE status IN ('created','running','cancel_requested','importing')")
 
     def trust_native(self,identity):
         if not isinstance(identity,str) or not re.fullmatch(r"[a-f0-9]{64}",identity): raise ValueError("Invalid native trust identity")

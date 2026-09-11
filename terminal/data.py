@@ -204,7 +204,7 @@ class DatasetStore:
     def __init__(self,root):
         self.root=Path(root)
 
-    def save(self,market,symbol,start,end,trade,marks,funding,*,metadata,provenance):
+    def save(self,market,symbol,start,end,trade,marks,funding,*,metadata,provenance,source='Bybit public API'):
         validate_range(market,symbol,start,end)
         def normalized(candles):
             return [{"time":c.time,**{key:float(getattr(c,key)) for key in ("open","high","low","close","volume")}} for c in candles]
@@ -213,7 +213,7 @@ class DatasetStore:
         interval=int(metadata.get("instrument",{}).get("fundingInterval",0))*60
         expected=list(range(((start+interval-1)//interval)*interval,end,interval)) if interval else []
         funding_missing=[t for t in expected if t not in funding]
-        manifest={"schema_version":1,"source":"Bybit public API","market":market,"symbol":symbol,
+        manifest={"schema_version":1,"source":source,"market":market,"symbol":symbol,
             "interval_seconds":60,"range":[start,end],"content_sha256":digest(content),
             "coverage":{"trade":coverage(trade,start,end),"mark":coverage(marks,start,end) if market=="linear" else None,
                 "funding":{"count":len(funding),"expected_using_current_interval":len(expected),"missing_expected":funding_missing,

@@ -53,7 +53,7 @@ class NativeImportTests(unittest.TestCase):
         doc=native_document(source)
         report=self.call("preview_native",{"document":doc})
         self.assertFalse(report["result"]["trusted"])
-        saved=self.call("save_native",{"name":"Vetted fixture","document":doc,"strategy_id":None})
+        saved=self.call("save_native",{"name":"Vetted fixture","document":doc,"strategy_id":None,"profile":Profile().snapshot()})
         self.assertEqual(saved["type"],"result",saved)
         reopened=self.call("get_strategy",{"strategy_id":saved["result"]["strategy_id"]})
         self.assertEqual(reopened["result"]["document"],doc)

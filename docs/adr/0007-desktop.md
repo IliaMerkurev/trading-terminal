@@ -34,8 +34,16 @@ toolchain. Existing Windows MSVC and SDK compiled the host without updates.
 TypeScript and frontend production build pass. UI tests cover graph connections,
 save wiring, nonexecuting native selection/save, and stored-value chart projection.
 The compiled Windows UI was launched and saved a graph through Rust/Python into
-SQLite; this is distinct from component tests. Integrated chart/download and
-active-run shutdown acceptance checks are still in progress.
+SQLite; this is distinct from component tests. Actual desktop checks also cover
+saved-result charts, trade navigation, comparison/export, active minimize/restore,
+and close/return. Component tests verify cancellation-before-exit IPC ordering;
+Windows process tests verify worker-tree cancellation. Native file-dialog and
+owner acceptance distinctions are recorded in the demonstration guide.
+
+Polling permits only one in-flight request per subscription. A protocol timeout
+or mismatched response puts the host connection into a visible failed state,
+requiring restart and history inspection before retrying a write. It never silently
+replays a possibly completed operation.
 
 See [third-party notices](../../THIRD_PARTY_NOTICES.md). Project license and binary
 release permissions remain unchanged.
