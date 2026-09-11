@@ -9,6 +9,17 @@ export function duplicateNodes(graph:Graph,layout:Layout,selected:string[]){
   for(const node of copies){const copy=structuredClone(node);copy.id=ids.get(node.id)!;for(const [port,ref] of Object.entries(copy.inputs)){const [id,p]=ref.split('.');if(ids.has(id))copy.inputs[port]=`${ids.get(id)}.${p}`;}next.nodes.push(copy);const index=graph.nodes.findIndex(n=>n.id===node.id);const pos=layout[node.id]??{x:60+(index%3)*260,y:70+Math.floor(index/3)*180};positions[copy.id]={x:pos.x+40,y:pos.y+40};}
   return {graph:next,layout:positions,selected:[...ids.values()]};
 }
+/** One atomic edit for keyboard and context-menu deletion. Fixed outputs are not IR nodes. */
+export function deleteNodes(graph:Graph,layout:Layout,selected:string[]){
+  const removed=new Set(graph.nodes.filter(n=>selected.includes(n.id)).map(n=>n.id));
+  if(!removed.size)return null;
+  const next=structuredClone(graph),positions=structuredClone(layout);
+  next.nodes=next.nodes.filter(n=>!removed.has(n.id));
+  for(const n of next.nodes)for(const [port,ref] of Object.entries(n.inputs))if(removed.has(ref.split('.')[0]))n.inputs[port]='';
+  for(const output of outputNames)if(removed.has(next.outputs[output]?.split('.')[0]??''))next.outputs[output]=null;
+  for(const id of removed)delete positions[id];
+  return {graph:next,layout:positions};
+}
 export type GraphProblem={node:string;field:string;message:string};
 export function graphProblems(graph:Graph):GraphProblem[]{
   const problems:GraphProblem[]=[];const add=(node:string,field:string,message:string)=>problems.push({node,field,message});

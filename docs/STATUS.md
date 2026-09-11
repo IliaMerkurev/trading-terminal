@@ -1,5 +1,9 @@
 # Implementation status
 
+## Product 0.3 in progress
+
+0.2 remains the accepted main baseline. The 0.3 development branch implements the authorized [live/paper scope](../PROJECT.md#19-product-03-live-monitoring-and-paper-trading); it is not yet an accepted or complete build. Shared historical/replay signal evaluation passes four independent transition, crossing, forming/closed and future-perturbation tests. Following that refactor, 96 Python regressions passed in 37.656s and 23 frontend tests passed in 2.66s; TypeScript/Vite passed. Node deletion has component/history coverage; native acceptance remains pending. Four additional local-journal tests cover gap blocking, reconstruction, durable notification attempts and additive schema preservation. Public transport, notification delivery and paper integration are still in progress; these unit checks do not establish actual live behavior.
+
 ## Current product: 0.2 development build
 
 Product milestones previously called V1 and V2 are now 0.1 and 0.2. These names never meant stable 1.0/2.0 releases. Protocol/schema/profile integers and ADR numbers are unchanged. The normal main checkout builds and launches `Trading Terminal`, with `0.2-dev` shown separately from the permanent window title. Product version comes from Cargo package metadata; no temporary parallel checkout is required.

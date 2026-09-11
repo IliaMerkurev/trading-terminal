@@ -23,6 +23,7 @@ from nautilus_trader.trading.strategy import Strategy
 from terminal.profile import Profile, dec
 from terminal.risk_gateway import RiskGateway, ProfileViolation
 from terminal.series import Candle, PartialBars
+from terminal.signals import SignalStream
 
 VENUE = Venue("RESEARCH")
 NS = 1_000_000_000
@@ -56,7 +57,7 @@ class ProfileStrategy(Strategy):
         self.candles = candles
         self.evaluator = evaluator
         self.progress, self.seen = progress, 0
-        self.frames = PartialBars(profile.primary_minutes)
+        self.signal_stream = SignalStream(evaluator, profile.primary_minutes, profile.evaluation)
         self.fills, self.diagnostics, self.indicators = [], [], []
         self.reason = "entry"
         self.protections = None
@@ -74,12 +75,9 @@ class ProfileStrategy(Strategy):
         if self.seen == 1 or self.seen % 256 == 0 or self.seen == len(self.candles):
             self.progress(self.seen/len(self.candles))
         candle = self.candles[bar.ts_init]
-        _, complete = self.frames.update(candle)
-        if self.profile.evaluation == "closed" and not complete:
+        result = self.signal_stream.update(candle)
+        if result is None:
             return
-        if not self.frames.count:
-            return
-        result = self.evaluator(self.frames.snapshot(), candle.time + 60, complete)
         if self.trade_start is not None and candle.time<self.trade_start:return
         signals = result.get("signals", {})
         self.indicators.append({"time":candle.time + 60, "values":result.get("values", {}), "signals":signals})

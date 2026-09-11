@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Product version: 0.2 development build. Status: 0.1 baseline retained; agreed 0.2 accepted and merged into main. Sections 1–11 retain the 0.1 contract; sections 12–18 define the 0.2 extension. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
+Product version: 0.3 development build (implementation in progress; not yet accepted). Product 0.2 remains the accepted main baseline. Sections 1–11 retain the 0.1 contract; sections 12–18 retain 0.2; section 19 defines the authorized 0.3 extension and supersedes earlier deferral of live monitoring, notifications and paper trading. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
 
 ## 1. Purpose and delivery target
 
@@ -191,4 +191,48 @@ Verify node creation coordinates and single insertion after pan/zoom/resize/pane
 
 Independent protective execution tests cover both versions, directions, paths, crossing/gaps, activation, costs and conflicts. Migration preserves exact 0.1 strategy/result values and archive readability. A2x2 batch produces four unique results identical to corresponding single runs including trades/costs. Test editor mutation, invalid parameters, worker failures, cancellation and interruption without losing completed runs or starting extra work.
 
-OOS never participates in selection; verify causal warmup/fresh capital and future perturbation. Build Windows separately, reopen results, check import/navigation/active-batch cancellation and child cleanup. Distinguish component/automated/native checks from manual acceptance. Document exact commands, actual outcomes, bounded time/memory observations and limitations. Prepare an independent-data 0.2 demo; preserve 0.1 golden tests or explicitly version changed contracts. Do not expand into 0.3.
+OOS never participates in selection; verify causal warmup/fresh capital and future perturbation. Build Windows separately, reopen results, check import/navigation/active-batch cancellation and child cleanup. Distinguish component/automated/native checks from manual acceptance. Document exact commands, actual outcomes, bounded time/memory observations and limitations. Prepare an independent-data 0.2 demo; preserve 0.1 golden tests or explicitly version changed contracts. This was the 0.2 acceptance boundary; section 19 separately authorizes 0.3.
+
+## 19. Product 0.3: live monitoring and paper trading
+
+### Shared strategy semantics
+
+Run a strategy already usable in historical backtesting against public live Bybit data without submitting exchange orders. Keep the selected stack/engine. Historical, live and recorded replay use the same Strategy IR indicators, initialization, crossings, Boolean logic, UTC timeframe boundaries, closed/forming-bar evaluation and transitions. Do not introduce a simplified live strategy. Document differences between observed live execution and historical synthetic paths. Forming primary-bar evaluation retains confirmed M1 updates inside the primary bar; live ticks may update price/protection without silently changing the IR evaluation cadence. Unsupported native behavior must fail visibly, never silently convert source into graph logic.
+
+### Public data, recovery and persistence
+
+Support one active strategy/instrument session. Use public spot and linear Bybit WebSocket market streams plus authorized REST history, without exchange credentials or order endpoints. Distinguish trade/last price, confirmed candles, mark and funding. Validate initial connection, disconnect/reconnect, duplicates, stale/out-of-order events, Windows sleep/wake, short network interruptions and missing minute ranges. Use backoff and prevent duplicated subscriptions/retry storms.
+
+Before returning to CONNECTED after a gap, determine the missing range, reconstruct complete history, recalculate state, and verify synchronization. No notifications may escape unverified intermediate recovery state. A connected socket alone does not establish valid strategy state. Persist last valid data time, strategy/profile identity, session state and paper position. Restart discloses interrupted activity and requires recovery/revalidation when safe continuity cannot be established; never blindly resume paper trading over a long gap. Closing the application stops monitoring; no Windows service or always-on daemon.
+
+### Signal events and notifications
+
+FALSE→TRUE creates one event, TRUE→TRUE creates none, TRUE→FALSE resets. Store session, strategy identity/version, instrument, market, timeframe, evaluation mode, event type, observed timestamp, applicable observed/executable price and indicator snapshot. Define restart and durable notification-attempt semantics to avoid accidentally replaying old alerts. Distinguish warmup/recovered events from newly observed live events.
+
+Provide independent Windows native, optional sound and direct local Telegram channels, with a Test control for each. Support Entry/Exit Long/Short; useful connection/recovery errors and paper protection events may also notify. Telegram configuration, test and clear use an owner UI flow and protected Windows credential storage. Never save token/chat ID in plaintext SQLite/JSON, logs, exports, screenshots/demo records, public diagnostics or task descriptions. Never reveal the full saved token. Delivery failure must not block strategy evaluation; bound dispatch queues and retries. Mock tests are not evidence of native Windows delivery. Owner-entered Telegram credentials are optional for manual acceptance, never requested through chat.
+
+### Observed-price paper account
+
+Use the retained engine/account model for one virtual position: initial capital, unborrowed spot, supported perpetual long/short, entry/full exit, simple stop/take, fees, explicit slippage, funding when adequately observed, PnL/equity and trade history. Execute from actual observed prices/events, not copied historical fills or leveraged spot PnL. Separate mark valuation from executable trade price. Disclose fill latency/liquidity, precision/tier/funding assumptions and missing observations. Paper execution is not a promise of real exchange fill equivalence. Recovery cannot invent missed executable ticks; uncertain paper continuity requires explicit revalidation.
+
+### Dashboard and strategy status
+
+Preserve the existing layout with Strategy / Backtest / Experiments / Live / Results. Select strategy, instrument, supported market, primary timeframe, closed/forming evaluation, paper mode and notification channels. Show connection state, current price/candle, recorded indicator values, all four condition states, recent signals, paper position, errors and recovery progress. Show meaningful CONNECTED / RECONNECTING / RECOVERING DATA / PAUSED / ERROR states. Provide readable events such as candle closed, condition became true, position opened, lost connection, recovering missing candles and failed delivery; raw protocol JSON is not the main UI. Simple Backtested/Live/Paper status identifies the monitored strategy without a new workflow engine.
+
+### Node deletion
+
+Delete/Del on the focused canvas removes selected ordinary nodes in one transaction and cleans all references/edges. Inputs, textareas and editable controls keep normal text editing. Fixed Entry/Exit outputs cannot be deleted. Undo restores nodes, layout and connections exactly; Redo repeats the same logical deletion, including multiselect. Node right-click opens a separate extensible menu containing only Delete node for 0.3. It must not open the canvas Add Node menu. Keyboard and context menu call the same underlying operation; the existing canvas search/add behavior remains.
+
+### Recording, safety and acceptance
+
+Persist enough causal live observations for reproducible replay with the same IR and compatible assumptions. Independently expected closed/forming, crossing, duplicate suppression, reconnect/recovered candle, restart/recovery and future-perturbation scenarios must match signal times/types (for example Entry Long at 14:31 in both). Explicitly separate signal equivalence from potentially different paper/historical fill results.
+
+All migrations are additive and first tested on a consistent copy. Preserve existing strategies, runs, experiments, comparisons and archives with exact prior values; backup before ordinary-data migration. Live/demo/testing use separate data roots, never replace user data. Bound in-memory histories, UI logs, dispatch queues and retries; measure a sustained live demonstration and disclose resource limits.
+
+Run all Python/frontend regressions plus deterministic stream/reconnect/gap/staleness/order/restoration/dedup/dispatch/Telegram failure, paper accounting/cost/protection/restart, recording equivalence/future perturbation, deletion/history and migration tests. Financial and temporal goldens use independently expected outcomes. Build and launch Windows from codex/03; verify Live, actual public data, safe reconnect, native notification/sound, paper lifecycle, minimize/restore/shutdown and editor menus/Delete. Test 100%/125%/150% scale where practical without changing unrelated applications. Unperformed native/Telegram/manual checks remain explicit acceptance items.
+
+Keep Linear as the primary tracker with dependencies and actual evidence; Done requires tested behavior. Prepare a reviewed draft PR to main with secret/privacy/license checks. No autonomous main merge. Product 0.3 ends at owner acceptance preparation, not automatic 0.4.
+
+### Exclusions
+
+No real orders, exchange trading credentials, automatic live trading, DCA/averaging, partial exits, trailing/break-even/ATR position management, simultaneous instruments, visual multi-timeframe extension, AI, second engine/exchange, mobile app, background service or installer/release packaging (except a separately justified existing build blocker). No paid services, system security changes, project license assignment, release/tag/deployment or scope expansion.
