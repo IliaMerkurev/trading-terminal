@@ -23,6 +23,7 @@ from nautilus_trader.trading.strategy import Strategy
 from terminal.profile import Profile, dec
 from terminal.risk_gateway import RiskGateway, ProfileViolation
 from terminal.series import Candle, PartialBars
+from terminal.signals import SignalStream
 
 VENUE = Venue("RESEARCH")
 NS = 1_000_000_000
@@ -56,7 +57,7 @@ class ProfileStrategy(Strategy):
         self.candles = candles
         self.evaluator = evaluator
         self.progress, self.seen = progress, 0
-        self.frames = PartialBars(profile.primary_minutes)
+        self.signal_stream = SignalStream(evaluator, profile.primary_minutes, profile.evaluation)
         self.fills, self.diagnostics, self.indicators = [], [], []
         self.reason = "entry"
         self.protections = None
@@ -74,16 +75,17 @@ class ProfileStrategy(Strategy):
         if self.seen == 1 or self.seen % 256 == 0 or self.seen == len(self.candles):
             self.progress(self.seen/len(self.candles))
         candle = self.candles[bar.ts_init]
-        _, complete = self.frames.update(candle)
-        if self.profile.evaluation == "closed" and not complete:
+        result = self.signal_stream.update(candle)
+        if result is None:
             return
-        if not self.frames.count:
-            return
-        result = self.evaluator(self.frames.snapshot(), candle.time + 60, complete)
         if self.trade_start is not None and candle.time<self.trade_start:return
         signals = result.get("signals", {})
         self.indicators.append({"time":candle.time + 60, "values":result.get("values", {}), "signals":signals})
-        if self.protections.exit_minute == candle.time:
+        self.apply_signals(signals,candle.time)
+
+    def apply_signals(self,signals,minute):
+        """Shared position policy; signal computation remains in SignalStream."""
+        if self.protections.exit_minute == minute:
             return
         positions = self.cache.positions_open(instrument_id=self.asset.id)
         if positions:
@@ -93,19 +95,19 @@ class ProfileStrategy(Strategy):
             return  # Entries cannot scale, reverse, or reenter after a same-step exit.
         long, short = bool(signals.get("entry_long")), bool(signals.get("entry_short"))
         if long and short:
-            self.diagnostics.append({"time":candle.time+60, "message":"Simultaneous long/short entries skipped"})
+            self.diagnostics.append({"time":minute+60, "message":"Simultaneous long/short entries skipped"})
             return
         if not long and not short:
             return
         if short and self.profile.market == "spot":
-            self.diagnostics.append({"time":candle.time+60, "message":"Spot short signal ignored: unleveraged market"})
+            self.diagnostics.append({"time":minute+60, "message":"Spot short signal ignored: unleveraged market"})
             return
         account = self.cache.account_for_venue(VENUE)
         quote = self.cache.quote_tick(self.asset.id)
         price = quote.ask_price if long else quote.bid_price
         quantity = self.profile.size(account.balance_total(USDT).as_decimal(), price.as_decimal())
         if not quantity:
-            self.diagnostics.append({"time":candle.time+60, "message":"Entry skipped: capital or minimum size constraint"})
+            self.diagnostics.append({"time":minute+60, "message":"Entry skipped: capital or minimum size constraint"})
             return
         self.reason = "entry"
         self.submit_order(self.order_factory.market(self.asset.id, OrderSide.BUY if long else OrderSide.SELL,

@@ -17,6 +17,8 @@ class AppService:
         self.archives=ArchiveManager(self.store)
         from terminal.experiments import ExperimentManager
         self.experiments=ExperimentManager(self.jobs)
+        from terminal.live import LiveManager
+        self.live=LiveManager(self.store)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -42,9 +44,23 @@ class AppService:
                 list_experiments=set(),experiment_status={'experiment_id'},experiment_cancel={'active_id'},
                 experiment_freeze={'experiment_id','ordinal'},experiment_copy={'experiment_id','ordinal'},experiment_validate={'validation_id'},
                 start_window_run={'strategy','profile','dataset_id','window'})
+            fields.update(live_start={'strategy_id','profile','paper','channels'},live_status=set(),live_pause=set(),
+                          live_resume={'session_id','revalidate_paper'},live_replay={'session_id'},live_select={'session_id'},
+                          notification_test={'channel'},telegram_configure={'token','chat_id'},telegram_clear=set())
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
-            if command=="list_runs": result=self.store.recent()
+            if command=='live_start':result=self.live.start(**p)
+            elif command=='live_status':result=self.live.status()
+            elif command=='live_pause':result=self.live.pause()
+            elif command=='live_select':result=self.live.select(**p)
+            elif command=='live_resume':result=self.live.resume(**p)
+            elif command=='live_replay':result=self.live.replay(**p)
+            elif command=='notification_test':result=self.live.test_notification(**p)
+            elif command=='telegram_configure':
+                self.live.telegram.credentials.save(p['token'],p['chat_id']);result=self.live.telegram.status()
+            elif command=='telegram_clear':
+                self.live.telegram.credentials.clear();result=self.live.telegram.status()
+            elif command=="list_runs": result=self.store.recent()
             elif command=="run_status": result=self.jobs.status(p["run_id"])
             elif command=="run_logs": result=self.jobs.logs(p["run_id"])
             elif command=="run_manifest": result=self.store.get(p["run_id"])["manifest"]
@@ -105,6 +121,7 @@ class AppService:
             return {"version":1,"id":request_id,"type":"error","error":{"code":"REQUEST_FAILED","message":str(exc)[:2000]}}
 
     def close(self):
+        self.live.close()
         self.experiments.close()
         self.jobs.close()
         self.downloads.close()

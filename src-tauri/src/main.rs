@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::{io::{BufRead,BufReader,Write}, path::PathBuf, process::{Child,ChildStdin,Command,Stdio}, sync::{Arc,Mutex,mpsc}, time::Duration};
 use std::os::windows::process::CommandExt;
 use tauri::{WebviewUrl,WebviewWindowBuilder};
+mod notification;
 
 struct Exchange { input: Option<ChildStdin>, responses: mpsc::Receiver<Result<Value,String>>, failed: bool }
 struct Backend { exchange: Mutex<Exchange>, process: Mutex<Child>, startup_error: Option<String> }
@@ -10,6 +11,7 @@ impl Backend {
     fn start(root: &PathBuf) -> Result<Self,String> {
         let python=std::env::var_os("TRADING_TERMINAL_PYTHON").map(PathBuf::from).unwrap_or_else(||root.join(".venv/Scripts/python.exe"));
         let mut child=Command::new(python).args(["-m","terminal.bridge"]).arg("--data-root").arg(storage_root(root)?).current_dir(root)
+            .env("TRADING_TERMINAL_HOST",std::env::current_exe().map_err(|_| "Cannot locate desktop host")?)
             .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).creation_flags(0x08000000)
             .spawn().map_err(|e|format!("Cannot start project Python service: {e}"))?;
         let input=child.stdin.take().ok_or("Python stdin unavailable")?;
@@ -84,6 +86,13 @@ fn open_exports()->Result<(),String>{
     Ok(())
 }
 fn main(){
+    let args:Vec<String>=std::env::args().collect();
+    if args.get(1).map(String::as_str)==Some("--notification") {
+        match args.get(2).ok_or("Missing notification text".to_string()).and_then(|text|notification::show(text)) {
+            Ok(())=>std::process::exit(0),
+            Err(_)=>std::process::exit(1),
+        }
+    }
     let root=PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
     let backend=Arc::new(Backend::start(&root).expect("Local research service failed to start"));
     let exit_backend=Arc::clone(&backend);

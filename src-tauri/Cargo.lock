@@ -3586,12 +3586,13 @@ dependencies = [
 
 [[package]]
 name = "trading-terminal"
-version = "0.2.0-dev"
+version = "0.3.0-dev"
 dependencies = [
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
+ "windows",
 ]
 
 [[package]]
