@@ -81,7 +81,11 @@ class ProfileStrategy(Strategy):
         if self.trade_start is not None and candle.time<self.trade_start:return
         signals = result.get("signals", {})
         self.indicators.append({"time":candle.time + 60, "values":result.get("values", {}), "signals":signals})
-        if self.protections.exit_minute == candle.time:
+        self.apply_signals(signals,candle.time)
+
+    def apply_signals(self,signals,minute):
+        """Shared position policy; signal computation remains in SignalStream."""
+        if self.protections.exit_minute == minute:
             return
         positions = self.cache.positions_open(instrument_id=self.asset.id)
         if positions:
@@ -91,19 +95,19 @@ class ProfileStrategy(Strategy):
             return  # Entries cannot scale, reverse, or reenter after a same-step exit.
         long, short = bool(signals.get("entry_long")), bool(signals.get("entry_short"))
         if long and short:
-            self.diagnostics.append({"time":candle.time+60, "message":"Simultaneous long/short entries skipped"})
+            self.diagnostics.append({"time":minute+60, "message":"Simultaneous long/short entries skipped"})
             return
         if not long and not short:
             return
         if short and self.profile.market == "spot":
-            self.diagnostics.append({"time":candle.time+60, "message":"Spot short signal ignored: unleveraged market"})
+            self.diagnostics.append({"time":minute+60, "message":"Spot short signal ignored: unleveraged market"})
             return
         account = self.cache.account_for_venue(VENUE)
         quote = self.cache.quote_tick(self.asset.id)
         price = quote.ask_price if long else quote.bid_price
         quantity = self.profile.size(account.balance_total(USDT).as_decimal(), price.as_decimal())
         if not quantity:
-            self.diagnostics.append({"time":candle.time+60, "message":"Entry skipped: capital or minimum size constraint"})
+            self.diagnostics.append({"time":minute+60, "message":"Entry skipped: capital or minimum size constraint"})
             return
         self.reason = "entry"
         self.submit_order(self.order_factory.market(self.asset.id, OrderSide.BUY if long else OrderSide.SELL,

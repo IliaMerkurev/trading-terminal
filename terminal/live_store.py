@@ -114,7 +114,9 @@ class LiveSession:
     def ingest(self, candle, observed_ms, source='live'):
         if source not in ('live','recovered','warmup') or type(observed_ms) is not int or observed_ms<(candle.time+60)*1000:
             raise ValueError('Only closed candles with valid observation times may be evaluated')
-        raw = canonical(asdict(candle)).decode()
+        normalized=asdict(candle)
+        normalized.update({key:float(normalized[key]) for key in ('open','high','low','close','volume')})
+        raw = canonical(normalized).decode()
         if self.last is not None and candle.time<=self.last:
             with self.store.store.connect() as db:
                 existing = db.execute('SELECT candle FROM live_candles WHERE session_id=? AND time=?',(self.id,candle.time)).fetchone()

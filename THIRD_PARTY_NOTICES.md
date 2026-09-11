@@ -7,6 +7,7 @@ versions; dependency source is not vendored in this repository.
 | Component | Version | License |
 | --- | --- | --- |
 | NautilusTrader | 1.231.0 | LGPL-3.0-or-later |
+| websockets | 15.0.1 | BSD-3-Clause |
 | Tauri / Tauri build | 2.11.5 / 2.6.3 | MIT OR Apache-2.0 |
 | Tauri JavaScript API / CLI | 2.11.1 / 2.11.4 | MIT OR Apache-2.0 |
 | React / React DOM | 19.3.0 | MIT |
