@@ -32,6 +32,8 @@ class LiveStore:
                     id TEXT PRIMARY KEY, session_id TEXT NOT NULL, time INTEGER NOT NULL,
                     event TEXT NOT NULL, delivery TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS live_signal_time ON live_signals(session_id,time);
+                CREATE TABLE IF NOT EXISTS live_evaluations(session_id TEXT NOT NULL,time INTEGER NOT NULL,
+                    evaluation TEXT NOT NULL,PRIMARY KEY(session_id,time));
             ''')
 
     def create(self, graph, profile, strategy_id, strategy_name):
@@ -83,6 +85,23 @@ class LiveStore:
         with self.store.connect() as db:
             return db.execute("UPDATE live_signals SET delivery='claimed' WHERE id=? AND delivery='pending'",(event_id,)).rowcount == 1
 
+    def chart(self,session_id):
+        """A bounded presentation window; interval selection never reaches the IR."""
+        sid=identifier(session_id)
+        self.get(sid)
+        with self.store.connect() as db:
+            rows=db.execute('SELECT candle FROM live_candles WHERE session_id=? ORDER BY time DESC LIMIT 2880',(sid,)).fetchall()
+            candles=[json.loads(row['candle']) for row in reversed(rows)]
+            start=candles[0]['time'] if candles else 0
+            evaluations=[json.loads(row['evaluation']) for row in db.execute('SELECT evaluation FROM live_evaluations WHERE session_id=? AND time>=? ORDER BY time LIMIT 2881',(sid,start))]
+            signals=[json.loads(row['event']) for row in db.execute('SELECT event FROM live_signals WHERE session_id=? AND time>=? ORDER BY time DESC LIMIT 200',(sid,start))]
+            fills=[]
+            # Use the filled-observation index, not a narrow recent-tick window.
+            results=db.execute("SELECT result FROM paper_observations WHERE session_id=? AND json_array_length(json_extract(result,'$.fills'))>0 ORDER BY sequence DESC LIMIT 200",(sid,)).fetchall()
+            for row in reversed(results):fills.extend(json.loads(row['result']).get('fills',[]))
+        return {'session_id':sid,'candles':candles,'evaluations':evaluations,'signals':signals,'fills':fills[-200:],
+                'note':'Up to 2,880 recorded minutes. Indicator samples retain their IR availability timestamps; no indicator recomputation.'}
+
     def delivery(self, event_id, success):
         with self.store.connect() as db:
             db.execute("UPDATE live_signals SET delivery=? WHERE id=? AND delivery='claimed'",('sent' if success else 'failed',event_id))
@@ -132,6 +151,7 @@ class LiveSession:
             result=self.stream.update(candle)
             with self.store.store.connect() as db:
                 db.execute('INSERT INTO live_candles VALUES(?,?,?,?,?)',(self.id,candle.time,raw,source,observed_ms))
+                if result:db.execute('INSERT INTO live_evaluations VALUES(?,?,?)',(self.id,result['time'],canonical(result).decode()))
                 for kind in result['transitions'] if result else []:
                     if source=='warmup':
                         continue

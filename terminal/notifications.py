@@ -10,10 +10,62 @@ import json
 from pathlib import Path
 import re
 from urllib import request
+from urllib.error import HTTPError, URLError
+import ssl
 
 
 class NotificationError(ValueError):
     pass
+
+
+class TelegramDeliveryError(NotificationError):
+    """Only fixed application-owned messages may cross the delivery boundary."""
+    MESSAGES = {
+        'token': 'Telegram rejected the bot token. Copy the current token from BotFather and save it again.',
+        'chat': 'Telegram could not find the chat. Check your personal Chat ID and press Start in this bot.',
+        'forbidden': 'Telegram denied access to the chat. Unblock/start this bot and check the Chat ID.',
+        'blocked': 'Telegram reports that this bot was blocked by the recipient. Unblock it in the recipient account.',
+        'not_started': 'Telegram reports that this bot cannot initiate the conversation. Press Start using the recipient account.',
+        'bot_recipient': 'Telegram reports that the recipient is another bot. Enter your personal user Chat ID, not a bot ID.',
+        'http_forbidden': 'HTTP access was denied without a Telegram error response. Check the network/proxy path.',
+        'rate': 'Telegram rate limit reached. Wait before testing again.',
+        'server': 'Telegram service is temporarily unavailable. Try again later.',
+        'network': 'Cannot connect to Telegram Bot API. Check this computer network/proxy connection.',
+        'tls': 'Telegram HTTPS certificate verification failed. Check the computer clock and certificate setup.',
+        'unknown': 'Telegram delivery failed; verify configuration and connectivity',
+    }
+
+    def __init__(self, code='unknown'):
+        self.code = code if code in self.MESSAGES else 'unknown'
+        super().__init__(self.MESSAGES[self.code])
+
+    @property
+    def safe_message(self):
+        return self.MESSAGES.get(self.code, self.MESSAGES['unknown'])
+
+
+def telegram_rejection(status, body=None):
+    if status == 401:
+        return TelegramDeliveryError('token')
+    if status == 403:
+        if not isinstance(body,dict) or body.get('ok') is not False or body.get('error_code') != 403:
+            return TelegramDeliveryError('http_forbidden')
+        descriptions = {
+            'Forbidden: bot was blocked by the user': 'blocked',
+            "Forbidden: bot can't initiate conversation with a user": 'not_started',
+            "Forbidden: bot can't send messages to bots": 'bot_recipient',
+        }
+        description=body.get('description')
+        if isinstance(description,str) and description in descriptions:
+            return TelegramDeliveryError(descriptions[description])
+        return TelegramDeliveryError('forbidden')
+    if status == 429:
+        return TelegramDeliveryError('rate')
+    if type(status) is int and 500 <= status <= 599:
+        return TelegramDeliveryError('server')
+    if status == 400 and isinstance(body, dict) and body.get('description') == 'Bad Request: chat not found':
+        return TelegramDeliveryError('chat')
+    return TelegramDeliveryError()
 
 
 class Credential(ctypes.Structure):
@@ -101,11 +153,32 @@ class Telegram:
                                 headers={'Content-Type':'application/json'},method='POST')
             with self.opener.open(req,timeout=8) as response:
                 raw=response.read(65537)
-            if len(raw)>65536 or json.loads(raw).get('ok') is not True:
-                raise NotificationError('Telegram delivery failed')
+            if len(raw)>65536:
+                raise TelegramDeliveryError()
+            body=json.loads(raw)
+            if not isinstance(body,dict) or body.get('ok') is not True:
+                raise telegram_rejection(body.get('error_code') if isinstance(body,dict) else None,body)
+        except HTTPError as error:
+            body=None
+            try:
+                raw=error.read(65537)
+                if len(raw)<=65536:body=json.loads(raw)
+            except Exception:
+                pass
+            finally:
+                error.close()
+            raise telegram_rejection(error.code,body) from None
+        except URLError as error:
+            raise TelegramDeliveryError('tls' if isinstance(error.reason,ssl.SSLCertVerificationError) else 'network') from None
+        except ssl.SSLCertVerificationError:
+            raise TelegramDeliveryError('tls') from None
+        except (TimeoutError,ConnectionError):
+            raise TelegramDeliveryError('network') from None
+        except TelegramDeliveryError:
+            raise
         except Exception:
             # Never leak exception URLs, provider response text, token or chat ID.
-            raise NotificationError('Telegram delivery failed; verify configuration and connectivity') from None
+            raise TelegramDeliveryError() from None
 
 
 def play_sound():

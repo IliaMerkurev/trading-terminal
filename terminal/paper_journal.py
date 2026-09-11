@@ -50,14 +50,17 @@ class PaperJournal:
         self.engine=PaperEngine(profile)
         self.sequence=0;self.processed=0;self.previous_ns=None;self.next_funding=None
         self.waiting_funding=False
+        self.fees=dec('0');self.funding=dec('0');self.latest_observation=None
         with store.connect() as db:
             db.execute('''CREATE TABLE IF NOT EXISTS paper_inputs(session_id TEXT NOT NULL,sequence INTEGER NOT NULL,
                 observation TEXT NOT NULL,funding_boundary INTEGER,next_funding INTEGER,PRIMARY KEY(session_id,sequence))''')
             try:
                 for row in db.execute('SELECT sequence,observation,result FROM paper_observations WHERE session_id=? ORDER BY sequence',(session_id,)):
-                    result=self.engine.observe(**json.loads(row['observation']))
+                    observation=json.loads(row['observation'])
+                    result=self.engine.observe(**observation)
                     if canonical(result)!=canonical(json.loads(row['result'])):
                         raise PaperRecordingError('Paper reconstruction differs from committed result')
+                    self._totals(result,observation)
                     self.processed=row['sequence']+1
                 last=db.execute('SELECT * FROM paper_inputs WHERE session_id=? ORDER BY sequence DESC LIMIT 1',(session_id,)).fetchone()
                 if last:
@@ -70,7 +73,7 @@ class PaperJournal:
             except Exception:
                 self.engine.close();raise
 
-    def append(self,price,signals=None):
+    def append(self,price,signals=None,manual_id=None):
         if self.sequence>=self.MAX_OBSERVATIONS:
             raise PaperRecordingError('Paper observation budget reached; pause and review')
         timestamp=max(price['observed_ms']*1000000,(self.previous_ns or 0)+1)
@@ -90,6 +93,9 @@ class PaperJournal:
         try:
             with self.store.connect() as db:
                 db.execute('INSERT INTO paper_inputs VALUES(?,?,?,?,?)',(self.id,self.sequence,canonical(observation).decode(),boundary,self.next_funding))
+                if manual_id:
+                    changed=db.execute("UPDATE manual_paper_requests SET status='recorded',sequence=? WHERE id=? AND session_id=? AND status='queued'",(self.sequence,manual_id,self.id)).rowcount
+                    if changed!=1:raise PaperRecordingError('PAPER request already consumed or cancelled')
         except Exception:
             raise PaperRecordingError('Paper input could not be recorded') from None
         self.previous_ns=timestamp;self.sequence+=1
@@ -113,13 +119,32 @@ class PaperJournal:
                 with self.store.connect() as db:
                     db.execute('INSERT INTO paper_observations VALUES(?,?,?,?)',
                                (self.id,self.processed,canonical(observation).decode(),canonical(result).decode()))
+                    if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='manual_paper_requests'").fetchone():
+                        db.execute("UPDATE manual_paper_requests SET status='applied' WHERE session_id=? AND sequence=? AND status='recorded'",(self.id,self.processed))
             except Exception:
                 self.engine.close()
                 raise PaperRecordingError('Paper result could not be committed; reconstruct before continuing') from None
+            self._totals(result,observation)
             self.processed+=1;self.waiting_funding=False;results.append(result)
         return results
 
+    def _totals(self,result,observation):
+        self.latest_observation=observation
+        self.fees+=sum((dec(fill['fee']) for fill in result['fills']),dec('0'))
+        self.funding+=sum((dec(event['amount']) for event in result['events'] if event.get('type')=='funding'),dec('0'))
+
     def snapshot(self):
-        return {**self.engine.snapshot(),'pending_observations':self.sequence-self.processed,'waiting_funding':self.waiting_funding}
+        result=self.engine.snapshot();position=result['position'];unrealized=dec('0')
+        observation=self.latest_observation or {}
+        price=observation.get('mark') or observation.get('price')
+        if position and price:
+            direction=1 if position['side']=='long' else -1
+            entry=dec(position['entry']);unrealized=(dec(price)-entry)*dec(position['quantity'])*direction
+            position={**position,'stop':str(entry*(1-dec(self.profile.stop_loss)*direction)) if dec(self.profile.stop_loss) else None,
+                      'take':str(entry*(1+dec(self.profile.take_profit)*direction)) if dec(self.profile.take_profit) else None}
+        pnl=dec(result.get('net_pnl','0'))
+        return {**result,'position':position,'pending_observations':self.sequence-self.processed,'waiting_funding':self.waiting_funding,
+                'unrealized_pnl':str(unrealized),'realized_net_pnl':str(pnl-unrealized),'fees':str(self.fees),'funding':str(self.funding),
+                'current_price':observation.get('price'),'mark':observation.get('mark')}
 
     def close(self):self.engine.close()

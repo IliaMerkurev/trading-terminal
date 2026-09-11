@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Product version: 0.3 development build (`0.3-dev`), accepted by the owner with Telegram delivery as a known failing acceptance item. Telegram remains a required channel; its implementation is not a claim of successful delivery. Sections 1–11 retain the 0.1 contract; sections 12–18 retain 0.2; section 19 defines the authorized 0.3 extension and supersedes earlier deferral of live monitoring, notifications and paper trading. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
+Target product version: 0.4 development build (`0.4-dev`). The accepted baseline is 0.3-dev with Telegram delivery as a known issue. Sections 1–11 retain 0.1, 12–18 retain 0.2, 19 retains 0.3 and 20 defines the authorized Live Terminal extension. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
 
 ## 1. Purpose and delivery target
 
@@ -236,3 +236,43 @@ Keep Linear as the primary tracker with dependencies and actual evidence; Done r
 ### Exclusions
 
 No real orders, exchange trading credentials, automatic live trading, DCA/averaging, partial exits, trailing/break-even/ATR position management, simultaneous instruments, visual multi-timeframe extension, AI, second engine/exchange, mobile app, background service or installer/release packaging (except a separately justified existing build blocker). No paid services, system security changes, project license assignment, release/tag/deployment or scope expansion.
+
+## 20. Product 0.4: Live Terminal
+
+### Workspace and shared state
+
+Turn Live into a chart-led realtime market workspace retaining the existing visual style and research workflows. A compact market header, main candlestick chart, order book/tape side panels and switchable Position / Strategy / Signals / Paper Trades / Notifications / Log panels replace mandatory long vertical scrolling. Live settings are contextual/collapsible without changing Backtest or Experiments layouts.
+
+Keep one centrally owned public Bybit V5 market pipeline for ticker, candles, order book and recent trades. Verify current official protocol documentation. Do not duplicate equivalent connections for widgets or change the existing Strategy IR/live/replay engine. Display instrument/market, last price, perpetual mark/funding, 24h change/high/low/volume or turnover where provided. Missing/stale data is explicit. CONNECTED, RECONNECTING, RECOVERING, DEGRADED, PAUSED and ERROR must not misrepresent freshness.
+
+### Chart and strategy overlay
+
+Use existing Lightweight Charts. Seed historical context and deterministically merge ordered confirmed/forming candles, recovered data and duplicate messages. Chart interval is independent from strategy timeframe/evaluation: changing display interval must not modify IR, restart the session or change execution. Only expose actually supported intervals. Show real strategy timeframe, evaluation mode and latest evaluation time at all times.
+
+Chart indicator values must be recorded/evaluated Strategy IR values, never frontend RSI/EMA/etc. recomputation. Display signal transitions, paper entries/exits, entry/stop/take/current/mark lines where applicable. Preserve indicator values, four Entry/Exit Long/Short conditions and timestamp/price/value details in readable panels. Retain false-to-true deduplication. UI rendering frequency cannot influence strategy semantics.
+
+### Order book and tape
+
+Initialize book from a snapshot, apply insert/update/zero-size removal deltas, replace on a new valid snapshot/service reset and reject stale/out-of-order input. Reconnect invalidates all old book state; no delta may repair an unknown book without a snapshot. Display about 10–15 levels per side with price/size/relative depth, not complete exchange depth. Prevent duplicate subscriptions.
+
+Recent trades display time, price, size and reliably supplied taker side. Keep a bounded deduplicated buffer; tape persistence is outside scope. After reconnect, explicitly restart tape without claiming missed trades were recovered. Restore candles/strategy history first; retain paper continuity/revalidation rules.
+
+### Paper terminal and manual actions
+
+Clearly label PAPER and show side, instrument, quantity, entry/current/mark price, unrealized and session/realized PnL, stop/take, fees/funding and cash/equity. Add Paper Buy, Paper Sell and Close Paper Position through the existing paper account/execution system. Never create a second account engine, private order endpoint or exchange credential field.
+
+Use a simple frozen session execution source, Strategy or Manual, with documented conflict semantics. Enforce one position, full exits, no scaling/reversal and normal protection/fee/funding rules. Manual commands must execute on a later valid observed quote, not an old displayed price, and must not survive an uncertain reconnect as an automatic order. Validate and record actions/restart behavior without duplicate fills.
+
+### Telegram investigation and resource safety
+
+Investigate ILI-37 within a bounded scope using current official Bot API documentation and reviewed prior diagnostics. Preserve Windows Credential Manager storage; never expose token/chat ID, provider URLs or credential-bearing exception details. Report safe actionable error categories for request/configuration/network/response failures. Do not claim mocked success proves delivery. ILI-37 remains open if real delivery needs owner acceptance and is not a 0.4 completion blocker.
+
+Bound tape, event logs, UI arrays, chart history, queues and retries. Batch/throttle rendering independently from strategy processing; clean up timers/subscriptions. Preserve historical research, native Python, editor/context-menu/Delete/Undo/Redo, experiments/results, notifications and live/replay regressions.
+
+### Acceptance and preservation
+
+All migrations are additive and tested on a copy before ordinary data use. Preserve all strategies, runs, experiments, result files, live sessions, signals and paper history; use separate test/demo roots. Deterministic tests cover book snapshot/delta/reset/zero removal/staleness, ticker/tape bounds, recovery/deduplication, chart/strategy interval isolation, overlay/layout/panels/settings, manual paper lifecycle/conflicts/restart, credential-safe diagnostics and absence of private order APIs.
+
+Run the actual public compiled Live Terminal for at least 30 minutes (prefer 30–60). Record UTC start/end, memory/process counts, reconnects, ticker/candle/book/trade counters, evaluation/error state and subscription evidence. Confirm responsive UI and ongoing forming candles/book/tape/evaluation without notification storms. Distinguish natural reconnect from injected deterministic tests. Full Python/frontend suites, TypeScript/Vite and Windows/Rust build must pass. Document exact evidence, limitations and remaining manual checks; update Linear and open a reviewed Draft PR from codex/04 to main. Do not merge or start 0.5.
+
+Real exchange trading and its credentials remain prohibited. Other exclusions remain: DCA, averaging, partial exits, trailing stop, break-even stop, ATR position management, multiple active instruments, multi-timeframe visual IR, AI, another engine or exchange, installers, releases and background services. Manual PAPER controls do not enable real trading.

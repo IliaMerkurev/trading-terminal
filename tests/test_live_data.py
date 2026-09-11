@@ -18,7 +18,7 @@ class PublicStreamTests(unittest.TestCase):
         stream.open()
         self.assertEqual(connector.call_args.args[0],'wss://stream.bybit.com/v5/public/linear')
         self.assertEqual(connector.call_args.kwargs['max_queue'],32)
-        self.assertEqual(json.loads(socket.send.call_args.args[0])['args'],['tickers.BTCUSDT','kline.1.BTCUSDT'])
+        self.assertEqual(json.loads(socket.send.call_args.args[0])['args'],['tickers.BTCUSDT','kline.1.BTCUSDT','orderbook.50.BTCUSDT','publicTrade.BTCUSDT'])
         with self.assertRaises(LiveProtocolError):stream.open()
         stream.close();socket.close.assert_called_once()
         stream.open();self.assertEqual(connector.call_count,2)
