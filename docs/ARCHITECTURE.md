@@ -2,7 +2,7 @@
 
 Product 0.3 extends the accepted research baseline. [ADR 0013](adr/0013-live-recovery-and-replay.md) defines the shared confirmed-minute signal path and additive live journal. Historical simulation and live/replay must use this one IR path; the UI never recomputes indicators. Public stream, notification and observed-price paper adapters extend the existing local Python/Tauri service, with no cloud backend or exchange order interface. Implementation and native acceptance status are tracked separately in [status](STATUS.md).
 
-Status: implemented Windows development build; owner acceptance remains pending. [PROJECT.md](../PROJECT.md) is the authoritative specification; [ADR 0001](adr/0001-engine.md) selects the first runtime and records measured limitations.
+Status: product 0.3-dev is accepted by the owner with Telegram delivery as a known failing acceptance item. Windows and sound notifications are verified. [PROJECT.md](../PROJECT.md) is the authoritative specification; [ADR 0001](adr/0001-engine.md) selects the first runtime and records measured limitations.
 
 | Component | Baseline | Responsibility |
 | --- | --- | --- |
