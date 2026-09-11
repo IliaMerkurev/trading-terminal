@@ -1,13 +1,25 @@
 """Line-oriented local desktop IPC. Strategy output never enters this stream."""
 from pathlib import Path
+import argparse
 import json
 import sys
 
 
 def main():
+    parser=argparse.ArgumentParser(description='Local research IPC service')
+    parser.add_argument('--data-root')
+    options=parser.parse_args()
     from terminal.service import AppService
     from terminal.data import canonical
-    service=AppService(Path(__file__).resolve().parents[1]/".local-data")
+    from terminal.paths import data_root
+    def send(value):
+        sys.stdout.buffer.write(canonical(value)+b'\n');sys.stdout.buffer.flush()
+    try:
+        service=AppService(data_root(options.data_root))
+    except Exception as error:
+        send({'version':1,'id':'startup','type':'error','error':{'code':'STARTUP_FAILED','message':str(error)[:1000]}})
+        return 1
+    send({'version':1,'id':'startup','type':'ready'})
     try:
         while True:
             raw=sys.stdin.buffer.readline(1024*1024+1)
@@ -27,4 +39,4 @@ def main():
 
 
 if __name__=="__main__":
-    main()
+    raise SystemExit(main())

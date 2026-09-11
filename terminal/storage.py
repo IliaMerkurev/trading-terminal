@@ -140,7 +140,8 @@ class RunStore:
         if run["status"]!="completed": raise ValueError("No completed result available")
         if type(minutes) is not int or not 30<=minutes<=480 or (start is not None and (type(start) is not int or start%60)):
             raise ValueError("Chart requests require aligned start and 30–480 minutes")
-        first,last=run["manifest"]["dataset"]["range"]
+        window=run['manifest'].get('research',{}).get('window')
+        first,last=[window['start'],window['end']] if window else run["manifest"]["dataset"]["range"]
         start=first if start is None else max(first,min(start,max(first,last-60)))
         end=min(last,start+minutes*60)
         result={"start":start,"end":end,"range":[first,last],"series":{}}
@@ -150,6 +151,23 @@ class RunStore:
                 lower,upper=(start,end) if kind=="candles" else (start+1e-6,end+1e-6)
                 rows=db.execute(f"SELECT value FROM series WHERE run_id=? AND kind=? AND ({TIME_SQL})>=? AND ({TIME_SQL})<? ORDER BY ({TIME_SQL}),row_index LIMIT 4000",(run_id,kind,lower,upper)).fetchall()
                 result["series"][kind]=[json.loads(row[0]) for row in rows]
+        for fill in result['series']['fills']:
+            # Derive the candle association before JavaScript rounds epoch nanoseconds.
+            fill['chart_time']=(fill['time_ns']//60_000_000_000+1)*60
+        if run['summary'].get('origin')=='local' and run['manifest'].get('research',{}).get('experiment'):
+            from terminal.data import DatasetStore
+            import pyarrow.parquet as pq
+            dataset=run['manifest']['dataset']
+            try:
+                manifest=DatasetStore(self.root/'datasets').describe(dataset['id'])
+                if manifest['content_sha256']!=dataset['content_sha256']:raise ValueError('Shared candle identity changed')
+                path=self.root/'datasets'/dataset['id']/'trade.parquet'
+                with path.open('rb') as stream:
+                    checksum=hashlib.file_digest(stream,'sha256').hexdigest()
+                if checksum!=manifest['files_sha256']['trade']:raise ValueError('Shared candle checksum mismatch')
+                result['series']['candles']=pq.read_table(path,filters=[('time','>=',start),('time','<',end)]).to_pylist()
+            except FileNotFoundError:
+                result['history_note']='The shared dataset is unavailable; saved derived results are unchanged.'
         if len(canonical(result))>900*1024: raise ValueError("Chart window exceeds payload budget; choose a shorter window")
         return result
 

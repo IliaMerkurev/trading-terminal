@@ -15,6 +15,8 @@ class AppService:
         self.datasets=DatasetStore(self.store.root/"datasets")
         self.downloads=DownloadManager(self.store.root)
         self.archives=ArchiveManager(self.store)
+        from terminal.experiments import ExperimentManager
+        self.experiments=ExperimentManager(self.jobs)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -35,6 +37,11 @@ class AppService:
                 "download_status":set(),"download_cancel":set(),"chart_window":{"run_id","start","minutes"},"run_logs":{"run_id"},
                 "compare_runs":{"run_ids"},"archive_export":{"strategy","profile","run_ids"},"archive_begin":{"size"},
                 "archive_append":{"upload_id","offset","data"},"archive_finish":{"upload_id"},"archive_cancel":set()}
+            experiment_fields={'strategy_id','dataset_id','profile','is_range','oos_range','axes'}
+            fields.update(experiment_fields={'strategy_id'},experiment_preview=experiment_fields,experiment_start=experiment_fields,
+                list_experiments=set(),experiment_status={'experiment_id'},experiment_cancel={'active_id'},
+                experiment_freeze={'experiment_id','ordinal'},experiment_copy={'experiment_id','ordinal'},experiment_validate={'validation_id'},
+                start_window_run={'strategy','profile','dataset_id','window'})
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command=="list_runs": result=self.store.recent()
@@ -48,7 +55,7 @@ class AppService:
             elif command=="list_strategies": result=self.store.strategies()
             elif command=="get_strategy": result=self.store.strategy(p["strategy_id"])
             elif command=="save_graph":
-                validate_graph(p["graph"])
+                validate_graph(p["graph"],allow_incomplete=True)
                 profile=Profile(**p['profile']).snapshot()
                 result={"strategy_id":self.store.save_strategy(p["name"],"graph",{"graph":p["graph"],"layout":p["layout"]},p["strategy_id"],profile=profile)}
             elif command in ("preview_native","save_native","trust_native"):
@@ -74,6 +81,23 @@ class AppService:
             elif command=="archive_append": result=self.archives.append(**p)
             elif command=="archive_finish": result=self.archives.finish(**p)
             elif command=="archive_cancel": result=self.archives.cancel()
+            elif command=='experiment_fields':result=self.experiments.fields(**p)
+            elif command=='experiment_preview':result=self.experiments.preview(**p)
+            elif command=='experiment_start':result=self.experiments.start(**p)
+            elif command=='list_experiments':result=self.experiments.recent()
+            elif command=='experiment_status':result=self.experiments.get(**p)
+            elif command=='experiment_cancel':result=self.experiments.cancel(**p)
+            elif command=='experiment_freeze':result=self.experiments.freeze(**p)
+            elif command=='experiment_copy':result=self.experiments.copy_candidate(**p)
+            elif command=='experiment_validate':result=self.experiments.validate(**p)
+            elif command=='start_window_run':
+                if p['strategy'].get('engine'):raise ValueError('Window runs currently support visual strategies')
+                from terminal.experiments import validate_range
+                window=p['window'];manifest=self.datasets.describe(p['dataset_id'])
+                if not isinstance(window,dict) or set(window)!={'start','end','warmup_start'}:raise ValueError('Invalid window fields')
+                validate_range([window['start'],window['end']],manifest['range'],'Trading window')
+                if type(window['warmup_start']) is not int or window['warmup_start']%60 or not manifest['range'][0]<=window['warmup_start']<=window['start']:raise ValueError('Invalid warmup range')
+                result={'run_id':self.jobs.start(p['strategy'],p['profile'],p['dataset_id'],research={'window':window})}
             response={"version":1,"id":request_id,"type":"result","result":result}
             if len(canonical(response))>1024*1024: raise ValueError("Response exceeds IPC budget; request a smaller page")
             return response
@@ -81,5 +105,6 @@ class AppService:
             return {"version":1,"id":request_id,"type":"error","error":{"code":"REQUEST_FAILED","message":str(exc)[:2000]}}
 
     def close(self):
+        self.experiments.close()
         self.jobs.close()
         self.downloads.close()

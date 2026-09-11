@@ -21,6 +21,7 @@ def compare_runs(store,run_ids):
         contract={'strategy_sha256':digest(manifest['strategy']),'profile':manifest['profile'],
                   'dataset':manifest['dataset'],'runtime':manifest['runtime'],'metric_version':summary['metric_version'],
                   'engine':summary['engine'],'engine_version':summary['engine_version']}
+        if 'research' in manifest:contract['research']=manifest['research']
         contracts.append(flatten(contract))
         rows.append({'id':run_id,'created_at':run['created_at'],'summary':summary,'strategy_sha256':contract['strategy_sha256']})
     keys=sorted(set().union(*(c.keys() for c in contracts)))

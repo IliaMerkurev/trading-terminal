@@ -47,10 +47,19 @@ def privacy_check(value,entry):
 
 
 def validate_snapshot(snapshot):
-    if not isinstance(snapshot,dict) or set(snapshot)!={'schema_version','strategy','profile','dataset','runtime','snapshot_sha256'} or snapshot['schema_version']!=1:
+    required={'schema_version','strategy','profile','dataset','runtime','snapshot_sha256'}
+    if not isinstance(snapshot,dict) or set(snapshot)-{'research'}!=required or snapshot['schema_version']!=1:
         raise ValueError('Invalid run snapshot')
     if digest({k:v for k,v in snapshot.items() if k!='snapshot_sha256'})!=snapshot['snapshot_sha256']:raise ValueError('Run snapshot checksum mismatch')
     Profile(**snapshot['profile'])
+    if 'research' in snapshot:
+        from terminal.experiments import validate_range
+        research=snapshot['research']
+        if not isinstance(research,dict) or set(research)-{'experiment'}!={'window'}:raise ValueError('Invalid research provenance')
+        window=research['window']
+        if not isinstance(window,dict) or set(window)!={'start','end','warmup_start'}:raise ValueError('Invalid research window')
+        validate_range([window['start'],window['end']],snapshot['dataset']['range'],'Archived trading window')
+        if type(window['warmup_start']) is not int or window['warmup_start']%60 or not snapshot['dataset']['range'][0]<=window['warmup_start']<=window['start']:raise ValueError('Invalid archived warmup')
     strategy=snapshot['strategy']
     if strategy.get('engine')=='nautilus_trader':validate_native(strategy)
     else:validate_graph(strategy)
