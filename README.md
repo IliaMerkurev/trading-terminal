@@ -2,7 +2,7 @@
 
 A local Windows desktop application for strategy research, public market monitoring and virtual paper trading. Create a visual strategy or explicitly trust a compatible native Python strategy, prepare Bybit history, run a backtest, inspect trades, and compare saved results.
 
-**Trading Terminal 0.3 is an early development build.** It preserves the 0.1/0.2 workflows and uses NautilusTrader 1.231.0 with explicit, independently tested versioned execution. It is not production-ready or a stable release. It does not submit real exchange orders or accept exchange trading credentials. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0010-execution-v2.md), and the [0.3 demonstration guide](docs/DEMO_03.md). Owner acceptance remains distinct from automated verification.
+**Trading Terminal 0.4 is an early development build.** It extends the accepted 0.3 monitoring and 0.1/0.2 research workflows using NautilusTrader 1.231.0 with explicit, independently tested versioned execution. It is not production-ready or a stable release. It does not submit real exchange orders or accept exchange trading credentials. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0010-execution-v2.md), and the [0.4 demonstration guide](docs/DEMO_04.md). Owner acceptance remains distinct from automated verification.
 
 ## Available workflow
 
@@ -19,8 +19,13 @@ A local Windows desktop application for strategy research, public market monitor
 - One public Bybit spot/linear live session with confirmed-minute Strategy IR evaluation, durable signal transitions, reconnect and history recovery.
 - Verified Windows and sound notifications. Telegram integration uses Windows-protected local credentials, but Test notification delivery failed owner acceptance and remains a known issue.
 - Observed-price paper execution through the retained engine, explicit fees/slippage/mark/funding assumptions, restart revalidation and recorded-signal replay.
+- Chart-led Live Terminal with public ticker statistics, forming/final candles, depth-50 snapshot/delta state displayed as 15 levels per side, and a bounded recent-trades tape.
+- Display-only chart intervals, recorded Strategy IR indicator values, signal/paper markers and paper entry/stop/take lines. Changing chart timeframe does not change the strategy or restart monitoring.
+- Compact Live settings and switchable Position, Strategy, Signals, Paper Trades, Notifications and Log panels. Manual PAPER Buy/Sell/full Close use the same account engine; unborrowed spot cannot short.
 
 **Known issue — Telegram:** integration is implemented, but Test notification does not currently deliver in owner acceptance despite configured credentials. Automated transport tests do not prove delivery. Investigation is tracked in [ILI-37](https://linear.app/ilia-merkurev/issue/ILI-37/fix-telegram-notification-delivery-after-03-owner-acceptance); Windows and sound notifications are verified.
+
+0.4 adds safe actionable Telegram diagnostics for rejected tokens/chats, access errors, rate limits and network/TLS failures. Credentials remain in Windows Credential Manager; no delivery success is claimed without a real owner check.
 
 ## Windows launch
 
@@ -39,7 +44,7 @@ Live trading, exchange credentials, optimization beyond the bounded 0.2 grid, DC
 - [PROJECT.md](PROJECT.md): authoritative product specification and deferred scope.
 - [Architecture](docs/ARCHITECTURE.md) and [engine evaluation](docs/ENGINE_SELECTION.md).
 - [Implementation status](docs/STATUS.md) and [development guidance](docs/DEVELOPMENT.md).
-- [0.3 live/paper demonstration](docs/DEMO_03.md).
+- [0.4 Live Terminal demonstration](docs/DEMO_04.md) and [retained 0.3 live/paper demonstration](docs/DEMO_03.md).
 - [0.2 demonstration and owner acceptance](docs/DEMO_V2.md), and [retained 0.1 demonstration](docs/DEMO.md).
 
 ## License
