@@ -15,7 +15,7 @@ def main():
     from terminal.graph import GraphEvaluator
     from terminal.profile import Profile
     from terminal.simulation import run_backtest
-    from terminal.storage import identifier
+    from terminal.storage import identifier,RunStore
     root=Path(request["root"]).resolve()
     directory=root/"runs"/identifier(request["run_id"])
     snapshot=json.loads((directory/"snapshot.json").read_bytes())
@@ -30,7 +30,15 @@ def main():
             raise ValueError("Runtime changed after the run snapshot was prepared")
         profile=Profile(**snapshot["profile"])
         _,bars,marks,funding=DatasetStore(root/"datasets").for_run(snapshot["dataset"]["id"],profile)
-        result=run_backtest(bars,profile,GraphEvaluator(snapshot["strategy"]),marks=marks,funding=funding,progress=progress)
+        strategy=snapshot["strategy"]
+        if strategy.get("engine")=="nautilus_trader":
+            from terminal.native import trust_identity,load_trusted
+            if not RunStore(root).is_trusted(trust_identity(strategy)):
+                raise ValueError("Native source has no recorded explicit trust")
+            result=run_backtest(bars,profile,None,marks=marks,funding=funding,progress=progress,
+                native_factory=lambda asset:load_trusted(strategy,directory,asset.id),native_timeframes=strategy["bar_minutes"])
+        else:
+            result=run_backtest(bars,profile,GraphEvaluator(strategy),marks=marks,funding=funding,progress=progress)
         result["manifest_sha256"]=snapshot["snapshot_sha256"]
         write_new(directory/"worker-result.json",canonical(result))
     except Exception as exc:

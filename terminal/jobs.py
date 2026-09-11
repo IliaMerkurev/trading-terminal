@@ -31,7 +31,14 @@ class JobManager:
         self.store.recover()
 
     def start(self,strategy,profile,dataset_id):
-        validate_graph(strategy)
+        native=isinstance(strategy,dict) and strategy.get("engine")=="nautilus_trader"
+        if native:
+            from terminal.native import preview
+            report=preview(strategy)
+            if not self.store.is_trusted(report["trust_sha256"]): raise ValueError("Explicit trust is required before loading this Python source")
+            if report["dependency_problems"]: raise ValueError("Native dependencies are missing or incompatible; no automatic installation")
+        else:
+            validate_graph(strategy)
         if not isinstance(profile,Profile): profile=Profile(**profile)
         manifest=self.datasets.describe(dataset_id)
         self.datasets.check_profile(manifest,profile)

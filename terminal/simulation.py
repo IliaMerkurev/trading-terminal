@@ -120,18 +120,50 @@ class ProfileStrategy(Strategy):
         self.close("end_of_run")
 
 
+class NativeController:
+    """Observe an unchanged native Strategy; no graph signal/size conversion."""
+    def __init__(self,asset,profile,native):
+        self.asset,self.profile,self.native=asset,profile,native
+        self.reason="native"
+        self.fills,self.indicators=[],[]
+        self.diagnostics=[{"message":"Native source/config controls signals, sizing and exits. Graph sizing controls are not applied; simulation capital, fees, funding and margin limits still apply."}]
+
+    record_order_event=ProfileStrategy.record_order_event
+
+    def close(self,reason):
+        self.reason=reason
+        self.native.close_all_positions(self.asset.id)
+        self.reason="native"
+
+    def capture(self,ts_now):
+        values={}
+        for index,indicator in enumerate(self.native.registered_indicators):
+            if index>=128: raise ValueError("Native registered indicator count exceeds the result budget")
+            for field in ("value","upper","middle","lower"):
+                if hasattr(indicator,field):
+                    values[f"{type(indicator).__name__}_{index}.{field}"]=float(getattr(indicator,field)) if indicator.initialized else None
+        if not values: return
+        point={"time":(ts_now+1)//NS,"values":values,"signals":{}}
+        if self.indicators and self.indicators[-1]["time"]==point["time"]: self.indicators[-1]=point
+        else: self.indicators.append(point)
+
+
 class Protections(SimulationModule):
-    def __init__(self, profile, strategy, samples, funding):
+    def __init__(self, profile, strategy, samples, funding, progress=lambda _:None):
         super().__init__(SimulationModuleConfig())
         self.profile, self.strategy, self.samples, self.funding = profile, strategy, samples, funding
         self.sample = None
         self.last_applied = None
         self.events, self.equity = [], []
         self.exit_minute = None
+        self.progress,self.processed=progress,0
 
     def pre_process(self, data):
         if isinstance(data, QuoteTick):
             self.sample = self.samples[data.ts_init]
+            self.processed+=1
+            if isinstance(self.strategy,NativeController) and (self.processed==1 or self.processed%1024==0 or self.processed==len(self.samples)):
+                self.progress(self.processed/len(self.samples))
 
     def balance_and_equity(self):
         cash = self.exchange.get_account().balance_total(USDT).as_decimal()
@@ -196,6 +228,7 @@ class Protections(SimulationModule):
             self.equity[-1] = point
         else:
             self.equity.append(point)
+        if isinstance(self.strategy,NativeController): self.strategy.capture(ts_now)
 
     def log_diagnostics(self, logger):
         pass
@@ -205,11 +238,14 @@ class Protections(SimulationModule):
         self.events, self.equity = [], []
 
 
-def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progress=lambda _:None):
+def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progress=lambda _:None,
+                 native_factory=None,native_timeframes=(1,)):
     if not candles:
         raise ValueError("No minute history available")
     if not isinstance(profile, Profile):
         profile = Profile(**profile)
+    if native_factory is not None and (dec(profile.stop_loss) or dec(profile.take_profit) or profile.evaluation!="closed"):
+        raise ValueError("Native strategies require their own protection/signal semantics; graph intrabar and stop/take controls are unavailable")
     if any(b.time % 60 for b in candles) or any(b.time <= a.time for a,b in zip(candles, candles[1:])):
         raise ValueError("History must be sorted, unique UTC minute candles")
     gaps = [(a.time+60, b.time) for a,b in zip(candles,candles[1:]) if b.time != a.time+60]
@@ -225,6 +261,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
     quotes, bars, samples, candle_map = [], [], {}, {}
     tick, slip = dec(profile.tick_size), dec(profile.slippage)
     fields = ("open", "low", "high", "close") if profile.path == "OLHC" else ("open", "high", "low", "close")
+    aggregators={period:PartialBars(period) for period in sorted(native_timeframes)} if native_factory else {}
     for candle in candles:
         mark = marks[candle.time] if profile.market == "linear" and profile.mark_mode == "history" else candle
         for field, offset in zip(fields, (0, 20*NS, 40*NS, 60*NS-1)):
@@ -239,11 +276,21 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             samples[timestamp] = {"minute":candle.time, "price":price, "mark":dec(getattr(mark, field))}
         ts = (candle.time+60)*NS-1
         candle_map[ts] = candle
-        bars.append(Bar(bar_type, *(Price(float(getattr(candle,k)),asset.price_precision) for k in ("open","high","low","close")),
-                        Quantity(float(candle.volume),asset.size_precision), ts, ts))
-    strategy = ProfileStrategy(asset, profile, candle_map, evaluator, progress)
+        if native_factory:
+            for period,aggregator in aggregators.items():
+                primary,complete=aggregator.update(candle)
+                if complete:
+                    native_type=BarType.from_str(f"{asset.id}-{period}-MINUTE-LAST-EXTERNAL")
+                    bars.append(Bar(native_type,*(Price(float(getattr(primary,k)),asset.price_precision) for k in ("open","high","low","close")),
+                                    Quantity(float(primary.volume),asset.size_precision),ts,ts))
+        else:
+            bars.append(Bar(bar_type, *(Price(float(getattr(candle,k)),asset.price_precision) for k in ("open","high","low","close")),
+                            Quantity(float(candle.volume),asset.size_precision), ts, ts))
+    if not bars: raise ValueError("No complete native bars available for declared timeframes")
+    native = native_factory(asset) if native_factory else None
+    strategy = NativeController(asset,profile,native) if native else ProfileStrategy(asset, profile, candle_map, evaluator, progress)
     funding_ns = {int(t)*NS:rate for t,rate in (funding or {}).items()} if profile.funding_mode == "history" else {}
-    protection = Protections(profile, strategy, samples, funding_ns)
+    protection = Protections(profile, strategy, samples, funding_ns, progress)
     strategy.protections = protection
     engine = BacktestEngine(BacktestEngineConfig(logging=LoggingConfig(bypass_logging=True)))
     engine.add_venue(VENUE, OmsType.NETTING, AccountType.MARGIN if profile.market == "linear" else AccountType.CASH,
@@ -252,7 +299,11 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         use_message_queue=False, bar_execution=False)
     engine.add_instrument(asset)
     guard = RiskGateway(engine,asset,leverage=dec(profile.leverage),perpetual=profile.market=="linear",max_notional=dec(profile.max_notional))
-    engine.add_strategy(strategy)
+    data_guard=None
+    if native:
+        from terminal.native import NativeDataGateway
+        data_guard=NativeDataGateway(engine,asset.id,[str(b.bar_type) for b in bars])
+    engine.add_strategy(native or strategy)
     # Observe the engine event stream, including fills emitted while on_stop runs.
     engine.kernel.msgbus.subscribe("events.order.*", strategy.record_order_event)
     engine.add_data(quotes)
@@ -260,6 +311,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
     try:
         engine.run()
         guard.assert_supported()
+        if data_guard: data_guard.assert_supported()
         engine_artifacts=[{"instrument":str(order.instrument_id),"side":order.side.name,
                            "type":order.order_type.name,"status":order.status.name,
                            "quantity":str(order.quantity),"filled_quantity":str(order.filled_qty),
@@ -279,7 +331,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             cashflow = sum((dec(e["amount"]) for e in protection.events if e["type"] == "funding" and entry["time_ns"] < e["time_ns"] <= exit_fill["time_ns"]),Decimal(0))
             trades.append({"entry":entry, "exit":exit_fill, "gross_pnl":str(gross), "fees":str(fees), "funding":str(cashflow), "net_pnl":str(gross-fees+cashflow)})
         points = protection.equity[:]
-        final_point = {"time_ns":bars[-1].ts_init, "cash":str(final_cash), "equity":str(final_equity),
+        final_point = {"time_ns":quotes[-1].ts_init, "cash":str(final_cash), "equity":str(final_equity),
                        "initial_margin":"0", "maintenance_margin":"0", "available":str(final_cash)}
         if points and points[-1]["time_ns"] == final_point["time_ns"]:
             points[-1] = final_point
@@ -292,6 +344,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             drawdown = max(drawdown,(peak-equity)/peak if peak else Decimal(0))
         return {"schema_version":1, "status":"completed", "profile":profile.snapshot(),
             "engine":"nautilus_trader", "engine_version":"1.231.0", "metric_version":1,
+            "strategy_format":"native" if native else "graph",
             "metrics":{"final_equity":str(final_equity), "net_pnl":str(final_equity-dec(profile.capital)),
                 "max_drawdown":str(drawdown), "trade_count":len(trades),
                 "win_rate":sum(dec(t["net_pnl"])>0 for t in trades)/len(trades) if trades else None,

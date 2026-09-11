@@ -22,7 +22,9 @@ class AppService:
             fields={"list_runs":set(),"run_status":{"run_id"},"result_page":{"run_id","kind","offset","limit"},
                 "start_run":{"strategy","profile","dataset_id"},"cancel_run":{"run_id"},
                 "list_strategies":set(),"save_graph":{"name","graph","layout","strategy_id"},
-                "get_strategy":{"strategy_id"},"list_datasets":set(),"run_manifest":{"run_id"}}
+                "get_strategy":{"strategy_id"},"list_datasets":set(),"run_manifest":{"run_id"},
+                "preview_native":{"document"},"save_native":{"name","document","strategy_id"},
+                "trust_native":{"document","expected_sha256","acknowledge_user_permissions"}}
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command=="list_runs": result=self.store.recent()
@@ -36,6 +38,16 @@ class AppService:
             elif command=="save_graph":
                 validate_graph(p["graph"])
                 result={"strategy_id":self.store.save_strategy(p["name"],"graph",{"graph":p["graph"],"layout":p["layout"]},p["strategy_id"])}
+            elif command in ("preview_native","save_native","trust_native"):
+                from terminal.native import preview
+                result=preview(p["document"])
+                if command=="save_native":
+                    result["strategy_id"]=self.store.save_strategy(p["name"],"native",p["document"],p["strategy_id"])
+                elif command=="trust_native":
+                    if p["acknowledge_user_permissions"] is not True or p["expected_sha256"]!=result["trust_sha256"]:
+                        raise ValueError("Explicit confirmation must match the previewed Python source")
+                    self.store.trust_native(result["trust_sha256"])
+                result["trusted"]=self.store.is_trusted(result["trust_sha256"])
             elif command=="list_datasets":
                 result=[{k:m[k] for k in ("id","market","symbol","range","coverage")} for m in self.datasets.list()]
             response={"version":1,"id":request_id,"type":"result","result":result}

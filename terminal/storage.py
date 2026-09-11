@@ -36,6 +36,7 @@ class RunStore:
                 CREATE TABLE IF NOT EXISTS strategies(
                     id TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL,
                     document TEXT NOT NULL, updated_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS native_trust(identity TEXT PRIMARY KEY, granted_at TEXT NOT NULL);
             """)
 
     @contextmanager
@@ -152,3 +153,12 @@ class RunStore:
     def recover(self):
         with self.connect() as db:
             db.execute("UPDATE runs SET status='interrupted',error='Application exited before worker completion' WHERE status IN ('created','running','cancel_requested')")
+
+    def trust_native(self,identity):
+        if not isinstance(identity,str) or not re.fullmatch(r"[a-f0-9]{64}",identity): raise ValueError("Invalid native trust identity")
+        with self.connect() as db:
+            db.execute("INSERT OR IGNORE INTO native_trust VALUES(?,?)",(identity,datetime.now(timezone.utc).isoformat()))
+
+    def is_trusted(self,identity):
+        with self.connect() as db:
+            return db.execute("SELECT 1 FROM native_trust WHERE identity=?",(identity,)).fetchone() is not None
