@@ -28,6 +28,7 @@ node_modules/
 .npm-cache/
 .pnpm-store/
 target/
+src-tauri/gen/
 dist/
 build/
 coverage/

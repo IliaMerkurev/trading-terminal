@@ -1,34 +1,37 @@
 # Trading Terminal
 
-Trading Terminal is a planned Windows desktop application for historical strategy research: create a visual strategy or import a compatible Python strategy, run a reproducible backtest, inspect trades, and compare saved results.
+A local Windows desktop application for historical strategy research. Create a visual strategy or explicitly trust a compatible native Python strategy, prepare Bybit history, run a backtest, inspect trades, and compare saved results.
 
-## Development status
+**V1 development build is available for acceptance testing.** It uses NautilusTrader 1.231.0 with an explicit, independently tested simulation adapter. This is a historical research tool; it does not submit live orders. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0002-simulation-profile.md), and the [demonstration guide](docs/DEMO.md).
 
-**Specification and engineering preparation.** There is no runnable application, selected backtesting engine, installer, or implemented trading/research feature yet. The repository currently provides the product specification, proposed architecture, engine evaluation criteria, and development guidance.
+## Available workflow
 
-## Planned V1 capabilities
+- Shared visual graph: OHLCV, SMA, EMA, RSI, Bollinger Bands, MACD, ATR, comparisons, crossings and boolean logic; four entry/exit outputs.
+- Unborrowed USDT spot and single-position cross-margin USDT perpetual long/short simulation, with editable sizing, fees, slippage, funding and mark-price liquidation assumptions.
+- Closed primary-bar conditions or causal forming-bar evaluation on one-minute steps.
+- Public Bybit downloads, coverage/gap reports, checked local datasets and offline runs.
+- Cancellable workers, immutable run history, recorded indicators, charts, trade navigation, comparison and validated project archives.
+- Source-only native Python preview with explicit execution consent. Workers are not a security sandbox.
 
-- Visual strategy graphs and one supported native Python strategy format.
-- Bybit USDT spot and linear perpetual historical tests, including long/short perpetual positions.
-- Closed-bar and causal intrabar condition evaluation.
-- Explicit fees, slippage, funding, margin, liquidation, and execution assumptions.
-- Local historical data, reproducible run snapshots, charts, trade tables, comparisons, and export.
-- A responsive English interface with cancellable backtests.
+## Windows launch
 
-V1 does not include live trading, exchange credentials, optimization, DCA, partial exits, multiple simultaneous instruments, or AI features.
+With the documented toolchain and one-time project setup complete, run from the project directory:
 
-## Documentation
+```powershell
+.\scripts\launch.ps1
+```
 
-- [Product specification](PROJECT.md): authoritative scope and acceptance requirements.
-- [Architecture](docs/ARCHITECTURE.md): proposed components and boundaries.
-- [Engine evaluation](docs/ENGINE_SELECTION.md): selection criteria and required experiments.
-- [Development guide](docs/DEVELOPMENT.md): contribution workflow and validation.
-- [Implementation status](docs/STATUS.md): verified capabilities and current limitations.
+The script builds the desktop assets and starts the application. It does not install system tools. For prerequisites, pinned setup and tests, read the [development guide](docs/DEVELOPMENT.md). An installer is deferred.
 
-## Running the project
+## Scope and documentation
 
-No application launch command is available yet. Development setup and test commands will be documented as executable components are introduced. Proposed dependencies are not evidence of a working build.
+V1 excludes live trading, exchange credentials, optimization, DCA, partial exits, multiple simultaneous instruments, AI and background services. Historical minute bars cannot reveal the true tick path; risk-tier history may be unavailable. Imported reports are viewable without their raw history but are not guaranteed rerunnable.
+
+- [PROJECT.md](PROJECT.md): authoritative product specification and deferred scope.
+- [Architecture](docs/ARCHITECTURE.md) and [engine evaluation](docs/ENGINE_SELECTION.md).
+- [Implementation status](docs/STATUS.md) and [development guidance](docs/DEVELOPMENT.md).
+- [Demonstration and owner acceptance](docs/DEMO.md).
 
 ## License
 
-A project license has not been selected. Public availability does not grant an open-source license. Third-party code requires a license review before inclusion.
+A project license has not been selected. Public availability does not grant an open-source license. See [third-party notices](THIRD_PARTY_NOTICES.md); no distributable installer or binary release is provided.

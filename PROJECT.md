@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Version 0.5. Status: requirements specified; application implementation has not started. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
+Version 0.5. Status: V1 development build implemented; owner acceptance pending. This file is the sole current technical specification. Architecture decisions explain implementations and tradeoffs; they do not silently remove requirements. Documentation and UI identifiers are English. Historical archives are not alternative specifications.
 
 ## 1. Purpose and delivery target
 
@@ -12,7 +12,7 @@ V1 targets Windows 11 x64 with a 32 GB RAM reference configuration. Establish pe
 
 The first historical data source is Bybit. Support ordinary, unleveraged USDT spot and linear USDT perpetual contracts. Perpetual positions support long and short. Spot Margin is excluded. Capital and results are denominated in USDT. Each run has one strategy and one instrument.
 
-Cross and isolated margin are future targets; V1 may implement one verified mode with explicit limitations. Full Bybit Unified Trading Account simulation is not required. The first margin mode is an engineering decision, not yet selected.
+Cross and isolated margin are future targets; V1 may implement one verified mode with explicit limitations. Full Bybit Unified Trading Account simulation is not required. The first verified mode is single-position cross margin; see ADR 0002 for its limitations.
 
 At most one position may be open per run. Repeated same-direction entry signals do not add to the position. Close the entire position on an exit signal, simple stop-loss, or take-profit. Stop/take values are percentages of price movement from entry, not leveraged return on margin.
 
@@ -88,7 +88,7 @@ The historical module does not accept exchange credentials. Use a bounded, versi
 
 ## 8. Proposed architecture
 
-The baseline is Tauri 2; React, TypeScript, and Vite; React Flow; Lightweight Charts; Python; Pydantic; JSON Strategy IR; SQLite metadata; Parquet data; uv with pinned dependencies. The backtesting engine is undecided. Exact package versions, Python ABI, Node/Rust toolchains, SQLite access, validation, and test tools require compatibility checks. A simpler reliable replacement is possible with evidence in an ADR; product behavior must remain intact.
+The baseline is Tauri 2; React, TypeScript, and Vite; React Flow; Lightweight Charts; Python; Pydantic; JSON Strategy IR; SQLite metadata; Parquet data; uv with pinned dependencies. NautilusTrader 1.231.0 is the selected first engine; see ADR 0001. Exact package versions, Python ABI, Node/Rust toolchains, SQLite access, validation, and test tools require compatibility checks. A simpler reliable replacement is possible with evidence in an ADR; product behavior must remain intact.
 
 UI communicates through bounded Tauri IPC with a Python application layer and a managed backtest worker. A separate REST/FastAPI server is not mandatory. Externally accessible servers require a concrete reason and security design. Do not mix protocol messages with arbitrary imported Python stdout. Use explicit messages for errors and cancellation; bound table payloads. Windows cancellation must not leave uncontrolled child processes.
 

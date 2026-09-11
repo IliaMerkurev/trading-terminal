@@ -1,0 +1,31 @@
+{
+  "name": "trading-terminal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "node node_modules/vite/bin/vite.js --host 127.0.0.1",
+    "build": "node scripts/frontend.mjs build",
+    "test": "node node_modules/vitest/vitest.mjs run",
+    "tauri": "node node_modules/@tauri-apps/cli/tauri.js"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1",
+    "@xyflow/react": "12.11.6",
+    "lightweight-charts": "5.2.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "@testing-library/react": "16.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "jsdom": "30.0.1",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "5.0.0"
+  }
+}

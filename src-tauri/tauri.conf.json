@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Trading Terminal",
+  "version": "0.1.0",
+  "identifier": "local.tradingterminal.research",
+  "build": {
+    "beforeDevCommand": "node node_modules/vite/bin/vite.js --host 127.0.0.1",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "node scripts/frontend.mjs build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "security": { "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'" }
+  },
+  "bundle": { "active": false }
+}

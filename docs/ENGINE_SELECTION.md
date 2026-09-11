@@ -1,6 +1,6 @@
 # Engine evaluation
 
-Status: no engine selected; runtime experiments not yet performed. Requirements are defined in [PROJECT.md](../PROJECT.md). Freqtrade, Jesse, and NautilusTrader have no preset ranking. Other candidates require a reason for inclusion.
+Status: NautilusTrader 1.231.0 selected for continued implementation after Windows runtime experiments. The selected engine is integrated with the V1 adapter; current acceptance evidence is in [status](STATUS.md). See [ADR 0001](adr/0001-engine.md) for comparisons, actual evidence, required adapters and reconsideration conditions. Requirements are defined in [PROJECT.md](../PROJECT.md).
 
 ## Evaluation process
 
