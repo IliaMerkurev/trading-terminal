@@ -26,6 +26,7 @@ class Profile:
     tick_size: str = "0.01"
     quantity_step: str = "0.001"
     min_quantity: str = "0.001"
+    max_quantity: str = "1000000000"
     min_notional: str = "1"
     max_notional: str = "1000000"
     maintenance_rate: str = "0.005"
@@ -43,7 +44,7 @@ class Profile:
             raise ValueError("Unsupported profile version or market")
         if not re.fullmatch(r"[A-Z0-9]{1,24}USDT", self.symbol):
             raise ValueError("Expected an uppercase USDT symbol")
-        for name in ("capital", "leverage", "allocation", "tick_size", "quantity_step", "min_quantity", "min_notional", "max_notional"):
+        for name in ("capital", "leverage", "allocation", "tick_size", "quantity_step", "min_quantity", "max_quantity", "min_notional", "max_notional"):
             if dec(getattr(self, name)) <= 0:
                 raise ValueError(f"{name} must be positive")
         for name in ("fee_rate", "slippage", "stop_loss", "take_profit", "maintenance_rate"):
@@ -51,6 +52,8 @@ class Profile:
                 raise ValueError(f"{name} must be a fraction in [0, 1)")
         if dec(self.leverage) < 1 or (self.market == "spot" and dec(self.leverage) != 1):
             raise ValueError("Spot is unleveraged; leverage must be at least one")
+        if dec(self.min_quantity)>dec(self.max_quantity) or dec(self.min_notional)>dec(self.max_notional):
+            raise ValueError("Minimum order constraints exceed maximum constraints")
         if self.market == "linear" and dec(self.maintenance_rate) >= 1 / dec(self.leverage):
             raise ValueError("Maintenance rate must be below the initial margin rate")
         if self.sizing not in ("fixed", "percent") or (self.sizing == "percent" and dec(self.allocation) > 100):
@@ -84,6 +87,6 @@ class Profile:
             return Decimal(0)  # Do not silently resize to a different risk tier.
         step = dec(self.quantity_step)
         quantity = (notional / price / step).to_integral_value(rounding=ROUND_FLOOR) * step
-        if quantity < dec(self.min_quantity) or quantity * price < dec(self.min_notional):
+        if quantity < dec(self.min_quantity) or quantity > dec(self.max_quantity) or quantity * price < dec(self.min_notional):
             return Decimal(0)
         return quantity

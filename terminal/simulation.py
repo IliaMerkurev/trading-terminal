@@ -40,7 +40,7 @@ def make_instrument(profile):
         raw_symbol=Symbol(profile.symbol), base_currency=currency, quote_currency=USDT,
         price_precision=pp, size_precision=qp,
         price_increment=Price(float(profile.tick_size), pp), size_increment=Quantity(float(profile.quantity_step), qp),
-        min_quantity=Quantity(float(profile.min_quantity), qp), min_notional=Money(profile.min_notional, USDT),
+        min_quantity=Quantity(float(profile.min_quantity), qp), max_quantity=Quantity(float(profile.max_quantity), qp), min_notional=Money(profile.min_notional, USDT),
         maker_fee=dec(profile.fee_rate), taker_fee=dec(profile.fee_rate), ts_event=0, ts_init=0)
     if profile.market == "linear":
         return CryptoPerpetual(**fields, settlement_currency=USDT, is_inverse=False,
