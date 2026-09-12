@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Target product version: 0.4 development build (`0.4-dev`). The accepted baseline is 0.3-dev with Telegram delivery as a known issue. Sections 1–11 retain 0.1, 12–18 retain 0.2, 19 retains 0.3 and 20 defines the authorized Live Terminal extension. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
+Current accepted product version: 0.4 development build (`0.4-dev`), with real Telegram delivery still unverified as a known issue. Sections 1–11 retain 0.1, 12–18 retain 0.2, 19 retains 0.3 and 20 defines the accepted Live Terminal extension. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
 
 ## 1. Purpose and delivery target
 

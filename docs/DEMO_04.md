@@ -1,6 +1,6 @@
 # Product 0.4 Live Terminal demonstration
 
-This is an early development build with public market data and virtual PAPER execution only. No real account, private Bybit credential or exchange order endpoint is available. Telegram delivery remains an open owner-acceptance issue, [ILI-37](https://linear.app/ilia-merkurev/issue/ILI-37/fix-telegram-notification-delivery-after-03-owner-acceptance).
+Product 0.4-dev passed owner acceptance and is merged into main. This remains an early development build with public market data and virtual PAPER execution only. No real account, private Bybit credential or exchange order endpoint is available. Real Telegram delivery is still unverified and remains an open issue, [ILI-37](https://linear.app/ilia-merkurev/issue/ILI-37/fix-telegram-notification-delivery-after-03-owner-acceptance).
 
 ## Launch an isolated workspace
 
