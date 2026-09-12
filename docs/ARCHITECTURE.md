@@ -1,8 +1,8 @@
 # Architecture
 
-Product 0.3 extends the accepted research baseline. [ADR 0013](adr/0013-live-recovery-and-replay.md) defines the shared confirmed-minute signal path and additive live journal. Historical simulation and live/replay must use this one IR path; the UI never recomputes indicators. Public stream, notification and observed-price paper adapters extend the existing local Python/Tauri service, with no cloud backend or exchange order interface. Implementation and native acceptance status are tracked separately in [status](STATUS.md).
+Product 0.4 adds a market terminal around the accepted 0.3 live/paper service. [ADR 0013](adr/0013-live-recovery-and-replay.md) defines the retained shared confirmed-minute signal path and additive live journal. Historical simulation and live/replay must use this one IR path; the UI never recomputes indicators. Public stream, notification and observed-price paper adapters extend the existing local Python/Tauri service, with no cloud backend or exchange order interface. Implementation and native acceptance status are tracked separately in [status](STATUS.md).
 
-Status: product 0.3-dev is accepted by the owner with Telegram delivery as a known failing acceptance item. Windows and sound notifications are verified. [PROJECT.md](../PROJECT.md) is the authoritative specification; [ADR 0001](adr/0001-engine.md) selects the first runtime and records measured limitations.
+Status: product 0.4-dev is a development build; accepted 0.3 Windows/sound behavior is retained, and Telegram delivery remains a known failing acceptance item. [PROJECT.md](../PROJECT.md) is the authoritative specification; [ADR 0001](adr/0001-engine.md) selects the retained runtime and records measured limitations.
 
 | Component | Baseline | Responsibility |
 | --- | --- | --- |
@@ -28,8 +28,10 @@ See [engine evaluation](ENGINE_SELECTION.md) and [development guide](DEVELOPMENT
 
 ## Live/paper service
 
-One `LiveManager` owns one public subscription pair (ticker and confirmed M1 candles), a durable `LiveSession` journal and bounded notification dispatch. `SignalStream` and `GraphEvaluator` are shared with historical execution and recorded replay. REST recovery replays missing confirmed minutes before CONNECTED; paper remains paused across missing ticks until explicit continuity revalidation. Windows sleep appears as a stale stream/gap, never a trustworthy continuation.
+One `LiveManager` owns one public subscription set (ticker, M1 candles, depth-50 book and public trades), a durable `LiveSession` journal and bounded notification dispatch. `MarketState` centralizes freshness, validated book state, bounded tape and counters. `SignalStream` and `GraphEvaluator` are shared with historical execution and recorded replay. REST recovery replays missing confirmed minutes before CONNECTED; paper remains paused across missing ticks until explicit continuity revalidation. Windows sleep appears as a stale stream/gap, never a trustworthy continuation. Reconnect invalidates presentation state; a book requires a new snapshot and missing tape is not reconstructed. See [ADR 0016](adr/0016-shared-market-terminal.md).
 
 `PaperJournal` persists observed quotes before forwarding them to the retained Nautilus account, shared position rules and protection adapter. It reconstructs committed account results and verifies them on restart. Confirmed funding lookup is asynchronous; unpublished settlement rates delay account processing while retaining ordered prices. See [observed execution](adr/0015-observed-paper-execution.md).
+
+Manual and strategy execution sources share this journal. Additive request and terminal-summary tables provide idempotent manual actions and restart display state. The one-position policy and protections remain engine-owned. See [ADR 0017](adr/0017-manual-paper-source.md). Additive evaluation rows record exact IR values for chart display without rewriting old journals or inventing missing legacy samples.
 
 The Tauri host emits native Windows toasts through a short-lived mode of the same executable. Sound uses the Windows system notification alias. Direct Telegram delivery uses only an exact per-data-root Windows Credential Manager target; the database and exports contain no Telegram secrets. See [notification/storage boundary](adr/0014-notifications-and-protected-storage.md). No exchange execution client, account API credential field, cloud backend or background service is created.

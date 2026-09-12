@@ -7,6 +7,7 @@ from websockets.sync.client import connect
 
 from terminal.data import BybitClient, DataError, coverage, validate_symbol
 from terminal.series import Candle
+from terminal.market_state import MarketState
 
 
 class LiveProtocolError(ValueError):
@@ -27,6 +28,7 @@ class PublicStream:
         self.last_receive=None
         self.last_ping=0
         self.subscribed=False
+        self.state=MarketState()
 
     def open(self):
         if self.socket is not None:
@@ -34,7 +36,8 @@ class PublicStream:
         self.socket=self.connector(f'wss://stream.bybit.com/v5/public/{self.market}',
             open_timeout=12,close_timeout=3,max_size=1024*1024,max_queue=32,compression=None,
             ping_interval=20,ping_timeout=20)
-        self.socket.send(json.dumps({'op':'subscribe','args':[f'tickers.{self.symbol}',f'kline.1.{self.symbol}']}))
+        self.state.connected()
+        self.socket.send(json.dumps({'op':'subscribe','args':[f'tickers.{self.symbol}',f'kline.1.{self.symbol}',f'orderbook.50.{self.symbol}',f'publicTrade.{self.symbol}']}))
         self.last_receive=time.monotonic()
         self.last_ping=self.last_receive
         self.ticker={};self.ticker_ms=-1;self.candle_ms=-1;self.forming_start=-1;self.subscribed=False
@@ -69,12 +72,20 @@ class PublicStream:
         if payload.get('op') in ('ping','pong') or payload.get('ret_msg')=='pong':
             return []
         topic=payload.get('topic')
-        if topic not in (f'tickers.{self.symbol}',f'kline.1.{self.symbol}'):
+        if topic not in (f'tickers.{self.symbol}',f'kline.1.{self.symbol}',f'orderbook.50.{self.symbol}',f'publicTrade.{self.symbol}'):
             raise LiveProtocolError('Unexpected public stream topic')
         timestamp=payload.get('ts')
         if type(timestamp) is not int or timestamp>observed_ms+5000 or observed_ms-timestamp>90000:
             raise LiveProtocolError('Stale data or clock disagreement')
         data=payload.get('data')
+        if topic.startswith('orderbook.'):
+            if observed_ms-timestamp>15000 or not isinstance(data,dict) or data.get('s')!=self.symbol:
+                raise LiveProtocolError('Stale or invalid order book')
+            self.state.book_update(payload.get('type'),data,timestamp)
+            return []
+        if topic.startswith('publicTrade.'):
+            self.state.trade_update(data,self.symbol,observed_ms)
+            return []
         if topic.startswith('tickers.'):
             if observed_ms-timestamp>15000:raise LiveProtocolError('Observed ticker is stale')
             if not isinstance(data,dict) or data.get('symbol')!=self.symbol:
@@ -90,6 +101,7 @@ class PublicStream:
             mark=dec(self.ticker['markPrice']) if self.ticker.get('markPrice') else None
             if price<=0 or (mark is not None and mark<=0):
                 raise LiveProtocolError('Invalid public observed price')
+            self.state.ticker_update({key:self.ticker.get(key) for key in ('lastPrice','markPrice','price24hPcnt','prevPrice24h','highPrice24h','lowPrice24h','volume24h','turnover24h','fundingRate','nextFundingTime')},timestamp)
             return [{'kind':'price','provider_ms':timestamp,'observed_ms':observed_ms,
                      'price':str(price),'mark':str(mark) if mark is not None else None,
                      'funding_rate':self.ticker.get('fundingRate'),
@@ -110,6 +122,7 @@ class PublicStream:
                 if timestamp<=self.candle_ms or start<self.forming_start:continue
                 self.candle_ms=timestamp;self.forming_start=start
             candle=Candle(start//1000,*(float(row[key]) for key in ('open','high','low','close','volume')))
+            self.state.count('candles' if row['confirm'] else 'forming')
             events.append({'kind':'candle' if row['confirm'] else 'forming','candle':asdict(candle),
                            'provider_ms':timestamp,'observed_ms':max(observed_ms,start+60000) if row['confirm'] else observed_ms})
         return events

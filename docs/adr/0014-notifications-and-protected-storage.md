@@ -1,6 +1,6 @@
 # ADR 0014: Local notifications and Windows-protected Telegram credentials
 
-Status: implemented primitives and UI; integrated delivery/native visual acceptance in progress.
+Status: Windows and sound accepted in product 0.3; Telegram delivery failed owner acceptance and remains open as ILI-37. Product 0.4 improves safe diagnostics without claiming delivery success.
 
 Telegram is direct HTTPS from the local service to the official Bot API, with no application cloud backend. Store token and chat ID together in a Windows Credential Manager generic credential scoped to a hash of the data root. Use `CredWriteW`, `CredReadW`, `CredDeleteW` and `CredFree` through the standard Python ctypes ABI. Persistence is current-user/local-machine, not roaming. No new credential library is required. Only this exact target is accessed; credentials are never enumerated. Temporary native buffers are cleared before release; Python string lifetime is not a secure memory sandbox. Same-user malicious code, including explicitly trusted Python strategies, remains outside the protection boundary.
 
@@ -13,3 +13,9 @@ Delivery runs in a bounded 32-item queue on a separate thread. Persist the event
 Evidence so far: synthetic isolated Credential Manager write/read/clear on Windows succeeded; redacted provider/network errors and POST handling pass automated tests. Native toast and sound APIs returned success. The opt-in Rust integration test also confirmed Windows retained the emitted toast in this application's own notification history. Actual toast visibility, sound audibility and owner-configured Telegram delivery remain distinct acceptance checks. Never request the owner's token in a prompt.
 
 References: [Windows credentials](https://learn.microsoft.com/en-us/windows/win32/api/wincred/ns-wincred-credentialw), [CredWriteW](https://learn.microsoft.com/en-us/windows/win32/api/wincred/nf-wincred-credwritew), [Telegram sendMessage](https://core.telegram.org/bots/api#sendmessage), [Microsoft Windows Rust bindings](https://github.com/microsoft/windows-rs).
+
+## Bounded 0.4 investigation
+
+The official Bot API still supports the existing HTTPS `sendMessage` JSON POST with `chat_id` and `text`; no incompatible endpoint or encoding defect was established. Token/chat format validation and protected-storage retrieval remain intact. Delivery now maps fixed reviewed HTTP/API cases to application-owned messages: unauthorized token, chat not found, blocked bot, conversation not started, bot recipient, non-Telegram HTTP 403, rate limiting, server errors, network failures and certificate validation failures. Unknown responses remain generic. Arbitrary provider descriptions, URL-bearing exceptions, token/chat values and hashes never become diagnostics. Redirect rejection, response/time limits and TLS verification remain enforced.
+
+Transport fixtures verify each diagnostic boundary and malicious response-text suppression. No owner credentials were read for this investigation and no real Telegram delivery succeeded as part of those tests. The next real owner test should use the configured UI and its safe delivery outcome; ILI-37 stays open until that acceptance succeeds. No Windows/sound implementation or storage policy is changed.

@@ -16,7 +16,7 @@ from terminal.data import canonical
 
 class LiveManagerTests(unittest.TestCase):
     def test_transport_reconnect_recovers_minutes_and_suppresses_old_events(self):
-        clock=[120.0];opened=[];closed=[]
+        clock=[120.0];opened=[];closed=[];reset_states=[]
         prices={0:100,60:100,120:110,180:90,240:110,300:120}
         class History(LiveHistory):
             def candles(self,market,symbol,start,end):
@@ -26,7 +26,12 @@ class LiveManagerTests(unittest.TestCase):
         class Stream:
             subscribed=True
             def __init__(self,*args):self.number=len(opened);self.step=0
-            def open(self):opened.append(self.number)
+            def open(self):
+                reset_states.append((self.state.book.valid,len(self.state.trades)))
+                self.state.connected()
+                self.state.book_update('snapshot',{'u':1,'seq':1,'b':[['99','1']],'a':[['101','1']]},int(clock[0]*1000))
+                self.state.trade_update([{'s':'BTCUSDT','S':'Buy','i':str(self.number),'T':int(clock[0]*1000),'p':'100','v':'1'}],'BTCUSDT',int(clock[0]*1000))
+                opened.append(self.number)
             def close(self):closed.append(self.number)
             def read(self):
                 self.step+=1
@@ -45,11 +50,55 @@ class LiveManagerTests(unittest.TestCase):
                 manager.session_id=sid;manager._run(sid)
                 events=manager.journal.events(sid)
                 self.assertEqual(opened,[0,1]);self.assertEqual(closed,[0,1])
+                self.assertEqual(reset_states,[(False,0),(False,0)])
+                self.assertEqual(manager.market.snapshot()['counts']['connections'],2)
+                self.assertEqual(len(manager.market.snapshot()['trades']),1)
                 self.assertEqual([(e['time'],e['type'],e['delivery']) for e in reversed(events)],[(180,'entry_long','disabled'),(240,'exit_long','suppressed'),(300,'entry_long','suppressed')])
                 self.assertEqual(manager.journal.get(sid)['last_minute'],300)
                 self.assertEqual(manager.replay(sid),{'match':True,'checked_events':3})
                 self.assertTrue(any('Recovered 2 missing' in e['message'] for e in manager.log))
                 self.assertEqual(LiveSession(manager.journal,sid).verify_replay(),{'match':True,'checked_events':3})
+            finally:manager.close()
+
+    def test_manual_source_records_strategy_signals_without_strategy_orders(self):
+        clock=[120.0];observed_positions=[]
+        class History(LiveHistory):
+            def candles(self,market,symbol,start,end):
+                return [Candle(t,100,100,100,100,1) for t in range(start,end,60)]
+        class Stream:
+            subscribed=True
+            def __init__(self,*args):self.step=0
+            def open(self):
+                self.state.connected()
+                self.state.book_update('snapshot',{'u':1,'seq':1,'b':[['99','1']],'a':[['111','1']]},120000)
+            def close(self):pass
+            def read(self):
+                self.step+=1
+                if self.step==2:
+                    clock[0]=180.
+                    return [{'kind':'candle','observed_ms':180000,'candle':{'time':120,'open':110,'high':110,'low':110,'close':110,'volume':1}}]
+                if self.step==4:
+                    observed_positions.append(manager.view['paper']['position'])
+                    manager.manual(sid,'buy','f'*32)
+                if self.step==5:
+                    observed_positions.append(manager.view['paper']['position'])
+                    manager.stop.set();return []
+                clock[0]+=.1
+                timestamp=int(clock[0]*1000)
+                self.state.ticker_update({'lastPrice':'110'},timestamp)
+                return [{'kind':'price','provider_ms':timestamp,'observed_ms':timestamp,'price':'110','mark':None}]
+        with tempfile.TemporaryDirectory() as directory,patch('terminal.live.WindowsCredentials'),patch('terminal.live.time.time',side_effect=lambda:clock[0]):
+            manager=LiveManager(RunStore(Path(directory)),stream_factory=Stream,history_factory=History)
+            try:
+                sid=manager.journal.create(example_graph(),Profile(primary_minutes=1),'fixture','Synthetic source isolation')
+                with manager.store.connect() as db:
+                    db.execute('INSERT INTO live_options VALUES(?,?)',(sid,canonical({'paper':True,'channels':[],'warmup_minutes':2,'execution_source':'manual'}).decode()))
+                manager.session_id=sid;manager.thread=Mock();manager.thread.is_alive.return_value=True
+                manager._run(sid)
+                self.assertEqual(observed_positions[0],None)
+                self.assertEqual(observed_positions[1]['side'],'long')
+                self.assertEqual([(e['time'],e['type']) for e in manager.journal.events(sid)],[(180,'entry_long')])
+                self.assertEqual(manager.manual(sid,'buy','f'*32)['status'],'applied')
             finally:manager.close()
 
     def test_signal_waits_for_an_observation_after_its_availability(self):

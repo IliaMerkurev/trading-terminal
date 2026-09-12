@@ -68,3 +68,26 @@ class LiveJournalTests(unittest.TestCase):
         with self.runs.connect() as db:
             self.assertEqual([tuple(r) for r in db.execute('SELECT * FROM strategies')],before)
             self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0],'ok')
+
+    def test_recorded_chart_values_match_ir_and_recovery_is_unique(self):
+        with self.runs.connect() as db:
+            db.execute('CREATE TABLE paper_observations(session_id TEXT,sequence INTEGER,observation TEXT,result TEXT)')
+        self.session.ingest(bar(0,100),60000,'warmup')
+        self.session.ingest(bar(1,110),120000,'recovered')
+        self.session.ingest(bar(1,110),125000)
+        before=self.store.chart(self.id)
+        self.assertEqual(len(before['candles']),2)
+        self.assertEqual(before['evaluations'][-1],self.session.latest)
+        self.assertEqual(before['evaluations'][-1]['values']['mean.value'],105.0)
+        self.session.ingest(bar(2,10000),180000)
+        after=self.store.chart(self.id)
+        self.assertEqual(after['evaluations'][:len(before['evaluations'])],before['evaluations'])
+        self.assertEqual([c['time'] for c in after['candles']],[0,60,120])
+        self.assertTrue(self.session.verify_replay()['match'])
+
+    def test_chart_keeps_older_fills_without_loading_empty_tick_results(self):
+        with self.runs.connect() as db:
+            db.execute('CREATE TABLE paper_observations(session_id TEXT,sequence INTEGER,observation TEXT,result TEXT)')
+            db.execute('INSERT INTO paper_observations VALUES(?,?,?,?)',(self.id,0,'{}',json.dumps({'fills':[{'time_ns':100,'price':'100','reason':'entry','side':'buy'}]})))
+            db.executemany('INSERT INTO paper_observations VALUES(?,?,?,?)',[(self.id,i,'{}','{"fills":[]}') for i in range(1,2002)])
+        self.assertEqual(self.store.chart(self.id)['fills'],[{'time_ns':100,'price':'100','reason':'entry','side':'buy'}])

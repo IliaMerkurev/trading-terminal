@@ -2,6 +2,16 @@
 
 Read [PROJECT.md](PROJECT.md), [implementation status](docs/STATUS.md), and [development guidance](docs/DEVELOPMENT.md) before making changes. PROJECT.md is the authoritative product specification. Keep public documentation and code identifiers in English. Local, untracked run instructions, if present, are indexed by `.private/README.md`; they are not public project documentation. Historical backups are not current specifications.
 
+## Language
+
+Use English for all project artifacts and engineering work: code, comments, documentation, ADRs, Linear issues, commit messages, pull requests, test descriptions, implementation plans, and progress updates.
+
+Owner-facing final reports must be written in Russian unless the owner explicitly requests another language.
+
+Do not translate technical identifiers, API terminology, library names, protocol names, error messages, or code concepts into Russian.
+
+Avoid bilingual duplication of the same project content.
+
 ## Scope and correctness
 
 Preserve required behavior when selecting dependencies. Record material choices, alternatives, versions, limitations, and evidence in ADRs. Distinguish planned, partial, blocked, and verified behavior. Do not implement deferred scope without authorization.

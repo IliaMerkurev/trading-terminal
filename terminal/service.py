@@ -47,9 +47,13 @@ class AppService:
             fields.update(live_start={'strategy_id','profile','paper','channels'},live_status=set(),live_pause=set(),
                           live_resume={'session_id','revalidate_paper'},live_replay={'session_id'},live_select={'session_id'},
                           notification_test={'channel'},telegram_configure={'token','chat_id'},telegram_clear=set())
+            fields.update(live_start_terminal={'strategy_id','profile','paper','channels','execution_source'},
+                          live_chart={'session_id'},paper_manual={'session_id','action','request_id'})
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
-            if command=='live_start':result=self.live.start(**p)
+            if command in ('live_start','live_start_terminal'):result=self.live.start(**p)
+            elif command=='live_chart':result=self.live.journal.chart(**p)
+            elif command=='paper_manual':result=self.live.manual(**p)
             elif command=='live_status':result=self.live.status()
             elif command=='live_pause':result=self.live.pause()
             elif command=='live_select':result=self.live.select(**p)
