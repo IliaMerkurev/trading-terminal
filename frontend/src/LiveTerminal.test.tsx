@@ -112,3 +112,22 @@ it('does not draw a saved account or stale ticker on a different market',async()
  expect((screen.getByRole('button',{name:'Paper Buy'}) as HTMLButtonElement).disabled).toBe(true);
  expect(screen.queryByText('99')).toBeNull();
 });
+
+
+it('explains ATR history readiness for a manual account without a strategy',async()=>{
+ const s:any=state();s.strategy_state='NOT SELECTED';s.paper_ready=false;s.protection_ready=false;s.warmup={recovered:28,required:960};
+ s.options.strategy_enabled=false;s.session.status='RECOVERING DATA';
+ mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ expect(await screen.findByText('Paper: WAITING FOR ATR HISTORY')).toBeTruthy();
+ expect(screen.getByText('Preparing history: 28 / 960 M1')).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Paper Buy'}) as HTMLButtonElement).disabled).toBe(true);
+});
+
+
+it('does not label a processed request as a guaranteed position fill',async()=>{
+ const s:any=state();s.manual_requests=[{id:'r',action:'reduce_25',status:'applied'}];
+ mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
+ render(<Live strategyId="s" profile={defaultProfile}/>);
+ expect(await screen.findByText('PAPER reduce 25: processed; see fills/rejections')).toBeTruthy();
+});
