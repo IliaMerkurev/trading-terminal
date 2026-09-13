@@ -15,6 +15,8 @@ from terminal.paper_journal import PaperJournal, PaperRecordingError, FundingLoo
 from terminal.profile import Profile
 from terminal.series import Candle
 from terminal.market_state import MarketState
+from terminal.market_hub import MarketHub, MarketFeed
+from terminal.chart_history import ChartHistory
 from terminal.storage import identifier
 
 
@@ -41,6 +43,8 @@ class LiveManager:
         self.thread=None;self.stop=threading.Event();self.lock=threading.RLock()
         self.session_id=None;self.view={};self.log=deque(maxlen=200)
         self.market=MarketState();self.manual_pending=None
+        self.hub=MarketHub(stream_factory)
+        self.chart_history=ChartHistory(store,self.hub)
         self.telegram=Telegram(WindowsCredentials(store.root))
         self.delivery_queue=queue.Queue(maxsize=32)
         self.delivery_stop=threading.Event()
@@ -59,7 +63,7 @@ class LiveManager:
                     WHERE json_array_length(json_extract(result,'$.fills'))>0;
             ''')
             db.execute("UPDATE manual_paper_requests SET status='cancelled_restart' WHERE status='queued'")
-            db.execute("UPDATE live_sessions SET status='PAUSED',detail='Application restarted; recovery and paper revalidation required'")
+            db.execute("UPDATE live_sessions SET status='PAUSED',detail='Application restarted; recovery and paper revalidation required' WHERE status IN ('CONNECTED','RECONNECTING','RECOVERING DATA')")
             row=db.execute('SELECT id FROM live_sessions ORDER BY rowid DESC LIMIT 1').fetchone()
             if row:self.session_id=row['id']
 
@@ -80,10 +84,29 @@ class LiveManager:
         profile=Profile(**profile)
         if execution_source not in ('strategy','manual'):raise ValueError('Invalid paper execution source')
         graph=strategy['document']['graph']
-        required=max(100,warmup_bars(graph)+2)*profile.primary_minutes
+        from terminal.graph import POSITION_FIELDS
+        if paper and any(node['type'] in POSITION_FIELDS for node in graph['nodes']) and profile.position_management is None:
+            raise ValueError('Live position nodes require an enabled Position Management paper account')
+        required=max(100,warmup_bars(graph)+2,(profile.position_management or {}).get('atr_period',0)+2)*profile.primary_minutes
         if required>200000:raise ValueError('Initial live warmup exceeds 200,000 minutes; use a shorter primary timeframe or graph warmup')
         sid=self.journal.create(graph,profile,strategy_id,strategy['name'])
         options={'paper':paper,'channels':channels,'warmup_minutes':max(1440,required),'execution_source':execution_source}
+        with self.store.connect() as db:db.execute('INSERT INTO live_options VALUES(?,?)',(sid,canonical(options).decode()))
+        self.session_id=sid
+        self.resume(sid,False)
+        return {'session_id':sid}
+
+    def start_manual(self,profile):
+        if self.thread and self.thread.is_alive():raise ValueError('Only one live/paper session may run at a time')
+        profile=Profile(**profile)
+        graph={'version':1,'nodes':[{'id':'idle','type':'constant','inputs':{},'params':{'value':0}}],
+               'outputs':{key:None for key in ('entry_long','exit_long','entry_short','exit_short')}}
+        pm=profile.position_management or {}
+        needs_atr=bool(float(pm.get('atr_stop_multiplier',0)) or float(pm.get('atr_trailing_multiplier',0)))
+        required=(pm.get('atr_period',14)+2)*profile.primary_minutes if needs_atr else 0
+        if required>200000:raise ValueError('Protection warmup exceeds 200,000 minutes')
+        sid=self.journal.create(graph,profile,'','Manual paper account')
+        options={'paper':True,'channels':[],'warmup_minutes':required,'execution_source':'manual','strategy_enabled':False}
         with self.store.connect() as db:db.execute('INSERT INTO live_options VALUES(?,?)',(sid,canonical(options).decode()))
         self.session_id=sid
         self.resume(sid,False)
@@ -95,11 +118,12 @@ class LiveManager:
             if session_id!=self.session_id:raise ValueError('Another live session is active')
             if revalidate_paper:self.paper_revalidate.set()
             return {'session_id':session_id}
-        self.journal.get(session_id)
+        snapshot=self.journal.get(session_id)['snapshot']
+        self.hub.open(snapshot['profile']['market'],snapshot['profile']['symbol'])
         self.session_id=session_id;self.stop.clear();self.paper_revalidate.clear()
         if revalidate_paper:self.paper_revalidate.set()
         self.view={};self.log.clear()
-        self.market=MarketState()
+        self.market=self.hub.state
         self.thread=threading.Thread(target=self._run,args=(session_id,),daemon=True)
         self.thread.start()
         return {'session_id':session_id}
@@ -134,17 +158,34 @@ class LiveManager:
                 trades=db.execute("SELECT result FROM paper_observations WHERE session_id=? AND json_array_length(json_extract(result,'$.fills'))>0 ORDER BY sequence DESC LIMIT 50",(self.session_id,)).fetchall()
                 view['paper_history']=[json.loads(r['result']) for r in trades]
         view['active']=bool(self.thread and self.thread.is_alive() and not self.stop.is_set())
-        view['market']=self.market.snapshot()
+        view['market']=self.hub.snapshot() if self.hub.started is not None else self.market.snapshot()
         status=view.get('session',{}).get('status','PAUSED')
         view['terminal_state']='DEGRADED' if status=='CONNECTED' and not view['market']['fresh'] else status
+        if self.hub.started is not None:view['terminal_state']=view['market']['status']
+        view['strategy_state']='NOT SELECTED' if not self.session_id else 'READY' if view['active'] and status=='CONNECTED' else 'WARMING UP' if view['active'] and status=='RECOVERING DATA' else status
+        if view.get('options',{}).get('strategy_enabled') is False:view['strategy_state']='NOT SELECTED'
+        if view.get('strategy_error'):view['strategy_state']='ERROR'
+        view['paper_ready']=bool(view.get('options',{}).get('paper') and view.get('paper') and view['active'] and view['market']['fresh'] and not view.get('paper_paused') and not (view.get('paper') or {}).get('pending_observations') and view.get('protection_ready',True))
         with self.store.connect() as db:
             view['manual_requests']=[dict(row) for row in db.execute('SELECT id,action,status FROM manual_paper_requests WHERE session_id=? ORDER BY created_ms DESC LIMIT 10',(self.session_id,))]
         view['telegram']=self.telegram.status()
         return view
 
+    def market_open(self,market,symbol):
+        if self.thread and self.thread.is_alive():
+            profile=self.journal.get(self.session_id)['snapshot']['profile']
+            if (market,symbol)!=(profile['market'],profile['symbol']):raise ValueError('Pause monitoring before changing the market')
+        self.hub.open(market,symbol);self.market=self.hub.state
+        return self.hub.snapshot()
+
+    def market_close(self):
+        # Leaving Live does not stop an explicitly active strategy session.
+        if not (self.thread and self.thread.is_alive()):self.hub.close()
+        return {'active':self.hub.snapshot()['active']}
+
     def manual(self,session_id,action,request_id):
         identifier(request_id)
-        if action not in ('buy','sell','close'):raise ValueError('Unsupported PAPER action')
+        if action not in ('buy','sell','close','add','reduce_25','reduce_50'):raise ValueError('Unsupported PAPER action')
         with self.lock, self.store.connect() as db:
             previous=db.execute('SELECT * FROM manual_paper_requests WHERE id=?',(request_id,)).fetchone()
             if previous:
@@ -155,9 +196,11 @@ class LiveManager:
             options=json.loads(db.execute('SELECT options FROM live_options WHERE session_id=?',(session_id,)).fetchone()[0])
             paper=self.view.get('paper',{})
             if not options['paper'] or options.get('execution_source','strategy')!='manual':raise ValueError('Select Manual PAPER source in a new session')
-            if session['status']!='CONNECTED' or not self.market.snapshot()['fresh'] or self.view.get('paper_paused') or paper.get('pending_observations',0):raise ValueError('PAPER unavailable until market and account are synchronized')
+            if not self.market.snapshot()['fresh'] or self.view.get('paper_paused') or paper.get('pending_observations',0) or not self.view.get('protection_ready',True):raise ValueError('PAPER unavailable until market and account are synchronized')
             if action=='sell' and session['snapshot']['profile']['market']=='spot':raise ValueError('Spot PAPER cannot open a short position')
-            if (action=='close') != bool(paper.get('position')):raise ValueError('PAPER action conflicts with the one-position rule')
+            if action in ('add','reduce_25','reduce_50') and session['snapshot']['profile'].get('position_management') is None:
+                raise ValueError('Enable Position Management for Add/Reduce controls')
+            if (action in ('close','add','reduce_25','reduce_50')) != bool(paper.get('position')):raise ValueError('PAPER action conflicts with the one-position rule')
             if self.manual_pending:raise ValueError('A PAPER action is already awaiting the next quote')
             created=int(time.time()*1000)
             db.execute('INSERT INTO manual_paper_requests VALUES(?,?,?,?,?,NULL)',(request_id,session_id,action,'queued',created))
@@ -223,11 +266,14 @@ class LiveManager:
             self.journal.delivery(event['id'],False);self._log('Notification queue full; event retained without retry')
 
     def _run(self,sid):
-        paper=None;stream=None
+        paper=None;stream=None;warmup_thread=None
         try:
             session=LiveSession(self.journal,sid)
             with self.store.connect() as db:options=json.loads(db.execute('SELECT options FROM live_options WHERE session_id=?',(sid,)).fetchone()[0])
+            pm=session.profile.position_management or {}
+            self._set(protection_ready=not (float(pm.get('atr_stop_multiplier',0)) or float(pm.get('atr_trailing_multiplier',0))))
             history=self.history_factory(self.store.root/'live-http-cache',cancel=self.stop)
+            history.progress=lambda **values:self._set(warmup=values)
             paper_paused=False;sequence=0
             if options['paper']:
                 def funding_rate(boundary):
@@ -237,48 +283,78 @@ class LiveManager:
                         if row.get('symbol')==session.profile.symbol and int(row['fundingRateTimestamp'])==boundary:return row['fundingRate']
                     return None
                 paper=PaperJournal(self.store,sid,session.profile,FundingLookup(funding_rate))
+                if session.uses_position:session.position_provider=paper.position_context
                 paper_paused=paper.sequence>0
                 self._set(paper=paper.snapshot(),paper_paused=paper_paused)
-            end=int(time.time())//60*60
-            if session.last is None:
-                width=session.profile.primary_minutes*60
-                start=end//width*width-options['warmup_minutes']*60
-                history.recover(session,end,warmup_start=start)
+            initialized=threading.Event();initialization_error=[]
+            strategy_enabled=options.get('strategy_enabled',True)
+            def initialize():
+                try:
+                    end=int(time.time())//60*60
+                    if session.last is None and options['warmup_minutes']:
+                        width=session.profile.primary_minutes*60
+                        start=end//width*width-options['warmup_minutes']*60
+                        history.recover(session,end,warmup_start=start)
+                    if session.last is not None:history.recover(session,int(time.time())//60*60)
+                except Exception as error:initialization_error.append(type(error).__name__)
+                finally:initialized.set()
+            if self.hub.started is not None:
+                warmup_thread=threading.Thread(target=initialize,daemon=True,name='strategy-history-initialization')
+                warmup_thread.start()
+            else:
+                initialize()
+                if initialization_error:raise RecoveryRequired('History initialization failed')
             self._set(evaluation=session.latest)
             attempts=0;latest_price=None;last_price_at=0;pending=PendingSignals()
             while not self.stop.is_set():
                 try:
-                    stream=self.stream_factory(session.profile.market,session.profile.symbol)
+                    stream=(self.hub.feed(session.profile.market,session.profile.symbol) if self.hub.started is not None else self.stream_factory(session.profile.market,session.profile.symbol))
                     stream.state=self.market
                     stream.open()
                     connected_at=time.monotonic();latest_price=None;last_price_at=connected_at
                     end=int(time.time())//60*60
-                    recovered=history.recover(session,end)
+                    recovered=history.recover(session,end) if initialized.is_set() and not initialization_error and session.last is not None else 0
                     self._log(f'Recovered {recovered} missing candles; waiting for fresh market data')
                     self.journal.state(sid,'RECOVERING DATA','Waiting for fresh subscribed public data')
                     while not self.stop.is_set():
                         events=stream.read()
+                        ready=initialized.is_set() and not initialization_error
+                        if initialized.is_set():self._set(evaluation=session.latest,strategy_error=bool(initialization_error))
+                        pm=session.profile.position_management or {}
+                        protection_ready=not (float(pm.get('atr_stop_multiplier',0)) or float(pm.get('atr_trailing_multiplier',0))) or (ready and session.atr_manager is not None and session.atr_manager.atr is not None)
+                        self._set(protection_ready=protection_ready)
                         for event in events:
                             if self.stop.is_set():break
                             if event['kind']=='price':
+                                if isinstance(stream,MarketFeed) and int(time.time()*1000)-event['provider_ms']>15000:
+                                    raise RecoveryRequired('Queued observed quote is stale; account revalidation required')
                                 latest_price=event;last_price_at=time.monotonic()
                                 self._set(price=event['price'],mark=event['mark'],price_time=event['provider_ms'])
-                                if stream.subscribed and session.last is not None:
+                                if stream.subscribed and not strategy_enabled and ready:
+                                    self.journal.state(sid,'CONNECTED','Manual paper market synchronized; no strategy running')
+                                elif stream.subscribed and ready and session.last is not None:
                                     expected=int(time.time())//60*60-60
                                     if session.last>=expected:self.journal.state(sid,'CONNECTED','Public data synchronized')
                                     else:self.journal.state(sid,'RECOVERING DATA','Waiting for the next confirmed minute before new signals')
-                                if paper and self.paper_revalidate.is_set():
+                                if paper and self.paper_revalidate.is_set() and protection_ready:
                                     self.paper_revalidate.clear();paper_paused=False;self._log('Paper continuity revalidated; missing ticks are not reconstructed')
                                 if paper and not paper_paused:
-                                    synchronized=self.journal.get(sid)['status']=='CONNECTED'
-                                    signals,manual_id=(self._take_manual(event) if synchronized else (None,None)) if options.get('execution_source','strategy')=='manual' else (pending.take(event) if synchronized else None,None)
-                                    paper.append(event,signals,manual_id=manual_id)
+                                    synchronized=ready and self.journal.get(sid)['status']=='CONNECTED'
+                                    signals,manual_id=(self._take_manual(event) if self.market.snapshot()['fresh'] and protection_ready else (None,None)) if options.get('execution_source','strategy')=='manual' else (pending.take(event) if synchronized else None,None)
+                                    if session.atr_manager:
+                                        paper.append(event,signals,manual_id=manual_id,atr=session.atr_manager.atr if protection_ready else None)
+                                    else:paper.append(event,signals,manual_id=manual_id)
                                     for result in paper.process():
-                                        for fill in result['fills']:self._log('Paper position '+('opened' if fill['reason']=='entry' else 'closed: '+fill['reason']))
+                                        for fill in result['fills']:
+                                            reason=fill['reason']
+                                            verb='opened' if reason in ('entry','manual_buy','manual_sell') else 'scaled' if reason.startswith('dca_') or reason in ('repeated_entry','manual_add') else 'reduced' if reason.startswith(('partial_take_','manual_reduce_')) else 'closed'
+                                            self._log('Paper position '+verb+': '+reason.replace('_',' '))
+                                        for diagnostic in result.get('diagnostics',[]):self._log(diagnostic['message'])
                                     self._set(paper=paper.snapshot())
                                 self._set(paper_paused=paper_paused)
                             elif event['kind']=='forming':self._set(forming=event['candle'])
                             elif event['kind']=='candle':
+                                if not ready or (not strategy_enabled and not options['warmup_minutes']):continue
                                 candle=Candle(**event['candle'])
                                 previous=session.last
                                 if session.last is not None and candle.time>session.last+60:
@@ -293,14 +369,14 @@ class LiveManager:
                                 if previous is not None and candle.time<=previous:continue
                                 self._set(evaluation=session.latest,last_candle=asdict(candle))
                                 self._log('Candle closed')
-                                for signal in signals:
+                                for signal in signals if strategy_enabled else []:
                                     self._log(signal['type'].replace('_',' ').title()+' became TRUE')
                                     self._notify(signal,options['channels'])
-                                if paper and not paper_paused and latest_price and time.monotonic()-last_price_at<10 and session.latest and session.latest['time']==candle.time+60:
+                                if strategy_enabled and paper and not paper_paused and latest_price and time.monotonic()-last_price_at<10 and session.latest and session.latest['time']==candle.time+60:
                                     pending.offer(session.latest,event['observed_ms'])
                         if time.monotonic()-last_price_at>30:
                             raise RecoveryRequired('Observed market price is stale')
-                        if session.last is not None and session.last<int(time.time())//60*60-120:
+                        if ready and strategy_enabled and session.last is not None and session.last<int(time.time())//60*60-120:
                             raise RecoveryRequired('Confirmed minute stream is stale')
                         # One packet does not prove that a flapping connection recovered.
                         if time.monotonic()-connected_at>=60 and self.journal.get(sid)['status']=='CONNECTED':attempts=0
@@ -311,7 +387,8 @@ class LiveManager:
                 except Exception:
                     if self.stop.is_set():break
                     paper_paused=bool(paper);self._set(paper_paused=paper_paused)
-                    self._cancel_manual('cancelled_recovery');self.market.reset()
+                    self._cancel_manual('cancelled_recovery')
+                    if not isinstance(stream,MarketFeed):self.market.reset()
                     pending=PendingSignals()
                     self.journal.state(sid,'RECONNECTING','Public connection interrupted; history recovery required')
                     self._log('Connection lost; paper paused and notifications suppressed')
@@ -329,9 +406,11 @@ class LiveManager:
                 self.journal.state(sid,'ERROR','Live initialization failed; verify history, graph and public connectivity')
                 self._log('Initialization failed; no automatic paper continuation')
         finally:
+            if warmup_thread:warmup_thread.join(timeout=25)
             if paper:paper.close()
 
     def close(self):
         self.pause()
         if self.thread:self.thread.join(timeout=4)
+        self.hub.close();self.chart_history.close()
         self.delivery_stop.set();self.delivery_thread.join(timeout=1)

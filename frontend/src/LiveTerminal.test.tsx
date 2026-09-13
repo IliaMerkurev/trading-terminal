@@ -2,12 +2,31 @@ import {it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import Live from './Live';
 import {defaultProfile} from './model';
+import {positionDefaults} from './PositionSettings';
 import {OrderBookPanel,TradeTape} from './MarketPanels';
 import {displayCandles,displayIndicator} from './liveChartData';
 const mock=vi.hoisted(()=>({api:vi.fn()}));
 vi.mock('./api',()=>({api:mock.api}));
-vi.mock('./LiveChart',()=>({default:()=> <div aria-label="Live candlestick chart"/>}));
+vi.mock('./LiveChart',()=>({default:(props:any)=> <div aria-label="Live candlestick chart" data-paper={!!props.paper} data-session={props.sessionId??""}/>}));
 const state=()=>({active:true,terminal_state:'CONNECTED',market:{fresh:true,ticker:{lastPrice:'100'},book:{valid:true,bids:[['99','2']],asks:[['101','3']]},book_age:0,trades:[]},session:{id:'s',status:'CONNECTED',snapshot:{strategy_name:'Fixture',profile:{...defaultProfile,primary_minutes:60}}},options:{paper:true,execution_source:'manual',channels:[]},paper:{cash:'1000',equity:'1000',position:null},evaluation:{time:120,values:{'rsi.value':28.7},signals:{entry_long:true}}});
+
+it('allows manual account creation with no saved strategy',async()=>{
+ mock.api.mockImplementation(async(command:string)=>command==='live_status'?{active:false,market:{active:true,fresh:true},terminal_state:'CONNECTED'}:{});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Start manual paper account'}));
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('paper_start_manual',{profile:defaultProfile}));
+});
+
+it('uses paper readiness while strategy warms and exposes shared Add/Reduce operations',async()=>{
+ const s:any=state();s.session.status='RECOVERING DATA';s.strategy_state='WARMING UP';s.paper_ready=true;
+ s.session.snapshot.profile.position_management=positionDefaults(defaultProfile);s.paper.position={side:'long',quantity:'4',entry:'100'};
+ mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{status:'queued'});
+ render(<Live strategyId="s" profile={defaultProfile}/>);
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Reduce 25%'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Reduce 25%'}));
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('paper_manual',expect.objectContaining({action:'reduce_25',session_id:'s'})));
+ expect((screen.getByRole('button',{name:'Add to Paper Position'}) as HTMLButtonElement).disabled).toBe(false);
+});
 
 it('keeps chart-led layout, frozen strategy timeframe and switchable panels',async()=>{
  mock.api.mockResolvedValue(state());render(<Live strategyId="s" profile={defaultProfile}/>);
@@ -79,4 +98,36 @@ it('does not fabricate a coarse candle from truncated leading history',()=>{
  const bars=[60,120,180,240,300,360].map(time=>({time,open:100,high:110,low:90,close:105,volume:1}));
  expect(displayCandles(bars,undefined,5)).toEqual([{time:600,open:100,high:110,low:90,close:105,volume:2}]);
  expect(displayCandles(bars,undefined,1)).toHaveLength(6);
+});
+
+
+it('does not draw a saved account or stale ticker on a different market',async()=>{
+ const s:any=state();s.active=false;s.market.symbol='BTCUSDT';s.market.market='spot';s.paper.position={side:'long',quantity:'4',entry:'100'};
+ mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
+ render(<Live strategyId="s" profile={{...defaultProfile,symbol:'ETHUSDT'}}/>);
+ expect(await screen.findByText(/Saved PAPER account belongs to BTCUSDT/)).toBeTruthy();
+ expect(screen.getByLabelText('Live candlestick chart').getAttribute('data-paper')).toBe('false');
+ expect(screen.getByLabelText('Live candlestick chart').getAttribute('data-session')).toBe('');
+ expect(screen.getByText('● CONNECTING')).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Paper Buy'}) as HTMLButtonElement).disabled).toBe(true);
+ expect(screen.queryByText('99')).toBeNull();
+});
+
+
+it('explains ATR history readiness for a manual account without a strategy',async()=>{
+ const s:any=state();s.strategy_state='NOT SELECTED';s.paper_ready=false;s.protection_ready=false;s.warmup={recovered:28,required:960};
+ s.options.strategy_enabled=false;s.session.status='RECOVERING DATA';
+ mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ expect(await screen.findByText('Paper: WAITING FOR ATR HISTORY')).toBeTruthy();
+ expect(screen.getByText('Preparing history: 28 / 960 M1')).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Paper Buy'}) as HTMLButtonElement).disabled).toBe(true);
+});
+
+
+it('does not label a processed request as a guaranteed position fill',async()=>{
+ const s:any=state();s.manual_requests=[{id:'r',action:'reduce_25',status:'applied'}];
+ mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
+ render(<Live strategyId="s" profile={defaultProfile}/>);
+ expect(await screen.findByText('PAPER reduce 25: processed; see fills/rejections')).toBeTruthy();
 });

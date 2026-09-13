@@ -73,7 +73,18 @@ class PaperJournal:
             except Exception:
                 self.engine.close();raise
 
-    def append(self,price,signals=None,manual_id=None):
+    def position_context(self,candle):
+        from terminal.position_management import position_context
+        cutoff=(candle.time+60)*1000000000-1
+        with self.store.connect() as db:
+            row=db.execute("SELECT result FROM paper_observations WHERE session_id=? AND json_extract(observation,'$.time_ns')<=? ORDER BY sequence DESC LIMIT 1",(self.id,cutoff)).fetchone()
+        position=json.loads(row['result']).get('position') if row else None
+        if not position:return position_context()
+        if 'first_ns' not in position:raise PaperRecordingError('Position-node context requires a versioned managed paper recording')
+        return position_context(1 if position['side']=='long' else -1,position['quantity'],position['entry'],candle.close,
+                                position['first_ns'],cutoff,self.profile.primary_minutes)
+
+    def append(self,price,signals=None,manual_id=None,atr=None):
         if self.sequence>=self.MAX_OBSERVATIONS:
             raise PaperRecordingError('Paper observation budget reached; pause and review')
         timestamp=max(price['observed_ms']*1000000,(self.previous_ns or 0)+1)
@@ -90,6 +101,14 @@ class PaperJournal:
             if upcoming>price['provider_ms']:
                 self.next_funding=upcoming
         observation={'time_ns':timestamp,'price':price['price'],'mark':price['mark'],'signals':signals}
+        if self.profile.position_management is not None:
+            observation['atr']=str(atr) if atr is not None else None
+            if manual_id:
+                with self.store.connect() as db:
+                    manual=db.execute('SELECT action FROM manual_paper_requests WHERE id=? AND session_id=?',(manual_id,self.id)).fetchone()
+                if manual is None:raise PaperRecordingError('Unknown managed paper request')
+                observation['manual_action']=manual['action']
+                observation['signals']=None  # Manual source never also submits a strategy action.
         try:
             with self.store.connect() as db:
                 db.execute('INSERT INTO paper_inputs VALUES(?,?,?,?,?)',(self.id,self.sequence,canonical(observation).decode(),boundary,self.next_funding))
@@ -140,7 +159,7 @@ class PaperJournal:
         if position and price:
             direction=1 if position['side']=='long' else -1
             entry=dec(position['entry']);unrealized=(dec(price)-entry)*dec(position['quantity'])*direction
-            position={**position,'stop':str(entry*(1-dec(self.profile.stop_loss)*direction)) if dec(self.profile.stop_loss) else None,
+            position={**position,'stop':position.get('stop') if self.profile.position_management is not None else str(entry*(1-dec(self.profile.stop_loss)*direction)) if dec(self.profile.stop_loss) else None,
                       'take':str(entry*(1+dec(self.profile.take_profit)*direction)) if dec(self.profile.take_profit) else None}
         pnl=dec(result.get('net_pnl','0'))
         return {**result,'position':position,'pending_observations':self.sequence-self.processed,'waiting_funding':self.waiting_funding,

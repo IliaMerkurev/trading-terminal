@@ -18,12 +18,13 @@ class ProfileViolation(ValueError):
 
 class RiskGateway:
     def __init__(self, engine, instrument, *, leverage=Decimal(1), perpetual=False,
-                 max_notional=Decimal("1000000")):
+                 max_notional=Decimal("1000000"), position_policy=None):
         self.engine = engine
         self.instrument = instrument
         self.leverage = Decimal(leverage)
         self.perpetual = perpetual
         self.max_notional = Decimal(max_notional)
+        self.position_policy = position_policy
         if self.leverage < 1 or (not perpetual and self.leverage != 1):
             raise ValueError("Invalid leverage for market")
         self.denials = []
@@ -66,16 +67,22 @@ class RiskGateway:
         if positions:
             position = positions[0]
             opposite = (position.is_long and order.side == OrderSide.SELL) or (position.is_short and order.side == OrderSide.BUY)
-            if not opposite or order.quantity != position.quantity:
+            if self.position_policy is not None and opposite and order.quantity <= position.quantity:
+                self.original(command)
+                return
+            if self.position_policy is None and (not opposite or order.quantity != position.quantity):
                 self.deny(order, "Scaling, partial exits and reversal are unsupported", fatal=True)
                 return
-            # A native opposite order for exactly the position quantity is a full exit.
-            self.original(command)
-            return
+            if opposite:
+                if order.quantity > position.quantity:
+                    self.deny(order, "A reduction cannot reverse a position", fatal=True)
+                else:
+                    self.original(command)
+                return
         if order.is_reduce_only:
             self.deny(order, "No position available for reduction")
             return
-        if not self.perpetual and order.side == OrderSide.SELL:
+        if not positions and not self.perpetual and order.side == OrderSide.SELL:
             self.deny(order, "Unleveraged spot cannot open a short", fatal=True)
             return
         quote = cache.quote_tick(order.instrument_id)
@@ -89,6 +96,24 @@ class RiskGateway:
             return
         account = cache.account_for_venue(order.instrument_id.venue)
         available = account.balance_total(self.instrument.quote_currency).as_decimal()
+        if self.position_policy is not None:
+            from terminal.position_management import addition_rejection
+            profile, config, ledger = self.position_policy[:3]
+            if positions and positions[0].quantity.as_decimal() != ledger.quantity:
+                self.deny(order, "Position lifecycle disagrees with engine quantity", fatal=True)
+                return
+            equity = available
+            for position in positions:
+                if self.perpetual: equity += position.unrealized_pnl(price).as_decimal()
+                else: equity += position.quantity.as_decimal()*price.as_decimal()
+            if len(self.position_policy) == 4:
+                available,equity = self.position_policy[3]()  # Separate current mark, not last-price proxy.
+            reason = addition_rejection(profile, config, ledger, order.quantity.as_decimal(), price.as_decimal(), available, equity)
+            if reason:
+                self.deny(order, reason)
+                return
+            self.original(command)
+            return
         initial = notional / self.leverage
         commission = notional * self.instrument.taker_fee
         if initial + commission > available:

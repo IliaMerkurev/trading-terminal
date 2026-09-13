@@ -1,12 +1,19 @@
-export type NodeKind = 'price' | 'constant' | 'sma' | 'ema' | 'rsi' | 'bb' | 'macd' | 'atr' | 'compare' | 'cross_above' | 'cross_below' | 'and' | 'or' | 'not';
+export type PositionNodeKind = 'position_side' | 'position_size' | 'position_avg_entry' | 'position_unrealized_pnl_pct' | 'bars_since_entry';
+export type NodeKind = 'price' | 'constant' | 'sma' | 'ema' | 'rsi' | 'bb' | 'macd' | 'atr' | 'compare' | 'cross_above' | 'cross_below' | 'and' | 'or' | 'not' | PositionNodeKind;
 export interface IRNode { id: string; type: NodeKind; inputs: Record<string,string>; params: Record<string,number|string> }
 export const outputNames = ['entry_long','exit_long','entry_short','exit_short'] as const;
 export type OutputName = typeof outputNames[number];
 export interface Graph { version: 1; nodes: IRNode[]; outputs: Record<OutputName,string|null> }
 export type Layout = Record<string,{x:number;y:number}>;
-export type Profile = Record<string,string|number>;
+export interface PositionConfiguration {
+  version:number;repeated_entry:string;scale_allocation_percent:string;max_entries:number;max_allocation_percent:string;max_position_notional:string;max_leverage:string;
+  dca:{distance:string;allocation_percent:string}[];partial_take:{distance:string;fraction:string}[];
+  trailing_activation:string;trailing_distance:string;break_even_activation:string;atr_period:number;atr_stop_multiplier:string;atr_trailing_multiplier:string;
+}
+export type Profile = Record<string,string|number|PositionConfiguration|undefined> & {market:string;symbol:string;version:number;primary_minutes:number;evaluation:string;path:string;tier_assumption:string;position_management?:PositionConfiguration};
 export const labels: Record<string,string> = { price:'OHLCV', constant:'Value', sma:'SMA', ema:'EMA', rsi:'RSI', bb:'Bollinger Bands', macd:'MACD', atr:'ATR', compare:'Compare', cross_above:'Cross Above', cross_below:'Cross Below', and:'AND', or:'OR', not:'NOT', entry_long:'Entry Long',exit_long:'Exit Long',entry_short:'Entry Short',exit_short:'Exit Short' };
 const numericSource = {source:'number'};
+Object.assign(labels,{position_side:'Position Side',position_size:'Position Size',position_avg_entry:'Average Entry',position_unrealized_pnl_pct:'Position PnL %',bars_since_entry:'Bars Since Entry'});
 export const catalog: Record<NodeKind,{inputs:Record<string,string>;outputs:Record<string,string>;params:Record<string,string|number>}> = {
   price:{inputs:{},outputs:{value:'number'},params:{field:'close'}},
   constant:{inputs:{},outputs:{value:'number'},params:{value:100}},
@@ -22,6 +29,11 @@ export const catalog: Record<NodeKind,{inputs:Record<string,string>;outputs:Reco
   and:{inputs:{left:'boolean',right:'boolean'},outputs:{value:'boolean'},params:{}},
   or:{inputs:{left:'boolean',right:'boolean'},outputs:{value:'boolean'},params:{}},
   not:{inputs:{source:'boolean'},outputs:{value:'boolean'},params:{}},
+  position_side:{inputs:{},outputs:{value:'number'},params:{}},
+  position_size:{inputs:{},outputs:{value:'number'},params:{}},
+  position_avg_entry:{inputs:{},outputs:{value:'number'},params:{}},
+  position_unrealized_pnl_pct:{inputs:{},outputs:{value:'number'},params:{}},
+  bars_since_entry:{inputs:{},outputs:{value:'number'},params:{}},
 };
 export const defaultProfile: Profile = {
   market:'spot',symbol:'BTCUSDT',capital:'1000',leverage:'1',sizing:'fixed',allocation:'100',fee_rate:'0.001',slippage:'0',

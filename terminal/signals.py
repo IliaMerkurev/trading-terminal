@@ -17,10 +17,11 @@ class SignalStream:
         self.frames = PartialBars(primary_minutes, 2 if isinstance(evaluator, GraphEvaluator) else None)
         self.states = {key: False for key in OUTPUTS}
 
-    def update(self, candle):
+    def update(self, candle, position_context=None):
         _, complete = self.frames.update(candle)
         if not self.frames.count or (self.evaluation == 'closed' and not complete):
             return None
+        if isinstance(self.evaluator,GraphEvaluator): self.evaluator.position_context = position_context
         result = self.evaluator(self.frames.snapshot(), candle.time + 60, complete)
         states = {key: result.get('signals', {}).get(key) is True for key in OUTPUTS}
         transitions = [key for key in OUTPUTS if states[key] and not self.states[key]]
