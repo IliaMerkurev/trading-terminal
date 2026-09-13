@@ -34,6 +34,32 @@ class IndependentPaperTests(unittest.TestCase):
             time.sleep(.02)
         self.fail('Independent paper fixture deadline exceeded')
 
+    def test_partial_atr_warmup_does_not_enable_manual_protection(self):
+        entered=threading.Event();release=threading.Event()
+        class History(LiveHistory):
+            def recover(self,session,end,**kwargs):
+                if session.last is not None:return 0
+                for stamp in (end-120,end-60):
+                    session.ingest(Candle(stamp,100,102,98,100,1),(stamp+60)*1000,'warmup')
+                self_atr=session.atr_manager.atr
+                if self_atr!=4:raise AssertionError('Independent ATR fixture must initialize to four')
+                entered.set()
+                if not release.wait(6):raise TimeoutError('Fixture initialization deadline')
+                return 2
+        with tempfile.TemporaryDirectory() as directory,patch('terminal.live.WindowsCredentials'):
+            manager=LiveManager(RunStore(Path(directory)),stream_factory=Stream,history_factory=History)
+            try:
+                sid=manager.start_manual(Profile(primary_minutes=1,position_management={'atr_period':2,'atr_stop_multiplier':'2'}).snapshot())['session_id']
+                self.assertTrue(entered.wait(2))
+                self.wait(lambda:manager.status()['market']['fresh'])
+                self.assertFalse(manager.status()['paper_ready'])
+                with self.assertRaisesRegex(ValueError,'synchronized'):manager.manual(sid,'buy','4'*32)
+                release.set();self.wait(lambda:manager.status()['paper_ready'])
+                manager.manual(sid,'buy','5'*32)
+                self.wait(lambda:bool(manager.status()['paper']['position']))
+                self.assertEqual(manager.status()['paper']['position']['stop'],'92.00')
+            finally:release.set();manager.close()
+
     def test_manual_paper_needs_no_strategy_or_historical_warmup(self):
         class History(LiveHistory):
             def recover(self,*args,**kwargs):raise AssertionError('No strategy/ATR history should be requested')

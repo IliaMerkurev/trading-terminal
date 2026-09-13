@@ -321,7 +321,7 @@ class LiveManager:
                         ready=initialized.is_set() and not initialization_error
                         if initialized.is_set():self._set(evaluation=session.latest,strategy_error=bool(initialization_error))
                         pm=session.profile.position_management or {}
-                        protection_ready=not (float(pm.get('atr_stop_multiplier',0)) or float(pm.get('atr_trailing_multiplier',0))) or (session.atr_manager is not None and session.atr_manager.atr is not None)
+                        protection_ready=not (float(pm.get('atr_stop_multiplier',0)) or float(pm.get('atr_trailing_multiplier',0))) or (ready and session.atr_manager is not None and session.atr_manager.atr is not None)
                         self._set(protection_ready=protection_ready)
                         for event in events:
                             if self.stop.is_set():break
@@ -336,13 +336,13 @@ class LiveManager:
                                     expected=int(time.time())//60*60-60
                                     if session.last>=expected:self.journal.state(sid,'CONNECTED','Public data synchronized')
                                     else:self.journal.state(sid,'RECOVERING DATA','Waiting for the next confirmed minute before new signals')
-                                if paper and self.paper_revalidate.is_set():
+                                if paper and self.paper_revalidate.is_set() and protection_ready:
                                     self.paper_revalidate.clear();paper_paused=False;self._log('Paper continuity revalidated; missing ticks are not reconstructed')
                                 if paper and not paper_paused:
                                     synchronized=ready and self.journal.get(sid)['status']=='CONNECTED'
                                     signals,manual_id=(self._take_manual(event) if self.market.snapshot()['fresh'] and protection_ready else (None,None)) if options.get('execution_source','strategy')=='manual' else (pending.take(event) if synchronized else None,None)
                                     if session.atr_manager:
-                                        paper.append(event,signals,manual_id=manual_id,atr=session.atr_manager.atr)
+                                        paper.append(event,signals,manual_id=manual_id,atr=session.atr_manager.atr if protection_ready else None)
                                     else:paper.append(event,signals,manual_id=manual_id)
                                     for result in paper.process():
                                         for fill in result['fills']:
