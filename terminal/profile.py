@@ -38,8 +38,17 @@ class Profile:
     gap_policy: str = "reject"
     tier_assumption: str = "Manual constant tier; historical risk tiers are not known"
     version: int = 1
+    position_management: dict | None = None
 
     def __post_init__(self):
+        if self.position_management is not None:
+            from terminal.position_management import PositionConfig
+            if not isinstance(self.position_management, dict):
+                raise ValueError('Position Management must be a versioned object')
+            config = PositionConfig(**self.position_management)
+            if dec(self.leverage) > dec(config.max_leverage):
+                raise ValueError('Profile leverage exceeds the Position Management limit')
+            object.__setattr__(self, 'position_management', config.snapshot())
         if type(self.version) is not int or self.version not in (1,2) or self.market not in ("spot", "linear"):
             raise ValueError("Unsupported profile version or market")
         if not re.fullmatch(r"[A-Z0-9]{1,24}USDT", self.symbol):
@@ -71,7 +80,10 @@ class Profile:
                 raise ValueError("This profile supports at most eight price/quantity decimal places")
 
     def snapshot(self):
-        return asdict(self)
+        result = asdict(self)
+        # Legacy snapshots retain exactly their previous shape and semantics.
+        if self.position_management is None: result.pop('position_management')
+        return result
 
     def size(self, available, execution_price):
         available, price = dec(available), dec(execution_price)

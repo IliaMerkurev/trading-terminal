@@ -1,6 +1,8 @@
 # Implementation status
 
-## Product 0.5 — implementation in progress
+Product 0.5 backend checkpoint: the optional versioned Position Management core is implemented in the retained Nautilus historical/paper adapters. All 172 Python tests pass, including 25 new financial/temporal cases. These cover bounded scaling, partial lifecycle accounting, trailing/ATR/cost-aware break-even, funding, liquidation, gap semantics and reconstruction. Live session controls, read-only position nodes, settings/results UI and experiment parameter integration are still in progress; this is not a complete or accepted 0.5 build. See [ADR 0019](adr/0019-shared-position-management.md).
+
+## Product 0.5 â€” implementation in progress
 
 Independent public-market lifecycle and native chart history/cache are under validation. An isolated H1 service reproduction measured the old subscription delay at 88.609s; the new cold chart appeared at 1.625s, ticker/book at 2.25s and trades at 2.578s while unchanged causal warmup continued. Warm cached chart appeared at 0.047s. These are bounded service timings with paper disabled, not native UI latency guarantees. Native Windows checks observed no-strategy chart/book/tape, H1 warmup progress with current market retained, historical page prepend and independent market after monitoring pause.
 

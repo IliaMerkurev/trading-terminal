@@ -62,6 +62,10 @@ class ProfileStrategy(Strategy):
         self.reason = "entry"
         self.protections = None
         self.trade_start=trade_start
+        self.pm = None
+        if profile.position_management is not None:
+            from terminal.position_management import PositionManager
+            self.pm = PositionManager(profile)
 
     def on_start(self):
         self.subscribe_bars(self.bar_type)
@@ -75,16 +79,41 @@ class ProfileStrategy(Strategy):
         if self.seen == 1 or self.seen % 256 == 0 or self.seen == len(self.candles):
             self.progress(self.seen/len(self.candles))
         candle = self.candles[bar.ts_init]
+        if self.pm: self.pm.observe_candle(candle)
         result = self.signal_stream.update(candle)
         if result is None:
             return
         if self.trade_start is not None and candle.time<self.trade_start:return
         signals = result.get("signals", {})
         self.indicators.append({"time":candle.time + 60, "values":result.get("values", {}), "signals":signals})
+        if self.pm: self.indicators[-1]['values']['position_management.atr'] = str(self.pm.atr) if self.pm.atr is not None else None
         self.apply_signals(signals,candle.time)
+
+    def execute_position_action(self, action):
+        if action is None: return
+        self.reason = action.reason
+        self.submit_order(self.order_factory.market(self.asset.id, OrderSide.BUY if action.side == 'buy' else OrderSide.SELL,
+                                                   Quantity(float(action.quantity), self.asset.size_precision)))
+
+    def position_inputs(self):
+        quote = self.cache.quote_tick(self.asset.id)
+        cash,equity = self.protections.balance_and_equity()
+        return quote.bid_price.as_decimal(), quote.ask_price.as_decimal(), cash,equity,quote.ts_init
+
+    def apply_dca(self):
+        if self.pm and self.pm.ledger.quantity:
+            bid,ask,cash,equity,time_ns = self.position_inputs()
+            for _ in range(8):
+                action = self.pm.dca_action(self.protections.sample['price'],bid,ask,cash,equity,time_ns)
+                if action is None: break
+                self.execute_position_action(action)
+                bid,ask,cash,equity,time_ns = self.position_inputs()
 
     def apply_signals(self,signals,minute):
         """Shared position policy; signal computation remains in SignalStream."""
+        if self.pm:
+            self.execute_position_action(self.pm.signals(signals,*self.position_inputs()))
+            return
         if self.protections.exit_minute == minute:
             return
         positions = self.cache.positions_open(instrument_id=self.asset.id)
@@ -119,6 +148,10 @@ class ProfileStrategy(Strategy):
         self.fills.append({"time_ns":event.ts_event, "side":"buy" if event.order_side == OrderSide.BUY else "sell",
             "quantity":str(event.last_qty), "price":str(event.last_px),
             "fee":str(event.commission.as_decimal()), "reason":self.reason})
+        if getattr(self,'pm',None):
+            fill = self.fills[-1]
+            projected = self.pm.fill(fill['side'],fill['quantity'],fill['price'],fill['fee'],fill['time_ns'],fill['reason'])
+            fill['position_id'] = projected['position_id']
 
     def on_stop(self):
         self.close("end_of_run")
@@ -129,6 +162,7 @@ class NativeController:
     def __init__(self,asset,profile,native):
         self.asset,self.profile,self.native=asset,profile,native
         self.reason="native"
+        self.pm=None
         self.fills,self.indicators=[],[]
         self.diagnostics=[{"message":"Native source/config controls signals, sizing and exits. Graph sizing controls are not applied; simulation capital, fees, funding and margin limits still apply."}]
 
@@ -198,16 +232,25 @@ class Protections(SimulationModule):
                         money = Money(amount, USDT)
                         self.exchange.adjust_account(money)
                         self.events.append({"time_ns":ts_now, "type":"funding", "amount":str(money.as_decimal())})
+                        if getattr(self.strategy,'pm',None): self.strategy.pm.ledger.funding_cashflow(money.as_decimal(),ts_now)
                     _, equity = self.balance_and_equity()
                     maintenance = quantity * mark * dec(self.profile.maintenance_rate)
                     if quantity * mark > dec(self.profile.max_notional):
                         raise ProfileViolation("Mark notional exceeds the declared constant risk tier")
                     close_fee = quantity * mark * dec(self.profile.fee_rate)
-                    if equity <= maintenance + close_fee or self.sample.get('trigger')=='liquidation':
+                    if not getattr(self.strategy,'pm',None) and (equity <= maintenance + close_fee or self.sample.get('trigger')=='liquidation'):
                         self.events.append({"time_ns":ts_now, "type":"liquidation", "equity":str(equity), "maintenance":str(maintenance)})
                         self.strategy.close("liquidation")
                         self.exit_minute = self.sample["minute"]
                         continue
+                if getattr(self.strategy,'pm',None):
+                    for _ in range(10):
+                        _, equity = self.balance_and_equity()
+                        action = self.strategy.pm.protective_action(trade,mark,equity,ts_now)
+                        if action is None: break
+                        self.events.append({'time_ns':ts_now,'type':action.reason,'quantity':str(action.quantity)})
+                        self.strategy.execute_position_action(action)
+                    continue
                 entry = dec(position.avg_px_open)
                 movement = side * (trade-entry) / entry
                 reason = self.sample.get('trigger')
@@ -251,6 +294,8 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
     if trade_start is not None and (native_factory is not None or type(trade_start) is not int or trade_start%60 or not candles[0].time<=trade_start<=candles[-1].time):
         raise ValueError('Invalid visual-strategy trading window')
     if native_factory is not None and profile.version!=1:raise ValueError('Native strategies retain execution profile version 1; profile 2 protections apply to visual graphs')
+    if profile.position_management is not None and (native_factory is not None or profile.version != 2):
+        raise ValueError('Position Management requires visual execution profile 2; native strategies remain unchanged')
     if native_factory is not None and (dec(profile.stop_loss) or dec(profile.take_profit) or profile.evaluation!="closed"):
         raise ValueError("Native strategies require their own protection/signal semantics; graph intrabar and stop/take controls are unavailable")
     if any(b.time % 60 for b in candles) or any(b.time <= a.time for a,b in zip(candles, candles[1:])):
@@ -305,7 +350,8 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         default_leverage=dec(profile.leverage), margin_model=StandardMarginModel(), modules=[protection],
         use_message_queue=False, bar_execution=False)
     engine.add_instrument(asset)
-    guard = RiskGateway(engine,asset,leverage=dec(profile.leverage),perpetual=profile.market=="linear",max_notional=dec(profile.max_notional))
+    guard = RiskGateway(engine,asset,leverage=dec(profile.leverage),perpetual=profile.market=="linear",max_notional=dec(profile.max_notional),
+                        position_policy=(profile,strategy.pm.config,strategy.pm.ledger,protection.balance_and_equity) if getattr(strategy,'pm',None) else None)
     data_guard=None
     if native:
         from terminal.native import NativeDataGateway
@@ -320,6 +366,10 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
                 engine.add_data(items)
                 engine.run(start=items[0].ts_init,end=items[-1].ts_init+1,streaming=True)
                 engine.clear_data()
+                if strategy.pm:
+                    strategy.apply_dca()
+                    # Capture post-fill account state at this exact observation.
+                    protection.process(items[0].ts_init)
             for i,candle in enumerate(candles):
                 minute_quotes=quotes[i*4:i*4+4]
                 # The observed open applies gaps, funding and liquidation first.
@@ -329,6 +379,23 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
                     positions=engine.cache.positions_open(instrument_id=asset.id)
                     crossing=first_crossing(samples[previous.ts_init],samples[current.ts_init],positions[0] if positions else None,
                         profile,engine.cache.account_for_venue(VENUE).balance_total(USDT).as_decimal())
+                    if strategy.pm:
+                        left_ts = previous.ts_init
+                        for _ in range(32):
+                            crossing = strategy.pm.first_crossing(samples[left_ts], samples[current.ts_init],
+                                engine.cache.account_for_venue(VENUE).balance_total(USDT).as_decimal())
+                            if not crossing: break
+                            timestamp = left_ts+max(1,min(current.ts_init-left_ts-1,int((crossing.pop('fraction')*(current.ts_init-left_ts)).to_integral_value(rounding=ROUND_CEILING))))
+                            if timestamp >= current.ts_init: break
+                            price = crossing['price']
+                            bid=(price*(1-slip)/tick).to_integral_value(rounding=ROUND_FLOOR)*tick
+                            ask=(price*(1+slip)/tick).to_integral_value(rounding=ROUND_CEILING)*tick
+                            samples[timestamp]=crossing
+                            consume([QuoteTick(asset.id,Price(float(bid),asset.price_precision),Price(float(ask),asset.price_precision),
+                                Quantity(1_000_000_000,asset.size_precision),Quantity(1_000_000_000,asset.size_precision),timestamp,timestamp)])
+                            left_ts=timestamp
+                        else: raise ProfileViolation('Position Management crossing budget exceeded')
+                        crossing=None
                     chunk=[]
                     if crossing:
                         timestamp=previous.ts_init+max(1,min(current.ts_init-previous.ts_init-1,int((crossing.pop('fraction')*(current.ts_init-previous.ts_init)).to_integral_value(rounding=ROUND_CEILING))))
@@ -357,15 +424,21 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         if engine.cache.positions_open():
             raise RuntimeError("End-of-run close failed; result is incomplete")
         fills = strategy.fills
-        if len(fills) % 2:
+        if len(fills) % 2 and not strategy.pm:
             raise RuntimeError("Incomplete fill pairs; result cannot be marked completed")
         trades = []
-        for entry, exit_fill in zip(fills[::2], fills[1::2]):
+        for entry, exit_fill in ([] if strategy.pm else zip(fills[::2], fills[1::2])):
             side = Decimal(1) if entry["side"] == "buy" else Decimal(-1)
             gross = side * (dec(exit_fill["price"])-dec(entry["price"])) * dec(entry["quantity"])
             fees = dec(entry["fee"])+dec(exit_fill["fee"])
             cashflow = sum((dec(e["amount"]) for e in protection.events if e["type"] == "funding" and entry["time_ns"] < e["time_ns"] <= exit_fill["time_ns"]),Decimal(0))
             trades.append({"entry":entry, "exit":exit_fill, "gross_pnl":str(gross), "fees":str(fees), "funding":str(cashflow), "net_pnl":str(gross-fees+cashflow)})
+        if strategy.pm:
+            trades = strategy.pm.ledger.completed
+            projected = sum((dec(t['net_pnl']) for t in trades),Decimal(0))
+            if abs(final_equity-dec(profile.capital)-projected)>Decimal('0.00001'):
+                raise ProfileViolation('Position lifecycle does not reconcile with engine final equity')
+            strategy.diagnostics.extend(strategy.pm.diagnostics)
         points = [p for p in protection.equity if trade_start is None or p['time_ns']>=trade_start*NS]
         final_point = {"time_ns":quotes[-1].ts_init, "cash":str(final_cash), "equity":str(final_equity),
                        "initial_margin":"0", "maintenance_margin":"0", "available":str(final_cash)}
