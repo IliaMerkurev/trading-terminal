@@ -1,6 +1,6 @@
 # Trading Terminal product specification
 
-Current development target: product 0.5 development build (`0.5-dev`). Accepted baseline: `0.4-dev`. Sections 1–20 retain the historical 0.1–0.4 contracts; section 21 authorizes the 0.5 extension and supersedes their scope exclusions only for explicitly listed features. Telegram delivery remains unverified and deferred. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
+Current accepted product: 0.5 development build (`0.5-dev`). Sections 1–20 retain the historical 0.1–0.4 contracts; section 21 defines the 0.5 extension and supersedes their scope exclusions only for explicitly listed features. Stored results retain their original versioned execution assumptions. Owner manual acceptance permits the 0.5 merge with remaining UI/UX issues deferred; it does not retroactively establish unperformed automated native measurements. Telegram delivery remains unverified and outside acceptance. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
 
 ## 1. Purpose and delivery target
 

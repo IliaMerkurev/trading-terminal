@@ -1,6 +1,6 @@
 # ADR 0018: Independent market lifecycle and native chart history
 
-Status: implementation in progress for product 0.5; acceptance evidence remains pending.
+Status: implemented and owner-accepted for product 0.5-dev. Measured evidence and automation limitations are recorded in [STATUS.md](../STATUS.md).
 
 ## Decision
 

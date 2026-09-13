@@ -1,6 +1,6 @@
 # ADR 0019: Shared versioned Position Management
 
-Status: implemented for product 0.5; integrated native acceptance remains tracked separately in STATUS.md.
+Status: implemented and owner-accepted for product 0.5-dev; automated evidence and its limits remain tracked separately in [STATUS.md](../STATUS.md).
 
 ## Authority and compatibility
 

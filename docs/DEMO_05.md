@@ -1,6 +1,6 @@
 # Trading Terminal 0.5 development demonstration
 
-This is an early development build under validation, not a stable release or real trading system. [STATUS.md](STATUS.md) distinguishes executed checks from outstanding native acceptance. Telegram ILI-37 is intentionally deferred; do not enter credentials for this demonstration.
+This is an owner-accepted early development build, not a stable release or real trading system. Remaining UI/UX issues are accepted as non-blocking and deferred. [STATUS.md](STATUS.md) distinguishes owner manual acceptance from actually executed automated checks. Telegram ILI-37 remains outside acceptance and intentionally deferred; do not enter credentials for this demonstration.
 
 ## Build and isolated examples
 
@@ -24,7 +24,7 @@ Without `--data-root`, the application uses its ordinary data root. Do not copy 
 4. Load older chart history. Confirm earlier candles prepend without jumping the current viewport; Fit latest is an explicit action. Restart and revisit the same page to check cached history.
 5. Pause monitoring. The market view should remain connected while the strategy is paused.
 
-Native interval controls, viewport stability and a 30-minute compiled-UI run are acceptance items; a passing service/component test alone does not establish them.
+The owner manually accepted the current build for merge. The scenarios below remain useful for repeatable review; service/component tests do not establish native controls, viewport stability or a measured 30-minute compiled-UI run.
 
 ## Optional managed PAPER
 

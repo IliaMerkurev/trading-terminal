@@ -1,14 +1,14 @@
 # Implementation status
 
-## Product 0.5 — integrated development build under validation
+## Product 0.5-dev — owner-accepted development build
 
-The independent market terminal and shared Position Management are implemented in `codex/05`. **0.5 is not yet owner-accepted or declared complete.** Final integrated native acceptance and the required compiled-UI 30-minute session remain outstanding. See [demonstration](DEMO_05.md), [0.5 requirements](../PROJECT.md#21-product-05-independent-market-terminal-and-position-management), [market lifecycle](adr/0018-independent-market-lifecycle.md) and [position policy](adr/0019-shared-position-management.md).
+The owner manually accepted the current 0.5-dev build at `c7aae69005df81a5cee09f6ed1c6373c29ddee98` and authorized squash merge through [PR #5](https://github.com/IliaMerkurev/trading-terminal/pull/5). Remaining UI/UX issues are accepted as non-blocking and intentionally deferred; no redesign is part of this merge. Telegram delivery remains outside acceptance. This is an early development build, not stable or production-ready. See [demonstration](DEMO_05.md), [0.5 requirements](../PROJECT.md#21-product-05-independent-market-terminal-and-position-management), [market lifecycle](adr/0018-independent-market-lifecycle.md) and [position policy](adr/0019-shared-position-management.md).
 
 - Market socket ownership is independent from optional strategy history and PAPER. Native 1m/5m/15m/1H/4H/1D chart pages have a confirmed-history cache, bounded recent history, incremental updates and viewport-preserving prepend. The chart never derives coarse history from a partially warmed M1 strategy.
 - Optional policy schema 1 shares bounded scaling/DCA, partial TP, trailing, cost-aware break-even, confirmed-primary ATR protections and risk constraints across retained-engine Backtest/Paper. Legacy profiles without the policy retain their old snapshots and behavior.
 - Explicit read-only position nodes use pre-decision account context; live records that context for replay. Manual PAPER may start without a strategy, and Add/Reduce25/Reduce50/Close share the same account/journal. Settings, backend protection lines and paged position lifecycle views are integrated.
 - Experiments expose validated position axes with fixed risk caps and the same ordinary worker execution. Actual grid candidates equal standalone runs across metrics/fills/trades/indicators/equity; frozen later-period validation retains the policy.
-- Final regression rerun: **182 Python tests passed in 79.617s; 54 frontend tests across 16 files passed in 4.05s.** TypeScript/Vite passed; isolated locked Windows/Rust build passed (final rebuild 3.82s; clean target build 1m 30s). Existing frontend bundle-size and native Pandas advisories remain non-failing. No dependency or license was changed.
+- Merge regression rerun: **182 Python tests passed in 101.558s; 54 frontend tests across 16 files passed in 4.48s.** TypeScript/Vite passed; fresh isolated locked Windows/Rust build passed in **1m 24s**. Existing frontend bundle-size and native Pandas advisories remain non-failing. No dependency or license was changed.
 - ATR readiness has a dedicated regression: an initialized value from partial historical warmup cannot enable protected manual actions; current history must finish first. Independent financial/temporal goldens verify weighted long/short entries, scaling after reduction, partial/full exits, fees/funding, cash/equity/margin/liquidation, rounding/rejections, trailing/ATR/cost-aware break-even, historical crossings, observed gaps and future perturbation. Full regressions retain native historical, editor, live/replay/recovery and notification behavior. Mocked notification tests do not establish native delivery.
 - Fresh copied additive migration preserved all preexisting table records, result checksums and SQLite integrity. Ordinary user data was not used for tests. The separate synthetic demo completes two managed candidates and one frozen later-period validation.
 
@@ -16,7 +16,7 @@ The independent market terminal and shared Position Management are implemented i
 
 An isolated H1 service reproduction measured the old subscription delay at 88.609s. The first market milestone measured cold chart 1.625s, ticker/book 2.25s and trades 2.578s while causal warmup continued; warm cached chart appeared at 0.047s. These are bounded service timings with PAPER disabled, not UI latency guarantees. Earlier native Windows checks observed no-strategy chart/book/tape, H1 progress with current market retained, historical page prepend and independent market after monitoring pause.
 
-Final integrated Windows UI inspection is currently blocked by the automation error `foreground window did not report a process id`. The compiled executable launches, but process existence alone does not prove native controls, interval switching, responsiveness or the required long-run acceptance. The separate real public-data service endurance check below is not a substitute. No claim of a completed integrated native 30-minute session is made.
+The final automated Windows UI inspection could not complete because the automation helper returned `foreground window did not report a process id`. This is an automation limitation, not evidence of a product failure. Subsequent owner manual acceptance supersedes that blocker for this merge. It does not turn process launch or the service endurance check into automated native control/viewport/responsiveness evidence. No completed automated integrated native 30-minute session is claimed.
 
 ### Final public-data service evidence — 2026-09-13
 
@@ -26,9 +26,9 @@ Cold service timing with non-ATR managed PAPER: chart 1.594s, ticker/book/PAPER 
 
 A bounded restart restored the same closed PAPER balance, initially required revalidation, and passed explicit revalidation. Cached chart appeared at 0.015s, market at 1.953s and strategy at 2.812s. Market updates continued after strategy pause. Recorded replay matched with **zero new H1 signal events** because the interval contained no new primary-hour close. Nonzero transition/context/future-perturbation proof comes from deterministic tests, not this zero-event comparison.
 
-Actual REST paging also passed on all six supported intervals: 300 recent + 300 older candles each, ordered/contiguous/unique, 12 requests total. Reopening older pages reused the cache without new requests. Final native interval/viewport/control and 30-minute compiled-UI acceptance remain pending. [Draft PR #5](https://github.com/IliaMerkurev/trading-terminal/pull/5) contains the implementation; main remains the accepted 0.4 baseline.
+Actual REST paging also passed on all six supported intervals: 300 recent + 300 older candles each, ordered/contiguous/unique, 12 requests total. Reopening older pages reused the cache without new requests. Owner manual acceptance permits publication of the implementation through PR #5; the measured service evidence remains distinct from unperformed automated native measurements.
 
-Telegram ILI-37 remains intentionally deferred/open. Windows/sound acceptance from 0.4 is retained; Telegram delivery is not claimed. No main merge, release or product 0.6 is included.
+Telegram ILI-37 remains intentionally deferred/open. Windows/sound acceptance from 0.4 is retained; Telegram delivery is not claimed. The owner authorized only the 0.5 squash merge and verification, without a release or product 0.6 development.
 
 ## Product 0.4 development build — accepted and merged
 

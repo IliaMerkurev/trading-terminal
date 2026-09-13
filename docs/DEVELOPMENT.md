@@ -4,7 +4,7 @@ Read [PROJECT.md](../PROJECT.md), [architecture](ARCHITECTURE.md), [status](STAT
 
 ## Product versions and working branches
 
-The development target is **0.5 development build**, displayed as `0.5-dev`; accepted baseline is 0.4-dev. Product 0.1 was the first working milestone; 0.2 added research workflows; accepted 0.3 added live/paper monitoring. Product 0.6 and later milestones remain future work. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
+The accepted product is **0.5 development build**, displayed as `0.5-dev`. Product 0.1 was the first working milestone; 0.2 added research workflows; accepted 0.3 added live/paper monitoring. Product 0.6 and later milestones remain future work and are not authorized by the 0.5 merge. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
 
 `src-tauri/Cargo.toml` package version is the single product-version source (`0.5.0-dev` in SemVer). Tauri uses it when its configuration omits a version override; the existing UI badge reads Tauri app metadata. The private frontend package does not declare another product version. Update the root package entry in Cargo.lock alongside a version bump; do not change dependency versions. Window title and executable name stay `Trading Terminal` and `trading-terminal.exe`.
 
