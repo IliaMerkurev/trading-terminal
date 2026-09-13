@@ -1,6 +1,6 @@
 # ADR 0019: Shared versioned Position Management
 
-Status: backend implementation in progress for product 0.5; full UI/live acceptance pending.
+Status: implemented for product 0.5; integrated native acceptance remains tracked separately in STATUS.md.
 
 ## Authority and compatibility
 
@@ -25,7 +25,15 @@ Historical profile 2 walks its declared continuous OHLC path, inserting the earl
 
 ## Persistence and bounds
 
-Historical lifecycle records include entries, scales, reductions, stop changes, rejections and funding. Paper emits incremental lifecycle events for its durable observation journal; its in-memory event tail and completed summaries are bounded. Reconstruction must match recorded inputs/results. UI/session integration and copied-data migration acceptance remain required before publication as a complete feature.
+Historical lifecycle records include entries, scales, reductions, stop changes, rejections and funding. Paper emits incremental lifecycle events for its durable observation journal; its in-memory event tail is bounded to 256 events and 50 completed summaries. A cursor API pages the complete committed journal (maximum 100 events per response; UI uses 50). Reconstruction must match recorded inputs/results. Copied additive migration checks preserve old rows and result checksums.
+
+## Position IR and readiness
+
+Read-only nodes expose side (-1/0/1), quantity, weighted remaining entry, unleveraged last-price PnL percentage and elapsed primary intervals since first entry. Flat side/size/PnL/bars are zero; average entry is unavailable. They receive explicit context before the current decision. Historical context comes from the retained engine; live context is the last committed paper observation at or before the candle evaluation cutoff. A later fill cannot alter an earlier signal. Additive `live_position_contexts` records are reused by replay; missing required context fails visibly. Market-only evaluation supplies a flat position.
+
+Manual PAPER may start without a strategy. It uses the same frozen profile, journal, funding handling and one-position policy. Initial strategy history runs independently; manual actions require fresh market data, a synchronized account and initialized protection ATR when configured, but not strategy readiness. Strategy actions remain suppressed until recovery finishes. Reconnect/restart still require explicit paper continuity revalidation. No strategy order may bypass Manual source selection.
+
+Experiments vary explicit validated `pm.*` axes on the same immutable profile and worker path. Allocation/notional/leverage caps remain fixed constraints, not optimization targets. Frozen later-period validation retains the selected policy. Enabling this policy is explicit; opening a native strategy clears the unsupported policy instead of silently translating native behavior.
 
 ## Evidence
 

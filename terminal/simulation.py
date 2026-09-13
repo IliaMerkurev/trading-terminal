@@ -80,13 +80,13 @@ class ProfileStrategy(Strategy):
             self.progress(self.seen/len(self.candles))
         candle = self.candles[bar.ts_init]
         if self.pm: self.pm.observe_candle(candle)
-        result = self.signal_stream.update(candle)
+        result = self.signal_stream.update(candle, self.position_context(bar.ts_init))
         if result is None:
             return
         if self.trade_start is not None and candle.time<self.trade_start:return
         signals = result.get("signals", {})
         self.indicators.append({"time":candle.time + 60, "values":result.get("values", {}), "signals":signals})
-        if self.pm: self.indicators[-1]['values']['position_management.atr'] = str(self.pm.atr) if self.pm.atr is not None else None
+        if self.pm: self.indicators[-1]['values']['position_management.atr'] = float(self.pm.atr) if self.pm.atr is not None else None
         self.apply_signals(signals,candle.time)
 
     def execute_position_action(self, action):
@@ -99,6 +99,14 @@ class ProfileStrategy(Strategy):
         quote = self.cache.quote_tick(self.asset.id)
         cash,equity = self.protections.balance_and_equity()
         return quote.bid_price.as_decimal(), quote.ask_price.as_decimal(), cash,equity,quote.ts_init
+
+    def position_context(self, time_ns):
+        from terminal.position_management import position_context
+        positions = self.cache.positions_open(instrument_id=self.asset.id)
+        if not positions: return position_context()
+        position = positions[0]
+        return position_context(1 if position.is_long else -1,position.quantity.as_decimal(),position.avg_px_open,
+                                self.protections.sample['price'],position.ts_opened,time_ns,self.profile.primary_minutes)
 
     def apply_dca(self):
         if self.pm and self.pm.ledger.quantity:

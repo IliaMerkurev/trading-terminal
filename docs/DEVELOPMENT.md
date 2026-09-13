@@ -82,3 +82,7 @@ The required long-run check uses the compiled Windows application, an isolated p
 ## Product 0.5 development
 
 Work in `codex/05` from the accepted main baseline. Public market ownership is independent from selected strategy; no widget owns another socket. Native display intervals and chart page cache remain independent from strategy M1 warmup. Use isolated data for cold/warm H1 measurements and test migrations on consistent copies. Preserve the in-use executable; `CARGO_TARGET_DIR` may select a separate ignored build directory. No historical branch deletion, main merge, Telegram investigation or 0.6 is authorized by this milestone.
+
+`scripts/desktop.py --target-dir .local-tools/05-final-target` uses the same directory for build and launch. It also honors an existing `CARGO_TARGET_DIR` when no argument is provided. Without either, the ordinary `src-tauri/target` remains the default. A separate `--data-root` must be absolute; omission uses ordinary user data. Never copy a demo database over that data.
+
+The [0.5 demo](DEMO_05.md) prepares two small synthetic parameter candidates and one frozen later-period run in a new directory. Position Management is opt-in and schema-versioned independently from product version. Add its fields through `PositionConfig`, keep decisions in `PositionManager`, and reconcile actual Nautilus fills through `PositionLedger`. Do not add frontend financial calculations or a second paper engine. Runtime snapshots hash Python modules: do not edit them during a reproducibility test or measured live run.

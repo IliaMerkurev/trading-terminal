@@ -17,7 +17,7 @@ MAX_COMBINATIONS=256
 MAX_MINUTE_RUNS=2_000_000
 
 
-def parameter_fields(graph):
+def parameter_fields(graph,profile=None):
     fields=[]
     for node in graph['nodes']:
         for key,value in node['params'].items():
@@ -26,6 +26,19 @@ def parameter_fields(graph):
                 'choices':['open','high','low','close','volume'] if key=='field' else ['>','>=','<','<=','==','!='] if key=='operator' else None,'current':value})
     fields.extend({'key':f'profile.{key}','label':label,'type':'fraction' if key in ('stop_loss','take_profit') else 'number','choices':None,'current':None}
         for key,label in [('stop_loss','Stop loss (fraction)'),('take_profit','Take profit (fraction)'),('allocation','Capital allocation'),('leverage','Leverage')])
+    pm=(profile or {}).get('position_management')
+    if pm is not None:
+        from terminal.position_management import PositionConfig
+        pm=PositionConfig(**pm).snapshot()
+        for key in ('repeated_entry','scale_allocation_percent','max_entries','trailing_activation','trailing_distance','break_even_activation','atr_period','atr_stop_multiplier','atr_trailing_multiplier'):
+            fields.append({'key':f'pm.{key}','label':'Position / '+key.replace('_',' '),
+                           'type':'choice' if key=='repeated_entry' else 'integer' if key in ('max_entries','atr_period') else 'decimal',
+                           'choices':['ignore','scale'] if key=='repeated_entry' else None,'current':pm[key]})
+        for collection in ('dca','partial_take'):
+            for index,row in enumerate(pm[collection]):
+                for key,value in row.items():
+                    fields.append({'key':f'pm.{collection}.{index}.{key}','label':f'Position / {collection} {index+1} / {key}',
+                                   'type':'decimal','choices':None,'current':value})
     return fields
 
 
@@ -34,14 +47,19 @@ def apply_parameters(graph,profile,parameters):
     for key,value in parameters.items():
         parts=key.split('.')
         if parts[0]=='profile':profile[parts[1]]=str(value)
+        elif parts[0]=='pm':
+            if 'position_management' not in profile:raise ValueError('Enable Position Management before varying its parameters')
+            if len(parts)==2:profile['position_management'][parts[1]]=value
+            elif len(parts)==4:profile['position_management'][parts[1]][int(parts[2])][parts[3]]=str(value)
+            else:raise ValueError('Invalid Position Management parameter path')
         else:next(n for n in graph['nodes'] if n['id']==parts[1])['params'][parts[2]]=value
     validate_graph(graph);Profile(**profile)
     return graph,profile
 
 
-def normalize_axes(graph,axes):
+def normalize_axes(graph,axes,profile=None):
     if not isinstance(axes,list) or not 1<=len(axes)<=6:raise ValueError('Choose 1–6 parameter fields')
-    fields={f['key']:f for f in parameter_fields(graph)};seen=set();normalized=[];count=1
+    fields={f['key']:f for f in parameter_fields(graph,profile)};seen=set();normalized=[];count=1
     for axis in axes:
         if not isinstance(axis,dict) or set(axis)!={'key','values'} or axis['key'] not in fields or axis['key'] in seen:raise ValueError('Unknown or duplicate parameter field')
         seen.add(axis['key']);field=fields[axis['key']]
@@ -59,6 +77,7 @@ def normalize_axes(graph,axes):
                 elif field['type']=='fraction':
                     if not 0<=number<1:raise ValueError('Protection fractions must be in [0, 1)')
                     value=str(number.normalize())
+                elif field['type']=='decimal':value=str(number.normalize())
                 else:
                     value=float(number)
                     if not math.isfinite(value):raise ValueError('Parameter exceeds numeric range')
@@ -103,12 +122,12 @@ class ExperimentManager:
         manifest=self.jobs.datasets.describe(dataset_id);self.jobs.datasets.check_profile(manifest,profile)
         validate_range(is_range,manifest['range'],'In-sample range');validate_range(oos_range,manifest['range'],'Out-of-sample range')
         if is_range[1]>oos_range[0]:raise ValueError('Out-of-sample must be later and disjoint from in-sample')
-        axes,count=normalize_axes(graph,axes)
+        axes,count=normalize_axes(graph,axes,profile.snapshot())
         if count*((is_range[1]-manifest['range'][0])//60)>MAX_MINUTE_RUNS:raise ValueError('Grid exceeds the 2,000,000 modeled-minute budget including warmup')
         required=0
         for values in itertools.product(*(a['values'] for a in axes)):
             candidate,p=apply_parameters(graph,profile.snapshot(),dict(zip((a['key'] for a in axes),values)))
-            required=max(required,warmup_bars(candidate)*profile.primary_minutes*60)
+            required=max(required,max(warmup_bars(candidate),(p.get('position_management') or {}).get('atr_period',0))*profile.primary_minutes*60)
         first_complete=((manifest['range'][0]+profile.primary_minutes*60-1)//(profile.primary_minutes*60))*(profile.primary_minutes*60)
         if oos_range[0]-first_complete<required:raise ValueError('Insufficient preceding warmup for the declared out-of-sample range')
         return {'version':1,'strategy_id':strategy_id,'name':strategy['name'],'graph':graph,'layout':strategy['document'].get('layout',{}),
@@ -120,10 +139,10 @@ class ExperimentManager:
         snapshot=self.prepare(**params)
         return {k:snapshot[k] for k in ('count','axes','warnings','required_warmup_seconds')}
 
-    def fields(self,strategy_id):
+    def fields(self,strategy_id,profile=None):
         strategy=self.store.strategy(strategy_id)
         if strategy['kind']!='graph':raise ValueError('Select a visual strategy')
-        return parameter_fields(strategy['document']['graph'])
+        return parameter_fields(strategy['document']['graph'],Profile(**profile).snapshot() if profile is not None else None)
 
     def _reserve(self,ident,target):
         with self.jobs.lock:

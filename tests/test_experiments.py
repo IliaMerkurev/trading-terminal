@@ -91,6 +91,40 @@ class ExperimentTests(unittest.TestCase):
         self.assertFalse(any(r['status']=='running' for r in report['rows']))
         self.assertIsNone(self.service.jobs.reservation)
 
+    def test_position_parameter_grid_matches_single_runs_and_preserves_frozen_policy(self):
+        from terminal.position_management import PositionConfig
+        profile={**self.profile,'position_management':PositionConfig(max_entries=3,repeated_entry='scale',
+                    dca=[{'distance':'.02','allocation_percent':'10'}],partial_take=[{'distance':'.03','fraction':'.5'}]).snapshot()}
+        params={**self.params,'profile':profile,'axes':[{'key':'pm.dca.0.distance','values':['.02','.03']}]}
+        fields=self.manager.fields(self.strategy,profile)
+        self.assertIn('pm.atr_stop_multiplier',[field['key'] for field in fields])
+        self.assertNotIn('pm.max_leverage',[field['key'] for field in fields])
+        ident=self.manager.start(**params)['experiment_id'];self.wait(lambda:self.manager.active is None)
+        report=self.manager.get(ident)
+        self.assertEqual(report['status'],'completed',report)
+        self.assertEqual([row['status'] for row in report['rows']],['completed','completed'])
+        for row in report['rows']:
+            manifest=self.store.get(row['run_id'])['manifest']
+            solo=self.service.jobs.start(manifest['strategy'],manifest['profile'],self.dataset['id'],research={'window':manifest['research']['window']})
+            self.wait(lambda:self.service.jobs.active is None)
+            actual,expected=self.store.result(row['run_id']),self.store.result(solo)
+            for field in ('metrics','fills','trades','indicators','equity'):self.assertEqual(actual[field],expected[field],field)
+        frozen=self.manager.freeze(ident,0)
+        copied=self.manager.copy_candidate(ident,0)['strategy_id']
+        self.assertEqual(self.store.strategy(copied)['profile']['position_management']['dca'][0]['distance'],'0.02')
+        self.manager.validate(frozen['validation_id']);self.wait(lambda:self.manager.active is None)
+        validation=self.manager.get(ident)['validations'][0]
+        self.assertEqual(validation['status'],'completed',validation)
+        self.assertEqual(validation['snapshot']['profile']['position_management']['max_entries'],3)
+
+    def test_position_axes_require_enabled_bounded_configuration(self):
+        with self.assertRaisesRegex(ValueError,'Unknown'):
+            normalize_axes(self.graph,[{'key':'pm.max_entries','values':[2]}],self.profile)
+        profile=Profile(**{**self.profile,'position_management':{}}).snapshot()
+        for key,values in [('pm.max_entries',[100]),('pm.atr_period',[1]),('pm.trailing_distance',['1'])]:
+            with self.subTest(key=key),self.assertRaises(ValueError):
+                self.manager.preview(**{**self.params,'profile':profile,'axes':[{'key':key,'values':values}]})
+
     def test_worker_errors_remain_failed_and_interruption_does_not_resume(self):
         with patch.object(self.service.jobs,'start',side_effect=ValueError('Controlled worker failure')):
             ident=self.manager.start(**self.params)['experiment_id'];self.wait(lambda:self.manager.active is None)

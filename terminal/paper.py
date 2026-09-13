@@ -120,6 +120,10 @@ class PaperEngine:
                 position['stop'] = str(manager.stop) if manager.stop is not None else None
                 position['stop_reason'] = manager.stop_reason
                 position['atr'] = str(manager.atr) if manager.atr is not None else None
+                position['take_levels'] = [{'step':i+1,'price':str(manager.ledger.entry*(1+manager.ledger.side*dec(distance)))}
+                                          for i,(distance,_) in enumerate(manager.config.partial_take) if i not in manager.take_attempted]
+                position['dca_levels'] = [{'step':i+1,'price':str(manager.ledger.anchor*(1-manager.ledger.side*dec(distance)))}
+                                         for i,(distance,_) in enumerate(manager.config.dca) if i not in manager.dca_attempted]
         return {'time_ns':self.last_ns,'cash':str(cash),'equity':str(equity),
                 'net_pnl':str(equity-dec(self.profile.capital)),'position':position,
                 'fills':list(self.strategy.fills),'events':list(self.protection.events),

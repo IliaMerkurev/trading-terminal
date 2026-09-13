@@ -14,7 +14,7 @@ export default function Experiments({strategies,datasets,profile,onActive,onOpen
  async function refresh(){setList(await api<any[]>('list_experiments'));}
  async function action(work:()=>Promise<void>){setError('');setBusy(true);try{await work();await refresh();}catch(e){setError(String(e instanceof Error?e.message:e));}finally{setBusy(false);}}
  useEffect(()=>{if(isDesktop())refresh().catch(e=>setError(String(e)));},[]);
- useEffect(()=>{setPreview(null);setAxes([]);if(strategy)api<any[]>('experiment_fields',{strategy_id:strategy}).then(setFields).catch(e=>setError(String(e)));else setFields([]);},[strategy]);
+ useEffect(()=>{setPreview(null);setAxes([]);if(strategy)api<any[]>(profile.position_management?'managed_experiment_fields':'experiment_fields',profile.position_management?{strategy_id:strategy,profile}:{strategy_id:strategy}).then(setFields).catch(e=>setError(String(e)));else setFields([]);},[strategy,profile.position_management]);
  useEffect(()=>{setPreview(null);},[axes,ranges,dataset,profile]);
  useEffect(()=>{if(!selected)return;return poll(()=>api<any>('experiment_status',{experiment_id:selected}),r=>{setReport(r);setActive(r.active_id);onActive(r.active_id);},e=>setError(String(e)),600);},[selected]);
  function chooseDataset(id:string){setDataset(id);const d=datasets.find(d=>d.id===id);if(d){const [start,end]=d.range,split=start+Math.floor((end-start)*.65/60)*60;setRanges([utc(start),utc(split),utc(split),utc(end)]);}}

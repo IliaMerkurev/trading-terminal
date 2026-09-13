@@ -10,14 +10,17 @@ from nautilus_trader.indicators import (SimpleMovingAverage, ExponentialMovingAv
 OUTPUTS = ("entry_long", "exit_long", "entry_short", "exit_short")
 NUMBER = "number"
 BOOLEAN = "boolean"
+POSITION_FIELDS = ('position_side','position_size','position_avg_entry','position_unrealized_pnl_pct','bars_since_entry')
 PORTS = {
     "price":{"value":NUMBER}, "constant":{"value":NUMBER},
     "sma":{"value":NUMBER}, "ema":{"value":NUMBER}, "rsi":{"value":NUMBER},
     "bb":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
     "macd":{"macd":NUMBER,"signal":NUMBER,"histogram":NUMBER}, "atr":{"value":NUMBER},
     **{k:{"value":BOOLEAN} for k in ("compare","cross_above","cross_below","and","or","not")},
+    **{k:{"value":NUMBER} for k in POSITION_FIELDS},
 }
 INPUTS = {k:{} for k in ("price","constant","atr")}
+INPUTS.update({k:{} for k in POSITION_FIELDS})
 INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd")})
 INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below")})
 INPUTS.update({k:{"left":BOOLEAN,"right":BOOLEAN} for k in ("and","or")})
@@ -26,6 +29,7 @@ PARAMS = {"price":{"field"}, "constant":{"value"}, "compare":{"operator"},
           "bb":{"period","deviations"}, "macd":{"fast","slow","signal"},
           **{k:{"period"} for k in ("sma","ema","rsi","atr")},
           **{k:set() for k in ("cross_above","cross_below","and","or","not")}}
+PARAMS.update({k:set() for k in POSITION_FIELDS})
 
 
 class GraphError(ValueError):
@@ -132,6 +136,7 @@ class GraphEvaluator:
         self.previous = {}
         self.last_time = None
         self.last_commit = None
+        self.position_context = None
 
     def __call__(self, bars, time, complete):
         if self.last_time is not None and time <= self.last_time:
@@ -152,6 +157,10 @@ class GraphEvaluator:
             state = copy.deepcopy(self.states[ident])
             if kind == "price":
                 result["value"] = getattr(candle,params["field"])
+            elif kind in POSITION_FIELDS:
+                if self.position_context is None or kind not in self.position_context:
+                    raise GraphError('Position nodes require an explicit recorded position context')
+                result['value'] = self.position_context[kind]
             elif kind == "constant":
                 result["value"] = params["value"]
             elif kind in ("sma","ema","rsi","bb","macd","atr"):

@@ -12,6 +12,18 @@ from terminal.profile import dec
 ZERO = Decimal(0)
 
 
+def position_context(side=0, quantity=0, entry=0, mark=0, first_ns=None, time_ns=0, primary_minutes=1):
+    """Read-only IR inputs; unleveraged last-price change, not account mark ROI."""
+    quantity, entry, mark = map(dec,(quantity,entry,mark))
+    if not quantity:
+        return {'position_side':0,'position_size':0,'position_avg_entry':None,'position_unrealized_pnl_pct':0,'bars_since_entry':0}
+    if side not in (-1,1) or entry <= 0 or mark <= 0 or first_ns is None or first_ns > time_ns:
+        raise ValueError('Invalid causal position context')
+    return {'position_side':side, 'position_size':float(quantity), 'position_avg_entry':float(entry),
+            'position_unrealized_pnl_pct':float(side*(mark-entry)/entry*100),
+            'bars_since_entry':(time_ns-first_ns)//(primary_minutes*60*10**9)}
+
+
 @dataclass(frozen=True)
 class PositionConfig:
     version: int = 1  # Position policy schema, independent of product version.
@@ -178,6 +190,7 @@ class PositionLedger:
         margin = self.quantity*self.entry/dec(self.profile.leverage) if self.profile.market == 'linear' else ZERO
         return {'position_id':self.sequence, 'side':'long' if self.side == 1 else 'short',
                 'quantity':str(self.quantity), 'entry':str(self.entry), 'entry_count':self.entries,
+                'first_ns':self.first_ns,
                 'initial_margin':str(margin), 'allocated_capital':str(self.quantity*self.entry/dec(self.profile.leverage)),
                 'maintenance_margin':str(self.quantity*mark*dec(self.profile.maintenance_rate)) if self.profile.market == 'linear' else '0',
                 'notional':str(self.quantity*mark), 'unrealized_pnl':str(unrealized),

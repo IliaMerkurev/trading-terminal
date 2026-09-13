@@ -1,14 +1,24 @@
 # Implementation status
 
-Product 0.5 backend checkpoint: the optional versioned Position Management core is implemented in the retained Nautilus historical/paper adapters. All 172 Python tests pass, including 25 new financial/temporal cases. These cover bounded scaling, partial lifecycle accounting, trailing/ATR/cost-aware break-even, funding, liquidation, gap semantics and reconstruction. Live session controls, read-only position nodes, settings/results UI and experiment parameter integration are still in progress; this is not a complete or accepted 0.5 build. See [ADR 0019](adr/0019-shared-position-management.md).
+## Product 0.5 — integrated development build under validation
 
-## Product 0.5 — implementation in progress
+The independent market terminal and shared Position Management are implemented in `codex/05`. **0.5 is not yet owner-accepted or declared complete.** Final integrated native acceptance and the required compiled-UI 30-minute session remain outstanding. See [demonstration](DEMO_05.md), [0.5 requirements](../PROJECT.md#21-product-05-independent-market-terminal-and-position-management), [market lifecycle](adr/0018-independent-market-lifecycle.md) and [position policy](adr/0019-shared-position-management.md).
 
-Independent public-market lifecycle and native chart history/cache are under validation. An isolated H1 service reproduction measured the old subscription delay at 88.609s; the new cold chart appeared at 1.625s, ticker/book at 2.25s and trades at 2.578s while unchanged causal warmup continued. Warm cached chart appeared at 0.047s. These are bounded service timings with paper disabled, not native UI latency guarantees. Native Windows checks observed no-strategy chart/book/tape, H1 warmup progress with current market retained, historical page prepend and independent market after monitoring pause.
+- Market socket ownership is independent from optional strategy history and PAPER. Native 1m/5m/15m/1H/4H/1D chart pages have a confirmed-history cache, bounded recent history, incremental updates and viewport-preserving prepend. The chart never derives coarse history from a partially warmed M1 strategy.
+- Optional policy schema 1 shares bounded scaling/DCA, partial TP, trailing, cost-aware break-even, confirmed-primary ATR protections and risk constraints across retained-engine Backtest/Paper. Legacy profiles without the policy retain their old snapshots and behavior.
+- Explicit read-only position nodes use pre-decision account context; live records that context for replay. Manual PAPER may start without a strategy, and Add/Reduce25/Reduce50/Close share the same account/journal. Settings, backend protection lines and paged position lifecycle views are integrated.
+- Experiments expose validated position axes with fixed risk caps and the same ordinary worker execution. Actual grid candidates equal standalone runs across metrics/fills/trades/indicators/equity; frozen later-period validation retains the policy.
+- Final regression rerun: **181 Python tests passed in 77.995s; 52 frontend tests across 16 files passed in 4.31s.** TypeScript/Vite passed; isolated locked Windows/Rust build passed (1m 30s from a new build directory). Existing frontend bundle-size and native Pandas advisories remain non-failing. No dependency or license was changed.
+- Independent financial/temporal goldens verify weighted long/short entries, scaling after reduction, partial/full exits, fees/funding, cash/equity/margin/liquidation, rounding/rejections, trailing/ATR/cost-aware break-even, historical crossings, observed gaps and future perturbation. Full regressions retain native historical, editor, live/replay/recovery and notification behavior. Mocked notification tests do not establish native delivery.
+- Fresh copied additive migration preserved all preexisting table records, result checksums and SQLite integrity. Ordinary user data was not used for tests. The separate synthetic demo completes two managed candidates and one frozen later-period validation.
 
-First regression passed 146 Python tests and 40 frontend tests; subsequent targeted tests extend coverage. TypeScript/Vite and a separate locked Windows build passed. Position Management and its integrations, final full regression and the required integrated 30-minute run remain pending. Telegram ILI-37 remains deferred/open. No 0.5 completion or owner acceptance is claimed.
+### Startup evidence and native acceptance boundary
 
-See [0.5 requirements](../PROJECT.md#21-product-05-independent-market-terminal-and-position-management) and [ADR 0018](adr/0018-independent-market-lifecycle.md).
+An isolated H1 service reproduction measured the old subscription delay at 88.609s. The first market milestone measured cold chart 1.625s, ticker/book 2.25s and trades 2.578s while causal warmup continued; warm cached chart appeared at 0.047s. These are bounded service timings with PAPER disabled, not UI latency guarantees. Earlier native Windows checks observed no-strategy chart/book/tape, H1 progress with current market retained, historical page prepend and independent market after monitoring pause.
+
+Final integrated Windows UI inspection is currently blocked by the automation error `foreground window did not report a process id`. The compiled executable launches, but process existence alone does not prove native controls, interval switching, responsiveness or the required long-run acceptance. A separate real public-data service endurance check is in progress and will be reported separately. No claim of a completed integrated native 30-minute session is made.
+
+Telegram ILI-37 remains intentionally deferred/open. Windows/sound acceptance from 0.4 is retained; Telegram delivery is not claimed. No main merge, release or product 0.6 is included.
 
 ## Product 0.4 development build — accepted and merged
 
