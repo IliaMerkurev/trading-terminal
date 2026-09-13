@@ -1,5 +1,7 @@
 # Architecture
 
+Product 0.5 development separates market socket ownership (`MarketHub`) and cached native chart pages (`ChartHistory`) from optional strategy/paper sessions. Market consumers remain centralized; coarse display candles never feed Strategy IR. See [ADR 0018](adr/0018-independent-market-lifecycle.md). The accepted 0.4 architecture below is retained where not explicitly superseded. Shared Position Management is the next implementation milestone.
+
 Product 0.4 adds a market terminal around the accepted 0.3 live/paper service. [ADR 0013](adr/0013-live-recovery-and-replay.md) defines the retained shared confirmed-minute signal path and additive live journal. Historical simulation and live/replay must use this one IR path; the UI never recomputes indicators. Public stream, notification and observed-price paper adapters extend the existing local Python/Tauri service, with no cloud backend or exchange order interface. Implementation and native acceptance status are tracked separately in [status](STATUS.md).
 
 Status: product 0.4-dev is owner-accepted and merged into main as an early development build. Accepted Windows/sound behavior is retained, and real Telegram delivery remains unverified as a known issue. [PROJECT.md](../PROJECT.md) is the authoritative specification; [ADR 0001](adr/0001-engine.md) selects the retained runtime and records measured limitations.

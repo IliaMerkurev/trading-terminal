@@ -2,7 +2,7 @@
 
 A local Windows desktop application for strategy research, public market monitoring and virtual paper trading. Create a visual strategy or explicitly trust a compatible native Python strategy, prepare Bybit history, run a backtest, inspect trades, and compare saved results.
 
-**Trading Terminal 0.4 is an early development build.** It extends the accepted 0.3 monitoring and 0.1/0.2 research workflows using NautilusTrader 1.231.0 with explicit, independently tested versioned execution. It is not production-ready or a stable release. It does not submit real exchange orders or accept exchange trading credentials. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0010-execution-v2.md), and the [0.4 demonstration guide](docs/DEMO_04.md). Owner acceptance remains distinct from automated verification.
+**Trading Terminal 0.5 is an early development build in progress.** Accepted baseline: 0.4-dev. The 0.5 work separates market viewing from strategy warmup and adds verified shared Position Management; the latter is not yet implemented or accepted. It extends the accepted 0.3 monitoring and 0.1/0.2 research workflows using NautilusTrader 1.231.0 with explicit, independently tested versioned execution. It is not production-ready or a stable release. It does not submit real exchange orders or accept exchange trading credentials. See [verified status](docs/STATUS.md), [model limitations](docs/adr/0010-execution-v2.md), and the [0.4 demonstration guide](docs/DEMO_04.md). Owner acceptance remains distinct from automated verification.
 
 ## Available workflow
 

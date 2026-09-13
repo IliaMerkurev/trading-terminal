@@ -29,6 +29,8 @@ class PublicStream:
         self.last_ping=0
         self.subscribed=False
         self.state=MarketState()
+        self.intervals=('1',)
+        self.display_watermarks={}
 
     def open(self):
         if self.socket is not None:
@@ -37,7 +39,7 @@ class PublicStream:
             open_timeout=12,close_timeout=3,max_size=1024*1024,max_queue=32,compression=None,
             ping_interval=20,ping_timeout=20)
         self.state.connected()
-        self.socket.send(json.dumps({'op':'subscribe','args':[f'tickers.{self.symbol}',f'kline.1.{self.symbol}',f'orderbook.50.{self.symbol}',f'publicTrade.{self.symbol}']}))
+        self.socket.send(json.dumps({'op':'subscribe','args':[f'tickers.{self.symbol}',*[f'kline.{i}.{self.symbol}' for i in self.intervals],f'orderbook.50.{self.symbol}',f'publicTrade.{self.symbol}']}))
         self.last_receive=time.monotonic()
         self.last_ping=self.last_receive
         self.ticker={};self.ticker_ms=-1;self.candle_ms=-1;self.forming_start=-1;self.subscribed=False
@@ -72,7 +74,7 @@ class PublicStream:
         if payload.get('op') in ('ping','pong') or payload.get('ret_msg')=='pong':
             return []
         topic=payload.get('topic')
-        if topic not in (f'tickers.{self.symbol}',f'kline.1.{self.symbol}',f'orderbook.50.{self.symbol}',f'publicTrade.{self.symbol}'):
+        if topic not in (f'tickers.{self.symbol}',*[f'kline.{i}.{self.symbol}' for i in self.intervals],f'orderbook.50.{self.symbol}',f'publicTrade.{self.symbol}'):
             raise LiveProtocolError('Unexpected public stream topic')
         timestamp=payload.get('ts')
         if type(timestamp) is not int or timestamp>observed_ms+5000 or observed_ms-timestamp>90000:
@@ -110,14 +112,23 @@ class PublicStream:
             raise LiveProtocolError('Invalid candle message size')
         events=[]
         for row in data:
-            if row.get('interval')!='1' or type(row.get('confirm')) is not bool:
+            interval=row.get('interval')
+            if interval not in self.intervals or topic!=f'kline.{interval}.{self.symbol}' or type(row.get('confirm')) is not bool:
                 raise LiveProtocolError('Unexpected candle interval or confirmation')
+            width=(1440 if interval=='D' else int(interval))*60000
             start=row.get('start')
-            if type(start) is not int or start%60000 or row.get('end')!=start+59999:
+            if type(start) is not int or start%width or row.get('end')!=start+width-1:
                 raise LiveProtocolError('Invalid candle interval boundaries')
             if start>timestamp:raise LiveProtocolError('Candle starts in the future')
-            if row['confirm'] and timestamp<start+59999:
+            if row['confirm'] and timestamp<start+width-1:
                 raise LiveProtocolError('Candle confirmed before its close')
+            if interval!='1':
+                previous=self.display_watermarks.get(interval,(-1,-1,False))
+                if start<previous[0] or (start==previous[0] and (timestamp<=previous[1] or previous[2])):continue
+                self.display_watermarks[interval]=(start,timestamp,row['confirm'])
+                candle=Candle(start//1000,*(float(row[key]) for key in ('open','high','low','close','volume')))
+                events.append({'kind':'display_candle','interval':interval,'confirmed':row['confirm'],'candle':asdict(candle),'provider_ms':timestamp})
+                continue
             if not row['confirm']:
                 if timestamp<=self.candle_ms or start<self.forming_start:continue
                 self.candle_ms=timestamp;self.forming_start=start
@@ -147,6 +158,11 @@ class LiveHistory(BybitClient):
             return 0
         session.store.state(session.id,'RECOVERING DATA','Reconstructing confirmed minute history')
         count=0
+        total=(end-start)//60
+        began=time.monotonic()
+        progress=getattr(self,'progress',lambda **values:None)
+        progress(recovered=0,required=total,pages=0,elapsed=0)
+        pages=0
         # Page by bounded ranges rather than loading an arbitrarily long gap.
         while start<end:
             stop=min(start+1000*60,end)
@@ -155,8 +171,12 @@ class LiveHistory(BybitClient):
                 raise DataError('Recovery history has missing minutes; session remains paused')
             source='warmup' if warmup_start is not None else 'recovered'
             for candle in rows:
+                if self.cancel.is_set():raise DataError('Recovery cancelled')
                 session.ingest(candle,int(time.time()*1000),source)
-            count+=len(rows);start=stop
+                if (count+1)%100==0:progress(recovered=count+1,required=total,pages=pages,elapsed=round(time.monotonic()-began,3))
+                count+=1
+            pages+=1;start=stop
+            progress(recovered=count,required=total,pages=pages,elapsed=round(time.monotonic()-began,3))
         return count
 
 

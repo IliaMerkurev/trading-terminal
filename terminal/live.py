@@ -15,6 +15,8 @@ from terminal.paper_journal import PaperJournal, PaperRecordingError, FundingLoo
 from terminal.profile import Profile
 from terminal.series import Candle
 from terminal.market_state import MarketState
+from terminal.market_hub import MarketHub, MarketFeed
+from terminal.chart_history import ChartHistory
 from terminal.storage import identifier
 
 
@@ -41,6 +43,8 @@ class LiveManager:
         self.thread=None;self.stop=threading.Event();self.lock=threading.RLock()
         self.session_id=None;self.view={};self.log=deque(maxlen=200)
         self.market=MarketState();self.manual_pending=None
+        self.hub=MarketHub(stream_factory)
+        self.chart_history=ChartHistory(store,self.hub)
         self.telegram=Telegram(WindowsCredentials(store.root))
         self.delivery_queue=queue.Queue(maxsize=32)
         self.delivery_stop=threading.Event()
@@ -59,7 +63,7 @@ class LiveManager:
                     WHERE json_array_length(json_extract(result,'$.fills'))>0;
             ''')
             db.execute("UPDATE manual_paper_requests SET status='cancelled_restart' WHERE status='queued'")
-            db.execute("UPDATE live_sessions SET status='PAUSED',detail='Application restarted; recovery and paper revalidation required'")
+            db.execute("UPDATE live_sessions SET status='PAUSED',detail='Application restarted; recovery and paper revalidation required' WHERE status IN ('CONNECTED','RECONNECTING','RECOVERING DATA')")
             row=db.execute('SELECT id FROM live_sessions ORDER BY rowid DESC LIMIT 1').fetchone()
             if row:self.session_id=row['id']
 
@@ -95,11 +99,12 @@ class LiveManager:
             if session_id!=self.session_id:raise ValueError('Another live session is active')
             if revalidate_paper:self.paper_revalidate.set()
             return {'session_id':session_id}
-        self.journal.get(session_id)
+        snapshot=self.journal.get(session_id)['snapshot']
+        self.hub.open(snapshot['profile']['market'],snapshot['profile']['symbol'])
         self.session_id=session_id;self.stop.clear();self.paper_revalidate.clear()
         if revalidate_paper:self.paper_revalidate.set()
         self.view={};self.log.clear()
-        self.market=MarketState()
+        self.market=self.hub.state
         self.thread=threading.Thread(target=self._run,args=(session_id,),daemon=True)
         self.thread.start()
         return {'session_id':session_id}
@@ -134,13 +139,28 @@ class LiveManager:
                 trades=db.execute("SELECT result FROM paper_observations WHERE session_id=? AND json_array_length(json_extract(result,'$.fills'))>0 ORDER BY sequence DESC LIMIT 50",(self.session_id,)).fetchall()
                 view['paper_history']=[json.loads(r['result']) for r in trades]
         view['active']=bool(self.thread and self.thread.is_alive() and not self.stop.is_set())
-        view['market']=self.market.snapshot()
+        view['market']=self.hub.snapshot() if self.hub.started is not None else self.market.snapshot()
         status=view.get('session',{}).get('status','PAUSED')
         view['terminal_state']='DEGRADED' if status=='CONNECTED' and not view['market']['fresh'] else status
+        if self.hub.started is not None:view['terminal_state']=view['market']['status']
+        view['strategy_state']='NOT SELECTED' if not self.session_id else 'READY' if view['active'] and status=='CONNECTED' else 'WARMING UP' if view['active'] and status=='RECOVERING DATA' else status
+        view['paper_ready']=bool(view.get('options',{}).get('paper') and view['active'] and status=='CONNECTED' and not view.get('paper_paused') and not (view.get('paper') or {}).get('pending_observations'))
         with self.store.connect() as db:
             view['manual_requests']=[dict(row) for row in db.execute('SELECT id,action,status FROM manual_paper_requests WHERE session_id=? ORDER BY created_ms DESC LIMIT 10',(self.session_id,))]
         view['telegram']=self.telegram.status()
         return view
+
+    def market_open(self,market,symbol):
+        if self.thread and self.thread.is_alive():
+            profile=self.journal.get(self.session_id)['snapshot']['profile']
+            if (market,symbol)!=(profile['market'],profile['symbol']):raise ValueError('Pause monitoring before changing the market')
+        self.hub.open(market,symbol);self.market=self.hub.state
+        return self.hub.snapshot()
+
+    def market_close(self):
+        # Leaving Live does not stop an explicitly active strategy session.
+        if not (self.thread and self.thread.is_alive()):self.hub.close()
+        return {'active':self.hub.snapshot()['active']}
 
     def manual(self,session_id,action,request_id):
         identifier(request_id)
@@ -228,6 +248,7 @@ class LiveManager:
             session=LiveSession(self.journal,sid)
             with self.store.connect() as db:options=json.loads(db.execute('SELECT options FROM live_options WHERE session_id=?',(sid,)).fetchone()[0])
             history=self.history_factory(self.store.root/'live-http-cache',cancel=self.stop)
+            history.progress=lambda **values:self._set(warmup=values)
             paper_paused=False;sequence=0
             if options['paper']:
                 def funding_rate(boundary):
@@ -248,7 +269,7 @@ class LiveManager:
             attempts=0;latest_price=None;last_price_at=0;pending=PendingSignals()
             while not self.stop.is_set():
                 try:
-                    stream=self.stream_factory(session.profile.market,session.profile.symbol)
+                    stream=(self.hub.feed(session.profile.market,session.profile.symbol) if self.hub.started is not None else self.stream_factory(session.profile.market,session.profile.symbol))
                     stream.state=self.market
                     stream.open()
                     connected_at=time.monotonic();latest_price=None;last_price_at=connected_at
@@ -261,6 +282,8 @@ class LiveManager:
                         for event in events:
                             if self.stop.is_set():break
                             if event['kind']=='price':
+                                if isinstance(stream,MarketFeed) and int(time.time()*1000)-event['provider_ms']>15000:
+                                    raise RecoveryRequired('Queued observed quote is stale; account revalidation required')
                                 latest_price=event;last_price_at=time.monotonic()
                                 self._set(price=event['price'],mark=event['mark'],price_time=event['provider_ms'])
                                 if stream.subscribed and session.last is not None:
@@ -311,7 +334,8 @@ class LiveManager:
                 except Exception:
                     if self.stop.is_set():break
                     paper_paused=bool(paper);self._set(paper_paused=paper_paused)
-                    self._cancel_manual('cancelled_recovery');self.market.reset()
+                    self._cancel_manual('cancelled_recovery')
+                    if not isinstance(stream,MarketFeed):self.market.reset()
                     pending=PendingSignals()
                     self.journal.state(sid,'RECONNECTING','Public connection interrupted; history recovery required')
                     self._log('Connection lost; paper paused and notifications suppressed')
@@ -334,4 +358,5 @@ class LiveManager:
     def close(self):
         self.pause()
         if self.thread:self.thread.join(timeout=4)
+        self.hub.close();self.chart_history.close()
         self.delivery_stop.set();self.delivery_thread.join(timeout=1)

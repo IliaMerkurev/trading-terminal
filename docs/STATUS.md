@@ -1,5 +1,13 @@
 # Implementation status
 
+## Product 0.5 — implementation in progress
+
+Independent public-market lifecycle and native chart history/cache are under validation. An isolated H1 service reproduction measured the old subscription delay at 88.609s; the new cold chart appeared at 1.625s, ticker/book at 2.25s and trades at 2.578s while unchanged causal warmup continued. Warm cached chart appeared at 0.047s. These are bounded service timings with paper disabled, not native UI latency guarantees. Native Windows checks observed no-strategy chart/book/tape, H1 warmup progress with current market retained, historical page prepend and independent market after monitoring pause.
+
+First regression passed 146 Python tests and 40 frontend tests; subsequent targeted tests extend coverage. TypeScript/Vite and a separate locked Windows build passed. Position Management and its integrations, final full regression and the required integrated 30-minute run remain pending. Telegram ILI-37 remains deferred/open. No 0.5 completion or owner acceptance is claimed.
+
+See [0.5 requirements](../PROJECT.md#21-product-05-independent-market-terminal-and-position-management) and [ADR 0018](adr/0018-independent-market-lifecycle.md).
+
 ## Product 0.4 development build â€” accepted and merged
 
 The owner accepted product **0.4-dev** with real Telegram delivery explicitly unverified. [PR #4](https://github.com/IliaMerkurev/trading-terminal/pull/4) was squash-merged into `main` on 2026-09-12 as `f26cec685d9ef0bf6bd5ac53962ae4935e2604bd`, from the exact accepted head `348fce7324eaf89c14ee8da82aa53f3e19242a65`.
