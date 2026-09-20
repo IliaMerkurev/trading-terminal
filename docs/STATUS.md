@@ -1,53 +1,68 @@
 # Implementation status
 
-The third verified library implementation is the explicit long-only Bollinger/
-RSI graph adaptation. Five focused tests passed in 0.460s; cached BTCUSDT spot
-1m/5m runs and both passive alternatives completed. See
-[the strategy evidence matrix](library/VERIFICATION.md). Five-strategy and
-third-family acceptance remain unfinished.
+## Product 0.6-dev — five-strategy candidate awaiting owner acceptance
 
-The bounded library batch backend now reuses the experiment scheduler and global
-job reservation, with frozen previews, asynchronous data preflight, immutable
-saved reports, exact benchmark reuse and explicit pending-row resume. Thirteen
-focused tests passed in 15.689s; see [ADR 0022](adr/0022-library-batches.md).
-The first two distinct implementations now pass synthetic and finite cached
-public-data integration: native EMA trend v2 and adapted RSI threshold reversion
-v1. Native window warmup uses an explicit reviewed adapter with fresh source
-consent; 11 focused tests passed in 19.360s. Both ran BTCUSDT linear at 1m/5m
-against actual separate spot baselines for 2026-09-01 12:00–24:00 UTC. Losses were
-retained. See [ADR 0023](adr/0023-native-library-window.md). Three further
-strategies, the third family, later-period workflow and final acceptance remain
-unfinished.
+The authorized Library core contains five independently verified implementations
+across trend, mean reversion and momentum: Native EMA trend v2, and explicit graph
+adaptations RSI threshold reversion, Bollinger RSI reversion, MACD normalized
+momentum and Historical return direction. Thirteen primary-source candidates
+were reviewed. Native EMA remains historical/linear-only with explicit source-
+bound consent and a disclosed warmup adapter; the four graphs support spot and
+linear closed-bar research. No author-recommended interval is invented. See the
+[source matrix](library/SOURCES.md) and [strategy evidence](library/VERIFICATION.md).
 
-The Library UI now exposes selection, preview/start/status/cancel/resume, saved
-reports, prior-run labels after input changes, cohort sorting and sampled equity
-comparison against the passive alternatives. Two timeframes per implementation
-remain one strategy each.
+Library controls freeze source/parameter/timeframe/profile/runtime/data contracts,
+preflight asynchronously, and use the existing sequential managed-job slot.
+Cancellation retains completed rows; explicit resume runs pending rows only.
+Independent accounts use common initial capital and dates. Actual spot Buy & Hold
+and scheduled DCA execute through retained Nautilus accounting, with full close,
+fees/precision and cash included. Annualization is N/A below 365 days; losses and
+no-trade results are retained. Baselines reuse only exact immutable contracts.
+See [ADR 0021](adr/0021-passive-benchmarks.md), [ADR 0022](adr/0022-library-batches.md)
+and [ADR 0023](adr/0023-native-library-window.md).
 
-UI checkpoint verification: 12 frontend tests passed across three files in
-23.35s. The affected saved-status tests passed (3 tests, 2.93s). The bounded
-equity/frozen-input backend check passed in 8.569s; the shared-candle report
-correction passed in 8.357s. TypeScript/Vite and locked/offline Windows builds
-passed. A compiled synthetic Windows smoke found and corrected a scroll-host
-layout issue, then completed RSI plus both baselines, displayed the three-curve
-comparison, marked results prior-run after capital changed, and opened Results.
-The ordinary report's shared-history lookup was subsequently corrected and
-verified by the focused backend check. No real-market profitability or complete
-two-strategy/five-strategy acceptance is claimed.
+Cards/table expose saved metrics, prior-run state, cohort-aware sorting/filtering,
+ordinary reports, copy actions and a sampled three-curve equity comparison.
+Later-period verification freezes a completed selection before an explicit start,
+restarts accounts/baselines on non-overlapping dates, and stays outside selection
+ranking/card results. It records attempted variants, holdout reuse and pinned
+source dates; it cannot prove external authors had not seen that history.
+See [ADR 0024](adr/0024-library-later-period-validation.md).
 
-## Product 0.6-dev — partial development checkpoint
+Final combined verification on the five-strategy/later-period implementation:
+**210 Python tests passed in 151.599s; 67 frontend tests across 19 files passed
+in 6.81s.** TypeScript/Vite passed; locked offline Windows/Rust build passed in
+4.81s with verified Python 3.12.14/NautilusTrader 1.231.0. Final review completed
+missing card metrics and filter/delta-sort controls; the affected 7 frontend
+checks passed in 3.13s. The affected TypeScript/Vite and Windows build passed (Rust 4.08s) after adding
+the filter helper return type required by strict test compilation. Unchanged
+Python tests were not repeated for that frontend-only change.
 
-The owner authorized Strategy Library development on `codex/06` after conditional acceptance of maintenance PR #6. The first source/registry slice adds two non-executing preview templates (native EMA trend and adapted RSI threshold reversion), pinned provenance, typed parameter/timeframe selection, and independent copies into the existing authoring/backtest workflow. The [12-source shortlist](library/SOURCES.md) records exclusions and pending selection. Neither preview is counted as a fully verified library strategy yet. Five-strategy selection, fair benchmarks, batch/resume, result rankings and later-period integration remain unfinished.
+Copied-data compatibility preserved all 20 existing tables and 1,428,407 rows
+with matching logical hashes and SQLite integrity. Library tables are additive;
+later-period metadata uses existing snapshots. Normal owner data, immutable
+artifacts and the experimental runtime lock were not modified. Accepted 0.5.1
+source/runtime/executable remain independently runnable.
 
-Focused Python verification: 9 tests passed in 9.885s after correcting one invalid synthetic OHLC fixture; native trust/import regression included. Focused frontend verification: 9 tests across 2 files passed in 12.21s after restoring the isolated dependency layout. Existing financial/worker regressions are reused only for unchanged paths. No new indicator, dependency or database migration is introduced by this slice. Full 0.6 acceptance remains pending.
+The bounded common cached BTCUSDT spot cohort (2026-09-01 12:00–24:00 UTC) completed
+all four graph strategies at 1m/5m and both alternatives. Native EMA's verified
+linear runs on the same dates retain actual separate spot alternatives. Existing
+independent benchmark/accounting, native trust, batch parity and cancellation/
+resume checks are included in the regression suite. No tuning, new endurance
+session or optional sixth strategy was attempted. Compiled Windows smoke displayed all five cards, opened the predeclared frozen
+later-period contract, completed its strategy and two baselines, and retained
+separate verification labels and disabled selection ranking. The corrected
+compiled UI reopened the completed 10-row cohort, displayed full prior-run card
+metrics, and filtered momentum rows without hiding their losses/no-trade states.
+Earlier compiled copy/stale/equity/report smoke and focused backend chart evidence
+are retained for unchanged paths. Remaining non-failing advisories are the
+frontend bundle size and native Pandas deprecation; this is not a release or
+investment-performance claim.
 
-TypeScript/Vite and a fresh locked/offline Windows build passed (Rust 1m 24s). Compiled isolated smoke showed 0.6-dev, loaded both preview cards and created a native copy in the existing editor. Its database contained one copy, zero trust records and zero runs; copying did not grant consent or execute a strategy.
-
-The passive benchmark backend now executes scheduled intents through retained Nautilus quotes/orders/accounting and PositionLedger, with immutable managed results and full-contract cache reuse. Independent goldens verify C=180 DCA equity 330 versus Buy & Hold 540, flat-price fees/rounding, adverse slippage, bearish results, unspent cash, gaps/minimum rejection, monthly calendar rules and annualization guards. Six new benchmark tests and 21 simulation tests passed; 10 position/native regression tests passed after correcting their test-import invocation. Seven managed-job/cache/cancellation tests passed in 7.916s. No financial assertions required correction. Library comparison UI and batch integration remain pending; [ADR 0021](adr/0021-passive-benchmarks.md) records the exact conventions.
-
-Seven archive tests passed in 2.053s, including immutable benchmark snapshot/result export. Review added a required frozen-contract guard and excluded imported reports from computational cache reuse; the affected managed-cache test passed in 3.952s. Prior library build evidence applies to unchanged frontend/Rust; this backend-only slice did not repeat those builds.
-
-PR #6 was squash-merged under the owner's ILI-145 authorization as `1d6918c939ffa9db7480ee179b12cca6a9ca3368`, with a tree identical to approved head `69741c7cb990cf94861eef27512b4227d1a4f3e4`. A fresh isolated native startup showed 0.5.1-dev without startup errors; pinned Gitleaks scanned the outgoing maintenance commits clean. The prior maintenance regression and WAL-correction evidence below was reused, not rerun. Accepted source/runtime/executable/data remain independent from development.
+Maintenance PR #6 was conditionally squash-merged as
+`1d6918c939ffa9db7480ee179b12cca6a9ca3368`, with a tree identical to approved head
+`69741c7cb990cf94861eef27512b4227d1a4f3e4`. Fresh isolated accepted startup passed.
+The following maintenance sections retain the evidence recorded before that merge.
 
 ## Product 0.5.1-dev — maintenance candidate awaiting owner acceptance
 

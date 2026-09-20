@@ -19,7 +19,7 @@ the existing scheduler behavior; an attempted row never resumes mid-run.
 
 Verification batches are explicitly labeled, excluded from selection sorting
 and card results, and retain a link/hash and separate metrics for their selection
-row. Distinct attempted selection documents across local research are counted;
+row. Distinct attempted selection contracts and profiles across local research are counted;
 overlapping prior frozen verification ranges increment the holdout attempt even
 when a different candidate or dataset is selected. Counts are local evidence,
 not proof that history was unseen externally. Pinned upstream commit dates are

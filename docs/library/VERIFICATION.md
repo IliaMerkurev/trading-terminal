@@ -25,8 +25,23 @@ this candidate adds no indicator implementation. Close-only bands, long-only
 direction and profile-controlled sizing are explicit differences from upstream.
 
 Five implementations and three families are verified at this checkpoint.
-Later-period Library workflow and final release acceptance remain open.
+The separate later-period Library workflow is implemented; owner acceptance remains open.
 
 Focused MACD integration: 13 Python checks passed in 0.132s; 9 frontend editor/model checks passed. TypeScript/Vite and locked offline Windows/Rust build passed. Existing EMA/MACD calculations are reused; the new numeric multiplication node is typed and rejects nonfinite output.
 
 Focused historical-return integration: 16 Python tests passed in 0.518s after one synthetic zero-denominator fixture correction (valid market OHLC is positive; the zero is supplied by a graph constant). Nine frontend editor/model tests passed after correcting the test runner working directory. No product logic correction or weakened assertion was needed. The initially malformed private public-run invocation was corrected; the bounded cached integration then completed.
+
+
+Final shared spot cohort: all four graph implementations ran together at 1m/5m
+on the same 2026-09-01 12:00–24:00 UTC data/capital/cost profile, with two cached
+passive alternatives. All ten rows completed. Native EMA retains separate linear
+compatibility/evidence on those dates. Source daily defaults are displayed;
+finite public integration covers 1m/5m, not a daily-history profitability study.
+
+A predeclared RSI 5m candidate (not chosen by return rank) was frozen before the
+2026-09-10 12:00–24:00 UTC check. The compiled Windows UI explicitly started the
+separate verification; strategy and both fresh-period baselines completed. Net
+PnL was -1.23921534 USDT for RSI and -18.33597263 for each passive alternative,
+with initial capital 1,000 USDT. Eight attempted selection contracts and first
+holdout use were recorded. The Lean source commit postdates both market periods;
+this is integration evidence, not a claim of externally unseen history.

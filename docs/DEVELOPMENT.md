@@ -4,7 +4,7 @@ Read [PROJECT.md](../PROJECT.md), [architecture](ARCHITECTURE.md), [status](STAT
 
 ## Product versions and working branches
 
-The accepted product is **0.5 development build**, displayed as `0.5-dev`. Product 0.1 was the first working milestone; 0.2 added research workflows; accepted 0.3 added live/paper monitoring. Product 0.6 and later milestones remain future work and are not authorized by the 0.5 merge. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
+The accepted baseline is **0.5.1-dev**. The separately authorized **0.6-dev** Strategy Library candidate is developed on `codex/06`; owner acceptance remains pending. Product 0.1 was the first working milestone; 0.2 added research workflows; accepted 0.3 added live/paper monitoring. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
 
 `src-tauri/Cargo.toml` package version is the single product-version source (`0.5.1-dev` in SemVer for this maintenance candidate). Tauri uses it when its configuration omits a version override; the existing UI badge reads Tauri app metadata. The private frontend package does not declare another product version. Update the root package entry in Cargo.lock alongside a version bump; do not change dependency versions. Window title and executable name stay `Trading Terminal` and `trading-terminal.exe`.
 
@@ -90,6 +90,17 @@ The [0.5 demo](DEMO_05.md) prepares two small synthetic parameter candidates and
 
 ## Product 0.5.1 maintenance
 
-Current candidate: `0.5.1-dev` on `codex/051`, from accepted 0.5-dev. Follow the current AGENTS.md budgeted-validation and owner-managed Linear rules. The 0.5 development branch instructions above are historical. Work is limited to ILI-135 through ILI-138; no 0.6 or Telegram work.
+Historical maintenance candidate: `0.5.1-dev` on `codex/051`, from accepted 0.5-dev. Follow the current AGENTS.md budgeted-validation and owner-managed Linear rules. The 0.5 development branch instructions above are historical. Work is limited to ILI-135 through ILI-138; no 0.6 or Telegram work.
 
 Run final regression/build once after focused checks. Use an isolated absolute data root and a separate Cargo target for native smoke; preserve the owner executable. Verify the additive `replay_jobs` table on a consistent database copy before ordinary data is opened. Replay jobs share the existing calculation slot and are cancelled on close; interrupted jobs remain inspectable after restart. See [maintenance acceptance](DEMO_051.md).
+
+
+## Product 0.6 development
+
+Keep the accepted source, Python runtime, executable and data independent from
+the `codex/06` checkout. A copied executable alone is not a fallback: the backend
+path is compiled in. Use the desktop launcher above from the intended checkout
+and a separate Cargo target/data root for verification. See [0.6 acceptance](DEMO_06.md).
+Use only the owner-created Library issues and budgeted validation; no optional
+strategy expansion before the approved core and budget gates. No automatic
+resume, main merge, release or next-version work is part of this candidate.

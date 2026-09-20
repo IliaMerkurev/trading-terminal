@@ -1,6 +1,6 @@
 import {it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
-import LibraryResearch,{sortedLibraryRows,canonical} from './LibraryResearch';
+import LibraryResearch,{sortedLibraryRows,canonical,filterLibraryRows} from './LibraryResearch';
 import {defaultProfile} from './model';
 import {api} from './api';
 vi.mock('./api',()=>({api:vi.fn()}));
@@ -84,4 +84,13 @@ it('freezes a saved candidate separately and never ranks or attaches holdout met
  fireEvent.click(screen.getByRole('button',{name:'Run frozen later-period verification'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_start',{batch_id:'holdout'}));
  expect(sortedLibraryRows({...frozen,rows:[{ordinal:1,metrics:{net_pnl:1}},{ordinal:0,metrics:{net_pnl:10}}]},'net_pnl').map(r=>r.ordinal)).toEqual([1,0]);
+});
+
+
+it('filters family/timeframe/review/state and sorts measured baseline deltas without converting failures to zero',()=>{
+ const catalog=[{id:'a',family:'momentum',availability:'verified'},{id:'b',family:'trend',availability:'preview'}];
+ const report={snapshot:{rows:[{kind:'graph',selection:{entry_id:'a'},profile:defaultProfile,dataset:{id:'same'}},{kind:'graph',selection:{entry_id:'b'},profile:defaultProfile,dataset:{id:'same'}},{kind:'benchmark',profile:defaultProfile,dataset:{id:'same'}}]},rows:[{ordinal:0,status:'completed',metrics:{period_return:.1}},{ordinal:1,status:'failed',metrics:null},{ordinal:2,status:'completed',metrics:{period_return:.2}}]};
+ expect(filterLibraryRows(report,catalog,{family:'momentum',review:'verified',status:'completed',minutes:String(defaultProfile.primary_minutes)}).map(r=>r.ordinal)).toEqual([0]);
+ expect(filterLibraryRows(report,catalog,{status:'failed'}).map(r=>r.ordinal)).toEqual([1]);
+ expect(sortedLibraryRows(report,'delta_hold').map(r=>r.ordinal)).toEqual([0,1,2]);
 });
