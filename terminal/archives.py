@@ -65,8 +65,16 @@ def validate_snapshot(snapshot):
         if not isinstance(research,dict) or set(research)-{'experiment','library'}!={'window'}:raise ValueError('Invalid research provenance')
         if 'library' in research:
             origin=research['library']
-            if not isinstance(origin,dict) or set(origin)!={'batch_id','ordinal','contract','batch_sha256'} or type(origin['ordinal']) is not int or not 0<=origin['ordinal']<12:
+            if not isinstance(origin,dict) or set(origin)-{'phase','validation'}!={'batch_id','ordinal','contract','batch_sha256'} or type(origin['ordinal']) is not int or not 0<=origin['ordinal']<12:
                 raise ValueError('Invalid library provenance')
+            if origin.get('phase','selection') not in ('selection','out_of_sample'):raise ValueError('Invalid library research phase')
+            if origin.get('phase')=='out_of_sample':
+                validation=origin.get('validation')
+                if not isinstance(validation,dict) or not re.fullmatch('[a-f0-9]{64}',str(validation.get('candidate_sha256',''))):raise ValueError('Invalid frozen validation identity')
+                if type(validation.get('holdout_attempt')) is not int or validation['holdout_attempt']<1:raise ValueError('Invalid holdout attempt')
+                ranges=validation.get('selection_range')
+                if not isinstance(ranges,list) or len(ranges)!=2 or any(type(v) is not int for v in ranges) or not ranges[0]<ranges[1]<=research['window']['start']:raise ValueError('Overlapping archived validation range')
+            elif origin.get('validation') is not None:raise ValueError('Selection cannot contain holdout metrics')
             identifier(origin['batch_id'])
             if not re.fullmatch('[a-f0-9]{64}',origin['batch_sha256']):raise ValueError('Invalid library batch checksum')
             document={'graph':snapshot['strategy'],'layout':{}} if not snapshot['strategy'].get('engine') else snapshot['strategy']

@@ -59,3 +59,29 @@ it('cancels active work and exposes pending-only resume without hiding failed ro
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_resume',{batch_id:'batch'}));
  await screen.findByRole('option',{name:/2026-01-01 · cancelled/});
 });
+
+
+it('freezes a saved candidate separately and never ranks or attaches holdout metrics to selection cards',async()=>{
+ const onReport=vi.fn();
+ const base={id:'selection',status:'completed',active_id:null,snapshot:{inputs,start:600,end:3600,rows:[{name:'RSI',kind:'graph',profile:defaultProfile,dataset:{id:'data'}}]},rows:[{ordinal:0,status:'completed',run_id:'run',metrics:{net_pnl:'2'}}]};
+ const frozen={...base,id:'holdout',status:'frozen',snapshot:{...base.snapshot,phase:'out_of_sample',start:7200,end:10800,validation:{selection_range:[600,3600],selection_attempted_variants:3,holdout_attempt:2,source_version_date:'2026-09-18',warning:'Repeated holdout is not independent evidence.'}},rows:[{ordinal:0,status:'pending',metrics:null}]};
+ vi.mocked(api).mockImplementation(async(command,params:any)=>{
+  if(command==='library_batches')return [{id:'selection',status:'completed',created_at:'Selection'}];
+  if(command==='library_batch_status')return params.batch_id==='holdout'?frozen:base;
+  if(command==='library_validation_freeze')return {batch_id:'holdout'};
+  return {};
+ });
+ render(<LibraryResearch selections={selections} datasets={datasets} profile={defaultProfile} onActive={vi.fn()} onReport={onReport} onOpenRun={vi.fn()}/>);
+ await screen.findByRole('option',{name:/Selection/});fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'selection'}});
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'data'}});
+ fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T02:00'}});
+ fireEvent.change(screen.getByLabelText('Evaluation end, exclusive (UTC)'),{target:{value:'1970-01-01T03:00'}});
+ fireEvent.click(await screen.findByRole('button',{name:'Freeze later-period candidate'}));
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_freeze',{batch_id:'selection',ordinal:0,dataset_id:'data',start:7200,end:10800,spot_dataset_id:null}));
+ expect(await screen.findByText(/Later-period verification — excluded/)).toBeTruthy();
+ expect((screen.getByLabelText('Library sort') as HTMLSelectElement).disabled).toBe(true);
+ await waitFor(()=>expect(onReport).toHaveBeenLastCalledWith(null,true));
+ fireEvent.click(screen.getByRole('button',{name:'Run frozen later-period verification'}));
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_start',{batch_id:'holdout'}));
+ expect(sortedLibraryRows({...frozen,rows:[{ordinal:1,metrics:{net_pnl:1}},{ordinal:0,metrics:{net_pnl:10}}]},'net_pnl').map(r=>r.ordinal)).toEqual([1,0]);
+});

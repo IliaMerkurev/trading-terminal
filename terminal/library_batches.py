@@ -101,17 +101,64 @@ class LibraryBatchManager(ExperimentManager):
         ident = uuid.uuid4().hex
         thread = self._reserve(ident,self._batch)
         try:
-            with self.store.connect() as db:
-                db.execute('INSERT INTO library_batches VALUES(?,?,?,?,NULL)',
-                           (ident,datetime.now(timezone.utc).isoformat(),'preparing',canonical(frozen).decode()))
-                for ordinal,row in enumerate(frozen['rows']):
-                    db.execute('INSERT INTO library_rows VALUES(?,?,?,NULL,?,0)',
-                               (ident,ordinal,'incompatible' if row['error'] else 'pending',row['error']))
+            self._save(ident,frozen,'preparing')
             thread.start()
         except Exception:
             with self.jobs.lock:self.active=None;self.jobs.reservation=None
             raise
         return {'batch_id':ident}
+
+    def _save(self, ident, frozen, status):
+        with self.store.connect() as db:
+            db.execute('INSERT INTO library_batches VALUES(?,?,?,?,NULL)',
+                       (ident,datetime.now(timezone.utc).isoformat(),status,canonical(frozen).decode()))
+            for ordinal,row in enumerate(frozen['rows']):
+                db.execute('INSERT INTO library_rows VALUES(?,?,?,NULL,?,0)',
+                           (ident,ordinal,'incompatible' if row['error'] else 'pending',row['error']))
+
+    def freeze_validation(self, batch_id, ordinal, dataset_id, start, end, spot_dataset_id):
+        report=self.get(batch_id);source=report['snapshot']
+        if report['status'] in ('running','preparing','frozen') or source.get('phase')=='out_of_sample':
+            raise ValueError('Select a finished selection batch, not a holdout')
+        if type(ordinal) is not int or not 0<=ordinal<len(report['rows']):raise ValueError('Invalid candidate ordinal')
+        row=report['rows'][ordinal];spec=source['rows'][ordinal]
+        if row['status']!='completed' or spec['kind']=='benchmark':raise ValueError('Only a completed strategy can be frozen')
+        if type(start) is not int or start<source['end']:raise ValueError('Validation must start after the selection range')
+        prepared=library.for_window(library.prepare(**spec['selection']),source['start'])
+        if prepared['contract']!=spec['contract'] or prepared['document']!=spec['document']:
+            raise ValueError('Selected library source changed; run a new selection first')
+        previous=self.jobs.datasets.describe(spec['dataset']['id']);later=self.jobs.datasets.describe(dataset_id)
+        if any(previous[k]!=later[k] for k in ('source','market','symbol')):raise ValueError('Later history must match source, market and symbol')
+        frozen=self.prepare([spec['selection']],dataset_id,spec['profile'],start,end,source['inputs']['interval'],spot_dataset_id)
+        if any(r['error'] for r in frozen['rows']):raise ValueError('Validation preflight: '+'; '.join(r['error'] for r in frozen['rows'] if r['error']))
+        entry=next(e for e in library.catalog() if e['id']==spec['selection']['entry_id'])
+        with self.store.connect() as db:
+            previous_attempts=db.execute("SELECT count(*) FROM library_batches WHERE json_extract(snapshot,'$.phase')='out_of_sample' AND json_extract(snapshot,'$.symbol')=? AND json_extract(snapshot,'$.market')=? AND json_extract(snapshot,'$.start')<? AND json_extract(snapshot,'$.end')>?",(source['symbol'],source['market'],end,start)).fetchone()[0]
+            variants=db.execute("SELECT count(DISTINCT json_extract(b.snapshot,'$.rows[' || r.ordinal || '].contract') || json_extract(b.snapshot,'$.rows[' || r.ordinal || '].profile')) FROM library_rows r JOIN library_batches b ON b.id=r.batch_id WHERE r.run_id IS NOT NULL AND coalesce(json_extract(b.snapshot,'$.phase'),'selection')!='out_of_sample' AND json_extract(b.snapshot,'$.rows[' || r.ordinal || '].kind')!='benchmark' AND json_extract(b.snapshot,'$.symbol')=? AND json_extract(b.snapshot,'$.market')=?",(source['symbol'],source['market'])).fetchone()[0]
+        frozen['phase']='out_of_sample'
+        frozen['validation']=dict(selection_batch_id=batch_id,selection_ordinal=ordinal,selection_run_id=row['run_id'],
+            selection_range=[source['start'],source['end']],candidate_sha256=digest(spec),
+            selection_contract=spec['contract'],selection_profile=spec['profile'],selection_metrics=row['metrics'],
+            selection_attempted_variants=variants,holdout_attempt=previous_attempts+1,
+            source_version_date=entry['source_version_date'],frozen_at=datetime.now(timezone.utc).isoformat(),
+            warning='Repeated or changed selections reuse the holdout. This does not prove the external author never observed this period. Source versions may postdate the market history.')
+        frozen['contract_sha256']=digest({k:v for k,v in frozen.items() if k!='contract_sha256'})
+        ident=uuid.uuid4().hex;self._save(ident,frozen,'frozen')
+        return {'batch_id':ident,'contract_sha256':frozen['contract_sha256']}
+
+    def start_validation(self, batch_id):
+        report=self.get(batch_id)
+        if report['status']!='frozen' or report['snapshot'].get('phase')!='out_of_sample':
+            raise ValueError('Validation must be frozen and can start only once')
+        self._unchanged(report['snapshot'])
+        thread=self._reserve(batch_id,self._batch)
+        try:
+            with self.store.connect() as db:db.execute("UPDATE library_batches SET status='preparing' WHERE id=?",(batch_id,))
+            thread.start()
+        except Exception:
+            with self.jobs.lock:self.active=None;self.jobs.reservation=None
+            raise
+        return {'batch_id':batch_id}
 
     def resume(self, batch_id):
         report = self.get(batch_id)
@@ -179,7 +226,7 @@ class LibraryBatchManager(ExperimentManager):
                             self.store.result(cached['id']);started(cached['id']);result=self.store.get(cached['id']);reused=True
                     else:
                         research={'window':{'start':frozen['start'],'end':frozen['end'],'warmup_start':spec['dataset']['range'][0]},
-                                  'library':{'batch_id':ident,'ordinal':ordinal,'contract':spec['contract'],'batch_sha256':frozen['contract_sha256']}}
+                                  'library':{'batch_id':ident,'ordinal':ordinal,'contract':spec['contract'],'batch_sha256':frozen['contract_sha256'],'phase':frozen.get('phase','selection'),'validation':frozen.get('validation')}}
                     if not reused:
                         document=spec['document']['graph'] if spec['kind']=='graph' else spec['document']
                         result=self._run(active,document,{'dataset':spec['dataset'],'runtime':frozen['runtime']},spec['profile'],research,started)
@@ -210,7 +257,7 @@ class LibraryBatchManager(ExperimentManager):
 
     def recent(self):
         with self.store.connect() as db:
-            return [dict(r) for r in db.execute('SELECT id,created_at,status,error FROM library_batches ORDER BY created_at DESC,id DESC LIMIT 50')]
+            return [dict(r) for r in db.execute("SELECT id,created_at,status,error,coalesce(json_extract(snapshot,'$.phase'),'selection') AS phase FROM library_batches ORDER BY created_at DESC,id DESC LIMIT 50")]
 
     def equity(self, batch_id, ordinal):
         report=self.get(batch_id)
