@@ -70,6 +70,7 @@ class ReplayJobTests(unittest.TestCase):
         self.assertEqual(self.wait(again)['result'],self.expected)
         with self.service.store.connect() as db:
             self.assertEqual(db.execute('SELECT result FROM replay_jobs WHERE id=?',(job,)).fetchone()[0],None)
+            self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0],'ok')
 
     def test_worker_error_and_mismatch_are_distinct_and_shutdown_cancels(self):
         with self.service.store.connect() as db:db.execute('DELETE FROM live_signals WHERE session_id=?',(self.sid,))
@@ -80,6 +81,9 @@ class ReplayJobTests(unittest.TestCase):
             db.execute('UPDATE live_sessions SET snapshot=? WHERE id=?',(json.dumps(snapshot),self.sid))
         failure=self.wait(self.call('live_replay',session_id=self.sid)['replay_id'])
         self.assertEqual(failure['status'],'failed');self.assertTrue(failure['error']);self.assertIsNone(failure['result'])
+        with self.service.store.connect() as db:
+            snapshot['graph']=example_graph()
+            db.execute('UPDATE live_sessions SET snapshot=? WHERE id=?',(json.dumps(snapshot),self.sid))
         with self.slow_worker():job=self.call('live_replay',session_id=self.sid)['replay_id']
         self.wait(job,progress=True);self.service.jobs.close()
         self.assertEqual(self.call('replay_status',replay_id=job)['status'],'cancelled')

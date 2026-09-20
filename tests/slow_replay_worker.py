@@ -11,8 +11,9 @@ if __name__=='__main__':
     from terminal.worker import replay
     original=LiveSession.verify_replay
     def slow(self,progress=None):
-        if progress:progress(0,1)
-        time.sleep(31)
-        return original(self,progress)
+        def delayed(processed,total):
+            if progress:progress(processed,total)
+            if processed==0:time.sleep(31)  # Hold the actual SQLite read transaction.
+        return original(self,delayed)
     LiveSession.verify_replay=slow
     replay(request)

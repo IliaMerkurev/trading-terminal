@@ -3,6 +3,7 @@ import json
 import msvcrt
 from pathlib import Path
 import subprocess
+import sqlite3
 import sys
 import threading
 import uuid
@@ -52,8 +53,13 @@ class JobManager:
             directory=self.store.root/'replays'/replay_id;directory.mkdir(parents=True)
             with self.store.connect() as db:
                 db.execute('INSERT INTO replay_jobs VALUES(?,?,?,NULL,NULL)',(replay_id,session_id,'running'))
-            job=None;process=None
+            job=None;process=None;anchor=None
             try:
+                # Keep the WAL/shared-memory lifetime owned by the service while a
+                # cancellable process holds a read transaction. On Windows killing
+                # the last connection can otherwise race WAL cleanup/reopening.
+                anchor=sqlite3.connect(self.store.database,timeout=15,check_same_thread=False)
+                anchor.execute('SELECT count(*) FROM sqlite_master').fetchone()
                 job=WindowsJob()
                 process=subprocess.Popen([sys.executable,'-m','terminal.worker'],cwd=Path(__file__).resolve().parents[1],
                     stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
@@ -62,13 +68,14 @@ class JobManager:
                 reader=threading.Thread(target=self._drain,args=(replay_id,process.stdout,directory),daemon=True);reader.start()
                 process.stdin.write(canonical({'version':1,'command':'replay','root':str(self.store.root),
                     'replay_id':replay_id,'session_id':session_id,'runtime':runtime_snapshot()})+b'\n');process.stdin.close()
-                monitor=threading.Thread(target=self._monitor_replay,args=(replay_id,session_id,process,job,reader),daemon=True)
+                monitor=threading.Thread(target=self._monitor_replay,args=(replay_id,session_id,process,job,reader,anchor),daemon=True)
                 self.active['monitor']=monitor;monitor.start()
             except Exception:
                 if job:job.close()
                 if process:
                     if process.poll() is None:process.terminate()
                     process.wait(timeout=5)
+                if anchor:anchor.close()
                 self.active=None
                 with self.store.connect() as db:db.execute("UPDATE replay_jobs SET status='failed',error='Replay worker could not start' WHERE id=?",(replay_id,))
                 raise
@@ -95,7 +102,7 @@ class JobManager:
             active['job'].terminate()
         return {'status':'cancel_requested'}
 
-    def _monitor_replay(self,replay_id,session_id,process,job,reader):
+    def _monitor_replay(self,replay_id,session_id,process,job,reader,anchor):
         code=process.wait();job.close();reader.join(timeout=5)
         directory=self.store.root/'replays'/replay_id
         with self.lock:
@@ -116,7 +123,9 @@ class JobManager:
                 with self.store.connect() as db:
                     db.execute('UPDATE replay_jobs SET status=?,error=?,result=? WHERE id=?',
                                (status,error,canonical(result).decode() if status=='completed' else None,replay_id))
-            finally:self.active=None
+            finally:
+                anchor.close()
+                self.active=None
 
     def start(self,strategy,profile,dataset_id,*,research=None,owner=None,expected_runtime=None):
         native=isinstance(strategy,dict) and strategy.get("engine")=="nautilus_trader"
