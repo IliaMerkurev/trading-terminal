@@ -12,7 +12,7 @@ NUMBER = "number"
 BOOLEAN = "boolean"
 POSITION_FIELDS = ('position_side','position_size','position_avg_entry','position_unrealized_pnl_pct','bars_since_entry')
 PORTS = {
-    "price":{"value":NUMBER}, "constant":{"value":NUMBER},
+    "price":{"value":NUMBER}, "constant":{"value":NUMBER}, "multiply":{"value":NUMBER},
     "sma":{"value":NUMBER}, "ema":{"value":NUMBER}, "rsi":{"value":NUMBER},
     "bb":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
     "macd":{"macd":NUMBER,"signal":NUMBER,"histogram":NUMBER}, "atr":{"value":NUMBER},
@@ -22,13 +22,13 @@ PORTS = {
 INPUTS = {k:{} for k in ("price","constant","atr")}
 INPUTS.update({k:{} for k in POSITION_FIELDS})
 INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd")})
-INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below")})
+INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below","multiply")})
 INPUTS.update({k:{"left":BOOLEAN,"right":BOOLEAN} for k in ("and","or")})
 INPUTS["not"] = {"source":BOOLEAN}
 PARAMS = {"price":{"field"}, "constant":{"value"}, "compare":{"operator"},
           "bb":{"period","deviations"}, "macd":{"fast","slow","signal"},
           **{k:{"period"} for k in ("sma","ema","rsi","atr")},
-          **{k:set() for k in ("cross_above","cross_below","and","or","not")}}
+          **{k:set() for k in ("cross_above","cross_below","and","or","not","multiply")}}
 PARAMS.update({k:set() for k in POSITION_FIELDS})
 
 
@@ -192,7 +192,8 @@ class GraphEvaluator:
                 else: result["value"] = True if a is True or b is True else (None if a is None or b is None else False)
             elif all(v is not None for v in inputs.values()):
                 a,b = inputs["left"],inputs["right"]
-                if kind == "compare":
+                if kind == "multiply":result['value']=a*b
+                elif kind == "compare":
                     result["value"] = {">":a>b,">=":a>=b,"<":a<b,"<=":a<=b,"==":a==b,"!=":a!=b}[params["operator"]]
                 else:
                     pa = self.previous.get(node["inputs"]["left"])

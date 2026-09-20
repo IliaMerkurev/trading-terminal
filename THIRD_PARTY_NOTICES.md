@@ -48,3 +48,8 @@ The independently authored RSI threshold graph is an explicitly limited adaptati
 The independently authored Bollinger/RSI graph references the reviewed LGPL-3.0
 Nautech Systems example without copying its Python source. Its long-only,
 close-only and sizing differences are recorded in the source matrix and card.
+
+The independently authored normalized MACD graph references QuantConnect Lean
+MACDTrendAlgorithm (Apache-2.0). It preserves the normalized tolerance decision
+with disclosed engine initialization and profile-sizing differences; no Lean
+runtime or original module is bundled.

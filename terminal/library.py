@@ -15,6 +15,20 @@ LEAN_COMMIT = '985ef30ad3ac774218c5ac516b4cb0aa2655730f'
 EMA_HASH = 'cfdc26b76d03df6cc481d47327d64dd6c23b356236cd061bb87c691b7918d13b'
 
 ENTRIES = [
+    dict(id='macd-tolerance',version=1,name='MACD normalized momentum',family='momentum',kind='Adapted',
+         author='QuantConnect Corporation; independent terminal graph adaptation',license='Apache-2.0',
+         source_url=f'https://github.com/QuantConnect/Lean/blob/{LEAN_COMMIT}/Algorithm.Python/MACDTrendAlgorithm.py',
+         source_commit=LEAN_COMMIT,source_sha256='ea86a2c14af9bd1b2ae2081d6004ac0a400f69a858b3c3d87f0da2db3d476fc0',
+         source_default_minutes=1440,author_recommended_minutes=None,local_default_minutes=1440,
+         timeframe_evidence='Source subscribes daily SPY and evaluates once per day; daily is a source default, not an author recommendation.',
+         markets=['spot','linear'],directions=['long'],modes=['historical_closed'],timeframes=TIMEFRAMES,
+         parameters={'fast':dict(type='integer',default=12,min=1,max=1000),'slow':dict(type='integer',default=26,min=2,max=1000),
+                     'signal':dict(type='integer',default=9,min=1,max=1000),'tolerance':dict(type='number',default=.0025,min=0,max=.5)},
+         dependencies={'nautilus_trader':'1.231.0'},
+         adaptation='Long-only graph preserves histogram/fast-EMA tolerance logic: enter histogram > tolerance * fast EMA; exit histogram < -tolerance * fast EMA. Existing causal Nautilus EMA initialization replaces Lean initialization. Evaluates each confirmed selected bar rather than an equity daily callback; profile sizing/costs replace full SPY allocation. No short entry.',
+         review='Pinned source reviewed statically; AlgorithmImports/portfolio/plot APIs are not loaded. No copied module or extra dependencies, dynamic execution or future-bar access.',
+         compatibility='Single confirmed primary timeframe; warmup slow + signal bars. Numeric multiplication preserves source tolerance without division.',
+         availability='verified',verification='Independent normalized MACD trade/causality and 1m/3m checks passed; cached BTCUSDT spot at 1m/5m completed with both passive baselines. Legitimate no-trade outcomes retained; no profitability claim.'),
     dict(id='bb-rsi-reversion',version=1,name='Bollinger RSI reversion',family='mean_reversion',kind='Adapted',
          author='Nautech Systems Pty Ltd; independent terminal graph adaptation',license='LGPL-3.0',
          source_url=f'https://github.com/nautechsystems/nautilus_trader/blob/{NAUTILUS_COMMIT}/nautilus_trader/examples/strategies/bb_mean_reversion.py',
@@ -104,6 +118,18 @@ def prepare(entry_id, version, minutes, parameters):
         preview(document)
         profile = Profile(market='linear',primary_minutes=minutes).snapshot()
         kind = 'native'; warmup = values['slow']
+    elif entry_id=='macd-tolerance':
+        if values['fast']>=values['slow']:raise ValueError('MACD fast period must be below slow period')
+        nodes=[dict(id='close',type='price',inputs={},params={'field':'close'}),
+               dict(id='fast',type='ema',inputs={'source':'close.value'},params={'period':values['fast']}),
+               dict(id='macd',type='macd',inputs={'source':'close.value'},params={k:values[k] for k in ('fast','slow','signal')})]
+        for name,sign,operator in [('entry',1,'>'),('exit',-1,'<')]:
+            nodes.extend([dict(id=name+'Tolerance',type='constant',inputs={},params={'value':sign*values['tolerance']}),
+                          dict(id=name+'Threshold',type='multiply',inputs={'left':'fast.value','right':name+'Tolerance.value'},params={}),
+                          dict(id=name,type='compare',inputs={'left':'macd.histogram','right':name+'Threshold.value'},params={'operator':operator})])
+        graph=dict(version=1,nodes=nodes,outputs=dict(entry_long='entry.value',exit_long='exit.value',entry_short=None,exit_short=None))
+        validate_graph(graph);document={'graph':graph,'layout':{}}
+        profile=Profile(primary_minutes=minutes,version=2).snapshot();kind='graph';warmup=values['slow']+values['signal']
     elif entry_id=='bb-rsi-reversion':
         nodes=[dict(id='close',type='price',inputs={},params={'field':'close'}),
                dict(id='bands',type='bb',inputs={'source':'close.value'},params={'period':values['bb_period'],'deviations':values['deviations']}),
