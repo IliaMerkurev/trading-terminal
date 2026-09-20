@@ -129,16 +129,22 @@ class JobManager:
 
     def start(self,strategy,profile,dataset_id,*,research=None,owner=None,expected_runtime=None):
         native=isinstance(strategy,dict) and strategy.get("engine")=="nautilus_trader"
+        benchmark=isinstance(strategy,dict) and 'benchmark' in strategy
         if native:
             from terminal.native import preview
             report=preview(strategy)
             if not self.store.is_trusted(report["trust_sha256"]): raise ValueError("Explicit trust is required before loading this Python source")
             if report["dependency_problems"]: raise ValueError("Native dependencies are missing or incompatible; no automatic installation")
-        else:
+        elif not benchmark:
             validate_graph(strategy)
         if not isinstance(profile,Profile): profile=Profile(**profile)
         manifest=self.datasets.describe(dataset_id)
         self.datasets.check_profile(manifest,profile)
+        if benchmark:
+            from terminal.benchmarks import validate_document
+            frozen=validate_document(strategy,profile,manifest)
+            if research!={'benchmark_contract':frozen['contract_sha256']}:
+                raise ValueError('Benchmark jobs require their frozen contract')
         snapshot=run_manifest(strategy,profile,manifest)
         if expected_runtime is not None and snapshot['runtime']!=expected_runtime:raise ValueError('Runtime changed since experiment preparation')
         if research is not None:

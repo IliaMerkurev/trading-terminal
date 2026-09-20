@@ -1,5 +1,7 @@
 # Trading Terminal product specification
 
+Product 0.5.1-dev was accepted through the owner-authorized conditional squash merge of PR #6. Product 0.6-dev is authorized for development, not accepted. Section 23 defines this extension; earlier behavior and immutable results remain supported.
+
 Current accepted product: 0.5 development build (`0.5-dev`). Sections 1–20 retain the historical 0.1–0.4 contracts; section 21 defines the 0.5 extension and supersedes their scope exclusions only for explicitly listed features. Stored results retain their original versioned execution assumptions. Owner manual acceptance permits the 0.5 merge with remaining UI/UX issues deferred; it does not retroactively establish unperformed automated native measurements. Telegram delivery remains unverified and outside acceptance. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
 
 ## 1. Purpose and delivery target
@@ -317,3 +319,17 @@ Telegram ILI-37 remains open and intentionally deferred; preserve protected stor
 The authorized maintenance target is `0.5.1-dev` on `codex/051`, based on accepted 0.5-dev. Scope is limited to retryable chart-history paging, bounded access to older Results, asynchronous recorded Replay, and one budgeted final validation. No 0.6 work or Telegram investigation is included.
 
 Only a successful chart page may confirm end-of-history. Results use deterministic newest-first cursor pages without changing immutable records. Replay uses the existing managed worker lifecycle with start/status/progress/completion/error/cancellation; ordinary IPC stays responsive. Cancelled/interrupted Replay never reports successful completion. Existing signal/accounting contracts remain unchanged. See [maintenance design](docs/adr/0020-maintenance-paging-replay.md) and [status](docs/STATUS.md) for actual evidence and remaining acceptance limits.
+
+## 23. Product 0.6 Strategy Library
+
+The authorized core contains five distinct reviewed strategies across at least three approach families, including a compatible native Python path. First deliver two strategies end to end, then expand. Baselines and parameter variants do not count. Source selection records immutable provenance, license, review, adaptations, typed defaults, warmup and compatibility. Distinguish author-recommended, source-default and locally tested timeframes. Browsing never loads Python; explicit hash-bound native consent remains mandatory.
+
+Use the existing engine/jobs for sequential independent multi-strategy research, bounded workload preview, asynchronous shared data preparation, persisted row states, cancellation retaining completed rows and explicit unchanged-input pending-row resume. Freeze source, parameters, runtime/profile/data identity and capital. No automatic resume, second engine, parallel portfolio or exhaustive Cartesian search.
+
+Buy & Hold and scheduled DCA use the same initial capital available at evaluation start, actual spot data and retained cost/precision/fill primitives. DCA divides that capital over predeclared daily/weekly/monthly UTC dates inside [start,end); unused cash remains in equity, and purchases do not occur at final liquidation. Warmup creates no trades/performance. Common default end treatment closes fully with costs. Cache baselines by the full immutable contract; perpetual comparisons are explicitly different spot capital alternatives, or N/A when spot data is unavailable.
+
+Backend saved metrics include net PnL, period return, final equity, drawdown, completed position lifecycles, nullable win rate, costs and baseline deltas. Annualized geometric return uses (final_equity/initial_capital)^(365/elapsed_days)-1, defaults to N/A below 365 days or for invalid equity/cashflows, and is never labeled advertised APR. Changing capital requires a real rerun.
+
+Cards and sortable table expose provenance, compatibility, original/default versus chosen timeframe, actual saved-report links, comparison equity and Create my copy. Bundled templates remain immutable. Input changes label old results stale; untested/failed values are N/A. Rank comparable cohorts only. Freeze selected candidates before separate later-period validation with fresh capital/baselines; retain attempted variants, source dates and repeated-holdout warnings.
+
+Count a strategy only after independent nontrivial synthetic evidence and a finite cached public-data integration run; losses remain valid observations. Preserve accepted features, native trust and user data using copied additive migration checks. Six–ten strategies are optional only after the core and owner budget gate. No Telegram, real trading, new license, 0.7, release or 0.6 merge is authorized. Actual verified progress is recorded in STATUS.md; partial safe checkpoints are not completed core acceptance.

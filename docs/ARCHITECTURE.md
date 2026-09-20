@@ -41,3 +41,14 @@ Manual and strategy execution sources share this journal. Additive request and t
 Position-aware IR receives an explicit immutable pre-decision context. Historical evaluation uses the current engine position; Live records the last committed paper state at or before that evaluation boundary. Replay reads this context rather than today's account. `live_position_contexts` is additive. Paper lifecycle events remain durable in the observation journal and are exposed through bounded cursor queries; the UI does not retain the entire live lifecycle in memory. Optional protection ATR is recorded from the shared confirmed-primary calculation and never recomputed by the frontend.
 
 The Tauri host emits native Windows toasts through a short-lived mode of the same executable. Sound uses the Windows system notification alias. Direct Telegram delivery uses only an exact per-data-root Windows Credential Manager target; the database and exports contain no Telegram secrets. See [notification/storage boundary](adr/0014-notifications-and-protected-storage.md). No exchange execution client, account API credential field, cloud backend or background service is created.
+
+
+## Strategy Library research
+
+The versioned registry prepares immutable graph/native templates without module
+loading. `LibraryBatchManager` reuses the existing experiment scheduler and global
+job reservation, freezes explicit rows and runs ordinary managed backtests.
+Passive schedules use the retained execution/accounting path. Library batch and
+row tables are additive; results use existing immutable storage and shared data.
+Later-period contracts reuse those snapshots and jobs with a separate phase,
+frozen selection identity and explicit start. See ADRs 0021–0024.

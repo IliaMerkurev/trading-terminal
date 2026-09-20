@@ -182,7 +182,8 @@ class RunStore:
         for fill in result['series']['fills']:
             # Derive the candle association before JavaScript rounds epoch nanoseconds.
             fill['chart_time']=(fill['time_ns']//60_000_000_000+1)*60
-        if run['summary'].get('origin')=='local' and run['manifest'].get('research',{}).get('experiment'):
+        research=run['manifest'].get('research',{})
+        if run['summary'].get('origin')=='local' and (research.get('experiment') or research.get('library')):
             from terminal.data import DatasetStore
             import pyarrow.parquet as pq
             dataset=run['manifest']['dataset']

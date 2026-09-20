@@ -52,17 +52,40 @@ def validate_snapshot(snapshot):
         raise ValueError('Invalid run snapshot')
     if digest({k:v for k,v in snapshot.items() if k!='snapshot_sha256'})!=snapshot['snapshot_sha256']:raise ValueError('Run snapshot checksum mismatch')
     Profile(**snapshot['profile'])
-    if 'research' in snapshot:
+    passive = isinstance(snapshot['strategy'],dict) and 'benchmark' in snapshot['strategy']
+    if passive:
+        from terminal.benchmarks import validate_document
+        profile=Profile(**snapshot['profile'])
+        frozen=validate_document(snapshot['strategy'],profile,{**snapshot['dataset'],'market':profile.market,'symbol':profile.symbol},snapshot['runtime'])
+        if snapshot.get('research')!={'benchmark_contract':frozen['contract_sha256']}:
+            raise ValueError('Invalid archived benchmark contract')
+    elif 'research' in snapshot:
         from terminal.experiments import validate_range
         research=snapshot['research']
-        if not isinstance(research,dict) or set(research)-{'experiment'}!={'window'}:raise ValueError('Invalid research provenance')
+        if not isinstance(research,dict) or set(research)-{'experiment','library'}!={'window'}:raise ValueError('Invalid research provenance')
+        if 'library' in research:
+            origin=research['library']
+            if not isinstance(origin,dict) or set(origin)-{'phase','validation'}!={'batch_id','ordinal','contract','batch_sha256'} or type(origin['ordinal']) is not int or not 0<=origin['ordinal']<12:
+                raise ValueError('Invalid library provenance')
+            if origin.get('phase','selection') not in ('selection','out_of_sample'):raise ValueError('Invalid library research phase')
+            if origin.get('phase')=='out_of_sample':
+                validation=origin.get('validation')
+                if not isinstance(validation,dict) or not re.fullmatch('[a-f0-9]{64}',str(validation.get('candidate_sha256',''))):raise ValueError('Invalid frozen validation identity')
+                if type(validation.get('holdout_attempt')) is not int or validation['holdout_attempt']<1:raise ValueError('Invalid holdout attempt')
+                ranges=validation.get('selection_range')
+                if not isinstance(ranges,list) or len(ranges)!=2 or any(type(v) is not int for v in ranges) or not ranges[0]<ranges[1]<=research['window']['start']:raise ValueError('Overlapping archived validation range')
+            elif origin.get('validation') is not None:raise ValueError('Selection cannot contain holdout metrics')
+            identifier(origin['batch_id'])
+            if not re.fullmatch('[a-f0-9]{64}',origin['batch_sha256']):raise ValueError('Invalid library batch checksum')
+            document={'graph':snapshot['strategy'],'layout':{}} if not snapshot['strategy'].get('engine') else snapshot['strategy']
+            if origin['contract'].get('document_sha256')!=digest(document):raise ValueError('Library document checksum mismatch')
         window=research['window']
         if not isinstance(window,dict) or set(window)!={'start','end','warmup_start'}:raise ValueError('Invalid research window')
         validate_range([window['start'],window['end']],snapshot['dataset']['range'],'Archived trading window')
         if type(window['warmup_start']) is not int or window['warmup_start']%60 or not snapshot['dataset']['range'][0]<=window['warmup_start']<=window['start']:raise ValueError('Invalid archived warmup')
     strategy=snapshot['strategy']
     if strategy.get('engine')=='nautilus_trader':validate_native(strategy)
-    else:validate_graph(strategy)
+    elif not passive:validate_graph(strategy)
     data=snapshot['dataset']
     if not re.fullmatch('[a-f0-9]{64}',data['id']) or not isinstance(data['range'],list) or len(data['range'])!=2 or any(type(v) is not int for v in data['range']) or data['range'][1]<=data['range'][0]:
         raise ValueError('Invalid archived dataset description')

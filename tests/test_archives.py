@@ -17,6 +17,21 @@ from terminal.storage import RunStore
 
 
 class ArchiveTests(unittest.TestCase):
+    def test_passive_benchmark_archive_preserves_contract_and_result(self):
+        from terminal.benchmarks import validate_document,run
+        document={'benchmark':'passive','version':1,'start':0,'end':3600,'interval':'once'}
+        snapshot=run_manifest(document,self.profile,self.dataset)
+        frozen=validate_document(document,self.profile,self.dataset,snapshot['runtime'])
+        snapshot['research']={'benchmark_contract':frozen['contract_sha256']}
+        snapshot['snapshot_sha256']=digest({k:v for k,v in snapshot.items() if k!='snapshot_sha256'})
+        bars=DatasetStore(self.store.root/'datasets').load(self.dataset['id'])[1]
+        result=run(bars,self.profile,0,3600,'once');result['manifest_sha256']=snapshot['snapshot_sha256']
+        ident=self.store.create(snapshot);self.store.status(ident,'running');self.store.complete(ident,result)
+        info=self.manager.export(self.strategy,self.profile.snapshot(),[ident])
+        project,files=read_archive((self.store.root/'exports'/info['filename']).read_bytes())
+        self.assertEqual(files[f'runs/{ident}/result.json']['metrics'],result['metrics'])
+        self.assertEqual(files[f'runs/{ident}/snapshot.json'],snapshot)
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name);self.store=RunStore(self.root/'source')

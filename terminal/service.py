@@ -17,6 +17,8 @@ class AppService:
         self.archives=ArchiveManager(self.store)
         from terminal.experiments import ExperimentManager
         self.experiments=ExperimentManager(self.jobs)
+        from terminal.library_batches import LibraryBatchManager
+        self.library_batches=LibraryBatchManager(self.jobs)
         from terminal.live import LiveManager
         self.live=LiveManager(self.store)
 
@@ -55,6 +57,12 @@ class AppService:
             fields.update(paper_lifecycle={'session_id','before','limit'})
             fields.update(run_history={'before','limit'})
             fields.update(replay_status={'replay_id'},replay_cancel={'replay_id'})
+            fields.update(library_catalog=set(), library_copy={'entry_id','version','minutes','parameters'})
+            library_fields={'selections','dataset_id','profile','start','end','interval','spot_dataset_id'}
+            fields.update(library_batch_preview=library_fields,library_batch_start=library_fields|{'expected_contract'},
+                          library_batch_status={'batch_id'},library_batch_resume={'batch_id'},
+                          library_batch_cancel={'active_id'},library_batches=set())
+            fields.update(library_batch_equity={'batch_id','ordinal'},library_validation_freeze={'batch_id','ordinal','dataset_id','start','end','spot_dataset_id'},library_validation_start={'batch_id'})
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command in ('live_start','live_start_terminal'):result=self.live.start(**p)
@@ -77,6 +85,21 @@ class AppService:
                 self.live.telegram.credentials.save(p['token'],p['chat_id']);result=self.live.telegram.status()
             elif command=='telegram_clear':
                 self.live.telegram.credentials.clear();result=self.live.telegram.status()
+            elif command=='library_catalog':
+                from terminal.library import catalog
+                result=catalog()
+            elif command=='library_copy':
+                from terminal.library import create_copy
+                result=create_copy(self.store,**p)
+            elif command=='library_batch_preview':result=self.library_batches.preview(**p)
+            elif command=='library_batch_start':result=self.library_batches.start(**p)
+            elif command=='library_batch_status':result=self.library_batches.get(**p)
+            elif command=='library_batch_resume':result=self.library_batches.resume(**p)
+            elif command=='library_batch_cancel':result=self.library_batches.cancel(**p)
+            elif command=='library_batches':result=self.library_batches.recent()
+            elif command=='library_validation_freeze':result=self.library_batches.freeze_validation(**p)
+            elif command=='library_validation_start':result=self.library_batches.start_validation(**p)
+            elif command=='library_batch_equity':result=self.library_batches.equity(**p)
             elif command=="list_runs": result=self.store.recent()
             elif command=='run_history':result=self.store.history_page(**p)
             elif command=="run_status": result=self.jobs.status(p["run_id"])
@@ -125,13 +148,16 @@ class AppService:
             elif command=='experiment_copy':result=self.experiments.copy_candidate(**p)
             elif command=='experiment_validate':result=self.experiments.validate(**p)
             elif command=='start_window_run':
-                if p['strategy'].get('engine'):raise ValueError('Window runs currently support visual strategies')
                 from terminal.experiments import validate_range
                 window=p['window'];manifest=self.datasets.describe(p['dataset_id'])
                 if not isinstance(window,dict) or set(window)!={'start','end','warmup_start'}:raise ValueError('Invalid window fields')
                 validate_range([window['start'],window['end']],manifest['range'],'Trading window')
                 if type(window['warmup_start']) is not int or window['warmup_start']%60 or not manifest['range'][0]<=window['warmup_start']<=window['start']:raise ValueError('Invalid warmup range')
-                result={'run_id':self.jobs.start(p['strategy'],p['profile'],p['dataset_id'],research={'window':window})}
+                strategy=p['strategy']
+                if strategy.get('engine'):
+                    from terminal.library import native_window_document
+                    strategy=native_window_document(strategy,window['start'])
+                result={'run_id':self.jobs.start(strategy,p['profile'],p['dataset_id'],research={'window':window})}
             response={"version":1,"id":request_id,"type":"result","result":result}
             if len(canonical(response))>1024*1024: raise ValueError("Response exceeds IPC budget; request a smaller page")
             return response
@@ -140,6 +166,7 @@ class AppService:
 
     def close(self):
         self.live.close()
+        self.library_batches.close()
         self.experiments.close()
         self.jobs.close()
         self.downloads.close()

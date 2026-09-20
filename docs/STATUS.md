@@ -1,5 +1,69 @@
 # Implementation status
 
+## Product 0.6-dev — five-strategy candidate awaiting owner acceptance
+
+The authorized Library core contains five independently verified implementations
+across trend, mean reversion and momentum: Native EMA trend v2, and explicit graph
+adaptations RSI threshold reversion, Bollinger RSI reversion, MACD normalized
+momentum and Historical return direction. Thirteen primary-source candidates
+were reviewed. Native EMA remains historical/linear-only with explicit source-
+bound consent and a disclosed warmup adapter; the four graphs support spot and
+linear closed-bar research. No author-recommended interval is invented. See the
+[source matrix](library/SOURCES.md) and [strategy evidence](library/VERIFICATION.md).
+
+Library controls freeze source/parameter/timeframe/profile/runtime/data contracts,
+preflight asynchronously, and use the existing sequential managed-job slot.
+Cancellation retains completed rows; explicit resume runs pending rows only.
+Independent accounts use common initial capital and dates. Actual spot Buy & Hold
+and scheduled DCA execute through retained Nautilus accounting, with full close,
+fees/precision and cash included. Annualization is N/A below 365 days; losses and
+no-trade results are retained. Baselines reuse only exact immutable contracts.
+See [ADR 0021](adr/0021-passive-benchmarks.md), [ADR 0022](adr/0022-library-batches.md)
+and [ADR 0023](adr/0023-native-library-window.md).
+
+Cards/table expose saved metrics, prior-run state, cohort-aware sorting/filtering,
+ordinary reports, copy actions and a sampled three-curve equity comparison.
+Later-period verification freezes a completed selection before an explicit start,
+restarts accounts/baselines on non-overlapping dates, and stays outside selection
+ranking/card results. It records attempted variants, holdout reuse and pinned
+source dates; it cannot prove external authors had not seen that history.
+See [ADR 0024](adr/0024-library-later-period-validation.md).
+
+Final combined verification on the five-strategy/later-period implementation:
+**210 Python tests passed in 151.599s; 67 frontend tests across 19 files passed
+in 6.81s.** TypeScript/Vite passed; locked offline Windows/Rust build passed in
+4.81s with verified Python 3.12.14/NautilusTrader 1.231.0. Final review completed
+missing card metrics and filter/delta-sort controls; the affected 7 frontend
+checks passed in 3.13s. The affected TypeScript/Vite and Windows build passed (Rust 4.08s) after adding
+the filter helper return type required by strict test compilation. Unchanged
+Python tests were not repeated for that frontend-only change.
+
+Copied-data compatibility preserved all 20 existing tables and 1,428,407 rows
+with matching logical hashes and SQLite integrity. Library tables are additive;
+later-period metadata uses existing snapshots. Normal owner data, immutable
+artifacts and the experimental runtime lock were not modified. Accepted 0.5.1
+source/runtime/executable remain independently runnable.
+
+The bounded common cached BTCUSDT spot cohort (2026-09-01 12:00–24:00 UTC) completed
+all four graph strategies at 1m/5m and both alternatives. Native EMA's verified
+linear runs on the same dates retain actual separate spot alternatives. Existing
+independent benchmark/accounting, native trust, batch parity and cancellation/
+resume checks are included in the regression suite. No tuning, new endurance
+session or optional sixth strategy was attempted. Compiled Windows smoke displayed all five cards, opened the predeclared frozen
+later-period contract, completed its strategy and two baselines, and retained
+separate verification labels and disabled selection ranking. The corrected
+compiled UI reopened the completed 10-row cohort, displayed full prior-run card
+metrics, and filtered momentum rows without hiding their losses/no-trade states.
+Earlier compiled copy/stale/equity/report smoke and focused backend chart evidence
+are retained for unchanged paths. Remaining non-failing advisories are the
+frontend bundle size and native Pandas deprecation; this is not a release or
+investment-performance claim.
+
+Maintenance PR #6 was conditionally squash-merged as
+`1d6918c939ffa9db7480ee179b12cca6a9ca3368`, with a tree identical to approved head
+`69741c7cb990cf94861eef27512b4227d1a4f3e4`. Fresh isolated accepted startup passed.
+The following maintenance sections retain the evidence recorded before that merge.
+
 ## Product 0.5.1-dev — maintenance candidate awaiting owner acceptance
 
 The authorized ILI-134 maintenance scope is implemented on `codex/051`; owner acceptance and merge remain pending. See [acceptance steps](DEMO_051.md) and [ADR 0020](adr/0020-maintenance-paging-replay.md). No new dependencies, financial execution rules or stored result formats were introduced.

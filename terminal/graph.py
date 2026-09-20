@@ -1,5 +1,6 @@
 """Typed, bounded Strategy IR and causal native-indicator evaluation."""
 import copy
+from collections import deque
 import math
 import re
 
@@ -12,8 +13,8 @@ NUMBER = "number"
 BOOLEAN = "boolean"
 POSITION_FIELDS = ('position_side','position_size','position_avg_entry','position_unrealized_pnl_pct','bars_since_entry')
 PORTS = {
-    "price":{"value":NUMBER}, "constant":{"value":NUMBER},
-    "sma":{"value":NUMBER}, "ema":{"value":NUMBER}, "rsi":{"value":NUMBER},
+    "price":{"value":NUMBER}, "constant":{"value":NUMBER}, "multiply":{"value":NUMBER},
+    "roc":{"value":NUMBER}, "sma":{"value":NUMBER}, "ema":{"value":NUMBER}, "rsi":{"value":NUMBER},
     "bb":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
     "macd":{"macd":NUMBER,"signal":NUMBER,"histogram":NUMBER}, "atr":{"value":NUMBER},
     **{k:{"value":BOOLEAN} for k in ("compare","cross_above","cross_below","and","or","not")},
@@ -21,14 +22,14 @@ PORTS = {
 }
 INPUTS = {k:{} for k in ("price","constant","atr")}
 INPUTS.update({k:{} for k in POSITION_FIELDS})
-INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd")})
-INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below")})
+INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd","roc")})
+INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below","multiply")})
 INPUTS.update({k:{"left":BOOLEAN,"right":BOOLEAN} for k in ("and","or")})
 INPUTS["not"] = {"source":BOOLEAN}
 PARAMS = {"price":{"field"}, "constant":{"value"}, "compare":{"operator"},
           "bb":{"period","deviations"}, "macd":{"fast","slow","signal"},
-          **{k:{"period"} for k in ("sma","ema","rsi","atr")},
-          **{k:set() for k in ("cross_above","cross_below","and","or","not")}}
+          **{k:{"period"} for k in ("sma","ema","rsi","atr","roc")},
+          **{k:set() for k in ("cross_above","cross_below","and","or","not","multiply")}}
 PARAMS.update({k:set() for k in POSITION_FIELDS})
 
 
@@ -112,6 +113,7 @@ def validate_graph(graph,allow_incomplete=False):
 
 def indicator_for(node):
     p, kind = node["params"], node["type"]
+    if kind == "roc": return deque(maxlen=p["period"]+1)
     if kind == "sma": return SimpleMovingAverage(p["period"])
     if kind == "ema": return ExponentialMovingAverage(p["period"])
     if kind == "rsi": return RelativeStrengthIndex(p["period"],MovingAverageType.WILDER)
@@ -163,6 +165,14 @@ class GraphEvaluator:
                 result['value'] = self.position_context[kind]
             elif kind == "constant":
                 result["value"] = params["value"]
+            elif kind == "roc":
+                source=inputs['source']
+                if source is not None:
+                    state.append(source)
+                    if len(state)==params['period']+1:
+                        if state[0]==0:raise GraphError('ROC denominator is zero')
+                        result['value']=(source-state[0])/state[0]
+                states[ident]=state
             elif kind in ("sma","ema","rsi","bb","macd","atr"):
                 source = inputs.get("source")
                 if kind == "atr":
@@ -192,7 +202,8 @@ class GraphEvaluator:
                 else: result["value"] = True if a is True or b is True else (None if a is None or b is None else False)
             elif all(v is not None for v in inputs.values()):
                 a,b = inputs["left"],inputs["right"]
-                if kind == "compare":
+                if kind == "multiply":result['value']=a*b
+                elif kind == "compare":
                     result["value"] = {">":a>b,">=":a>=b,"<":a<b,"<=":a<=b,"==":a==b,"!=":a!=b}[params["operator"]]
                 else:
                     pa = self.previous.get(node["inputs"]["left"])

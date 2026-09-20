@@ -1,5 +1,5 @@
 export type PositionNodeKind = 'position_side' | 'position_size' | 'position_avg_entry' | 'position_unrealized_pnl_pct' | 'bars_since_entry';
-export type NodeKind = 'price' | 'constant' | 'sma' | 'ema' | 'rsi' | 'bb' | 'macd' | 'atr' | 'compare' | 'cross_above' | 'cross_below' | 'and' | 'or' | 'not' | PositionNodeKind;
+export type NodeKind = 'price' | 'constant' | 'multiply' | 'roc' | 'sma' | 'ema' | 'rsi' | 'bb' | 'macd' | 'atr' | 'compare' | 'cross_above' | 'cross_below' | 'and' | 'or' | 'not' | PositionNodeKind;
 export interface IRNode { id: string; type: NodeKind; inputs: Record<string,string>; params: Record<string,number|string> }
 export const outputNames = ['entry_long','exit_long','entry_short','exit_short'] as const;
 export type OutputName = typeof outputNames[number];
@@ -14,9 +14,12 @@ export type Profile = Record<string,string|number|PositionConfiguration|undefine
 export const labels: Record<string,string> = { price:'OHLCV', constant:'Value', sma:'SMA', ema:'EMA', rsi:'RSI', bb:'Bollinger Bands', macd:'MACD', atr:'ATR', compare:'Compare', cross_above:'Cross Above', cross_below:'Cross Below', and:'AND', or:'OR', not:'NOT', entry_long:'Entry Long',exit_long:'Exit Long',entry_short:'Entry Short',exit_short:'Exit Short' };
 const numericSource = {source:'number'};
 Object.assign(labels,{position_side:'Position Side',position_size:'Position Size',position_avg_entry:'Average Entry',position_unrealized_pnl_pct:'Position PnL %',bars_since_entry:'Bars Since Entry'});
+labels.multiply='Multiply'; labels.roc='ROC';
 export const catalog: Record<NodeKind,{inputs:Record<string,string>;outputs:Record<string,string>;params:Record<string,string|number>}> = {
   price:{inputs:{},outputs:{value:'number'},params:{field:'close'}},
   constant:{inputs:{},outputs:{value:'number'},params:{value:100}},
+  multiply:{inputs:{left:'number',right:'number'},outputs:{value:'number'},params:{}},
+  roc:{inputs:numericSource,outputs:{value:'number'},params:{period:1}},
   sma:{inputs:numericSource,outputs:{value:'number'},params:{period:20}},
   ema:{inputs:numericSource,outputs:{value:'number'},params:{period:20}},
   rsi:{inputs:numericSource,outputs:{value:'number'},params:{period:14}},
