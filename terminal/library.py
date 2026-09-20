@@ -15,6 +15,20 @@ LEAN_COMMIT = '985ef30ad3ac774218c5ac516b4cb0aa2655730f'
 EMA_HASH = 'cfdc26b76d03df6cc481d47327d64dd6c23b356236cd061bb87c691b7918d13b'
 
 ENTRIES = [
+    dict(id='bb-rsi-reversion',version=1,name='Bollinger RSI reversion',family='mean_reversion',kind='Adapted',
+         author='Nautech Systems Pty Ltd; independent terminal graph adaptation',license='LGPL-3.0',
+         source_url=f'https://github.com/nautechsystems/nautilus_trader/blob/{NAUTILUS_COMMIT}/nautilus_trader/examples/strategies/bb_mean_reversion.py',
+         source_commit=NAUTILUS_COMMIT,source_sha256='e4c9dca50146b34f68185f78822dbcbba5d0b08d20370dd36fbdc4a1550cf089',
+         source_default_minutes=None,author_recommended_minutes=None,local_default_minutes=60,
+         timeframe_evidence='Source requires a bar_type and recommends no interval; 60m is a local convenience.',
+         markets=['spot','linear'],directions=['long'],modes=['historical_closed'],timeframes=TIMEFRAMES,
+         parameters={'bb_period':dict(type='integer',default=20,min=2,max=1000),'deviations':dict(type='number',default=2,min=.01,max=10),
+                     'rsi_period':dict(type='integer',default=14,min=2,max=1000),'lower':dict(type='number',default=30,min=0,max=100)},
+         dependencies={'nautilus_trader':'1.231.0'},
+         adaptation='Long-only graph: enter close <= lower Bollinger band AND Wilder RSI < lower threshold; exit close >= middle band. Close-only bands replace native bar-price input. Source shorts/reversals are omitted; profile sizing/protection/costs replace fixed quantity. Source RSI 0.30 maps to graph 30 on its 0–100 scale.',
+         review='Pinned installed source reviewed statically: engine-only bar callbacks, no direct network/file/process/credential access or dynamic execution. No upstream module copied or loaded by this graph.',
+         compatibility='Single confirmed primary timeframe; warmup max(bb_period,rsi_period+1). No additional feeds.',
+         availability='verified',verification='Independent confluence/trade/causality and 1m/3m checks passed; cached BTCUSDT spot at 1m/5m completed with both passive baselines. No profitability claim.'),
     dict(id='native-ema-cross', version=2, name='Native EMA trend', family='trend', kind='Native',
          author='Nautech Systems Pty Ltd', license='LGPL-3.0',
          source_url=f'https://github.com/nautechsystems/nautilus_trader/blob/{NAUTILUS_COMMIT}/nautilus_trader/examples/strategies/ema_cross.py',
@@ -90,6 +104,19 @@ def prepare(entry_id, version, minutes, parameters):
         preview(document)
         profile = Profile(market='linear',primary_minutes=minutes).snapshot()
         kind = 'native'; warmup = values['slow']
+    elif entry_id=='bb-rsi-reversion':
+        nodes=[dict(id='close',type='price',inputs={},params={'field':'close'}),
+               dict(id='bands',type='bb',inputs={'source':'close.value'},params={'period':values['bb_period'],'deviations':values['deviations']}),
+               dict(id='rsi',type='rsi',inputs={'source':'close.value'},params={'period':values['rsi_period']}),
+               dict(id='threshold',type='constant',inputs={},params={'value':values['lower']}),
+               dict(id='belowBand',type='compare',inputs={'left':'close.value','right':'bands.lower'},params={'operator':'<='}),
+               dict(id='oversold',type='compare',inputs={'left':'rsi.value','right':'threshold.value'},params={'operator':'<'}),
+               dict(id='entry',type='and',inputs={'left':'belowBand.value','right':'oversold.value'},params={}),
+               dict(id='exit',type='compare',inputs={'left':'close.value','right':'bands.middle'},params={'operator':'>='})]
+        graph=dict(version=1,nodes=nodes,outputs=dict(entry_long='entry.value',exit_long='exit.value',entry_short=None,exit_short=None))
+        validate_graph(graph);document={'graph':graph,'layout':{}}
+        profile=Profile(primary_minutes=minutes,version=2).snapshot();kind='graph'
+        warmup=max(values['bb_period'],values['rsi_period']+1)
     else:
         if values['lower'] >= values['upper']:
             raise ValueError('Lower RSI must be below upper RSI')

@@ -18,8 +18,8 @@ class LibraryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             service=AppService(root)
             try:
-                entry=catalog()[0];entry['parameters']['fast']['default']=999
-                self.assertEqual(catalog()[0]['parameters']['fast']['default'],10)
+                entry=next(e for e in catalog() if e['id']=='native-ema-cross');entry['parameters']['fast']['default']=999
+                self.assertEqual(next(e for e in catalog() if e['id']=='native-ema-cross')['parameters']['fast']['default'],10)
                 result=create_copy(service.store,entry_id='native-ema-cross',version=2,minutes=5,parameters={})
                 document=service.store.strategy(result['strategy_id'])['document']
                 self.assertEqual(document['bar_minutes'],[5])

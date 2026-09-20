@@ -44,3 +44,7 @@ or a claim that a distributable installer has passed license review.
 ## Strategy Library source references
 
 The independently authored RSI threshold graph is an explicitly limited adaptation referencing QuantConnect Lean RsiAlphaModel (Copyright 2014 QuantConnect Corporation, Apache-2.0). Source and differences are documented in docs/library/SOURCES.md; Apache license text is preserved in docs/library/APACHE-2.0.txt. No Lean runtime or original module is bundled. Native EMA references the installed unchanged LGPL-3.0 NautilusTrader example under existing notices; explicit trust remains required. The project license is unchanged.
+
+The independently authored Bollinger/RSI graph references the reviewed LGPL-3.0
+Nautech Systems example without copying its Python source. Its long-only,
+close-only and sizing differences are recorded in the source matrix and card.

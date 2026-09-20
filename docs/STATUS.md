@@ -1,5 +1,11 @@
 # Implementation status
 
+The third verified library implementation is the explicit long-only Bollinger/
+RSI graph adaptation. Five focused tests passed in 0.460s; cached BTCUSDT spot
+1m/5m runs and both passive alternatives completed. See
+[the strategy evidence matrix](library/VERIFICATION.md). Five-strategy and
+third-family acceptance remain unfinished.
+
 The bounded library batch backend now reuses the experiment scheduler and global
 job reservation, with frozen previews, asynchronous data preflight, immutable
 saved reports, exact benchmark reuse and explicit pending-row resume. Thirteen
