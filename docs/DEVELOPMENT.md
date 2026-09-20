@@ -6,7 +6,7 @@ Read [PROJECT.md](../PROJECT.md), [architecture](ARCHITECTURE.md), [status](STAT
 
 The accepted product is **0.5 development build**, displayed as `0.5-dev`. Product 0.1 was the first working milestone; 0.2 added research workflows; accepted 0.3 added live/paper monitoring. Product 0.6 and later milestones remain future work and are not authorized by the 0.5 merge. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
 
-`src-tauri/Cargo.toml` package version is the single product-version source (`0.5.0-dev` in SemVer). Tauri uses it when its configuration omits a version override; the existing UI badge reads Tauri app metadata. The private frontend package does not declare another product version. Update the root package entry in Cargo.lock alongside a version bump; do not change dependency versions. Window title and executable name stay `Trading Terminal` and `trading-terminal.exe`.
+`src-tauri/Cargo.toml` package version is the single product-version source (`0.5.1-dev` in SemVer for this maintenance candidate). Tauri uses it when its configuration omits a version override; the existing UI badge reads Tauri app metadata. The private frontend package does not declare another product version. Update the root package entry in Cargo.lock alongside a version bump; do not change dependency versions. Window title and executable name stay `Trading Terminal` and `trading-terminal.exe`.
 
 Use the main project checkout for the current build, with its existing `.venv`, `node_modules`, local Cargo cache and ordinary `.local-data`. After feature acceptance, return it to current `main`; temporary worktrees are optional isolation tools, not required launch dependencies. Archive their private data separately before removing them. Never merge synthetic demo databases into the ordinary user database.
 
@@ -86,3 +86,10 @@ Work in `codex/05` from the accepted main baseline. Public market ownership is i
 `scripts/desktop.py --target-dir .local-tools/05-final-target` uses the same directory for build and launch. It also honors an existing `CARGO_TARGET_DIR` when no argument is provided. Without either, the ordinary `src-tauri/target` remains the default. A separate `--data-root` must be absolute; omission uses ordinary user data. Never copy a demo database over that data.
 
 The [0.5 demo](DEMO_05.md) prepares two small synthetic parameter candidates and one frozen later-period run in a new directory. Position Management is opt-in and schema-versioned independently from product version. Add its fields through `PositionConfig`, keep decisions in `PositionManager`, and reconcile actual Nautilus fills through `PositionLedger`. Do not add frontend financial calculations or a second paper engine. Runtime snapshots hash Python modules: do not edit them during a reproducibility test or measured live run.
+
+
+## Product 0.5.1 maintenance
+
+Current candidate: `0.5.1-dev` on `codex/051`, from accepted 0.5-dev. Follow the current AGENTS.md budgeted-validation and owner-managed Linear rules. The 0.5 development branch instructions above are historical. Work is limited to ILI-135 through ILI-138; no 0.6 or Telegram work.
+
+Run final regression/build once after focused checks. Use an isolated absolute data root and a separate Cargo target for native smoke; preserve the owner executable. Verify the additive `replay_jobs` table on a consistent database copy before ordinary data is opened. Replay jobs share the existing calculation slot and are cancelled on close; interrupted jobs remain inspectable after restart. See [maintenance acceptance](DEMO_051.md).
