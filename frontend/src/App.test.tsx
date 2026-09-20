@@ -106,3 +106,21 @@ it('distinguishes initial Results loading from an empty history',async()=>{
  expect(await screen.findByText('No saved runs.')).toBeTruthy();
  expect(screen.queryByText('End of saved run history.')).toBeNull();
 });
+
+
+it('prompts and cancels background replay before desktop exit',async()=>{
+ vi.mocked(invoke).mockClear();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(command:string)=>{
+  if(command==='replay_status')return {id:'replay',status:'running'};
+  if(command==='run_history')return {rows:[],next:null};
+  if(command.startsWith('list_'))return [];
+  return {};
+ });
+ render(<App/>);await screen.findByText('Graph workspace');
+ windowMock.close!({preventDefault:vi.fn()});
+ fireEvent.click(await screen.findByText('Cancel run and exit'));
+ await waitFor(()=>expect(invoke).toHaveBeenCalledWith('close_application'));
+ expect(api).toHaveBeenCalledWith('replay_cancel',{replay_id:'replay'});
+ const cancel=vi.mocked(api).mock.calls.findIndex(([c])=>c==='replay_cancel');
+ expect(vi.mocked(api).mock.invocationCallOrder[cancel]).toBeLessThan(vi.mocked(invoke).mock.invocationCallOrder[0]);
+});

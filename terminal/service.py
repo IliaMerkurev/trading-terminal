@@ -54,6 +54,7 @@ class AppService:
             fields.update(paper_start_manual={'profile'})
             fields.update(paper_lifecycle={'session_id','before','limit'})
             fields.update(run_history={'before','limit'})
+            fields.update(replay_status={'replay_id'},replay_cancel={'replay_id'})
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command in ('live_start','live_start_terminal'):result=self.live.start(**p)
@@ -68,7 +69,9 @@ class AppService:
             elif command=='live_pause':result=self.live.pause()
             elif command=='live_select':result=self.live.select(**p)
             elif command=='live_resume':result=self.live.resume(**p)
-            elif command=='live_replay':result=self.live.replay(**p)
+            elif command=='live_replay':result=self.jobs.start_replay(**p)
+            elif command=='replay_status':result=self.jobs.replay_status(**p)
+            elif command=='replay_cancel':result=self.jobs.cancel_replay(**p)
             elif command=='notification_test':result=self.live.test_notification(**p)
             elif command=='telegram_configure':
                 self.live.telegram.credentials.save(p['token'],p['chat_id']);result=self.live.telegram.status()

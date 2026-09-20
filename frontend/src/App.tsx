@@ -49,6 +49,7 @@ export default function App(){
   const [download,setDownload]=useState<any>(null),[historyStart,setHistoryStart]=useState(new Date(Date.now()-86400000).toISOString().slice(0,10)+'T00:00'),[historyEnd,setHistoryEnd]=useState(new Date().toISOString().slice(0,10)+'T00:00');
   const downloading=['running','cancel_requested'].includes(download?.status);
   const downloadingRef=useRef(false);downloadingRef.current=downloading;
+  const replayRef=useRef<string|null>(null);
   const activeRef=useRef<string|null>(null);activeRef.current=activeId;
   const currentNode=graph.nodes.find(n=>n.id===selectedNode);
   useEffect(()=>{const shortcut=(e:KeyboardEvent)=>{if(tab!=='Strategy'||kind!=='graph'||isTextEditing(e.target)||!(e.ctrlKey||e.metaKey))return;if(shortcutKey(e)==='z'){e.preventDefault();e.shiftKey?editor.redo():editor.undo();}else if(shortcutKey(e)==='y'){e.preventDefault();editor.redo();}};document.addEventListener('keydown',shortcut,true);return()=>document.removeEventListener('keydown',shortcut,true);});
@@ -61,7 +62,7 @@ export default function App(){
   useEffect(()=>{
     if(!isDesktop())return;
     let unlisten:(()=>void)|undefined,disposed=false;
-    getCurrentWindow().onCloseRequested(event=>{event.preventDefault();if(activeRef.current||downloadingRef.current||experimentRef.current)setClosePrompt(true);else invoke('close_application').catch(e=>setError(String(e)));}).then(fn=>{if(disposed)fn();else unlisten=fn;}).catch(e=>setError(String(e)));
+    getCurrentWindow().onCloseRequested(event=>{event.preventDefault();if(activeRef.current||downloadingRef.current||experimentRef.current)setClosePrompt(true);else api<any>('replay_status',{replay_id:null}).then(job=>{if(job&&['running','cancel_requested'].includes(job.status)){replayRef.current=job.id;setClosePrompt(true);}else return invoke('close_application');}).catch(e=>setError(String(e)));}).then(fn=>{if(disposed)fn();else unlisten=fn;}).catch(e=>setError(String(e)));
     return ()=>{disposed=true;unlisten?.();};
   },[]);
   useEffect(()=>{
@@ -152,6 +153,6 @@ export default function App(){
         <details><summary>Precision and risk limits</summary>{field('tick_size','Price tick')}{field('quantity_step','Quantity step')}{field('min_quantity','Minimum quantity')}{field('max_quantity','Maximum market quantity')}{field('min_notional','Minimum notional (USDT)')}{field('max_notional','Tier maximum notional (USDT)')}<label className="field"><span>Historical tier assumption</span><textarea value={profile.tier_assumption} onChange={e=>change('tier_assumption',e.target.value)}/></label></details><p className="muted">Values are editable modeling assumptions. Check source coverage and instrument constraints before interpreting a result.</p>
       </>}</aside>}
     </div><footer><span>{activeId?'Worker active · minimizing continues the run':'Local research and paper · no real orders'}</span><span>NautilusTrader 1.231.0</span></footer>
-    {closePrompt&&<div className="modal-backdrop"><div className="modal" role="dialog" aria-label="Close during active run"><h2>Research work is still running</h2><p>Return to keep it running, or cancel active work and exit. Partial work will not be marked successful.</p><button onClick={()=>setClosePrompt(false)}>Return to application</button><button className="danger" onClick={()=>action(async()=>{if(activeRef.current)await api('cancel_run',{run_id:activeRef.current});if(experimentRef.current)await api('experiment_cancel',{active_id:experimentRef.current});if(downloadingRef.current)await api('download_cancel');await invoke('close_application');})}>Cancel run and exit</button></div></div>}
+    {closePrompt&&<div className="modal-backdrop"><div className="modal" role="dialog" aria-label="Close during active run"><h2>Research work is still running</h2><p>Return to keep it running, or cancel active work and exit. Partial work will not be marked successful.</p><button onClick={()=>setClosePrompt(false)}>Return to application</button><button className="danger" onClick={()=>action(async()=>{if(replayRef.current){const replay=await api<any>('replay_status',{replay_id:replayRef.current});if(replay?.status==='running')await api('replay_cancel',{replay_id:replayRef.current});}if(activeRef.current)await api('cancel_run',{run_id:activeRef.current});if(experimentRef.current)await api('experiment_cancel',{active_id:experimentRef.current});if(downloadingRef.current)await api('download_cancel');await invoke('close_application');})}>Cancel run and exit</button></div></div>}
   </div>;
 }
