@@ -87,6 +87,34 @@ class RunStore:
             rows=db.execute("SELECT id,created_at,status,error,summary FROM runs ORDER BY created_at DESC LIMIT ?",(limit,)).fetchall()
         return [{**dict(row),"summary":json.loads(row["summary"]) if row["summary"] else None} for row in rows]
 
+    def history_page(self,before=None,limit=50):
+        """Exclusive keyset cursor; concurrent new runs cannot shift older pages."""
+        if type(limit) is not int or not 1<=limit<=100:
+            raise ValueError('History page limit must be 1–100')
+        params=[];where=''
+        if before is not None:
+            if not isinstance(before,dict) or set(before)!={'created_at','id'}:
+                raise ValueError('Invalid history cursor')
+            identifier(before['id'])
+            if not isinstance(before['created_at'],str) or len(before['created_at'])>64:
+                raise ValueError('Invalid history timestamp')
+            datetime.fromisoformat(before['created_at'])
+            where='WHERE (created_at,id)<(?,?)'
+            params=[before['created_at'],before['id']]
+        with self.connect() as db:
+            rows=db.execute(f'SELECT id,created_at,status,error,summary FROM runs {where} ORDER BY created_at DESC,id DESC LIMIT ?',(*params,limit+1)).fetchall()
+        selected=[];size=0
+        for row in rows[:limit]:
+            value={**dict(row),'summary':json.loads(row['summary']) if row['summary'] else None}
+            size+=len(canonical(value))
+            if size>512*1024:
+                if not selected:raise ValueError('Individual history row exceeds IPC budget')
+                break
+            selected.append(value)
+        more=len(rows)>len(selected)
+        cursor={k:selected[-1][k] for k in ('created_at','id')} if more else None
+        return {'rows':selected,'next':cursor}
+
     def complete(self,run_id,result,origin='local'):
         run=self.get(run_id)
         required='running' if origin=='local' else 'importing' if origin=='imported' else None

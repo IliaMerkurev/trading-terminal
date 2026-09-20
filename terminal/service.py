@@ -53,6 +53,7 @@ class AppService:
             fields.update(managed_experiment_fields={'strategy_id','profile'})
             fields.update(paper_start_manual={'profile'})
             fields.update(paper_lifecycle={'session_id','before','limit'})
+            fields.update(run_history={'before','limit'})
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command in ('live_start','live_start_terminal'):result=self.live.start(**p)
@@ -74,6 +75,7 @@ class AppService:
             elif command=='telegram_clear':
                 self.live.telegram.credentials.clear();result=self.live.telegram.status()
             elif command=="list_runs": result=self.store.recent()
+            elif command=='run_history':result=self.store.history_page(**p)
             elif command=="run_status": result=self.jobs.status(p["run_id"])
             elif command=="run_logs": result=self.jobs.logs(p["run_id"])
             elif command=="run_manifest": result=self.store.get(p["run_id"])["manifest"]
