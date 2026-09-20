@@ -1,6 +1,6 @@
 [package]
 name = "trading-terminal"
-version = "0.5.1-dev"
+version = "0.6.0-dev"
 edition = "2021"
 publish = false
 

@@ -1,5 +1,15 @@
 # Implementation status
 
+## Product 0.6-dev — partial development checkpoint
+
+The owner authorized Strategy Library development on `codex/06` after conditional acceptance of maintenance PR #6. The first source/registry slice adds two non-executing preview templates (native EMA trend and adapted RSI threshold reversion), pinned provenance, typed parameter/timeframe selection, and independent copies into the existing authoring/backtest workflow. The [12-source shortlist](library/SOURCES.md) records exclusions and pending selection. Neither preview is counted as a fully verified library strategy yet. Five-strategy selection, fair benchmarks, batch/resume, result rankings and later-period integration remain unfinished.
+
+Focused Python verification: 9 tests passed in 9.885s after correcting one invalid synthetic OHLC fixture; native trust/import regression included. Focused frontend verification: 9 tests across 2 files passed in 12.21s after restoring the isolated dependency layout. Existing financial/worker regressions are reused only for unchanged paths. No new indicator, dependency or database migration is introduced by this slice. Full 0.6 acceptance remains pending.
+
+TypeScript/Vite and a fresh locked/offline Windows build passed (Rust 1m 24s). Compiled isolated smoke showed 0.6-dev, loaded both preview cards and created a native copy in the existing editor. Its database contained one copy, zero trust records and zero runs; copying did not grant consent or execute a strategy.
+
+PR #6 was squash-merged under the owner's ILI-145 authorization as `1d6918c939ffa9db7480ee179b12cca6a9ca3368`, with a tree identical to approved head `69741c7cb990cf94861eef27512b4227d1a4f3e4`. A fresh isolated native startup showed 0.5.1-dev without startup errors; pinned Gitleaks scanned the outgoing maintenance commits clean. The prior maintenance regression and WAL-correction evidence below was reused, not rerun. Accepted source/runtime/executable/data remain independent from development.
+
 ## Product 0.5.1-dev — maintenance candidate awaiting owner acceptance
 
 The authorized ILI-134 maintenance scope is implemented on `codex/051`; owner acceptance and merge remain pending. See [acceptance steps](DEMO_051.md) and [ADR 0020](adr/0020-maintenance-paging-replay.md). No new dependencies, financial execution rules or stored result formats were introduced.

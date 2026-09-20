@@ -72,3 +72,7 @@ For the current budget-constrained maintenance workflow:
 
 A verification pass may contain the minimum set of tests needed to cover one coherent changed surface. Prefer deterministic targeted tests and one final integrated smoke/regression pass over repeated broad reruns.
 
+## Resource reserve and runnable checkpoints
+
+Follow the current owner's quota thresholds using legitimate client readings, never token/time estimates. Recheck before and after bounded slices and expensive work. Unknown quota requires the owner's bounded fallback policy. Preserve an independently runnable accepted source/environment/build/data baseline and record private checkpoint paths, verified SHA, actual tests, latest reading and unfinished work. Start handoff before exhausting the reserve; keep unfinished issues open and never auto-resume a stopped run. Private quota observations and owner paths do not belong in public artifacts.
+

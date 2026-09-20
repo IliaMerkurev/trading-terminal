@@ -55,6 +55,7 @@ class AppService:
             fields.update(paper_lifecycle={'session_id','before','limit'})
             fields.update(run_history={'before','limit'})
             fields.update(replay_status={'replay_id'},replay_cancel={'replay_id'})
+            fields.update(library_catalog=set(), library_copy={'entry_id','version','minutes','parameters'})
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command in ('live_start','live_start_terminal'):result=self.live.start(**p)
@@ -77,6 +78,12 @@ class AppService:
                 self.live.telegram.credentials.save(p['token'],p['chat_id']);result=self.live.telegram.status()
             elif command=='telegram_clear':
                 self.live.telegram.credentials.clear();result=self.live.telegram.status()
+            elif command=='library_catalog':
+                from terminal.library import catalog
+                result=catalog()
+            elif command=='library_copy':
+                from terminal.library import create_copy
+                result=create_copy(self.store,**p)
             elif command=="list_runs": result=self.store.recent()
             elif command=='run_history':result=self.store.history_page(**p)
             elif command=="run_status": result=self.jobs.status(p["run_id"])
