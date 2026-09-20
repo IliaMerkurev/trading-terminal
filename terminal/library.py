@@ -15,7 +15,7 @@ LEAN_COMMIT = '985ef30ad3ac774218c5ac516b4cb0aa2655730f'
 EMA_HASH = 'cfdc26b76d03df6cc481d47327d64dd6c23b356236cd061bb87c691b7918d13b'
 
 ENTRIES = [
-    dict(id='native-ema-cross', version=1, name='Native EMA trend', family='trend', kind='Native',
+    dict(id='native-ema-cross', version=2, name='Native EMA trend', family='trend', kind='Native',
          author='Nautech Systems Pty Ltd', license='LGPL-3.0',
          source_url=f'https://github.com/nautechsystems/nautilus_trader/blob/{NAUTILUS_COMMIT}/nautilus_trader/examples/strategies/ema_cross.py',
          source_commit=NAUTILUS_COMMIT, source_sha256=EMA_HASH,
@@ -25,10 +25,10 @@ ENTRIES = [
          parameters={'fast':dict(type='integer',default=10,min=1,max=1000), 'slow':dict(type='integer',default=20,min=2,max=1000),
                      'quantity':dict(type='decimal',default='0.001',min='0.00000001',max='1000000')},
          dependencies={'nautilus_trader':'1.231.0'},
-         adaptation='Unchanged installed implementation. Disable historical requests and tick subscriptions using native config; retain fixed quantity, reversal and stop-close semantics. Spot is excluded because the source opens shorts.',
+         adaptation='Native subclass of the unchanged installed implementation. A reviewed temporal adapter suppresses on_bar decisions before the evaluation start while registered EMAs warm up. Disable historical requests/tick subscriptions by config; retain fixed quantity, reversal and stop-close semantics. Spot is excluded because the source opens shorts.',
          review='Static source reviewed; read-only source hash guard before module import. Explicit user trust required. No strategy loading during browse/copy.',
-         compatibility='Declared external closed bars only; native profile version 1. Later-period warmup is not supported yet.',
-         availability='preview', verification='Full library integration and benchmark verification pending; no performance claim.'),
+         compatibility='Declared external closed bars only; native profile version 1. Reviewed window adapter permits preceding warmup without trades. Historical only; not Live-compatible.',
+         availability='verified', verification='Synthetic native trade/fee and 1m/3m warmup checks passed; finite cached BTCUSDT linear batch at 1m/5m with actual spot alternatives passed. Historical integration evidence, not a profitability claim.'),
     dict(id='rsi-threshold', version=1, name='RSI threshold reversion', family='mean_reversion', kind='Adapted',
          author='QuantConnect Corporation; independent terminal graph adaptation', license='Apache-2.0',
          source_url=f'https://github.com/QuantConnect/Lean/blob/{LEAN_COMMIT}/Algorithm.Framework/Alphas/RsiAlphaModel.py',
@@ -41,7 +41,7 @@ ENTRIES = [
          adaptation='Visual long-only threshold adaptation: enter below lower RSI, exit above upper RSI. Uses existing Wilder RSI scaled 0–100. Omits insight expiry, 35/65 hysteresis, multi-symbol allocation and short insights; not equivalent to Lean portfolio behavior. Profile controls sizing/costs.',
          review='Pinned source reviewed statically. No external source copied or executed; existing bounded graph nodes only.',
          compatibility='Single primary timeframe, confirmed bars; warmup period + 1 bars. No additional feeds.',
-         availability='preview', verification='Full library integration and benchmark verification pending; no performance claim.'),
+         availability='verified', verification='Independent RSI signals/trades and 1m/3m batch parity passed; finite cached BTCUSDT linear batch at 1m/5m with actual spot alternatives passed. Historical integration evidence, not a profitability claim.'),
 ]
 
 
@@ -75,13 +75,18 @@ def prepare(entry_id, version, minutes, parameters):
         source = ("import hashlib\nimport importlib.metadata\nfrom pathlib import Path\n"
                   "_source = importlib.metadata.distribution('nautilus_trader').locate_file('nautilus_trader/examples/strategies/ema_cross.py')\n"
                   f"if hashlib.sha256(Path(_source).read_bytes()).hexdigest() != '{EMA_HASH}':\n    raise ValueError('Reviewed native source changed')\n"
-                  "from nautilus_trader.examples.strategies.ema_cross import EMACross, EMACrossConfig\n")
+                  "from nautilus_trader.examples.strategies.ema_cross import EMACross, EMACrossConfig\n"
+                  "\nclass WindowEMACrossConfig(EMACrossConfig, frozen=True):\n    evaluation_start: int = 0\n"
+                  "\nclass WindowEMACross(EMACross):\n"
+                  "    def on_bar(self, bar):\n"
+                  "        if bar.ts_event < self.config.evaluation_start * 1000000000:\n            return\n"
+                  "        super().on_bar(bar)\n")
         document = dict(version=1,engine='nautilus_trader',engine_version='1.231.0',source=source,
-            class_name='EMACross',config_class='EMACrossConfig',bar_minutes=[minutes],dependencies=entry['dependencies'],
+            class_name='WindowEMACross',config_class='WindowEMACrossConfig',bar_minutes=[minutes],dependencies=entry['dependencies'],
             provenance=f"{entry['source_url']} SHA256 {EMA_HASH}; LGPL-3.0; imported installed source, not copied.",
             config=dict(instrument_id='$instrument',bar_type=f'$bar:{minutes}',trade_size=values['quantity'],
                         fast_ema_period=values['fast'],slow_ema_period=values['slow'],request_bars=False,
-                        subscribe_trade_ticks=False,subscribe_quote_ticks=False,close_positions_on_stop=True))
+                        subscribe_trade_ticks=False,subscribe_quote_ticks=False,close_positions_on_stop=True,evaluation_start=0))
         preview(document)
         profile = Profile(market='linear',primary_minutes=minutes).snapshot()
         kind = 'native'; warmup = values['slow']
@@ -101,6 +106,29 @@ def prepare(entry_id, version, minutes, parameters):
     contract = dict(entry_id=entry_id,version=version,source_sha256=entry['source_sha256'],minutes=minutes,parameters=values,
                     document_sha256=digest(document),warmup_bars=warmup)
     return dict(name=entry['name'],kind=kind,document=document,profile=profile,contract=contract)
+
+
+def for_window(prepared, start):
+    prepared=copy.deepcopy(prepared)
+    if prepared['kind']=='native':
+        if type(start) is not int or start<0 or start%60:raise ValueError('Invalid native evaluation start')
+        prepared['document']['config']['evaluation_start']=start
+        prepared['contract']['document_sha256']=digest(prepared['document'])
+        prepared['contract']['evaluation_start']=start
+    return prepared
+
+
+def native_window_document(document, start):
+    """Only the exact reviewed temporal adapter can acquire a trading window."""
+    try:
+        config=document['config']
+        prepared=prepare('native-ema-cross',2,document['bar_minutes'][0],
+                         {'fast':config['fast_ema_period'],'slow':config['slow_ema_period'],'quantity':config['trade_size']})
+        expected=for_window(prepared,config['evaluation_start'])['document']
+        if document!=expected:raise ValueError('Native document differs from reviewed adapter')
+        return for_window(prepared,start)['document']
+    except (KeyError,IndexError,TypeError) as exc:
+        raise ValueError('Native separate-window execution requires the reviewed library adapter') from exc
 
 
 def create_copy(store, **request):

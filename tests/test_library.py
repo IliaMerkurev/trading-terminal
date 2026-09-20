@@ -20,7 +20,7 @@ class LibraryTests(unittest.TestCase):
             try:
                 entry=catalog()[0];entry['parameters']['fast']['default']=999
                 self.assertEqual(catalog()[0]['parameters']['fast']['default'],10)
-                result=create_copy(service.store,entry_id='native-ema-cross',version=1,minutes=5,parameters={})
+                result=create_copy(service.store,entry_id='native-ema-cross',version=2,minutes=5,parameters={})
                 document=service.store.strategy(result['strategy_id'])['document']
                 self.assertEqual(document['bar_minutes'],[5])
                 self.assertFalse(service.store.is_trusted(trust_identity(document)))
@@ -34,7 +34,7 @@ class LibraryTests(unittest.TestCase):
             request=dict(entry_id='rsi-threshold',version=1,minutes=1,parameters={});request.update(kwargs)
             with self.assertRaises(ValueError):prepare(**request)
         with patch('terminal.library.Path.read_bytes',return_value=b'changed dependency'):
-            with self.assertRaisesRegex(ValueError,'source changed'):prepare('native-ema-cross',1,1,{})
+            with self.assertRaisesRegex(ValueError,'source changed'):prepare('native-ema-cross',2,1,{})
         first=prepare('rsi-threshold',1,1,{})
         first['document']['graph']['nodes'].clear()
         self.assertTrue(prepare('rsi-threshold',1,1,{})['document']['graph']['nodes'])

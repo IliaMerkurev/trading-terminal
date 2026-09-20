@@ -94,7 +94,7 @@ class LibraryBatchTests(unittest.TestCase):
 
     def test_preflight_preview_guards_no_native_load_and_async_corruption(self):
         params=copy.deepcopy(self.params)
-        params['selections'].append(dict(entry_id='native-ema-cross',version=1,minutes=1,parameters={}))
+        params['selections'].append(dict(entry_id='native-ema-cross',version=2,minutes=1,parameters={}))
         preview=self.manager.preview(**params)
         self.assertIn('market',preview['rows'][2]['error'])
         params['start']=60

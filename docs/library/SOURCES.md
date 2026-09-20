@@ -1,6 +1,6 @@
 # Strategy source shortlist (0.6)
 
-Static compatibility triage of 12 primary-source candidates. No advertised return was used. Two entries are available as unverified library previews; five-strategy selection remains incomplete. Rejected sources were not executed or copied.
+Static compatibility triage of 12 primary-source candidates. No advertised return was used. Two entries have focused synthetic and finite cached-market integration evidence; five-strategy selection remains incomplete. Rejected sources were not executed or copied.
 
 Nautilus sources: Nautech Systems Pty Ltd, LGPL-3.0, commit `27a8e54e7ac3c57d6cbf8891f0283dfbaee97317`, installed package 1.231.0. Hashes below identify the inspected file bytes. The native EMA module imports installed engine/Pandas/Decimal APIs, defines classes at import, and has no direct credential, process or file writes; requested bars/tick subscriptions are disabled through existing config. The library wrapper checks its installed source hash before import.
 
@@ -21,4 +21,4 @@ Nautilus sources: Nautech Systems Pty Ltd, LGPL-3.0, commit `27a8e54e7ac3c57d6cb
 
 Lean sources are Apache-2.0, QuantConnect Corporation, pinned commit shown in links. Their framework history/consolidation/portfolio APIs are not executed here. RSI graph adaptation uses closed causal Wilder RSI (0–100), long below 30, exit above 70; excludes source insight expiry, 35/65 rearming, multi-symbol allocation and short insights. This is not original equivalence. Existing graph sizing and costs remain visible. See [Apache license](APACHE-2.0.txt). No new engine/dependency or project license is introduced.
 
-All sources use current/past observations in their stated callbacks. Data feed/repainting, independent synthetic trades, alternate timeframe and finite cached-market integration must still be checked for each counted entry. Preview status, source review and investment performance are separate. Three-family/five-strategy selection, benchmark integration and complete catalog acceptance remain open.
+All sources use current/past observations in their stated callbacks. Native EMA v2 adds a disclosed temporal subclass for preceding indicator warmup without trading, while importing the unchanged pinned implementation. New source consent is required. EMA and RSI passed independent synthetic behavior and alternate-timeframe checks plus finite cached BTCUSDT linear runs at 1m/5m with actual spot alternatives; see [ADR 0023](../adr/0023-native-library-window.md). Source review, compatibility and investment performance remain separate. Three-family/five-strategy selection and complete catalog acceptance remain open.

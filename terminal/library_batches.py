@@ -39,7 +39,7 @@ class LibraryBatchManager(ExperimentManager):
         for selection in selections:
             if not isinstance(selection,dict) or set(selection) != {'entry_id','version','minutes','parameters'}:
                 raise ValueError('Invalid library selection fields')
-            prepared = library.prepare(**selection)
+            prepared = library.for_window(library.prepare(**selection),start)
             key = digest(prepared['contract'])
             if key in seen:raise ValueError('Duplicate strategy/version/parameter/timeframe row')
             seen.add(key)
@@ -52,7 +52,8 @@ class LibraryBatchManager(ExperimentManager):
                 report = native_preview(prepared['document'])
                 if not self.store.is_trusted(report['trust_sha256']):error = 'Explicit native trust required in the existing editor'
                 elif report['dependency_problems']:error = 'Reviewed native dependencies unavailable'
-                else:error = 'Native separate-window warmup is not supported by this library version'
+                elif profile.position_management is not None or float(profile.stop_loss) or float(profile.take_profit):
+                    error = 'Native strategies require their own protection semantics; graph position/stop/take policies are incompatible'
             required = prepared['contract']['warmup_bars'] * selection['minutes'] * 60
             aligned = ((manifest['range'][0]+selection['minutes']*60-1)//(selection['minutes']*60))*(selection['minutes']*60)
             if not error and start-aligned < required:error = 'Insufficient preceding indicator warmup'
@@ -135,7 +136,7 @@ class LibraryBatchManager(ExperimentManager):
             if self._dataset(self.jobs.datasets.describe(row['dataset']['id']))!=row['dataset']:
                 raise ValueError('Frozen dataset changed')
             if row['kind']!='benchmark':
-                prepared=library.prepare(**row['selection'])
+                prepared=library.for_window(library.prepare(**row['selection']),frozen['start'])
                 if prepared['contract']!=row['contract'] or prepared['document']!=row['document']:
                     raise ValueError('Reviewed library source changed')
 

@@ -49,10 +49,23 @@ def main():
             result=run(bars,profile,strategy['start'],strategy['end'],strategy['interval'],progress)
         elif strategy.get("engine")=="nautilus_trader":
             from terminal.native import trust_identity,load_trusted
+            if window:
+                from terminal.library import native_window_document
+                if native_window_document(strategy,window['start'])!=strategy:
+                    raise ValueError('Native adapter evaluation window mismatch')
             if not RunStore(root).is_trusted(trust_identity(strategy)):
                 raise ValueError("Native source has no recorded explicit trust")
             result=run_backtest(bars,profile,None,marks=marks,funding=funding,progress=progress,
                 native_factory=lambda asset:load_trusted(strategy,directory,asset.id),native_timeframes=strategy["bar_minutes"])
+            if window:
+                from terminal.profile import dec
+                boundary=window['start']*1_000_000_000
+                if any(f['time_ns']<boundary for f in result['fills']) or any(dec(p['equity'])!=dec(profile.capital) for p in result['equity'] if p['time_ns']<boundary):
+                    raise ValueError('Native warmup changed the account before evaluation')
+                result['equity']=[p for p in result['equity'] if p['time_ns']>=boundary]
+                result['candles']=[p for p in result['candles'] if p['time']>=window['start']]
+                result['indicators']=[p for p in result['indicators'] if p['time']>=window['start']]
+                result['gaps']=[p for p in result['gaps'] if p[1]>=window['start']]
         else:
             result=run_backtest(bars,profile,GraphEvaluator(strategy),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None)
         result["manifest_sha256"]=snapshot["snapshot_sha256"]

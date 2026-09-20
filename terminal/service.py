@@ -146,13 +146,16 @@ class AppService:
             elif command=='experiment_copy':result=self.experiments.copy_candidate(**p)
             elif command=='experiment_validate':result=self.experiments.validate(**p)
             elif command=='start_window_run':
-                if p['strategy'].get('engine'):raise ValueError('Window runs currently support visual strategies')
                 from terminal.experiments import validate_range
                 window=p['window'];manifest=self.datasets.describe(p['dataset_id'])
                 if not isinstance(window,dict) or set(window)!={'start','end','warmup_start'}:raise ValueError('Invalid window fields')
                 validate_range([window['start'],window['end']],manifest['range'],'Trading window')
                 if type(window['warmup_start']) is not int or window['warmup_start']%60 or not manifest['range'][0]<=window['warmup_start']<=window['start']:raise ValueError('Invalid warmup range')
-                result={'run_id':self.jobs.start(p['strategy'],p['profile'],p['dataset_id'],research={'window':window})}
+                strategy=p['strategy']
+                if strategy.get('engine'):
+                    from terminal.library import native_window_document
+                    strategy=native_window_document(strategy,window['start'])
+                result={'run_id':self.jobs.start(strategy,p['profile'],p['dataset_id'],research={'window':window})}
             response={"version":1,"id":request_id,"type":"result","result":result}
             if len(canonical(response))>1024*1024: raise ValueError("Response exceeds IPC budget; request a smaller page")
             return response

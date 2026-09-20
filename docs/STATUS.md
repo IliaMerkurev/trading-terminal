@@ -4,10 +4,19 @@ The bounded library batch backend now reuses the experiment scheduler and global
 job reservation, with frozen previews, asynchronous data preflight, immutable
 saved reports, exact benchmark reuse and explicit pending-row resume. Thirteen
 focused tests passed in 15.689s; see [ADR 0022](adr/0022-library-batches.md).
+The first two distinct implementations now pass synthetic and finite cached
+public-data integration: native EMA trend v2 and adapted RSI threshold reversion
+v1. Native window warmup uses an explicit reviewed adapter with fresh source
+consent; 11 focused tests passed in 19.360s. Both ran BTCUSDT linear at 1m/5m
+against actual separate spot baselines for 2026-09-01 12:00–24:00 UTC. Losses were
+retained. See [ADR 0023](adr/0023-native-library-window.md). Three further
+strategies, the third family, later-period workflow and final acceptance remain
+unfinished.
+
 The Library UI now exposes selection, preview/start/status/cancel/resume, saved
 reports, prior-run labels after input changes, cohort sorting and sampled equity
-comparison against the passive alternatives. Native window support remains
-unfinished; two RSI timeframes are scheduler evidence, not distinct strategies.
+comparison against the passive alternatives. Two timeframes per implementation
+remain one strategy each.
 
 UI checkpoint verification: 12 frontend tests passed across three files in
 23.35s. The affected saved-status tests passed (3 tests, 2.93s). The bounded
