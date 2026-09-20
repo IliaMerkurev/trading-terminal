@@ -56,6 +56,8 @@ class ChartHistory:
                 try:self.jobs.put_nowait(key);self.pending.add(key)
                 except queue.Full:pass
             return {'market':market,'symbol':symbol,'minutes':minutes,'candles':candles,
+                    'page_status':('loading' if key in self.pending else 'error' if self.errors.get(key)
+                                   else 'end' if page and page['exhausted'] else 'ready' if page else 'idle'),
                     'loading':key in self.pending,'error':self.errors.get(key),'cached':bool(rows),
                     'oldest':candles[0]['time'] if candles else None,
                     'exhausted':bool(page and page['exhausted']),

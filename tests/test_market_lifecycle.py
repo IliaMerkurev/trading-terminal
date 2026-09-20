@@ -14,6 +14,25 @@ from terminal.storage import RunStore
 
 
 class MarketLifecycleTests(unittest.TestCase):
+    def test_failed_page_is_retryable_and_only_success_proves_end(self):
+        calls=[]
+        def transport(path,params):
+            calls.append(1)
+            if len(calls)==1:raise RuntimeError('Synthetic temporary failure')
+            return {'retCode':0,'result':{'list':[]}}
+        with tempfile.TemporaryDirectory() as d:
+            chart=ChartHistory(RunStore(Path(d)),MarketHub(),lambda p,**kw:BybitClient(p,transport=transport,**kw))
+            try:
+                chart.request('spot','BTCUSDT',1,600);chart.jobs.join()
+                failed=chart.request('spot','BTCUSDT',1,600)
+                self.assertEqual(failed['page_status'],'error');self.assertFalse(failed['exhausted'])
+                with chart.lock:chart.last_fetch.clear()
+                chart.request('spot','BTCUSDT',1,600);chart.jobs.join()
+                ended=chart.request('spot','BTCUSDT',1,600)
+                self.assertEqual(ended['page_status'],'end');self.assertTrue(ended['exhausted'])
+                self.assertIsNone(ended['error'])
+            finally:chart.close()
+
     def test_native_pages_cache_order_overlap_and_realtime(self):
         for minutes in (5,60,240,1440):
             with self.subTest(minutes=minutes),tempfile.TemporaryDirectory() as d:

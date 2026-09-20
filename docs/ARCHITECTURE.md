@@ -1,5 +1,7 @@
 # Architecture
 
+The 0.5.1 maintenance candidate extends the existing JobManager/worker with asynchronous recorded Replay and additive replay job metadata. Results use bounded keyset pages, and chart paging exposes explicit success/error/end states. The retained 0.5 architecture below is unchanged elsewhere; see [ADR 0020](adr/0020-maintenance-paging-replay.md).
+
 Product 0.5 separates market socket ownership (`MarketHub`) and cached native chart pages (`ChartHistory`) from optional strategy/paper sessions. Market consumers remain centralized; coarse display candles never feed Strategy IR. See [ADR 0018](adr/0018-independent-market-lifecycle.md). Shared `PositionManager` decisions and actual-fill `PositionLedger` lifecycle projections extend the retained engine; [ADR 0019](adr/0019-shared-position-management.md) defines accounting, protections, position context and compatibility. The accepted 0.4 architecture below is retained where not explicitly superseded.
 
 Product 0.4 adds a market terminal around the accepted 0.3 live/paper service. [ADR 0013](adr/0013-live-recovery-and-replay.md) defines the retained shared confirmed-minute signal path and additive live journal. Historical simulation and live/replay must use this one IR path; the UI never recomputes indicators. Public stream, notification and observed-price paper adapters extend the existing local Python/Tauri service, with no cloud backend or exchange order interface. Implementation and native acceptance status are tracked separately in [status](STATUS.md).

@@ -211,7 +211,7 @@ class LiveSession:
             self._restore()
             raise
 
-    def verify_replay(self):
+    def verify_replay(self,progress=None):
         """Compare recorded signal identity/time against fresh causal evaluation."""
         stream=SignalStream(GraphEvaluator(self.snapshot['graph']),self.profile.primary_minutes,self.profile.evaluation)
         atr_manager=None
@@ -220,6 +220,11 @@ class LiveSession:
             atr_manager=PositionManager(self.profile)
         count=0
         with self.store.store.connect() as db:
+            db.execute('PRAGMA query_only=ON')
+            db.execute('BEGIN')  # One consistent read snapshot across candles, contexts and recorded results.
+            total=db.execute('SELECT COUNT(*) FROM live_candles WHERE session_id=?',(self.id,)).fetchone()[0]
+            processed=0
+            if progress:progress(0,total)
             for row in db.execute('SELECT c.candle,c.source,p.context FROM live_candles c LEFT JOIN live_position_contexts p ON p.session_id=c.session_id AND p.time=c.time WHERE c.session_id=? ORDER BY c.time',(self.id,)):
                 context = json.loads(row['context']) if row['context'] is not None else None
                 candle=Candle(**json.loads(row['candle']))
@@ -236,4 +241,7 @@ class LiveSession:
                 if expected!=recorded:
                     return {'match':False,'time':time,'checked_events':count}
                 count+=len(expected)
+                processed+=1
+                if progress and processed%256==0:progress(processed,total)
+            if progress:progress(processed,total)
         return {'match':True,'checked_events':count}

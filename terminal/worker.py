@@ -10,7 +10,10 @@ def main():
     line=sys.stdin.buffer.readline(1024*1024+1)
     if len(line)>1024*1024: raise ValueError("Worker input exceeds budget")
     request=json.loads(line)
-    if request.get("version")!=1 or request.get("command")!="run": raise ValueError("Invalid worker command")
+    if request.get("version")!=1 or request.get("command") not in ('run','replay'): raise ValueError("Invalid worker command")
+    if request['command']=='replay':
+        replay(request)
+        return
     from terminal.data import DatasetStore,canonical,digest,write_new,runtime_snapshot
     from terminal.graph import GraphEvaluator
     from terminal.profile import Profile
@@ -54,6 +57,30 @@ def main():
         write_new(directory/"worker-result.json",canonical(result))
     except Exception as exc:
         write_new(directory/"worker-error.json",canonical({"version":1,"type":"error","message":str(exc)[:2000]}))
+        raise
+
+
+def replay(request):
+    from terminal.data import canonical,write_new,runtime_snapshot
+    from terminal.storage import RunStore,identifier
+    from terminal.live_store import LiveStore,LiveSession
+    from terminal.profile import Profile
+    root=Path(request['root']).resolve()
+    directory=root/'replays'/identifier(request['replay_id'])
+    try:
+        if runtime_snapshot()!=request['runtime']:raise ValueError('Runtime changed after replay preparation')
+        # Read existing journals without migrations, recovery, notifications, or account restoration.
+        store=object.__new__(RunStore);store.root=root;store.database=root/'terminal.sqlite3'
+        journal=object.__new__(LiveStore);journal.store=store
+        session=object.__new__(LiveSession);session.store=journal;session.id=identifier(request['session_id'])
+        session.snapshot=journal.get(session.id)['snapshot'];session.profile=Profile(**session.snapshot['profile'])
+        def progress(processed,total):
+            with (directory/'progress.jsonl').open('ab') as stream:
+                stream.write(canonical({'version':1,'processed':processed,'total':total,'fraction':processed/total if total else 1})+b'\n')
+        result=session.verify_replay(progress=progress)
+        write_new(directory/'worker-result.json',canonical({'session_id':session.id,'result':result}))
+    except Exception as exc:
+        write_new(directory/'worker-error.json',canonical({'message':str(exc)[:2000]}))
         raise
 
 
