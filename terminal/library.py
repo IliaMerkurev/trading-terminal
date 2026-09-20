@@ -15,6 +15,18 @@ LEAN_COMMIT = '985ef30ad3ac774218c5ac516b4cb0aa2655730f'
 EMA_HASH = 'cfdc26b76d03df6cc481d47327d64dd6c23b356236cd061bb87c691b7918d13b'
 
 ENTRIES = [
+    dict(id='historical-return',version=1,name='Historical return direction',family='momentum',kind='Adapted',
+         author='QuantConnect Corporation; independent terminal graph adaptation',license='Apache-2.0',
+         source_url=f'https://github.com/QuantConnect/Lean/blob/{LEAN_COMMIT}/Algorithm.Framework/Alphas/HistoricalReturnsAlphaModel.py',
+         source_commit=LEAN_COMMIT,source_sha256='43004946edfd02dbcb0010a6bde405ac9f65b3fbcfaed82c2065911300bee5d9',
+         source_default_minutes=1440,author_recommended_minutes=None,local_default_minutes=1440,
+         timeframe_evidence='Source constructor defaults to daily with lookback 1; no author recommendation inferred.',
+         markets=['spot','linear'],directions=['long'],modes=['historical_closed'],timeframes=TIMEFRAMES,
+         parameters={'lookback':dict(type='integer',default=1,min=1,max=1000)},dependencies={},
+         adaptation='Long-only graph follows the sign of close-to-close historical return over lookback bars: enter positive, exit nonpositive. Omits short insights, insight expiry/magnitude allocation and multi-symbol portfolio framework; flat insight cancellation maps to exiting. Profile controls sizing/costs. No source annualization string is used.',
+         review='Pinned Apache source reviewed statically. Framework history/consolidator/insight APIs are not loaded; no copied module, direct file/process/credential access, unsafe dynamic execution or future indexing.',
+         compatibility='Confirmed selected bars; lookback + 1 bars initialize fractional ROC. Zero denominator fails visibly. Not an EMA/MACD parameter variant.',
+         availability='verified',verification='Independent fractional ROC/warmup/causality and nontrivial 1m/3m trade checks passed; cached BTCUSDT spot at 1m/5m completed with both passive baselines. Losses retained; no profitability claim.'),
     dict(id='macd-tolerance',version=1,name='MACD normalized momentum',family='momentum',kind='Adapted',
          author='QuantConnect Corporation; independent terminal graph adaptation',license='Apache-2.0',
          source_url=f'https://github.com/QuantConnect/Lean/blob/{LEAN_COMMIT}/Algorithm.Python/MACDTrendAlgorithm.py',
@@ -118,6 +130,15 @@ def prepare(entry_id, version, minutes, parameters):
         preview(document)
         profile = Profile(market='linear',primary_minutes=minutes).snapshot()
         kind = 'native'; warmup = values['slow']
+    elif entry_id=='historical-return':
+        nodes=[dict(id='close',type='price',inputs={},params={'field':'close'}),
+               dict(id='return',type='roc',inputs={'source':'close.value'},params={'period':values['lookback']}),
+               dict(id='zero',type='constant',inputs={},params={'value':0}),
+               dict(id='entry',type='compare',inputs={'left':'return.value','right':'zero.value'},params={'operator':'>'}),
+               dict(id='exit',type='compare',inputs={'left':'return.value','right':'zero.value'},params={'operator':'<='})]
+        graph=dict(version=1,nodes=nodes,outputs=dict(entry_long='entry.value',exit_long='exit.value',entry_short=None,exit_short=None))
+        validate_graph(graph);document={'graph':graph,'layout':{}}
+        profile=Profile(primary_minutes=minutes,version=2).snapshot();kind='graph';warmup=values['lookback']+1
     elif entry_id=='macd-tolerance':
         if values['fast']>=values['slow']:raise ValueError('MACD fast period must be below slow period')
         nodes=[dict(id='close',type='price',inputs={},params={'field':'close'}),

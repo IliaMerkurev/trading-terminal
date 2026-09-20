@@ -53,3 +53,7 @@ The independently authored normalized MACD graph references QuantConnect Lean
 MACDTrendAlgorithm (Apache-2.0). It preserves the normalized tolerance decision
 with disclosed engine initialization and profile-sizing differences; no Lean
 runtime or original module is bundled.
+
+The historical-return direction graph independently adapts QuantConnect Lean
+HistoricalReturnsAlphaModel (Apache-2.0), with explicit long-only and insight
+lifecycle differences. Source provenance and the retained license are listed above.
