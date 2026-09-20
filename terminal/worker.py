@@ -42,7 +42,12 @@ def main():
             bars=[b for b in bars if window['warmup_start']<=b.time<window['end']]
             marks={t:c for t,c in marks.items() if window['warmup_start']<=t<window['end']}
             funding={t:r for t,r in funding.items() if window['start']<=t<window['end']}
-        if strategy.get("engine")=="nautilus_trader":
+        if 'benchmark' in strategy:
+            from terminal.benchmarks import validate_document,run
+            dataset=DatasetStore(root/'datasets').describe(snapshot['dataset']['id'])
+            validate_document(strategy,profile,dataset)
+            result=run(bars,profile,strategy['start'],strategy['end'],strategy['interval'],progress)
+        elif strategy.get("engine")=="nautilus_trader":
             from terminal.native import trust_identity,load_trusted
             if not RunStore(root).is_trusted(trust_identity(strategy)):
                 raise ValueError("Native source has no recorded explicit trust")

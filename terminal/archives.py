@@ -52,7 +52,14 @@ def validate_snapshot(snapshot):
         raise ValueError('Invalid run snapshot')
     if digest({k:v for k,v in snapshot.items() if k!='snapshot_sha256'})!=snapshot['snapshot_sha256']:raise ValueError('Run snapshot checksum mismatch')
     Profile(**snapshot['profile'])
-    if 'research' in snapshot:
+    passive = isinstance(snapshot['strategy'],dict) and 'benchmark' in snapshot['strategy']
+    if passive:
+        from terminal.benchmarks import validate_document
+        profile=Profile(**snapshot['profile'])
+        frozen=validate_document(snapshot['strategy'],profile,{**snapshot['dataset'],'market':profile.market,'symbol':profile.symbol},snapshot['runtime'])
+        if snapshot.get('research')!={'benchmark_contract':frozen['contract_sha256']}:
+            raise ValueError('Invalid archived benchmark contract')
+    elif 'research' in snapshot:
         from terminal.experiments import validate_range
         research=snapshot['research']
         if not isinstance(research,dict) or set(research)-{'experiment'}!={'window'}:raise ValueError('Invalid research provenance')
@@ -62,7 +69,7 @@ def validate_snapshot(snapshot):
         if type(window['warmup_start']) is not int or window['warmup_start']%60 or not snapshot['dataset']['range'][0]<=window['warmup_start']<=window['start']:raise ValueError('Invalid archived warmup')
     strategy=snapshot['strategy']
     if strategy.get('engine')=='nautilus_trader':validate_native(strategy)
-    else:validate_graph(strategy)
+    elif not passive:validate_graph(strategy)
     data=snapshot['dataset']
     if not re.fullmatch('[a-f0-9]{64}',data['id']) or not isinstance(data['range'],list) or len(data['range'])!=2 or any(type(v) is not int for v in data['range']) or data['range'][1]<=data['range'][0]:
         raise ValueError('Invalid archived dataset description')

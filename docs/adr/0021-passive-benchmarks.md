@@ -1,0 +1,11 @@
+# ADR 0021: Passive benchmark intents through retained execution
+
+Status: backend implementation; library/batch UI integration pending.
+
+Passive spot purchase schedules use the existing Nautilus quote path, market orders, fee/precision model, risk gateway, account and PositionLedger. A dedicated internal strategy generates intents; no ideal-price simulator or new dependency is introduced. Only this internal spot mode permits same-side accumulation without the strategy Position Management policy. Native/graph defaults retain their previous restrictions. Passive profiles reject stops, take-profit, Position Management, leverage and native inputs instead of silently applying them.
+
+All capital exists at evaluation start. Buy & Hold has one purchase; DCA splits the same capital equally over predeclared times in [start,end), default weekly. Daily/weekly schedules preserve the start's UTC clock. Monthly schedules preserve its original day, clamped to each month's final day (January 31 → February 29 → March 31 in a leap year). Unspent budget stays in cash; no deposits or interest are added. Execute at the first available modeled quote on/after each date, reserve entry fees and floor quantity to the declared step. Minimum rejections and delays are recorded. The final liquidation quote never opens a purchase. Engine stop closes fully with costs.
+
+Completed position lifecycles aggregate actual fills rather than treating every purchase as a trade. Engine final equity must reconcile with the retained ledger. Metrics subtract initial capital once, expose fees and signed funding separately, and preserve no-trade win rate as null. Geometric annualization uses a 365-day convention and is unavailable below 365 days or for nonpositive/undefined equity; it is not expected yield or simple APR.
+
+Managed benchmark runs use ordinary immutable run snapshots and results. Cache lookup requires a completed result with an identical hash of source/content, range, capital, schedule, full profile, execution/metric versions and runtime identity; cached result integrity is verified. A different capital creates a real run. Actual spot source is mandatory: perpetual prices cannot substitute for a passive spot alternative. Library ranking and comparable-cohort enforcement remain separate pending work.

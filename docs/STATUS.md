@@ -8,6 +8,10 @@ Focused Python verification: 9 tests passed in 9.885s after correcting one inval
 
 TypeScript/Vite and a fresh locked/offline Windows build passed (Rust 1m 24s). Compiled isolated smoke showed 0.6-dev, loaded both preview cards and created a native copy in the existing editor. Its database contained one copy, zero trust records and zero runs; copying did not grant consent or execute a strategy.
 
+The passive benchmark backend now executes scheduled intents through retained Nautilus quotes/orders/accounting and PositionLedger, with immutable managed results and full-contract cache reuse. Independent goldens verify C=180 DCA equity 330 versus Buy & Hold 540, flat-price fees/rounding, adverse slippage, bearish results, unspent cash, gaps/minimum rejection, monthly calendar rules and annualization guards. Six new benchmark tests and 21 simulation tests passed; 10 position/native regression tests passed after correcting their test-import invocation. Seven managed-job/cache/cancellation tests passed in 7.916s. No financial assertions required correction. Library comparison UI and batch integration remain pending; [ADR 0021](adr/0021-passive-benchmarks.md) records the exact conventions.
+
+Seven archive tests passed in 2.053s, including immutable benchmark snapshot/result export. Review added a required frozen-contract guard and excluded imported reports from computational cache reuse; the affected managed-cache test passed in 3.952s. Prior library build evidence applies to unchanged frontend/Rust; this backend-only slice did not repeat those builds.
+
 PR #6 was squash-merged under the owner's ILI-145 authorization as `1d6918c939ffa9db7480ee179b12cca6a9ca3368`, with a tree identical to approved head `69741c7cb990cf94861eef27512b4227d1a4f3e4`. A fresh isolated native startup showed 0.5.1-dev without startup errors; pinned Gitleaks scanned the outgoing maintenance commits clean. The prior maintenance regression and WAL-correction evidence below was reused, not rerun. Accepted source/runtime/executable/data remain independent from development.
 
 ## Product 0.5.1-dev — maintenance candidate awaiting owner acceptance

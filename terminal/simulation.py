@@ -165,6 +165,58 @@ class ProfileStrategy(Strategy):
         self.close("end_of_run")
 
 
+class PassiveStrategy(ProfileStrategy):
+    """Scheduled market intents using the same quotes, gateway, fills and ledger."""
+    def __init__(self, asset, profile, candles, progress, benchmark):
+        super().__init__(asset,profile,candles,None,progress)
+        from terminal.position_management import PositionLedger
+        self.ledger = PositionLedger(profile)
+        self.dates = list(benchmark['dates']); self.index = 0
+        self.budget = dec(profile.capital)/len(self.dates)
+        self.final_ns = max(candles)
+
+    def on_start(self):
+        self.subscribe_quote_ticks(self.asset.id)
+
+    def on_bar(self, bar):
+        pass
+
+    def on_quote_tick(self, tick):
+        self.seen += 1
+        if self.seen == 1 or self.seen % 1024 == 0:
+            self.progress(min(1,self.seen/(4*len(self.candles))))
+        # The final executable close belongs exclusively to liquidation.
+        if tick.ts_init >= self.final_ns: return
+        while self.index < len(self.dates) and self.dates[self.index]*NS <= tick.ts_init:
+            due = self.dates[self.index]; self.index += 1
+            cash = self.cache.account_for_venue(VENUE).balance_total(USDT).as_decimal()
+            price = tick.ask_price.as_decimal(); step = dec(self.profile.quantity_step)
+            budget = min(cash,self.budget)
+            quantity = (budget/(price*(1+dec(self.profile.fee_rate)))/step).to_integral_value(rounding=ROUND_FLOOR)*step
+            maximum = min(dec(self.profile.max_quantity),dec(self.profile.max_notional)/price)
+            quantity = min(quantity,(maximum/step).to_integral_value(rounding=ROUND_FLOOR)*step)
+            if tick.ts_init != due*NS:
+                self.diagnostics.append({'time':tick.ts_init//NS,'message':f'Scheduled purchase delayed from UTC {due}; next available executable quote'})
+            if quantity < dec(self.profile.min_quantity) or quantity*price < dec(self.profile.min_notional):
+                self.diagnostics.append({'time':tick.ts_init//NS,'message':'Scheduled purchase rejected: capital or minimum precision constraint'})
+                continue
+            self.reason = 'scheduled_purchase'
+            self.submit_order(self.order_factory.market(self.asset.id,OrderSide.BUY,Quantity(float(quantity),self.asset.size_precision)))
+
+    def record_order_event(self, event):
+        super().record_order_event(event)
+        if isinstance(event,OrderFilled):
+            fill = self.fills[-1]
+            projected = self.ledger.fill(fill['side'],fill['quantity'],fill['price'],fill['fee'],fill['time_ns'],fill['reason'])
+            fill['position_id'] = projected['position_id']
+
+    def on_stop(self):
+        if self.index < len(self.dates):
+            self.diagnostics.append({'message':f'{len(self.dates)-self.index} scheduled purchases had no executable quote before liquidation'})
+        super().on_stop()
+        self.progress(1)
+
+
 class NativeController:
     """Observe an unchanged native Strategy; no graph signal/size conversion."""
     def __init__(self,asset,profile,native):
@@ -294,11 +346,18 @@ class Protections(SimulationModule):
 
 
 def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progress=lambda _:None,
-                 native_factory=None,native_timeframes=(1,),trade_start=None):
+                 native_factory=None,native_timeframes=(1,),trade_start=None,benchmark=None):
     if not candles:
         raise ValueError("No minute history available")
     if not isinstance(profile, Profile):
         profile = Profile(**profile)
+    if benchmark is not None:
+        if (native_factory is not None or evaluator is not None or trade_start is not None or profile.market!='spot'
+                or profile.version!=1 or profile.position_management is not None or dec(profile.stop_loss) or dec(profile.take_profit)):
+            raise ValueError('Invalid passive benchmark execution contract')
+        dates=benchmark['dates']
+        if not dates or len(dates)>10000 or dates!=sorted(set(dates)) or any(type(t) is not int or t%60 or not benchmark['start']<=t<benchmark['end'] for t in dates):
+            raise ValueError('Invalid passive purchase schedule')
     if trade_start is not None and (native_factory is not None or type(trade_start) is not int or trade_start%60 or not candles[0].time<=trade_start<=candles[-1].time):
         raise ValueError('Invalid visual-strategy trading window')
     if native_factory is not None and profile.version!=1:raise ValueError('Native strategies retain execution profile version 1; profile 2 protections apply to visual graphs')
@@ -348,7 +407,9 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
                             Quantity(float(candle.volume),asset.size_precision), ts, ts))
     if not bars: raise ValueError("No complete native bars available for declared timeframes")
     native = native_factory(asset) if native_factory else None
-    strategy = NativeController(asset,profile,native) if native else ProfileStrategy(asset, profile, candle_map, evaluator, progress,trade_start)
+    strategy = (NativeController(asset,profile,native) if native else
+                PassiveStrategy(asset,profile,candle_map,progress,benchmark) if benchmark is not None else
+                ProfileStrategy(asset, profile, candle_map, evaluator, progress,trade_start))
     funding_ns = {int(t)*NS:rate for t,rate in (funding or {}).items()} if profile.funding_mode == "history" else {}
     protection = Protections(profile, strategy, samples, funding_ns, progress)
     strategy.protections = protection
@@ -359,7 +420,8 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         use_message_queue=False, bar_execution=False)
     engine.add_instrument(asset)
     guard = RiskGateway(engine,asset,leverage=dec(profile.leverage),perpetual=profile.market=="linear",max_notional=dec(profile.max_notional),
-                        position_policy=(profile,strategy.pm.config,strategy.pm.ledger,protection.balance_and_equity) if getattr(strategy,'pm',None) else None)
+                        position_policy=(profile,strategy.pm.config,strategy.pm.ledger,protection.balance_and_equity) if getattr(strategy,'pm',None) else None,
+                        spot_accumulation=benchmark is not None)
     data_guard=None
     if native:
         from terminal.native import NativeDataGateway
@@ -432,10 +494,10 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         if engine.cache.positions_open():
             raise RuntimeError("End-of-run close failed; result is incomplete")
         fills = strategy.fills
-        if len(fills) % 2 and not strategy.pm:
+        if len(fills) % 2 and not strategy.pm and benchmark is None:
             raise RuntimeError("Incomplete fill pairs; result cannot be marked completed")
         trades = []
-        for entry, exit_fill in ([] if strategy.pm else zip(fills[::2], fills[1::2])):
+        for entry, exit_fill in ([] if strategy.pm or benchmark is not None else zip(fills[::2], fills[1::2])):
             side = Decimal(1) if entry["side"] == "buy" else Decimal(-1)
             gross = side * (dec(exit_fill["price"])-dec(entry["price"])) * dec(entry["quantity"])
             fees = dec(entry["fee"])+dec(exit_fill["fee"])
@@ -447,6 +509,10 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             if abs(final_equity-dec(profile.capital)-projected)>Decimal('0.00001'):
                 raise ProfileViolation('Position lifecycle does not reconcile with engine final equity')
             strategy.diagnostics.extend(strategy.pm.diagnostics)
+        if benchmark is not None:
+            trades = strategy.ledger.completed
+            if abs(final_equity-dec(profile.capital)-sum((dec(t['net_pnl']) for t in trades),Decimal(0)))>Decimal('0.00001'):
+                raise ProfileViolation('Passive lifecycle does not reconcile with engine final equity')
         points = [p for p in protection.equity if trade_start is None or p['time_ns']>=trade_start*NS]
         final_point = {"time_ns":quotes[-1].ts_init, "cash":str(final_cash), "equity":str(final_equity),
                        "initial_margin":"0", "maintenance_margin":"0", "available":str(final_cash)}

@@ -18,13 +18,16 @@ class ProfileViolation(ValueError):
 
 class RiskGateway:
     def __init__(self, engine, instrument, *, leverage=Decimal(1), perpetual=False,
-                 max_notional=Decimal("1000000"), position_policy=None):
+                 max_notional=Decimal("1000000"), position_policy=None, spot_accumulation=False):
         self.engine = engine
         self.instrument = instrument
         self.leverage = Decimal(leverage)
         self.perpetual = perpetual
         self.max_notional = Decimal(max_notional)
         self.position_policy = position_policy
+        if spot_accumulation and (perpetual or position_policy is not None):
+            raise ValueError('Passive accumulation requires unleveraged spot without strategy policy')
+        self.spot_accumulation = spot_accumulation
         if self.leverage < 1 or (not perpetual and self.leverage != 1):
             raise ValueError("Invalid leverage for market")
         self.denials = []
@@ -70,7 +73,8 @@ class RiskGateway:
             if self.position_policy is not None and opposite and order.quantity <= position.quantity:
                 self.original(command)
                 return
-            if self.position_policy is None and (not opposite or order.quantity != position.quantity):
+            passive_add = self.spot_accumulation and position.is_long and order.side == OrderSide.BUY
+            if self.position_policy is None and not passive_add and (not opposite or order.quantity != position.quantity):
                 self.deny(order, "Scaling, partial exits and reversal are unsupported", fatal=True)
                 return
             if opposite:
