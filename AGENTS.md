@@ -39,3 +39,36 @@ Respect platform permissions and security controls. Do not inspect unrelated pro
 ## Documentation and checkpoints
 
 Public status records technical capabilities, tests, and limitations only. Local execution details belong under `.private/`. Keep links accurate. Distinguish Windows tests from checks on other platforms and automated checks from user acceptance. Report blockers honestly and continue independent authorized work when possible.
+
+## Linear ownership
+
+Linear is owner-managed. The implementation agent may read project issues, update the status of owner-created issues that are explicitly in the authorized scope, and add implementation notes, test evidence, blockers, and completion comments.
+
+Do not independently create feature issues, milestones, release scopes, or future-version tasks unless the owner explicitly authorizes issue creation for the current task. Do not reprioritize, delete, cancel, or materially rewrite owner-created issues without explicit authorization.
+
+If additional work is discovered outside the authorized scope, record it as a follow-up in the current issue or final report. Do not silently expand the release by creating and executing new tasks. A task-specific instruction may temporarily grant permission to create particular issues; that permission applies only to the stated scope.
+
+## Versioning and maintenance branches
+
+Use semantic early-development product versions. The accepted baseline on main is currently 0.5-dev. Focused maintenance after that baseline uses 0.5.1-dev, not 0.6-dev. Reserve 0.6-dev for the next intentionally scoped product release.
+
+Use `codex/051` for 0.5.1 maintenance work and `codex/06` for a future 0.6 release unless the owner explicitly chooses another branch. Historical branch names remain historical and must not be renamed merely for consistency.
+
+Do not raise the product version for an individual internal fix unless the owner has defined a new product release. Never confuse product versions with schema, protocol, migration, ADR, or dependency versions.
+
+## Budgeted validation
+
+Validation should be risk-based and non-redundant. Do not repeatedly rerun broad suites after every small change when a focused check can establish the affected behavior.
+
+For the current budget-constrained maintenance workflow:
+
+- After implementing an issue, run one focused verification pass covering the changed behavior and its nearest critical regression surface.
+- If that pass fails, make one corrective attempt and rerun the failed/focused verification once.
+- If the second focused attempt still fails and the problem is non-critical, stop spending iteration budget on it, document the evidence and blocker, return the issue to Backlog, and continue only with independent authorized work.
+- If the failure breaks application launch, threatens user data, violates security boundaries, changes financial/accounting correctness, corrupts migrations, or otherwise blocks safe use of the current build, stop and report to the owner instead of deferring it.
+- Do not run the complete regression suite for every issue. Run one combined full regression/build pass at release acceptance when the release is otherwise ready, unless a directly affected high-risk invariant requires earlier coverage.
+- Reuse valid existing evidence for unchanged behavior. Do not repeat native/manual/automated checks solely to produce duplicate evidence.
+- Saving budget must never mean deleting important tests, weakening assertions, changing expected values to fit an implementation, or skipping validation of a directly changed critical invariant.
+
+A verification pass may contain the minimum set of tests needed to cover one coherent changed surface. Prefer deterministic targeted tests and one final integrated smoke/regression pass over repeated broad reruns.
+
