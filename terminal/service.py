@@ -17,6 +17,8 @@ class AppService:
         self.archives=ArchiveManager(self.store)
         from terminal.experiments import ExperimentManager
         self.experiments=ExperimentManager(self.jobs)
+        from terminal.library_batches import LibraryBatchManager
+        self.library_batches=LibraryBatchManager(self.jobs)
         from terminal.live import LiveManager
         self.live=LiveManager(self.store)
 
@@ -56,6 +58,10 @@ class AppService:
             fields.update(run_history={'before','limit'})
             fields.update(replay_status={'replay_id'},replay_cancel={'replay_id'})
             fields.update(library_catalog=set(), library_copy={'entry_id','version','minutes','parameters'})
+            library_fields={'selections','dataset_id','profile','start','end','interval','spot_dataset_id'}
+            fields.update(library_batch_preview=library_fields,library_batch_start=library_fields|{'expected_contract'},
+                          library_batch_status={'batch_id'},library_batch_resume={'batch_id'},
+                          library_batch_cancel={'active_id'},library_batches=set())
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command in ('live_start','live_start_terminal'):result=self.live.start(**p)
@@ -84,6 +90,12 @@ class AppService:
             elif command=='library_copy':
                 from terminal.library import create_copy
                 result=create_copy(self.store,**p)
+            elif command=='library_batch_preview':result=self.library_batches.preview(**p)
+            elif command=='library_batch_start':result=self.library_batches.start(**p)
+            elif command=='library_batch_status':result=self.library_batches.get(**p)
+            elif command=='library_batch_resume':result=self.library_batches.resume(**p)
+            elif command=='library_batch_cancel':result=self.library_batches.cancel(**p)
+            elif command=='library_batches':result=self.library_batches.recent()
             elif command=="list_runs": result=self.store.recent()
             elif command=='run_history':result=self.store.history_page(**p)
             elif command=="run_status": result=self.jobs.status(p["run_id"])
@@ -147,6 +159,7 @@ class AppService:
 
     def close(self):
         self.live.close()
+        self.library_batches.close()
         self.experiments.close()
         self.jobs.close()
         self.downloads.close()

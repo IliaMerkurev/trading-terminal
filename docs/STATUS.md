@@ -1,5 +1,12 @@
 # Implementation status
 
+The bounded library batch backend now reuses the experiment scheduler and global
+job reservation, with frozen previews, asynchronous data preflight, immutable
+saved reports, exact benchmark reuse and explicit pending-row resume. Thirteen
+focused tests passed in 15.689s; see [ADR 0022](adr/0022-library-batches.md).
+Batch UI and native window support remain unfinished; two RSI timeframes are
+scheduler evidence and do not count as two distinct strategies.
+
 ## Product 0.6-dev — partial development checkpoint
 
 The owner authorized Strategy Library development on `codex/06` after conditional acceptance of maintenance PR #6. The first source/registry slice adds two non-executing preview templates (native EMA trend and adapted RSI threshold reversion), pinned provenance, typed parameter/timeframe selection, and independent copies into the existing authoring/backtest workflow. The [12-source shortlist](library/SOURCES.md) records exclusions and pending selection. Neither preview is counted as a fully verified library strategy yet. Five-strategy selection, fair benchmarks, batch/resume, result rankings and later-period integration remain unfinished.

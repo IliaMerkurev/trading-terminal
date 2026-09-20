@@ -62,7 +62,15 @@ def validate_snapshot(snapshot):
     elif 'research' in snapshot:
         from terminal.experiments import validate_range
         research=snapshot['research']
-        if not isinstance(research,dict) or set(research)-{'experiment'}!={'window'}:raise ValueError('Invalid research provenance')
+        if not isinstance(research,dict) or set(research)-{'experiment','library'}!={'window'}:raise ValueError('Invalid research provenance')
+        if 'library' in research:
+            origin=research['library']
+            if not isinstance(origin,dict) or set(origin)!={'batch_id','ordinal','contract','batch_sha256'} or type(origin['ordinal']) is not int or not 0<=origin['ordinal']<12:
+                raise ValueError('Invalid library provenance')
+            identifier(origin['batch_id'])
+            if not re.fullmatch('[a-f0-9]{64}',origin['batch_sha256']):raise ValueError('Invalid library batch checksum')
+            document={'graph':snapshot['strategy'],'layout':{}} if not snapshot['strategy'].get('engine') else snapshot['strategy']
+            if origin['contract'].get('document_sha256')!=digest(document):raise ValueError('Library document checksum mismatch')
         window=research['window']
         if not isinstance(window,dict) or set(window)!={'start','end','warmup_start'}:raise ValueError('Invalid research window')
         validate_range([window['start'],window['end']],snapshot['dataset']['range'],'Archived trading window')

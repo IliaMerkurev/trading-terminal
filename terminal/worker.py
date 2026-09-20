@@ -56,7 +56,7 @@ def main():
         else:
             result=run_backtest(bars,profile,GraphEvaluator(strategy),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None)
         result["manifest_sha256"]=snapshot["snapshot_sha256"]
-        if snapshot.get('research',{}).get('experiment'):
+        if snapshot.get('research',{}).get('experiment') or snapshot.get('research',{}).get('library'):
             result['candles_reference']={'dataset_id':snapshot['dataset']['id'],'range':[window['start'],window['end']]}
             result['candles']=[]  # The immutable dataset is shared by all combinations.
         write_new(directory/"worker-result.json",canonical(result))
