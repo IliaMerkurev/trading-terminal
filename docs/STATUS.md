@@ -4,8 +4,21 @@ The bounded library batch backend now reuses the experiment scheduler and global
 job reservation, with frozen previews, asynchronous data preflight, immutable
 saved reports, exact benchmark reuse and explicit pending-row resume. Thirteen
 focused tests passed in 15.689s; see [ADR 0022](adr/0022-library-batches.md).
-Batch UI and native window support remain unfinished; two RSI timeframes are
-scheduler evidence and do not count as two distinct strategies.
+The Library UI now exposes selection, preview/start/status/cancel/resume, saved
+reports, prior-run labels after input changes, cohort sorting and sampled equity
+comparison against the passive alternatives. Native window support remains
+unfinished; two RSI timeframes are scheduler evidence, not distinct strategies.
+
+UI checkpoint verification: 12 frontend tests passed across three files in
+23.35s. The affected saved-status tests passed (3 tests, 2.93s). The bounded
+equity/frozen-input backend check passed in 8.569s; the shared-candle report
+correction passed in 8.357s. TypeScript/Vite and locked/offline Windows builds
+passed. A compiled synthetic Windows smoke found and corrected a scroll-host
+layout issue, then completed RSI plus both baselines, displayed the three-curve
+comparison, marked results prior-run after capital changed, and opened Results.
+The ordinary report's shared-history lookup was subsequently corrected and
+verified by the focused backend check. No real-market profitability or complete
+two-strategy/five-strategy acceptance is claimed.
 
 ## Product 0.6-dev — partial development checkpoint
 

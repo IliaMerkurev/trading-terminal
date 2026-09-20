@@ -53,7 +53,18 @@ class LibraryBatchTests(unittest.TestCase):
             self.assertGreater(len(result['trades']),0)
             self.assertEqual(row['metrics'],metrics(standalone,self.params['start'],self.params['end']))
             validate_snapshot(self.jobs.store.get(row['run_id'])['manifest'])
+            chart=self.jobs.store.chart_window(row['run_id'],minutes=30)
+            self.assertEqual(chart['series']['candles'][0]['time'],self.params['start'])
+            self.assertEqual(len(chart['series']['candles']),30)
         previous=[r['run_id'] for r in report['rows'][2:]]
+        self.assertEqual(report['snapshot']['inputs'],self.params)
+        curves=self.manager.equity(report['id'],0)
+        self.assertEqual(len(curves['curves']),3)
+        for curve in curves['curves']:
+            self.assertLessEqual(len(curve['points']),400)
+            self.assertTrue(all(p['time_ns']>=self.params['start']*1_000_000_000 for p in curve['points']))
+            self.assertEqual(curve['points'][-1]['equity'],self.jobs.store.result(curve['run_id'])['metrics']['final_equity'])
+        with self.assertRaisesRegex(ValueError,'strategy row'):self.manager.equity(report['id'],2)
         second=self.wait(self.start())
         self.assertEqual([r['run_id'] for r in second['rows'][2:]],previous)
         self.assertTrue(all(r['reused'] for r in second['rows'][2:]))

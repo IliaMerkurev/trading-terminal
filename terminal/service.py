@@ -62,6 +62,7 @@ class AppService:
             fields.update(library_batch_preview=library_fields,library_batch_start=library_fields|{'expected_contract'},
                           library_batch_status={'batch_id'},library_batch_resume={'batch_id'},
                           library_batch_cancel={'active_id'},library_batches=set())
+            fields.update(library_batch_equity={'batch_id','ordinal'})
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command in ('live_start','live_start_terminal'):result=self.live.start(**p)
@@ -96,6 +97,7 @@ class AppService:
             elif command=='library_batch_resume':result=self.library_batches.resume(**p)
             elif command=='library_batch_cancel':result=self.library_batches.cancel(**p)
             elif command=='library_batches':result=self.library_batches.recent()
+            elif command=='library_batch_equity':result=self.library_batches.equity(**p)
             elif command=="list_runs": result=self.store.recent()
             elif command=='run_history':result=self.store.history_page(**p)
             elif command=="run_status": result=self.jobs.status(p["run_id"])

@@ -30,7 +30,11 @@ The first backend checkpoint supports the RSI graph at multiple timeframes.
 Native separate-window warmup is explicitly incompatible pending a reviewed
 adapter; batch dispatch never grants consent. This is not yet a two-distinct-
 strategy vertical slice or the five-strategy acceptance checkpoint. The existing
-preview UI has no batch controls until the next bounded integration slice.
+Library UI now has batch controls, source-bound cards, cohort sorting, immutable
+report links and prior-run labels when current inputs change. A bounded equity
+view reads at most 400 saved observations per curve; this sampling never changes
+metrics. Common account/cost settings come from the existing simulation panel.
+Missing history is prepared using existing asynchronous Backtest downloads.
 
 Focused verification: 13 tests passed in 15.689s, covering standalone/batch
 metrics and trades at two timeframes, exact baseline reuse, cancellation,
@@ -39,4 +43,3 @@ asynchronous corrupt-history rejection, native browse/copy trust and archives.
 The two timeframe rows test scheduler behavior, not two distinct strategies.
 
 Additive migration verification on a consistent accepted database copy preserved all 20 existing tables and 1,428,407 rows exactly; SQLite integrity_check passed. The ordinary owner database was not opened for development migration.
-

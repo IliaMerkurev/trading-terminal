@@ -78,7 +78,9 @@ class LibraryBatchManager(ExperimentManager):
         workload = sum((end-r['dataset']['range'][0])//60 for r in rows if not r['error'])
         if workload > MAX_MINUTE_RUNS:raise ValueError('Batch exceeds 2,000,000 modeled minutes including warmup')
         value = dict(version=1,metric_version=benchmarks.VERSION,rows=rows,start=start,end=end,runtime=runtime,
-                     modeled_minutes=workload,capital=profile.capital,market=profile.market,symbol=profile.symbol)
+                     modeled_minutes=workload,capital=profile.capital,market=profile.market,symbol=profile.symbol,
+                     inputs=dict(selections=selections,dataset_id=dataset_id,profile=profile.snapshot(),start=start,end=end,
+                                 interval=interval,spot_dataset_id=spot_dataset_id))
         return json.loads(canonical({**value,'contract_sha256':digest(value)}))
 
     @staticmethod
@@ -208,3 +210,26 @@ class LibraryBatchManager(ExperimentManager):
     def recent(self):
         with self.store.connect() as db:
             return [dict(r) for r in db.execute('SELECT id,created_at,status,error FROM library_batches ORDER BY created_at DESC,id DESC LIMIT 50')]
+
+    def equity(self, batch_id, ordinal):
+        report=self.get(batch_id)
+        if type(ordinal) is not int or not 0<=ordinal<len(report['rows']) or report['snapshot']['rows'][ordinal]['kind']=='benchmark':
+            raise ValueError('Select a strategy row for equity comparison')
+        selected=[report['rows'][ordinal]]+[r for r in report['rows'] if report['snapshot']['rows'][r['ordinal']]['kind']=='benchmark']
+        curves=[]
+        for row in selected:
+            spec=report['snapshot']['rows'][row['ordinal']]
+            curve=dict(name=spec['name'],status=row['status'],run_id=row['run_id'],points=[])
+            if row['status']=='completed':
+                with self.store.connect() as db:
+                    count=db.execute("SELECT count(*) FROM series WHERE run_id=? AND kind='equity'",(row['run_id'],)).fetchone()[0]
+                    # Direct indexed lookups, at most 400 observations per curve.
+                    indices=sorted({round(i*(count-1)/399) for i in range(min(count,400))}) if count>400 else list(range(count))
+                    for index in indices:
+                        point=json.loads(db.execute("SELECT value FROM series WHERE run_id=? AND kind='equity' AND row_index=?",(row['run_id'],index)).fetchone()[0])
+                        if point['time_ns']>=report['snapshot']['start']*1_000_000_000:
+                            curve['points'].append({'time_ns':point['time_ns'],'equity':point['equity']})
+                curve['observations']=count
+            curves.append(curve)
+        return dict(start=report['snapshot']['start'],end=report['snapshot']['end'],capital=report['snapshot']['capital'],curves=curves,
+                    note='Up to 400 sampled observations per curve; metrics use every recorded point. Passive spot alternatives are not leverage/risk equivalent.')
