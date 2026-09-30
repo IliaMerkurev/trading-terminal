@@ -156,3 +156,27 @@ it('does not let a delayed previous run replace the current trade table',async()
  await act(async()=>pending.B(trades('current-B')));expect(screen.getByText('current-B')).toBeTruthy();
  await act(async()=>pending.A(trades('stale-A')));expect(screen.queryByText('stale-A')).toBeNull();expect(screen.getByText('current-B')).toBeTruthy();
 });
+
+
+it('suspends setup for the active-work exit prompt and restores inputs on return',async()=>{
+ vi.mocked(invoke).mockClear();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(command:string)=>{
+  if(command==='library_catalog')return [{id:'trend',version:1,name:'Test trend',family:'trend',markets:['spot'],directions:['long'],local_default_minutes:1440,timeframes:[60,1440],parameters:{}}];
+  if(command==='replay_status')return {id:'replay',status:'running'};
+  if(command==='run_history')return {rows:[],next:null};
+  if(command.startsWith('list_')||command==='library_batches')return [];
+  return {};
+ });
+ render(<App/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Test this strategy'}));
+ expect(screen.getByRole('dialog',{name:'Set up backtest'})).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'4321'}});
+ await act(async()=>windowMock.close!({preventDefault:vi.fn()}));
+ expect(await screen.findByRole('dialog',{name:'Close during active run'})).toBeTruthy();
+ expect(screen.queryByRole('dialog',{name:'Set up backtest'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Return to application'}));
+ expect(screen.getByRole('dialog',{name:'Set up backtest'})).toBeTruthy();
+ expect((screen.getByLabelText('Research capital') as HTMLInputElement).value).toBe('4321');
+ expect(vi.mocked(api).mock.calls.some(([command])=>/start|cancel|trust/.test(command))).toBe(false);
+ expect(invoke).not.toHaveBeenCalled();
+});

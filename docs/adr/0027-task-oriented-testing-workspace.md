@@ -6,7 +6,7 @@ Status: accepted for implementation; verification recorded in STATUS.md.
 
 Owner feedback found the Research/Pro distinction unclear. Replace it with stable task navigation: Strategy library, Market data, Saved tests, and Strategy editor. Advanced custom backtests, parameter experiments and replay remain under More tools. Keep separate editor and library settings and preserve mounted test controllers across navigation.
 
-Testing a supplied strategy requires no editable copy. A primary card action selects that strategy and focuses setup; explicit comparison controls add other strategies. Setup names the selection, identifies missing history, reviews dates/capital/costs, then starts the reviewed contract. Saved comparisons have their own workspace. Existing later-period verification remains available through an explicit setup action.
+Testing a supplied strategy requires no editable copy. A primary card action selects that strategy and opens its setup dialog; explicit comparison controls add other strategies. Setup names the selection, identifies missing history, reviews dates/capital/costs, then starts the reviewed contract. Saved comparisons have their own workspace. Existing later-period verification remains available through an explicit setup action.
 
 ## Visual and interaction plan
 
@@ -30,3 +30,23 @@ The visual emphasis belongs to test actions and measured results. Keyboard focus
 - Playwright-oriented webapp-testing adds no necessary capability over existing Vitest and native Windows checks; no browser runtime added. React performance guidance is deferred until measurements justify it.
 
 The two text-only skills are local authoring tools, not application dependencies. No backend accounting, stored contracts, source consent or database schema changes. Automated user journeys supplement a native walkthrough; neither establishes owner acceptance or strategy profitability.
+
+
+## Card-action correction after owner feedback
+
+Focusing the persistent side setup was too subtle: repeated card clicks looked
+inert and changing a timeframe appeared to produce no result. Every primary
+card click now opens a native HTML dialog containing the existing setup. The
+same mounted controller owns inputs, preview and polling; no duplicate job or
+automatic execution is introduced. Review and Start remain explicit. Escape or
+Back closes the dialog, restores card focus and preserves settings. Returning
+from history reopens setup; starting closes it and opens Saved tests.
+
+The dialog uses the platform top layer without a new dependency. The existing
+active-work exit prompt temporarily suspends it, preventing that prompt from
+becoming inert underneath setup; Return restores the inputs. Native dialog
+keyboard behavior is not simulated by jsdom. Windows checks verify visible
+opening, dismissal/focus return and the complete test flow; the exit interaction
+has a focused mocked-IPC regression. Timeframe/source incompatibility is shown
+before review with a compatible resolution suggestion. Backend validation and
+financial contracts remain authoritative and unchanged.

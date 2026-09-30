@@ -36,15 +36,18 @@ it('guides first-time testing through history, exact timeframe review, navigatio
  render(<App/>);
  expect(screen.queryByRole('button',{name:'Pro'})).toBeNull();
  expect(screen.queryByRole('button',{name:'Research'})).toBeNull();
- fireEvent.click(await screen.findByRole('button',{name:'Test this strategy'}));
- expect(document.activeElement?.id).toBe('test-setup');
+ await screen.findByRole('button',{name:'Test this strategy'});
  fireEvent.click(screen.getByRole('button',{name:'Test trend compare 1h'}));
  fireEvent.click(screen.getByRole('button',{name:'Test trend compare 4h'}));
+ fireEvent.click(screen.getByRole('button',{name:'Test this strategy'}));
+ expect(screen.getByRole('dialog',{name:'Set up backtest'})).toBeTruthy();
+ expect(document.activeElement?.id).toBe('test-setup');
  fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'1000'}});
  fireEvent.click(screen.getByRole('button',{name:'Prepare market data'}));
  expect((screen.getByLabelText('History resolution') as HTMLSelectElement).value).toBe('60');
  fireEvent.click(screen.getByRole('button',{name:'Prepare / reuse history'}));
  fireEvent.click(await screen.findByRole('button',{name:'Continue with this history'}));
+ expect(await screen.findByRole('dialog',{name:'Set up backtest'})).toBeTruthy();
  await waitFor(()=>expect((screen.getByLabelText('Batch dataset') as HTMLSelectElement).value).toBe('hourly'));
  await waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
  expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T00:00');
@@ -52,6 +55,7 @@ it('guides first-time testing through history, exact timeframe review, navigatio
  fireEvent.click(await screen.findByRole('button',{name:'Start 5 tests'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_start',expect.objectContaining({expected_contract:'reviewed-contract',dataset_id:'hourly',start:86400,end:31536000,profile:expect.objectContaining({capital:'1000',execution_minutes:60}),selections:[60,240,1440].map(minutes=>({entry_id:'trend',version:1,minutes,parameters:{}}))})));
  expect(await screen.findByRole('heading',{name:'Saved tests'})).toBeTruthy();
+ expect(screen.queryByRole('dialog',{name:'Set up backtest'})).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Market data'}));
  fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));
  fireEvent.click(await screen.findByRole('button',{name:'Cancel remaining tests'}));
@@ -107,6 +111,7 @@ it('customizes an independent draft and preserves the card selection when return
  fireEvent.click(within(first).getByRole('button',{name:'Test this strategy'}));
  expect((within(second).getByLabelText('Include Second idea') as HTMLInputElement).checked).toBe(false);
  expect((within(first).getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
  fireEvent.click(within(first).getByRole('button',{name:'Customize strategy'}));
  await screen.findByText('Graph workspace');
  expect((screen.getByLabelText('Strategy name') as HTMLInputElement).value).toBe('Independent draft');

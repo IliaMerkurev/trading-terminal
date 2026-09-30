@@ -1,5 +1,37 @@
 # Implementation status
 
+## Visible strategy test action — verified, owner review pending
+
+Every **Test this strategy** click opens an explicit backtest setup dialog,
+including repeated clicks on the same card. Settings survive dismissal and
+history navigation; Start closes setup and opens Saved tests. Changing a
+timeframe alone does not run a backtest. Incompatible source intervals now show
+an explanation and a compatible resolution before review. Active-work exit
+confirmation temporarily suspends setup and restores it on Return.
+
+Windows evidence on 2026-09-30:
+
+- Focused command: `node node_modules/vitest/vitest.mjs run frontend/src/StrategyLibrary.test.tsx frontend/src/LibraryResearch.test.tsx frontend/src/UserJourneys.test.tsx frontend/src/App.test.tsx`.
+  Initial 26 checks passed in 4.60s; review identified the native-dialog/exit
+  prompt interaction. After its correction and regression test, **27 checks
+  passed in 4.61s**. Coverage includes repeated open/close, input retention,
+  incompatible timeframes, history return, exactly one explicit batch start,
+  navigation and active-work exit handling. IPC is mocked in these tests.
+- `node scripts/frontend.mjs build` passed TypeScript/Vite. Locked offline
+  Windows Rust build passed in 3.64s; Python 3.12.14 / NautilusTrader 1.231.0
+  runtime verification passed. Existing bundle advisory remains (736.28 kB JS).
+- Native Windows walkthrough confirmed visible setup, Escape dismissal with
+  focus returned to the card, repeated opening, cached H4 history selection
+  returning to setup, warmup reservation, Review and Start. A daily Donchian
+  batch reached **3/3 completed** and displayed results in Saved tests and on
+  its card. Donchian executed; passive rows reused verified cached results.
+  No market-history download was needed. The active-work exit/suspend case was
+  checked automatically, not repeated as a native cancellation run.
+
+No new dependency, backend computation, schema, version or trust change.
+Unchanged broader regression evidence below is retained; no full backend suite
+or display-scaling sweep was repeated. Owner usability acceptance remains open.
+
 ## Task-oriented usability refinement — verified, owner review pending
 
 Research/Pro navigation is replaced by Strategy library, Market data, Saved tests

@@ -192,3 +192,13 @@ nav .running-link{margin-left:auto;color:#a4efdb;font-size:12px;white-space:nowr
  .research-studio:not(.saved-studio) .research-setup{height:100%;max-height:none;position:static}
  .research-studio:not(.saved-studio) .research-footnote{flex-shrink:0;margin-top:12px}
 }
+
+.test-dialog{width:min(620px,calc(100vw - 32px));max-height:calc(100dvh - 48px);padding:0;border:1px solid #658779;border-radius:12px;background:#141f27;color:#e3eaf0;overflow:auto;overscroll-behavior:contain;box-shadow:0 20px 80px #0008}
+.test-dialog::backdrop{background:#05090dcc}
+.test-dialog-heading{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 22px;background:#1a2a32;border-bottom:1px solid #3d534e;z-index:1}
+.test-dialog-heading span{font-weight:600}
+.test-dialog .research-setup{position:static;max-height:none;height:auto;overflow:visible;border:0;padding:22px}
+.test-dialog .primary{background:#83dfc6;border-color:#92e9d2;color:#0e3028}
+.test-dialog .selected-tests{max-height:160px;overflow:auto}
+.test-next-step{padding:10px 12px;border:1px solid #456354;border-radius:6px;background:#1b322b;color:#c3ead8}
+.test-dialog .batch-preview{scroll-margin:70px}

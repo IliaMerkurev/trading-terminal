@@ -6,11 +6,13 @@ is for creating or customizing strategies. Custom backtests, parameter
 experiments and live/replay tools remain under **More tools**.
 
 1. On a card, choose its timeframe and any **Compare also** timeframes. Click
-   **Test this strategy** to select that idea. **Add to comparison** includes
-   other cards. Testing does not require copying or editing a strategy.
+   **Test this strategy** to open its backtest setup dialog. Changing a timeframe
+   alone does not start execution. **Add to comparison** includes other cards
+   in the side setup. Testing does not require copying or editing a strategy.
 2. In **Your test**, review the selected names, timeframes and initial capital.
    Choose saved history. If none matches, **Prepare market data** opens history
-   preparation while preserving your selection.
+   preparation while preserving your selection. Using history returns to the
+   dialog. Escape or **Back to strategies** closes it and keeps your settings.
 3. Prepare history once, then **Continue with this history** or **Use this
    history**. For longer-horizon spot tests, 4h history supports 4h and daily
    strategies; 1h history supports comparing 1h, 4h and daily together. Complete
@@ -39,7 +41,9 @@ new-test settings do not alter the candidate. Repeated holdout use is recorded.
 Simulation detail and strategy timeframe are different settings. Coarse spot
 execution models four price points per source candle; it cannot reconstruct M1
 or tick paths and may change fills and drawdown. Strategy timeframes must be
-multiples of the source interval. Select M1 history for detailed execution,
+multiples of the source interval. Setup explains incompatible choices before
+review; for example, a 6h strategy requires 1h rather than 4h source history.
+Select M1 history for detailed execution,
 native Python, perpetuals, intrabar evaluation or Position Management.
 Unsupported combinations fail visibly. Fees, slippage and instrument precision
 remain part of each run; perpetual funding/margin/liquidation retain the detailed
