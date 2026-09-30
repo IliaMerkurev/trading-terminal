@@ -119,6 +119,7 @@ class ExperimentManager:
         strategy=self.store.strategy(strategy_id)
         if strategy['kind']!='graph':raise ValueError('Parameter experiments support saved visual strategies only')
         graph=strategy['document']['graph'];validate_graph(graph);profile=Profile(**profile)
+        if profile.execution_minutes!=1:raise ValueError('Parameter experiments retain M1 execution; use Library for coarse timeframe comparisons')
         manifest=self.jobs.datasets.describe(dataset_id);self.jobs.datasets.check_profile(manifest,profile)
         validate_range(is_range,manifest['range'],'In-sample range');validate_range(oos_range,manifest['range'],'Out-of-sample range')
         if is_range[1]>oos_range[0]:raise ValueError('Out-of-sample must be later and disjoint from in-sample')

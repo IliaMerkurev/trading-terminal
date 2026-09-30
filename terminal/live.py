@@ -82,6 +82,7 @@ class LiveManager:
         strategy=self.store.strategy(strategy_id)
         if strategy['kind']!='graph':raise ValueError('Live currently requires a visual Strategy IR; native source is never converted or executed here')
         profile=Profile(**profile)
+        if profile.execution_minutes!=1:raise ValueError("Live/Paper requires M1 execution resolution")
         if execution_source not in ('strategy','manual'):raise ValueError('Invalid paper execution source')
         graph=strategy['document']['graph']
         from terminal.graph import POSITION_FIELDS
@@ -99,6 +100,7 @@ class LiveManager:
     def start_manual(self,profile):
         if self.thread and self.thread.is_alive():raise ValueError('Only one live/paper session may run at a time')
         profile=Profile(**profile)
+        if profile.execution_minutes!=1:raise ValueError("Live/Paper requires M1 execution resolution")
         graph={'version':1,'nodes':[{'id':'idle','type':'constant','inputs':{},'params':{'value':0}}],
                'outputs':{key:None for key in ('entry_long','exit_long','entry_short','exit_short')}}
         pm=profile.position_management or {}

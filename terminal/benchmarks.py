@@ -66,6 +66,10 @@ def contract(profile, dataset, start, end, interval='weekly', runtime=None):
     if not dataset['range'][0] <= start < end <= dataset['range'][1]:
         raise ValueError('Benchmark range outside source history')
     dates = schedule(start,end,interval)
+    seconds=profile.execution_minutes*60
+    if start%seconds or end%seconds or any(t%seconds for t in dates):
+        raise ValueError('Benchmark schedule and range must align to execution candles')
+    if dataset.get('interval_seconds',60)!=seconds:raise ValueError('Benchmark dataset resolution differs')
     value = dict(version=VERSION,metric_version=VERSION,execution='retained-nautilus',source=dataset['source'],
         dataset_id=dataset['id'],content_sha256=dataset['content_sha256'],symbol=profile.symbol,
         profile=profile.snapshot(),start=start,end=end,schedule=interval,purchases=dates,

@@ -75,7 +75,8 @@ def load_trusted(document,directory,instrument_id):
             if isinstance(value,str) and re.fullmatch(r"\$bar:[0-9]+",value):
                 minutes=int(value.split(":")[1])
                 if minutes not in document["bar_minutes"]: raise ValueError("Config references an undeclared native timeframe")
-                return f"{instrument_id}-{minutes}-MINUTE-LAST-EXTERNAL"
+                from terminal.simulation import external_bar_type
+                return str(external_bar_type(instrument_id,minutes))
             if isinstance(value,dict): return {k:expand(v) for k,v in value.items()}
             if isinstance(value,list): return [expand(v) for v in value]
             return value

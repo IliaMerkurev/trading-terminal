@@ -1,5 +1,18 @@
 # Implementation status
 
+## Research workspace extension — in progress
+
+Work starts from merged main `a5bb197` on `codex/research-studio`. The prior 0.6
+implementation is already merged through PR #7; the older acceptance wording
+below is retained as historical evidence. Current work does not bump the version.
+
+The backend supports explicit coarse spot research and immutable incremental
+history reuse. Seven new targeted tests and the neighboring financial/data/native
+checks passed, with one corrected M1 download call-shape regression. See
+[ADR 0025](adr/0025-research-resolution.md) for contracts and exact evidence.
+Card-first UI, additional strategy candidates, integrated build and final
+acceptance are still in progress. No owner data or dependency was changed.
+
 ## Product 0.6-dev — five-strategy candidate awaiting owner acceptance
 
 The authorized Library core contains five independently verified implementations

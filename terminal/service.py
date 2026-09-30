@@ -56,8 +56,10 @@ class AppService:
             fields.update(paper_start_manual={'profile'})
             fields.update(paper_lifecycle={'session_id','before','limit'})
             fields.update(run_history={'before','limit'})
+            fields.update(history_prepare={'market','symbol','start','end','minutes'})
             fields.update(replay_status={'replay_id'},replay_cancel={'replay_id'})
             fields.update(library_catalog=set(), library_copy={'entry_id','version','minutes','parameters'})
+            fields.update(library_warmup={'selections','dataset_id'})
             library_fields={'selections','dataset_id','profile','start','end','interval','spot_dataset_id'}
             fields.update(library_batch_preview=library_fields,library_batch_start=library_fields|{'expected_contract'},
                           library_batch_status={'batch_id'},library_batch_resume={'batch_id'},
@@ -129,7 +131,8 @@ class AppService:
             elif command=="list_datasets":
                 result=[{k:m[k] for k in ("id","market","symbol","range","coverage","source")} for m in self.datasets.list()]
             elif command=="dataset_profile": result=metadata_profile_fields(self.datasets.describe(p["dataset_id"]))
-            elif command=="download_start": result=self.downloads.start(**p)
+            elif command=='library_warmup': result=self.library_batches.warmup(**p)
+            elif command in ("download_start","history_prepare"): result=self.downloads.start(**p)
             elif command=="download_status": result=self.downloads.status()
             elif command=="download_cancel": result=self.downloads.cancel()
             elif command=="compare_runs": result=compare_runs(self.store,p['run_ids'])

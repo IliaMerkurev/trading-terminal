@@ -170,18 +170,20 @@ class RunStore:
             raise ValueError("Chart requests require aligned start and 30–480 minutes")
         window=run['manifest'].get('research',{}).get('window')
         first,last=[window['start'],window['end']] if window else run["manifest"]["dataset"]["range"]
-        start=first if start is None else max(first,min(start,max(first,last-60)))
-        end=min(last,start+minutes*60)
-        result={"start":start,"end":end,"range":[first,last],"series":{}}
+        seconds=run['manifest']['profile'].get('execution_minutes',1)*60
+        start=first if start is None else max(first,min(start//seconds*seconds,max(first,last-seconds)))
+        end=min(last,start+minutes*seconds)
+        result={"start":start,"end":end,"range":[first,last],"interval_seconds":seconds,"series":{}}
         with self.connect() as db:
             for kind in ("candles","indicators","fills","equity"):
                 # Candle timestamps are interval starts; indicators are availability times.
-                lower,upper=(start,end) if kind=="candles" else (start+1e-6,end+1e-6)
+                lower,upper=(start,end) if kind=="candles" else (start if kind=="fills" else start+1e-6,end+1e-6)
                 rows=db.execute(f"SELECT value FROM series WHERE run_id=? AND kind=? AND ({TIME_SQL})>=? AND ({TIME_SQL})<? ORDER BY ({TIME_SQL}),row_index LIMIT 4000",(run_id,kind,lower,upper)).fetchall()
                 result["series"][kind]=[json.loads(row[0]) for row in rows]
+        result['series']['fills']=[f for f in result['series']['fills'] if start*1_000_000_000<=f['time_ns']<end*1_000_000_000]
         for fill in result['series']['fills']:
             # Derive the candle association before JavaScript rounds epoch nanoseconds.
-            fill['chart_time']=(fill['time_ns']//60_000_000_000+1)*60
+            fill['chart_time']=(fill['time_ns']//(seconds*1_000_000_000)+1)*seconds
         research=run['manifest'].get('research',{})
         if run['summary'].get('origin')=='local' and (research.get('experiment') or research.get('library')):
             from terminal.data import DatasetStore

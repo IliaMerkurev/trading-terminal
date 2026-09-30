@@ -39,8 +39,15 @@ class Profile:
     tier_assumption: str = "Manual constant tier; historical risk tiers are not known"
     version: int = 1
     position_management: dict | None = None
+    execution_minutes: int = 1
 
     def __post_init__(self):
+        if type(self.execution_minutes) is not int or self.execution_minutes not in (1,5,15,60,240,1440):
+            raise ValueError('Unsupported historical execution resolution')
+        if self.primary_minutes % self.execution_minutes:
+            raise ValueError('Strategy timeframe must be a multiple of execution resolution')
+        if self.execution_minutes != 1 and (self.market != 'spot' or self.evaluation != 'closed' or self.position_management is not None):
+            raise ValueError('Coarse research requires spot, closed bars and no Position Management; use M1 for other modes')
         if self.position_management is not None:
             from terminal.position_management import PositionConfig
             if not isinstance(self.position_management, dict):
@@ -83,6 +90,7 @@ class Profile:
         result = asdict(self)
         # Legacy snapshots retain exactly their previous shape and semantics.
         if self.position_management is None: result.pop('position_management')
+        if self.execution_minutes == 1: result.pop('execution_minutes')
         return result
 
     def size(self, available, execution_price):

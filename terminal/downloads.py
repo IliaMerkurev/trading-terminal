@@ -1,6 +1,6 @@
 """One cancellable public-data preparation task; never blocks IPC dispatch."""
 import threading
-from terminal.data import BybitClient,DatasetStore,prepare_dataset,validate_range
+from terminal.data import BybitClient,DatasetStore,prepare_dataset,validate_range,validate_interval
 
 
 class DownloadManager:
@@ -12,21 +12,24 @@ class DownloadManager:
         self.cancel_event=threading.Event()
         self.state={"status":"idle","stage":"","fraction":0}
 
-    def start(self,market,symbol,start,end):
+    def start(self,market,symbol,start,end,minutes=1):
         validate_range(market,symbol,start,end)
+        validate_interval(start,end,minutes)
+        if market!='spot' and minutes!=1:raise ValueError('Coarse history supports spot only; choose M1 for perpetuals')
         with self.lock:
             if self.thread and self.thread.is_alive(): raise ValueError("One historical download is already active")
             self.cancel_event=threading.Event()
             self.state={"status":"running","stage":"metadata","fraction":0,
-                        "market":market,"symbol":symbol,"range":[start,end]}
-            self.thread=threading.Thread(target=self._run,args=(market,symbol,start,end),daemon=True)
+                        "market":market,"symbol":symbol,"range":[start,end],"minutes":minutes}
+            self.thread=threading.Thread(target=self._run,args=(market,symbol,start,end,minutes),daemon=True)
             self.thread.start()
             return dict(self.state)
 
-    def _run(self,market,symbol,start,end):
+    def _run(self,market,symbol,start,end,minutes):
         try:
             client=self.client_factory(self.root/"http-cache",cancel=self.cancel_event)
-            result=prepare_dataset(client,DatasetStore(self.root/"datasets"),market,symbol,start,end,self._progress)
+            options={'minutes':minutes} if minutes!=1 else {}
+            result=prepare_dataset(client,DatasetStore(self.root/"datasets"),market,symbol,start,end,self._progress,**options)
             with self.lock:
                 self.state.update(status="cancelled" if self.cancel_event.is_set() else "completed",dataset_id=result["id"])
         except Exception as exc:

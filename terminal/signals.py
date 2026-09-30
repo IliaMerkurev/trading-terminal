@@ -8,13 +8,14 @@ from terminal.series import PartialBars
 
 
 class SignalStream:
-    def __init__(self, evaluator, primary_minutes, evaluation):
+    def __init__(self, evaluator, primary_minutes, evaluation, source_minutes=1):
         if evaluation not in ('closed', 'intrabar'):
             raise ValueError('Unsupported signal evaluation mode')
         self.evaluator, self.evaluation = evaluator, evaluation
         # Native indicator state is incremental. Legacy custom probe callables
         # retain their full-bar input contract; production IR needs only the tail.
-        self.frames = PartialBars(primary_minutes, 2 if isinstance(evaluator, GraphEvaluator) else None)
+        self.seconds = source_minutes * 60
+        self.frames = PartialBars(primary_minutes, 2 if isinstance(evaluator, GraphEvaluator) else None, source_minutes)
         self.states = {key: False for key in OUTPUTS}
 
     def update(self, candle, position_context=None):
@@ -22,11 +23,11 @@ class SignalStream:
         if not self.frames.count or (self.evaluation == 'closed' and not complete):
             return None
         if isinstance(self.evaluator,GraphEvaluator): self.evaluator.position_context = position_context
-        result = self.evaluator(self.frames.snapshot(), candle.time + 60, complete)
+        result = self.evaluator(self.frames.snapshot(), candle.time + self.seconds, complete)
         states = {key: result.get('signals', {}).get(key) is True for key in OUTPUTS}
         transitions = [key for key in OUTPUTS if states[key] and not self.states[key]]
         self.states = states
-        return {**result, 'signals': states, 'transitions': transitions, 'time': candle.time + 60}
+        return {**result, 'signals': states, 'transitions': transitions, 'time': candle.time + self.seconds}
 
 
 def replay_signals(graph, primary_minutes, evaluation, candles):

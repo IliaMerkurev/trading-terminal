@@ -138,6 +138,7 @@ class JobManager:
         elif not benchmark:
             validate_graph(strategy)
         if not isinstance(profile,Profile): profile=Profile(**profile)
+        if native and profile.execution_minutes!=1:raise ValueError("Native Python requires detailed M1 execution history")
         manifest=self.datasets.describe(dataset_id)
         self.datasets.check_profile(manifest,profile)
         if benchmark:

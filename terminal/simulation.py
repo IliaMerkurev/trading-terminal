@@ -29,6 +29,11 @@ VENUE = Venue("RESEARCH")
 NS = 1_000_000_000
 
 
+def external_bar_type(asset_id, minutes):
+    step,unit=(minutes//1440,'DAY') if minutes%1440==0 else (minutes//60,'HOUR') if minutes%60==0 else (minutes,'MINUTE')
+    return BarType.from_str(f'{asset_id}-{step}-{unit}-LAST-EXTERNAL')
+
+
 def precision(step):
     return max(0, -dec(step).normalize().as_tuple().exponent)
 
@@ -53,11 +58,11 @@ class ProfileStrategy(Strategy):
     def __init__(self, asset, profile, candles, evaluator, progress,trade_start=None):
         super().__init__(StrategyConfig(order_id_tag="001"))
         self.asset, self.profile = asset, profile
-        self.bar_type = BarType.from_str(f"{asset.id}-1-MINUTE-LAST-EXTERNAL")
+        self.bar_type = external_bar_type(asset.id,profile.execution_minutes)
         self.candles = candles
         self.evaluator = evaluator
         self.progress, self.seen = progress, 0
-        self.signal_stream = SignalStream(evaluator, profile.primary_minutes, profile.evaluation)
+        self.signal_stream = SignalStream(evaluator, profile.primary_minutes, profile.evaluation, profile.execution_minutes)
         self.fills, self.diagnostics, self.indicators = [], [], []
         self.reason = "entry"
         self.protections = None
@@ -85,7 +90,7 @@ class ProfileStrategy(Strategy):
             return
         if self.trade_start is not None and candle.time<self.trade_start:return
         signals = result.get("signals", {})
-        self.indicators.append({"time":candle.time + 60, "values":result.get("values", {}), "signals":signals})
+        self.indicators.append({"time":candle.time + self.profile.execution_minutes*60, "values":result.get("values", {}), "signals":signals})
         if self.pm: self.indicators[-1]['values']['position_management.atr'] = float(self.pm.atr) if self.pm.atr is not None else None
         self.apply_signals(signals,candle.time)
 
@@ -132,19 +137,19 @@ class ProfileStrategy(Strategy):
             return  # Entries cannot scale, reverse, or reenter after a same-step exit.
         long, short = bool(signals.get("entry_long")), bool(signals.get("entry_short"))
         if long and short:
-            self.diagnostics.append({"time":minute+60, "message":"Simultaneous long/short entries skipped"})
+            self.diagnostics.append({"time":minute+self.profile.execution_minutes*60, "message":"Simultaneous long/short entries skipped"})
             return
         if not long and not short:
             return
         if short and self.profile.market == "spot":
-            self.diagnostics.append({"time":minute+60, "message":"Spot short signal ignored: unleveraged market"})
+            self.diagnostics.append({"time":minute+self.profile.execution_minutes*60, "message":"Spot short signal ignored: unleveraged market"})
             return
         account = self.cache.account_for_venue(VENUE)
         quote = self.cache.quote_tick(self.asset.id)
         price = quote.ask_price if long else quote.bid_price
         quantity = self.profile.size(account.balance_total(USDT).as_decimal(), price.as_decimal())
         if not quantity:
-            self.diagnostics.append({"time":minute+60, "message":"Entry skipped: capital or minimum size constraint"})
+            self.diagnostics.append({"time":minute+self.profile.execution_minutes*60, "message":"Entry skipped: capital or minimum size constraint"})
             return
         self.reason = "entry"
         self.submit_order(self.order_factory.market(self.asset.id, OrderSide.BUY if long else OrderSide.SELL,
@@ -351,6 +356,9 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         raise ValueError("No minute history available")
     if not isinstance(profile, Profile):
         profile = Profile(**profile)
+    seconds=profile.execution_minutes*60
+    if native_factory is not None and profile.execution_minutes!=1:
+        raise ValueError('Native Python requires detailed M1 execution history')
     if benchmark is not None:
         if (native_factory is not None or evaluator is not None or trade_start is not None or profile.market!='spot'
                 or profile.version!=1 or profile.position_management is not None or dec(profile.stop_loss) or dec(profile.take_profit)):
@@ -358,16 +366,16 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         dates=benchmark['dates']
         if not dates or len(dates)>10000 or dates!=sorted(set(dates)) or any(type(t) is not int or t%60 or not benchmark['start']<=t<benchmark['end'] for t in dates):
             raise ValueError('Invalid passive purchase schedule')
-    if trade_start is not None and (native_factory is not None or type(trade_start) is not int or trade_start%60 or not candles[0].time<=trade_start<=candles[-1].time):
+    if trade_start is not None and (native_factory is not None or type(trade_start) is not int or trade_start%seconds or not candles[0].time<=trade_start<=candles[-1].time):
         raise ValueError('Invalid visual-strategy trading window')
     if native_factory is not None and profile.version!=1:raise ValueError('Native strategies retain execution profile version 1; profile 2 protections apply to visual graphs')
     if profile.position_management is not None and (native_factory is not None or profile.version != 2):
         raise ValueError('Position Management requires visual execution profile 2; native strategies remain unchanged')
     if native_factory is not None and (dec(profile.stop_loss) or dec(profile.take_profit) or profile.evaluation!="closed"):
         raise ValueError("Native strategies require their own protection/signal semantics; graph intrabar and stop/take controls are unavailable")
-    if any(b.time % 60 for b in candles) or any(b.time <= a.time for a,b in zip(candles, candles[1:])):
+    if any(b.time % seconds for b in candles) or any(b.time <= a.time for a,b in zip(candles, candles[1:])):
         raise ValueError("History must be sorted, unique UTC minute candles")
-    gaps = [(a.time+60, b.time) for a,b in zip(candles,candles[1:]) if b.time != a.time+60]
+    gaps = [(a.time+seconds, b.time) for a,b in zip(candles,candles[1:]) if b.time != a.time+seconds]
     if gaps and (profile.gap_policy == "reject" or profile.evaluation == "intrabar"):
         raise ValueError("Missing minute history: intrabar requires continuous finer data; gaps are never filled")
     if profile.market == "linear":
@@ -376,14 +384,14 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         if profile.funding_mode == "history" and funding is None:
             raise ValueError("Funding history coverage is required, or explicitly select assumed zero funding")
     asset = make_instrument(profile)
-    bar_type = BarType.from_str(f"{asset.id}-1-MINUTE-LAST-EXTERNAL")
+    bar_type = external_bar_type(asset.id,profile.execution_minutes)
     quotes, bars, samples, candle_map = [], [], {}, {}
     tick, slip = dec(profile.tick_size), dec(profile.slippage)
     fields = ("open", "low", "high", "close") if profile.path == "OLHC" else ("open", "high", "low", "close")
     aggregators={period:PartialBars(period) for period in sorted(native_timeframes)} if native_factory else {}
     for candle in candles:
         mark = marks[candle.time] if profile.market == "linear" and profile.mark_mode == "history" else candle
-        for field, offset in zip(fields, (0, 20*NS, 40*NS, 60*NS-1)):
+        for field, offset in zip(fields, (0, seconds*NS//3, 2*seconds*NS//3, seconds*NS-1)):
             timestamp = candle.time*NS + offset
             price = dec(getattr(candle, field))
             bid = (price*(1-slip)/tick).to_integral_value(rounding=ROUND_FLOOR)*tick
@@ -393,13 +401,13 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             quotes.append(QuoteTick(asset.id, Price(float(bid), asset.price_precision), Price(float(ask), asset.price_precision),
                                    Quantity(1_000_000_000, asset.size_precision), Quantity(1_000_000_000, asset.size_precision), timestamp, timestamp))
             samples[timestamp] = {"minute":candle.time, "price":price, "mark":dec(getattr(mark, field))}
-        ts = (candle.time+60)*NS-1
+        ts = (candle.time+seconds)*NS-1
         candle_map[ts] = candle
         if native_factory:
             for period,aggregator in aggregators.items():
                 primary,complete=aggregator.update(candle)
                 if complete:
-                    native_type=BarType.from_str(f"{asset.id}-{period}-MINUTE-LAST-EXTERNAL")
+                    native_type=external_bar_type(asset.id,period)
                     bars.append(Bar(native_type,*(Price(float(getattr(primary,k)),asset.price_precision) for k in ("open","high","low","close")),
                                     Quantity(float(primary.volume),asset.size_precision),ts,ts))
         else:
@@ -526,6 +534,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             peak = max(peak,equity)
             drawdown = max(drawdown,(peak-equity)/peak if peak else Decimal(0))
         return {"schema_version":1, "status":"completed", "profile":profile.snapshot(),
+            "execution_resolution_seconds":seconds,
             "engine":"nautilus_trader", "engine_version":"1.231.0", "metric_version":1,
             "strategy_format":"native" if native else "graph",
             "metrics":{"final_equity":str(final_equity), "net_pnl":str(final_equity-dec(profile.capital)),

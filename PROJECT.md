@@ -1,5 +1,18 @@
 # Trading Terminal product specification
 
+## Current authorized research-workspace extension
+
+The owner authorized a simpler card-first Research workspace with a retained Pro
+editor, reusable/updatable local history, explicit faster closed-bar backtests,
+longer-horizon strategy candidates and timeframe comparison on 2026-09-30.
+This extends section 23 without a product-version bump. Existing live features
+remain available in Pro; current work prioritizes backtests. Preserve accounting,
+native trust, immutable results and independent validation. See
+[ADR 0025](docs/adr/0025-research-resolution.md). Git checkpoints are authorized;
+merge, release and deployment remain separate owner decisions. Linear updates
+are not required for this work. Finish the current safe milestone and stop adding
+scope when account remaining usage falls below 10 percent.
+
 Product 0.5.1-dev was accepted through the owner-authorized conditional squash merge of PR #6. Product 0.6-dev is authorized for development, not accepted. Section 23 defines this extension; earlier behavior and immutable results remain supported.
 
 Current accepted product: 0.5 development build (`0.5-dev`). Sections 1–20 retain the historical 0.1–0.4 contracts; section 21 defines the 0.5 extension and supersedes their scope exclusions only for explicitly listed features. Stored results retain their original versioned execution assumptions. Owner manual acceptance permits the 0.5 merge with remaining UI/UX issues deferred; it does not retroactively establish unperformed automated native measurements. Telegram delivery remains unverified and outside acceptance. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.

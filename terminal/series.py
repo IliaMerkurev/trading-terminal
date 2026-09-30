@@ -26,10 +26,14 @@ class PartialBars:
     Every update is an observed minute CLOSE. Gaps reset the forming candle;
     an incomplete primary interval is not silently accepted as complete.
     """
-    def __init__(self, minutes=60, history_limit=None):
+    def __init__(self, minutes=60, history_limit=None, source_minutes=1):
         if minutes not in (1, 3, 5, 15, 30, 60, 120, 240, 360, 720, 1440):
             raise ValueError("Unsupported primary timeframe")
         self.minutes = minutes
+        if type(source_minutes) is not int or source_minutes < 1 or minutes % source_minutes:
+            raise ValueError('Source interval must divide the primary timeframe')
+        self.source_minutes = source_minutes
+        self.seconds = source_minutes * 60
         if history_limit is not None and (type(history_limit) is not int or history_limit < 1):
             raise ValueError("History limit must be positive")
         self.history_limit = history_limit
@@ -40,11 +44,11 @@ class PartialBars:
         self.gaps = []
 
     def update(self, bar):
-        if bar.time % 60 or (self.last_time is not None and bar.time <= self.last_time):
+        if bar.time % self.seconds or (self.last_time is not None and bar.time <= self.last_time):
             raise ValueError("Minute candles must be UTC-aligned and strictly increasing")
-        gap = self.last_time is not None and bar.time != self.last_time + 60
+        gap = self.last_time is not None and bar.time != self.last_time + self.seconds
         if gap:
-            self.gaps.append((self.last_time + 60, bar.time))
+            self.gaps.append((self.last_time + self.seconds, bar.time))
             if self.history_limit is not None:
                 self.gaps = self.gaps[-self.history_limit:]
         bucket = bar.time // (self.minutes * 60) * self.minutes * 60
@@ -58,7 +62,7 @@ class PartialBars:
             if self.count:
                 self.count += 1
         self.last_time = bar.time
-        complete = self.count == self.minutes
+        complete = self.count == self.minutes // self.source_minutes
         observed = self.current
         if complete:
             self.closed.append(observed)

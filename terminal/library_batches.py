@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 import json
 import uuid
+import math
 
 from terminal import benchmarks, library
 from terminal.data import canonical, digest, runtime_snapshot
@@ -34,6 +35,8 @@ class LibraryBatchManager(ExperimentManager):
         manifest = self.jobs.datasets.describe(dataset_id)
         self.jobs.datasets.check_profile(manifest, profile)
         validate_range([start,end], manifest['range'], 'Evaluation range')
+        if start%(profile.execution_minutes*60) or end%(profile.execution_minutes*60):
+            raise ValueError('Evaluation boundaries must align to execution candles')
         benchmarks.schedule(start,end,interval)
         runtime = runtime_snapshot(); rows = []; seen = set()
         for selection in selections:
@@ -44,13 +47,15 @@ class LibraryBatchManager(ExperimentManager):
             if key in seen:raise ValueError('Duplicate strategy/version/parameter/timeframe row')
             seen.add(key)
             entry = next(e for e in library.catalog() if e['id']==selection['entry_id'])
-            row_profile = Profile(**{**profile.snapshot(),'primary_minutes':selection['minutes'],
-                                     'version':prepared['profile']['version']}).snapshot()
             error = None
+            row_profile={**profile.snapshot(),'primary_minutes':selection['minutes'],'version':prepared['profile']['version']}
+            try:row_profile=Profile(**row_profile).snapshot()
+            except ValueError as exc:error=str(exc)
             if profile.market not in entry['markets']:error = 'Strategy does not support this market'
             elif prepared['kind']=='native':
                 report = native_preview(prepared['document'])
-                if not self.store.is_trusted(report['trust_sha256']):error = 'Explicit native trust required in the existing editor'
+                if profile.execution_minutes!=1:error = 'Native Python requires detailed M1 execution history'
+                elif not self.store.is_trusted(report['trust_sha256']):error = 'Explicit native trust required in the existing editor'
                 elif report['dependency_problems']:error = 'Reviewed native dependencies unavailable'
                 elif profile.position_management is not None or float(profile.stop_loss) or float(profile.take_profit):
                     error = 'Native strategies require their own protection semantics; graph position/stop/take policies are incompatible'
@@ -68,7 +73,7 @@ class LibraryBatchManager(ExperimentManager):
                 if spot_id is None:raise ValueError('No actual matching spot counterpart: benchmark N/A')
                 spot = self.jobs.datasets.describe(spot_id)
                 if spot['source'] != manifest['source']:raise ValueError('Spot counterpart source differs')
-                p = Profile(**{**profile.snapshot(),'version':1,'market':'spot','leverage':'1','primary_minutes':1,
+                p = Profile(**{**profile.snapshot(),'version':1,'market':'spot','leverage':'1','primary_minutes':profile.execution_minutes,
                                'stop_loss':'0','take_profit':'0','position_management':None}).snapshot()
                 document = dict(benchmark='passive',version=1,start=start,end=end,interval=schedule)
                 self.jobs.datasets.check_profile(spot,Profile(**p))
@@ -76,13 +81,28 @@ class LibraryBatchManager(ExperimentManager):
                 row.update(document=document,profile=p,dataset=self._dataset(spot),contract=frozen)
             except ValueError as exc:row['error']=str(exc)
             rows.append(row)
-        workload = sum((end-r['dataset']['range'][0])//60 for r in rows if not r['error'])
-        if workload > MAX_MINUTE_RUNS:raise ValueError('Batch exceeds 2,000,000 modeled minutes including warmup')
+        workload = sum((end-r['dataset']['range'][0])//(r['profile'].get('execution_minutes',1)*60) for r in rows if not r['error'])
+        if workload > MAX_MINUTE_RUNS:raise ValueError('Batch exceeds 2,000,000 modeled candles including warmup')
         value = dict(version=1,metric_version=benchmarks.VERSION,rows=rows,start=start,end=end,runtime=runtime,
                      modeled_minutes=workload,capital=profile.capital,market=profile.market,symbol=profile.symbol,
                      inputs=dict(selections=selections,dataset_id=dataset_id,profile=profile.snapshot(),start=start,end=end,
                                  interval=interval,spot_dataset_id=spot_dataset_id))
         return json.loads(canonical({**value,'contract_sha256':digest(value)}))
+
+    def warmup(self,selections,dataset_id):
+        if not isinstance(selections,list) or not 1<=len(selections)<=MAX_ROWS:
+            raise ValueError('Select 1–12 strategy/timeframe rows')
+        manifest=self.jobs.datasets.describe(dataset_id)
+        required=manifest['range'][0];alignment=manifest.get('interval_seconds',60)
+        for selection in selections:
+            prepared=library.prepare(**selection)
+            step=selection['minutes']*60
+            required=max(required,((manifest['range'][0]+step-1)//step+prepared['contract']['warmup_bars'])*step)
+            alignment=math.lcm(alignment,step)
+        start=(required+alignment-1)//alignment*alignment
+        return {'start':start,'end':manifest['range'][1],'history_start':manifest['range'][0],
+                'available':start<manifest['range'][1],
+                'note':'Suggested boundary reserves complete preceding indicator bars. Full hash and gap checks run during preparation.'}
 
     @staticmethod
     def _dataset(manifest):
@@ -196,7 +216,7 @@ class LibraryBatchManager(ExperimentManager):
                 if row['error'] or row['dataset']['id']!=dataset_id:continue
                 if not any(frozen['start']<=b.time<frozen['end'] for b in bars):raise ValueError('Evaluation history is empty')
                 if row['kind']=='benchmark':continue
-                aggregate=PartialBars(row['profile']['primary_minutes'],history_limit=row['contract']['warmup_bars'])
+                aggregate=PartialBars(row['profile']['primary_minutes'],history_limit=row['contract']['warmup_bars'],source_minutes=row['profile'].get('execution_minutes',1))
                 for bar in bars:
                     if active['stop'].is_set():return
                     if bar.time>=frozen['start']:break
