@@ -360,3 +360,20 @@ actual period, capital, costs, variants and passive comparisons before start.
 Saved comparisons and individual reports remain reopenable without execution.
 Later-period verification has its own date/data controls and uses the original
 candidate's frozen settings. See [ADR 0027](docs/adr/0027-task-oriented-testing-workspace.md).
+
+
+### Owner-authorized catalog batch comparison — 2026-09-30
+
+Provide a Test all strategies action that forms the full catalog by a shared,
+explicitly selected timeframe set. Default to 4h and 1d. Search/family filters
+must not silently reduce the catalog batch. Each strategy retains its current
+indicator parameters across timeframes; all rows share history, evaluation
+dates, initial capital, sizing, costs and execution settings. Preserve model
+versions and native trust; unsupported rows remain visible with reasons.
+Persist immutable inputs, row states and results in the existing local database.
+Saved comparisons support filters and bidirectional metric sorting within
+compatible execution cohorts. This finite matrix is not a parameter optimizer.
+At most 96 strategy/timeframe rows plus two passive alternatives are admitted,
+with the existing 2,000,000-source-candle workload cap. No product-version bump,
+database migration, parallel execution or automatic resume is required.
+See [ADR 0028](docs/adr/0028-catalog-batch-comparison.md).

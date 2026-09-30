@@ -114,4 +114,53 @@ class LibraryBatchTests(unittest.TestCase):
         self.assertIsNone(self.jobs.reservation)
 
 
+    def test_all_catalog_matrix_shared_contract_and_durable_unavailable_rows(self):
+        from terminal.library import catalog, MAX_LIBRARY_ROWS
+        entries=catalog()
+        params=copy.deepcopy(self.params)
+        params['selections']=[dict(entry_id=e['id'],version=e['version'],minutes=m,parameters={}) for e in entries for m in (1,3)]
+        # Small independent history needs a later window for all default warmups.
+        bars=[Candle(i*60,100,101,99,100,100) for i in range(600)]
+        data=self.jobs.datasets.save('spot','BTCUSDT',0,36000,bars,[],{},metadata={},provenance=[])
+        params.update(dataset_id=data['id'],start=18000,end=36000)
+        self.assertEqual(self.manager.warmup(params['selections'],data['id'])['start'],10080)
+        frozen=self.manager.prepare(**params)
+        self.assertEqual(len(frozen['rows']),16)
+        self.assertEqual(sum(bool(r['error']) for r in frozen['rows']),2)
+        for row in frozen['rows']:
+            self.assertEqual(row['dataset']['id'],data['id'])
+            self.assertEqual(row['profile']['capital'],'180')
+            self.assertEqual(row['profile']['fee_rate'],params['profile']['fee_rate'])
+        ident='a'*32
+        self.manager._save(ident,frozen,'frozen')
+        self.manager.close()
+        self.manager=LibraryBatchManager(self.jobs)
+        reopened=self.manager.get(ident)
+        self.assertEqual(reopened['snapshot']['inputs'],params)
+        self.assertEqual(sum(r['status']=='incompatible' for r in reopened['rows']),2)
+        self.assertTrue(all(r['metrics'] is None for r in reopened['rows']))
+        too_many=[params['selections'][0]]*(MAX_LIBRARY_ROWS+1)
+        with self.assertRaisesRegex(ValueError,'1–96'):
+            self.manager.preview(**{**params,'selections':too_many})
+        with self.assertRaisesRegex(ValueError,'1–96'):
+            self.manager.warmup(too_many,data['id'])
+
+
+    def test_optional_native_source_failure_does_not_abort_graph_matrix(self):
+        from terminal import library
+        actual=library.prepare
+        params=copy.deepcopy(self.params)
+        params['selections'].append(dict(entry_id='native-ema-cross',version=2,minutes=1,parameters={}))
+        def unavailable(**selection):
+            if selection['entry_id']=='native-ema-cross':raise ValueError('Reviewed native dependency source changed')
+            return actual(**selection)
+        with patch('terminal.library_batches.library.prepare',side_effect=unavailable):
+            self.assertTrue(self.manager.warmup(params['selections'],params['dataset_id'])['available'])
+            frozen=self.manager.prepare(**params)
+            self.assertFalse(frozen['rows'][0]['error'])
+            self.assertIn('Native preparation unavailable',frozen['rows'][2]['error'])
+            self.assertIsNone(frozen['rows'][2]['document'])
+            self.manager._unchanged(frozen)
+
+
 if __name__=='__main__':unittest.main()

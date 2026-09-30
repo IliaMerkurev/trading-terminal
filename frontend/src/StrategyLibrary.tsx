@@ -4,6 +4,7 @@ import LibraryResearch,{canonical,formatLibraryMetric as metric} from './Library
 import type {Profile} from './model';
 import {familyName,timeframe} from './research';
 
+type TestRequest={id:string|null;request:number;frames?:number[]};
 type Entry={id:string;version:number;name:string;family:string;kind:string;source_url:string;license:string;
  markets:string[];directions:string[];source_default_minutes:number|null;author_recommended_minutes:number|null;
  author:string;availability:string;local_default_minutes:number;timeframes:number[];timeframe_evidence:string;adaptation:string;review:string;
@@ -17,10 +18,13 @@ const descriptions:Record<string,string>={
  'rsi-threshold':'Buy oversold conditions and exit after strength returns. Exposed in persistent downtrends.',
  'native-ema-cross':'Original Python trend strategy with long and short positions. Customize to review and explicitly trust Python before execution.'
 };
-function Card({entry,onCopy,onSelection,report,stale,market,hidden,onOpenRun,onTest,testRequest}:{entry:Entry;onTest:()=>void;testRequest?:{id:string;request:number};onCopy:(id:string)=>Promise<void>;onSelection?:(id:string,value:any)=>void;report:any;stale:boolean;market?:string;hidden:boolean;onOpenRun:(id:string)=>void}){
+function Card({entry,onCopy,onSelection,report,stale,market,hidden,onOpenRun,onTest,testRequest}:{entry:Entry;onTest:()=>void;testRequest?:TestRequest;onCopy:(id:string)=>Promise<void>;onSelection?:(id:string,value:any)=>void;report:any;stale:boolean;market?:string;hidden:boolean;onOpenRun:(id:string)=>void}){
  const [minutes,setMinutes]=useState(entry.local_default_minutes),[compare,setCompare]=useState<number[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [included,setIncluded]=useState(false);
- useEffect(()=>{if(testRequest)setIncluded(testRequest.id===entry.id);},[testRequest]);
+ useEffect(()=>{if(!testRequest)return;
+  if(testRequest.id===null){const frames=testRequest.frames??[];setIncluded(frames.length>0);if(frames.length){setMinutes(frames[0]);setCompare(frames.slice(1));}}
+  else setIncluded(testRequest.id===entry.id);
+ },[testRequest]);
  const [parameters,setParameters]=useState<Record<string,string>>(Object.fromEntries(Object.entries(entry.parameters).map(([k,v])=>[k,String(v.default)])));
  const values=Object.fromEntries(Object.entries(parameters).map(([k,v])=>[k,entry.parameters[k].type==='decimal'?v:Number(v)]));
  const frames=[...new Set([minutes,...compare])].sort((a,b)=>a-b);
@@ -47,7 +51,7 @@ function Card({entry,onCopy,onSelection,report,stale,market,hidden,onOpenRun,onT
  </article>;
 }
 export default function StrategyLibrary({onCopy,datasets=[],profile,onProfile,onActive=()=>{},onOpenRun=()=>{},onHistory=()=>{},preferredDataset,view='catalog',onSaved=()=>{},onCatalog=()=>{},onRunHistory=()=>{},suspendSetup=false}:{suspendSetup?:boolean;view?:'catalog'|'saved';onSaved?:()=>void;onCatalog?:()=>void;onRunHistory?:()=>void;onCopy:(id:string)=>Promise<void>;datasets?:any[];profile?:Profile;onProfile?:(p:Profile)=>void;onActive?:(id:string|null)=>void;onOpenRun?:(id:string)=>void;onHistory?:()=>void;preferredDataset?:{id:string;request:number}}){
- const [testRequest,setTestRequest]=useState<{id:string;request:number}>();
+ const [testRequest,setTestRequest]=useState<TestRequest>();
  function test(id:string){setTestRequest(v=>({id,request:(v?.request??0)+1}));}
  const [entries,setEntries]=useState<Entry[]|null>(null),[error,setError]=useState(''),[search,setSearch]=useState(''),[family,setFamily]=useState('');
  const [selections,setSelections]=useState<Record<string,any[]>>({}),[report,setReport]=useState<any>(null),[stale,setStale]=useState(false);
@@ -55,10 +59,15 @@ export default function StrategyLibrary({onCopy,datasets=[],profile,onProfile,on
  const receive=useCallback((value:any,changed:boolean)=>{setReport(value);setStale(changed);},[]);
  useEffect(()=>{let current=true;api<Entry[]>('library_catalog').then(v=>{if(current)setEntries(Array.isArray(v)?v:[]);}).catch(e=>{if(current)setError(String(e));});return()=>{current=false;};},[]);
  const selected=Object.values(selections).flat();
+ const batchFrames=entries?.[0]?.timeframes.filter(m=>entries.every(e=>e.timeframes.includes(m)))??[];
+ const [lastBatchFrames,setLastBatchFrames]=useState([240,1440]);
+ function batch(){setTestRequest(v=>({id:null,request:(v?.request??0)+1,frames:lastBatchFrames.filter(m=>batchFrames.includes(m))}));}
+ function changeBatchFrame(m:number){const frames=(testRequest?.frames??[]).includes(m)?(testRequest?.frames??[]).filter(v=>v!==m):[...(testRequest?.frames??[]),m].sort((a,b)=>a-b);setLastBatchFrames(frames);setTestRequest(v=>v?{...v,frames}:v);}
+ const batchControls=testRequest?.id===null?<fieldset className="batch-timeframes"><legend>Batch timeframes · all {entries?.length??0} strategies</legend><p>One shared history, period, capital, sizing and cost profile. Each strategy keeps its current card parameters across timeframes. Incompatible rows remain visible in the saved comparison.</p><div>{batchFrames.map(m=><label key={m}><input type="checkbox" aria-label={`Batch timeframe ${timeframe(m)}`} checked={testRequest.frames?.includes(m)??false} onChange={()=>changeBatchFrame(m)}/>{timeframe(m)}</label>)}</div>{!testRequest.frames?.length&&<p role="alert">Choose at least one timeframe.</p>}</fieldset>:null;
  const visible=(entry:Entry)=>(!family||entry.family===family)&&`${entry.name} ${familyName(entry.family)}`.toLowerCase().includes(search.toLowerCase());
- return <section className={`content research-studio ${view==='saved'?'saved-studio':''}`}><div className="studio-heading" hidden={view==='saved'}><div><h1>Test a strategy</h1><p>Choose an idea, use saved history, then compare the results.</p></div><div className="studio-stats"><strong>{entries?.length??'—'}</strong><span>reviewed templates<br/>your results, saved locally</span></div></div>
+ return <section className={`content research-studio ${view==='saved'?'saved-studio':''}`}><div className="studio-heading" hidden={view==='saved'}><div><h1>Test a strategy</h1><p>Choose an idea, use saved history, then compare the results.</p></div><div className="studio-stats">{profile&&<button className="primary" disabled={!entries?.length} onClick={batch}>Test all strategies</button>}<strong>{entries?.length??'—'}</strong><span>reviewed templates<br/>your results, saved locally</span></div></div>
   <div className="studio-filterbar" hidden={view==='saved'}><label className="strategy-search"><span>⌕</span><input aria-label="Search strategies" placeholder="Search strategies…" value={search} onChange={e=>setSearch(e.target.value)}/></label><div className="family-filters"><button aria-pressed={!family} onClick={()=>setFamily('')}>All strategies</button>{[...new Set(entries?.map(e=>e.family)??[])].map(f=><button key={f} aria-pressed={family===f} onClick={()=>setFamily(f)}>{familyName(f)}</button>)}</div></div>
   {error&&<p role="alert">{error}</p>}{!entries&&!error&&<p role="status">Loading library…</p>}
-  {view==='saved'&&<div className="studio-heading"><div><h1>Saved tests</h1><p>Reopen comparisons and reports without running them again.</p></div><div className="saved-actions"><button onClick={onRunHistory}>Individual run reports</button><button className="primary" onClick={onCatalog}>New test</button></div></div>}<div className="studio-body"><div className="strategy-grid" hidden={view==='saved'}>{entries?.map(entry=><Card key={`${entry.id}:${entry.version}`} entry={entry} onTest={()=>test(entry.id)} testRequest={testRequest} onCopy={onCopy} onSelection={profile?update:undefined} report={report} stale={stale} market={profile?.market} hidden={!visible(entry)} onOpenRun={onOpenRun}/>)}{entries&&!entries.some(visible)&&<p>No strategies match this search.</p>}</div>{profile&&<LibraryResearch suspendSetup={suspendSetup} setupRequest={testRequest?.request??0} view={view} onSaved={onSaved} catalog={entries??[]} selections={selected} datasets={datasets} profile={profile} onProfile={onProfile} onHistory={onHistory} preferredDataset={preferredDataset} onActive={onActive} onOpenRun={onOpenRun} onReport={receive}/>}</div><p className="research-footnote">Strategies are research hypotheses. Saved performance includes configured costs; past returns do not establish future returns.</p>
+  {view==='saved'&&<div className="studio-heading"><div><h1>Saved tests</h1><p>Reopen comparisons and reports without running them again.</p></div><div className="saved-actions"><button onClick={onRunHistory}>Individual run reports</button><button className="primary" onClick={onCatalog}>New test</button></div></div>}<div className="studio-body"><div className="strategy-grid" hidden={view==='saved'}>{entries?.map(entry=><Card key={`${entry.id}:${entry.version}`} entry={entry} onTest={()=>test(entry.id)} testRequest={testRequest} onCopy={onCopy} onSelection={profile?update:undefined} report={report} stale={stale} market={profile?.market} hidden={!visible(entry)} onOpenRun={onOpenRun}/>)}{entries&&!entries.some(visible)&&<p>No strategies match this search.</p>}</div>{profile&&<LibraryResearch batchControls={batchControls} suspendSetup={suspendSetup} setupRequest={testRequest?.request??0} view={view} onSaved={onSaved} catalog={entries??[]} selections={selected} datasets={datasets} profile={profile} onProfile={onProfile} onHistory={onHistory} preferredDataset={preferredDataset} onActive={onActive} onOpenRun={onOpenRun} onReport={receive}/>}</div><p className="research-footnote">Strategies are research hypotheses. Saved performance includes configured costs; past returns do not establish future returns.</p>
  </section>;
 }

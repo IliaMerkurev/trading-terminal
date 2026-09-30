@@ -155,3 +155,12 @@ it('keeps a newly chosen resolution and reserves warmup on repeated history use'
  await waitFor(()=>expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T16:00'));
  expect(api).toHaveBeenLastCalledWith('library_warmup',{selections:props.selections,dataset_id:'four-hour'});
 });
+
+
+it('sorts both directions within matching models while losses and unavailable results remain visible',()=>{
+ const spec=(version:number)=>({profile:{...defaultProfile,version},dataset:{id:'same'}});
+ const report={snapshot:{rows:[spec(1),spec(1),spec(1),spec(2)]},rows:[{ordinal:0,metrics:{net_pnl:-5}},{ordinal:1,metrics:{net_pnl:2}},{ordinal:2,metrics:null},{ordinal:3,metrics:{net_pnl:100}}]};
+ expect(sortedLibraryRows(report,'net_pnl','desc').map(r=>r.ordinal)).toEqual([1,0,2,3]);
+ expect(sortedLibraryRows(report,'net_pnl','asc').map(r=>r.ordinal)).toEqual([0,1,2,3]);
+ expect(report.rows.map(r=>r.ordinal)).toEqual([0,1,2,3]);
+});

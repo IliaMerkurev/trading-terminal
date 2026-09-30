@@ -9,6 +9,8 @@ from terminal.graph import validate_graph
 from terminal.native import preview
 from terminal.profile import Profile, dec
 
+MAX_LIBRARY_ROWS = 96
+
 TIMEFRAMES = [1, 3, 5, 15, 30, 60, 120, 240, 360, 720, 1440]
 NAUTILUS_COMMIT = '27a8e54e7ac3c57d6cbf8891f0283dfbaee97317'
 LEAN_COMMIT = '985ef30ad3ac774218c5ac516b4cb0aa2655730f'

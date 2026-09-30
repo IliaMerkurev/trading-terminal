@@ -10,7 +10,8 @@ visual editor, native source trust, parameter experiments and existing live
 features. Its draft and profile remain independent from Research settings.
 
 Each card has a main timeframe and explicit additional comparison timeframes.
-One batch contains at most 12 strategy/timeframe selections, followed by two
+The original checkpoint allowed 12 strategy/timeframe selections;
+[ADR 0028](0028-catalog-batch-comparison.md) raises this to 96, followed by two
 passive alternatives. Parameters and reviewed source details are expandable.
 Metrics come from saved runs; modified inputs label old metrics as prior results.
 History preparation exposes actual execution resolution separately from strategy

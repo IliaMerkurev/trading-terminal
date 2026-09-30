@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 import uuid
 import math
+from importlib.metadata import PackageNotFoundError
 
 from terminal import benchmarks, library
 from terminal.data import canonical, digest, runtime_snapshot
@@ -12,7 +13,7 @@ from terminal.profile import Profile
 from terminal.series import PartialBars
 from terminal.storage import identifier
 
-MAX_ROWS = 12
+MAX_ROWS = library.MAX_LIBRARY_ROWS
 
 
 class LibraryBatchManager(ExperimentManager):
@@ -29,7 +30,7 @@ class LibraryBatchManager(ExperimentManager):
 
     def prepare(self, selections, dataset_id, profile, start, end, interval, spot_dataset_id):
         if not isinstance(selections, list) or not 1 <= len(selections) <= MAX_ROWS:
-            raise ValueError('Select 1–12 explicit strategy/timeframe rows')
+            raise ValueError(f'Select 1–{MAX_ROWS} explicit strategy/timeframe rows')
         profile = Profile(**profile)
         if profile.evaluation != 'closed':raise ValueError('Library research requires confirmed bars')
         manifest = self.jobs.datasets.describe(dataset_id)
@@ -42,7 +43,20 @@ class LibraryBatchManager(ExperimentManager):
         for selection in selections:
             if not isinstance(selection,dict) or set(selection) != {'entry_id','version','minutes','parameters'}:
                 raise ValueError('Invalid library selection fields')
-            prepared = library.for_window(library.prepare(**selection),start)
+            try:
+                prepared = library.for_window(library.prepare(**selection),start)
+            except (ValueError,OSError,PackageNotFoundError) as exc:
+                entry=next((e for e in library.catalog() if e['id']==selection.get('entry_id') and e['version']==selection.get('version')),None)
+                if entry is None or entry['kind']!='Native':raise
+                # A missing/changed optional native source cannot hide graph results.
+                key=digest(selection)
+                if key in seen:raise ValueError('Duplicate strategy/version/parameter/timeframe row')
+                seen.add(key)
+                rows.append(dict(kind='native',name=entry['name'],selection=selection,contract=None,document=None,
+                    profile={**profile.snapshot(),'primary_minutes':selection['minutes']},dataset=self._dataset(manifest),
+                    error=f'Native preparation unavailable: {exc}',source_default_minutes=entry['source_default_minutes'],
+                    author_recommended_minutes=entry['author_recommended_minutes']))
+                continue
             key = digest(prepared['contract'])
             if key in seen:raise ValueError('Duplicate strategy/version/parameter/timeframe row')
             seen.add(key)
@@ -91,11 +105,15 @@ class LibraryBatchManager(ExperimentManager):
 
     def warmup(self,selections,dataset_id):
         if not isinstance(selections,list) or not 1<=len(selections)<=MAX_ROWS:
-            raise ValueError('Select 1–12 strategy/timeframe rows')
+            raise ValueError(f'Select 1–{MAX_ROWS} strategy/timeframe rows')
         manifest=self.jobs.datasets.describe(dataset_id)
         required=manifest['range'][0];alignment=manifest.get('interval_seconds',60)
         for selection in selections:
-            prepared=library.prepare(**selection)
+            try:prepared=library.prepare(**selection)
+            except (ValueError,OSError,PackageNotFoundError):
+                entry=next((e for e in library.catalog() if e['id']==selection.get('entry_id') and e['version']==selection.get('version')),None)
+                if entry is None or entry['kind']!='Native':raise
+                continue  # Preview retains this unavailable row and its reason.
             step=selection['minutes']*60
             required=max(required,((manifest['range'][0]+step-1)//step+prepared['contract']['warmup_bars'])*step)
             alignment=math.lcm(alignment,step)

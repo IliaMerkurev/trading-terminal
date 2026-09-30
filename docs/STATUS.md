@@ -1,5 +1,46 @@
 # Implementation status
 
+## Catalog-wide batch comparison — verified, owner review pending
+
+**Test all strategies** opens every catalog strategy at a common selected set of
+timeframes, default 4h and 1d, regardless of search/family filters. All variants
+share history, evaluation dates, initial capital, sizing and costs. Each
+strategy's current indicator parameters stay fixed across timeframes. Preview
+counts ready and unavailable rows separately. Results and frozen inputs use the
+existing SQLite batch/run storage; no migration or new dependency is required.
+Saved tests adds a shared-settings summary, comparison groups and ascending or
+descending metric order. Losses and incompatible rows remain visible.
+
+Windows verification on 2026-09-30:
+
+- `node node_modules/vitest/vitest.mjs run frontend/src/StrategyLibrary.test.tsx frontend/src/LibraryResearch.test.tsx frontend/src/UserJourneys.test.tsx frontend/src/App.test.tsx`:
+  **29 passed in 4.60s**, including all seven cards despite filters, shared
+  timeframe changes, retained parameters, both sort directions and prior flows.
+- `.venv/Scripts/python.exe -W ignore -m unittest tests.test_library_batches tests.test_library_validation tests.test_archives -q`:
+  **14 passed in 23.516s**. Covers durable all-catalog matrix contracts,
+  cancellation/resume, unavailable native preparation, archive ordinals 11/95
+  and rejected 96, saved metrics and later-period validation.
+- TypeScript/Vite passed. Review found the batch button inherited a hidden
+  stats container at narrow widths; corrected that CSS and rebuilt successfully.
+  Final locked offline Windows build passed in 3.57s, with verified pinned
+  Python/Nautilus runtime. Existing 738.82 kB bundle advisory remains.
+- Native batch selected seven strategies at 4h/daily, reused BTCUSDT spot H4
+  history, reserved a common 2024-02-26—2026-09-01 evaluation period, and reviewed
+  1,000 USDT / 0.10% fee / 0.05% slippage. Preview showed 16 rows, 14 ready and
+  2 unavailable. All twelve graph variants and both passive alternatives
+  completed. The two native rows remained incompatible with spot, with reasons;
+  final status was `completed_with_errors`, not sixteen successful tests.
+- Native Lowest first reordered losses correctly within execution-model groups.
+  The application was rebuilt/restarted and the same saved comparison reopened
+  with its metrics and original settings, without another test or download.
+
+Selection/archived strategy ordinal bounds are now 96; the 2,000,000 modeled
+source-candle budget is unchanged. All eleven timeframes at once may exceed that
+budget. Native trust, execution accounting, old results and holdout exclusion
+remain unchanged. Full regression and display-scaling sweeps were not repeated;
+native evidence used the ordinary wide window, not the narrow CSS breakpoint.
+See [ADR 0028](adr/0028-catalog-batch-comparison.md).
+
 ## Visible strategy test action — verified, owner review pending
 
 Every **Test this strategy** click opens an explicit backtest setup dialog,

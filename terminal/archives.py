@@ -13,6 +13,7 @@ import zipfile
 from terminal.data import canonical,digest,write_new,DatasetStore
 from terminal.graph import validate_graph
 from terminal.native import validate_native
+from terminal.library import MAX_LIBRARY_ROWS
 from terminal.profile import Profile,dec
 from terminal.storage import SERIES,identifier
 
@@ -65,7 +66,7 @@ def validate_snapshot(snapshot):
         if not isinstance(research,dict) or set(research)-{'experiment','library'}!={'window'}:raise ValueError('Invalid research provenance')
         if 'library' in research:
             origin=research['library']
-            if not isinstance(origin,dict) or set(origin)-{'phase','validation'}!={'batch_id','ordinal','contract','batch_sha256'} or type(origin['ordinal']) is not int or not 0<=origin['ordinal']<12:
+            if not isinstance(origin,dict) or set(origin)-{'phase','validation'}!={'batch_id','ordinal','contract','batch_sha256'} or type(origin['ordinal']) is not int or not 0<=origin['ordinal']<MAX_LIBRARY_ROWS:
                 raise ValueError('Invalid library provenance')
             if origin.get('phase','selection') not in ('selection','out_of_sample'):raise ValueError('Invalid library research phase')
             if origin.get('phase')=='out_of_sample':

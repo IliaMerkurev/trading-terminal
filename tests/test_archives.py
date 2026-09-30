@@ -17,6 +17,21 @@ from terminal.storage import RunStore
 
 
 class ArchiveTests(unittest.TestCase):
+    def test_library_ordinal_bound_accepts_large_batches_and_legacy_rows(self):
+        from terminal.archives import validate_snapshot
+        from terminal.library import MAX_LIBRARY_ROWS
+        snapshot=copy.deepcopy(self.store.get(self.run_id)['manifest'])
+        snapshot['research']={'window':{'start':600,'end':3600,'warmup_start':0},'library':{
+            'batch_id':'b'*32,'ordinal':11,'batch_sha256':'c'*64,
+            'contract':{'document_sha256':digest({'graph':snapshot['strategy'],'layout':{}})}}}
+        for ordinal in (11,MAX_LIBRARY_ROWS-1):
+            snapshot['research']['library']['ordinal']=ordinal
+            snapshot['snapshot_sha256']=digest({k:v for k,v in snapshot.items() if k!='snapshot_sha256'})
+            validate_snapshot(snapshot)
+        snapshot['research']['library']['ordinal']=MAX_LIBRARY_ROWS
+        snapshot['snapshot_sha256']=digest({k:v for k,v in snapshot.items() if k!='snapshot_sha256'})
+        with self.assertRaisesRegex(ValueError,'Invalid library provenance'):validate_snapshot(snapshot)
+
     def test_passive_benchmark_archive_preserves_contract_and_result(self):
         from terminal.benchmarks import validate_document,run
         document={'benchmark':'passive','version':1,'start':0,'end':3600,'interval':'once'}

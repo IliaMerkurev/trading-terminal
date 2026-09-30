@@ -20,13 +20,34 @@ experiments and live/replay tools remain under **More tools**.
    new immutable snapshot; earlier runs retain their data.
 4. Review costs and the suggested period, which reserves preceding warmup.
    Choose **Review test**, inspect dates, capital, costs and compatibility, then
-   **Start N tests**. Up to 12 strategy/timeframe tests run sequentially alongside
+   **Start N tests**. Up to 96 strategy/timeframe tests run sequentially alongside
    Buy & Hold and DCA. The app opens **Saved tests** for progress and results.
 5. Compare returns, drawdown, positions, costs and passive alternatives. Open a
    row's report or compare equity. **Cancel remaining tests** retains completed
    work; resuming pending rows is explicit. **Individual run reports** includes
    custom and imported runs. Saved results retain their original settings when
    you change a new test's inputs.
+
+**Test all strategies** opens a batch with every catalog strategy at 4h and 1d.
+Change **Batch timeframes** to compare other intervals. Search and family filters
+do not exclude strategies from this action. Capital, sizing, costs, source history
+and evaluation dates are shared; current card indicator parameters stay fixed
+across each strategy's timeframes. Review lists ready and unavailable rows,
+including reasons, before **Start N tests** starts only the ready rows.
+
+The whole comparison is saved automatically in the local database. Reopen it in
+**Saved tests**; **Saved comparison settings** shows its original contract.
+Choose **Sort comparable results**, **Highest first / Lowest first**, and the
+family/timeframe/state filters. Comparison groups preserve different execution
+models rather than mixing them into one ranking. Negative returns and unavailable
+metrics remain visible. A completed batch can include incompatible rows without
+claiming they executed. Native templates still need compatible markets/history
+and explicit trust in the editor.
+
+The batch is bounded to 96 strategy/timeframe rows and 2,000,000 modeled source
+candles including warmup and benchmarks. Selecting every minute-to-daily interval
+at once can exceed that workload. Choose a smaller timeframe set or a suitable
+coarser history interval; do not shorten required indicator warmup.
 
 **Customize strategy** creates an independent editable copy and opens the
 editor. Returning to the library keeps the card selection. Native Python still

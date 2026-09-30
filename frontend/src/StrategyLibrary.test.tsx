@@ -78,3 +78,23 @@ it('previews explicit timeframe variants from one selected card',async()=>{
  fireEvent.click(screen.getByRole('button',{name:'Review test'}));
  await vi.waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({selections:[{entry_id:entry.id,version:1,minutes:240,parameters:{period:14}},{entry_id:entry.id,version:1,minutes:1440,parameters:{period:14}}]})));
 });
+
+
+it('batches every catalog card despite filters with shared settings and fixed per-strategy parameters',async()=>{
+ const entries=Array.from({length:7},(_,i)=>({...entry,id:`idea-${i}`,name:`Idea ${i}`,timeframes:[60,240,1440]}));
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?entries:command==='library_batches'?[]:command==='library_warmup'?{start:86400,end:172800,available:true}:{});
+ render(<StrategyLibrary onCopy={vi.fn()} profile={{...defaultProfile,execution_minutes:60}} datasets={[{id:'history',market:'spot',symbol:'BTCUSDT',interval_seconds:3600,range:[0,172800],source:'Synthetic'}]}/>);
+ await screen.findByRole('article',{name:'Idea 0'});
+ fireEvent.change(screen.getByLabelText('Idea 0 period'),{target:{value:'7'}});
+ fireEvent.change(screen.getByLabelText('Search strategies'),{target:{value:'Idea 0'}});
+ fireEvent.click(screen.getByRole('button',{name:'Test all strategies'}));
+ const dialog=screen.getByRole('dialog',{name:'Set up backtest'});
+ expect(within(dialog).getAllByRole('listitem')).toHaveLength(14);
+ fireEvent.click(screen.getByLabelText('Batch timeframe 1h'));
+ expect(within(dialog).getAllByRole('listitem')).toHaveLength(21);
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'history'}});
+ await vi.waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Review test'}));
+ await vi.waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({dataset_id:'history',start:86400,end:172800,profile:expect.objectContaining({capital:defaultProfile.capital,fee_rate:defaultProfile.fee_rate}),selections:entries.flatMap((e,i)=>[60,240,1440].map(minutes=>({entry_id:e.id,version:1,minutes,parameters:{period:i===0?7:14}})))})));
+ expect(vi.mocked(api).mock.calls.some(([command])=>/start|trust|library_copy/.test(command))).toBe(false);
+});
