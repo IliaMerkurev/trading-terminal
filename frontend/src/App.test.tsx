@@ -1,5 +1,5 @@
 import { describe,it,expect,vi } from 'vitest';
-import { render,screen,fireEvent,waitFor } from '@testing-library/react';
+import { render,screen,fireEvent,waitFor,act } from '@testing-library/react';
 import App from './App';
 import { api } from './api';
 import {invoke} from '@tauri-apps/api/core';
@@ -10,8 +10,22 @@ vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:a
 vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn(async()=>{})}));
 vi.mock('@tauri-apps/api/app',()=>({getVersion:vi.fn(async()=>'0.3.0-dev')}));
 describe('research workspace',()=>{
+  it('opens Research first and preserves independent Pro drafts and research capital',async()=>{
+    vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'?{rows:[],next:null}:[]);
+    render(<App/>);
+    expect(await screen.findByText('Find a strategy worth testing.')).toBeTruthy();
+    expect(screen.queryByText('Graph workspace')).toBeNull();
+    expect(screen.queryByRole('button',{name:/Run backtest/})).toBeNull();
+    fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'2222'}});
+    fireEvent.click(screen.getByRole('button',{name:'Pro'}));
+    fireEvent.change(screen.getByLabelText('Strategy name'),{target:{value:'My working draft'}});
+    fireEvent.click(screen.getByRole('button',{name:'Research'}));
+    expect((screen.getByLabelText('Research capital') as HTMLInputElement).value).toBe('2222');
+    fireEvent.click(screen.getByRole('button',{name:'Pro'}));
+    expect((screen.getByLabelText('Strategy name') as HTMLInputElement).value).toBe('My working draft');
+  });
   it('captures physical undo before a canvas handler can stop propagation',async()=>{
-    render(<App/>);const canvas=await screen.findByText('Graph workspace');
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));const canvas=await screen.findByText('Graph workspace');
     fireEvent.click(screen.getByText('Add node',{selector:'button'}));
     expect((screen.getByText('Undo',{selector:'button'}) as HTMLButtonElement).disabled).toBe(false);
     canvas.addEventListener('keydown',event=>event.stopPropagation());
@@ -21,7 +35,7 @@ describe('research workspace',()=>{
     expect((screen.getByText('Undo',{selector:'button'}) as HTMLButtonElement).disabled).toBe(false);
   });
   it('saves a graph snapshot and exposes all required tabs',async()=>{
-    render(<App/>);
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));
     await screen.findByText('Graph workspace');
     await screen.findByText('RESEARCH 0.3-dev');
     fireEvent.change(screen.getByLabelText('Strategy name'),{target:{value:'Causal trend'}});
@@ -31,7 +45,7 @@ describe('research workspace',()=>{
     expect(screen.getByText('Results',{selector:'button'})).toBeTruthy();
   });
   it('does not grant native execution consent on selection or save',async()=>{
-    vi.mocked(api).mockClear();render(<App/>);
+    vi.mocked(api).mockClear();render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));
     fireEvent.click(screen.getByText('＋ Native Python'));
     expect(screen.getByLabelText('Python source preview')).toBeTruthy();
     fireEvent.click(screen.getByText('Save',{selector:'button'}));
@@ -47,7 +61,7 @@ describe('research workspace',()=>{
       if(command==='run_status')return {id:'active',status:'running',progress:{fraction:.2}};
       return {};
     });
-    render(<App/>);
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));
     fireEvent.click(screen.getByText('Backtest',{selector:'button'}));
     await waitFor(()=>expect(screen.getByLabelText('Prepared dataset').querySelectorAll('option').length).toBe(2));
     fireEvent.change(screen.getByLabelText('Prepared dataset'),{target:{value:'dataset'}});
@@ -82,7 +96,7 @@ it('loads Results beyond 100 saved runs, preserves rows on error, and retries wi
   if(command.startsWith('list_'))return [];
   return {};
  });
- const {container}=render(<App/>);
+ const {container}=render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));
  fireEvent.click(screen.getByText('Results',{selector:'button'}));
  await waitFor(()=>expect(container.querySelectorAll('.run-list button')).toHaveLength(50));
  fireEvent.click(screen.getByRole('button',{name:'Load older runs'}));
@@ -99,7 +113,7 @@ it('loads Results beyond 100 saved runs, preserves rows on error, and retries wi
 it('distinguishes initial Results loading from an empty history',async()=>{
  let finish!:(value:any)=>void;
  vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'?new Promise(resolve=>{finish=resolve;}):[]);
- render(<App/>);fireEvent.click(screen.getByText('Results',{selector:'button'}));
+ render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));fireEvent.click(screen.getByText('Results',{selector:'button'}));
  expect(screen.getByText('Loading run history…')).toBeTruthy();
  expect(screen.queryByText('No saved runs.')).toBeNull();
  finish({rows:[],next:null});
@@ -116,11 +130,29 @@ it('prompts and cancels background replay before desktop exit',async()=>{
   if(command.startsWith('list_'))return [];
   return {};
  });
- render(<App/>);await screen.findByText('Graph workspace');
+ render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));await screen.findByText('Graph workspace');
  windowMock.close!({preventDefault:vi.fn()});
  fireEvent.click(await screen.findByText('Cancel run and exit'));
  await waitFor(()=>expect(invoke).toHaveBeenCalledWith('close_application'));
  expect(api).toHaveBeenCalledWith('replay_cancel',{replay_id:'replay'});
  const cancel=vi.mocked(api).mock.calls.findIndex(([c])=>c==='replay_cancel');
  expect(vi.mocked(api).mock.invocationCallOrder[cancel]).toBeLessThan(vi.mocked(invoke).mock.invocationCallOrder[0]);
+});
+
+it('does not let a delayed previous run replace the current trade table',async()=>{
+ const pending:Record<string,(value:any)=>void>={};
+ const rows=['A','B'].map(id=>({id,created_at:'2026-01-01',status:'completed',summary:{profile:{symbol:id},metrics:{net_pnl:0}}}));
+ vi.mocked(api).mockImplementation(async(command:string,p:any)=>{
+  if(command==='run_history')return {rows,next:null};
+  if(command==='result_page')return new Promise(resolve=>{pending[p.run_id]=resolve;});
+  if(command.startsWith('list_')||command==='library_catalog'||command==='library_batches')return [];
+  throw Error('Unneeded report detail in this fixture');
+ });
+ const {container}=render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Results'}));
+ await waitFor(()=>expect(container.querySelectorAll('.run-list button')).toHaveLength(2));
+ fireEvent.click(Array.from(container.querySelectorAll('.run-list button')).find(b=>b.querySelector('strong')?.textContent==='A')!);await waitFor(()=>expect(pending.A).toBeDefined());
+ fireEvent.click(Array.from(container.querySelectorAll('.run-list button')).find(b=>b.querySelector('strong')?.textContent==='B')!);await waitFor(()=>expect(pending.B).toBeDefined());
+ const trades=(reason:string)=>({rows:[{entry:{side:'buy',time_ns:1000000000,price:'10',quantity:'1'},exit:{price:'11',reason},net_pnl:'1'}],total:1,next:null});
+ await act(async()=>pending.B(trades('current-B')));expect(screen.getByText('current-B')).toBeTruthy();
+ await act(async()=>pending.A(trades('stale-A')));expect(screen.queryByText('stale-A')).toBeNull();expect(screen.getByText('current-B')).toBeTruthy();
 });

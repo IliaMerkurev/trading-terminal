@@ -129,7 +129,7 @@ class AppService:
                     self.store.trust_native(result["trust_sha256"])
                 result["trusted"]=self.store.is_trusted(result["trust_sha256"])
             elif command=="list_datasets":
-                result=[{k:m[k] for k in ("id","market","symbol","range","coverage","source")} for m in self.datasets.list()]
+                result=[{**{k:m[k] for k in ("id","market","symbol","range","coverage","source")},'interval_seconds':m.get('interval_seconds',60)} for m in self.datasets.list()]
             elif command=="dataset_profile": result=metadata_profile_fields(self.datasets.describe(p["dataset_id"]))
             elif command=='library_warmup': result=self.library_batches.warmup(**p)
             elif command in ("download_start","history_prepare"): result=self.downloads.start(**p)

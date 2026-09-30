@@ -2,6 +2,7 @@ import {it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,within} from '@testing-library/react';
 import StrategyLibrary from './StrategyLibrary';
 import {api} from './api';
+import {defaultProfile} from './model';
 vi.mock('./api',()=>({api:vi.fn()}));
 const entry={id:'rsi-threshold',version:1,name:'RSI threshold reversion',family:'mean_reversion',kind:'Adapted',source_url:'https://example.org/source',license:'Apache-2.0',markets:['spot'],directions:['long'],source_default_minutes:1440,author_recommended_minutes:null,local_default_minutes:1440,timeframes:[1,60,1440],timeframe_evidence:'Daily is a source default.',adaptation:'Long only.',review:'Static review.',compatibility:'Closed bars.',verification:'Integration pending.',parameters:{period:{type:'integer',default:14,min:2,max:1000}}};
 
@@ -26,4 +27,21 @@ it('shows copy errors without navigating or granting consent',async()=>{
  fireEvent.click(await screen.findByRole('button',{name:'Create my copy'}));
  expect((await screen.findByRole('alert')).textContent).toContain('Source review required');
  expect(onCopy).not.toHaveBeenCalled();
+});
+
+it('previews explicit timeframe variants from one selected card',async()=>{
+ vi.mocked(api).mockImplementation(async(command)=>{
+  if(command==='library_catalog')return [{...entry,timeframes:[60,240,1440]}];
+  if(command==='library_batches')return [];
+  if(command==='library_warmup')return {start:86400,end:172800,available:true};
+  if(command==='library_batch_preview')return {rows:[],modeled_minutes:0};
+  return {};
+ });
+ render(<StrategyLibrary onCopy={vi.fn()} profile={{...defaultProfile,execution_minutes:60}} datasets={[{id:'h1',market:'spot',symbol:'BTCUSDT',interval_seconds:3600,range:[0,172800],source:'Synthetic'}]}/>);
+ fireEvent.click(await screen.findByLabelText('Include '+entry.name));
+ fireEvent.click(screen.getByRole('button',{name:entry.name+' compare 4h'}));
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'h1'}});
+ await vi.waitFor(()=>expect((screen.getByRole('button',{name:'Preview batch'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Preview batch'}));
+ await vi.waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({selections:[{entry_id:entry.id,version:1,minutes:240,parameters:{period:14}},{entry_id:entry.id,version:1,minutes:1440,parameters:{period:14}}]})));
 });

@@ -1,17 +1,61 @@
 # Implementation status
 
-## Research workspace extension — in progress
+## Research workspace extension — implementation verified, owner review pending
 
-Work starts from merged main `a5bb197` on `codex/research-studio`. The prior 0.6
-implementation is already merged through PR #7; the older acceptance wording
-below is retained as historical evidence. Current work does not bump the version.
+Branch `codex/research-studio` starts from merged main `a5bb197` (0.6 PR #7).
+Product version remains 0.6-dev. Historical acceptance wording below is retained
+as checkpoint evidence; this extension is a separate owner review.
 
-The backend supports explicit coarse spot research and immutable incremental
-history reuse. Seven new targeted tests and the neighboring financial/data/native
-checks passed, with one corrected M1 download call-shape regression. See
-[ADR 0025](adr/0025-research-resolution.md) for contracts and exact evidence.
-Card-first UI, additional strategy candidates, integrated build and final
-acceptance are still in progress. No owner data or dependency was changed.
+Research opens with strategy cards, explicit timeframe comparisons, compact
+capital/cost controls, reusable History and saved Results. Pro retains its own
+draft/profile, editor, native trust, experiments and live/paper surfaces. New
+EMA trend and prior-bar Donchian breakout graphs bring the catalog to seven
+templates across four families. Source review and test evidence are separate
+from profitability; see [Research guide](RESEARCH.md),
+[ADR 0025](adr/0025-research-resolution.md),
+[ADR 0026](adr/0026-research-workspace-and-trend-candidates.md) and
+[all cohort results](library/VERIFICATION.md).
+
+Explicit native 5m/15m/1h/4h/daily spot history drives closed-bar graph backtests
+and passive alternatives through retained Nautilus accounting. Dataset coverage,
+bar paths, source resolution, fees/slippage and precision are recorded. Exact
+complete history reuse is offline; updates reuse checked immutable overlaps and
+download missing spans into new snapshots. Contradictory overlaps fail. Charts
+page by source candles and preserve recorded indicator/fill times. Native Python,
+perpetuals, intrabar evaluation, Position Management, live/paper and parameter
+experiments retain M1 where their coarse semantics have not been validated.
+
+Windows validation on 2026-09-30:
+
+- Focused new strategy/graph/coarse checks: 23 passed in 4.473s. The original
+  backend checkpoint's seven new tests and financial/data/native neighbors also
+  passed after preserving the legacy M1 download mock call shape.
+- Combined Python regression: **222 passed in 146.279s** using
+  `.venv/Scripts/python.exe -W ignore -m unittest discover -s tests -q`.
+- Frontend acceptance covers **77 tests across 20 files**. The combined run passed
+  76 and exposed a new test's incorrect history-sort assumption; selecting fixture
+  rows by ID corrected it, and all nine App tests passed in 3.75s. Earlier focused
+  checks exposed the intentional Donchian catalog count and unsupported test-only
+  `exact` query typing, both corrected. No assertions were weakened.
+- After a native-observed sticky-panel overlap correction and the saved-comparison
+  shortcut, all 11 affected Library/StrategyLibrary tests passed in 3.15s.
+- TypeScript/Vite and locked offline Windows/Rust builds passed. The latest Rust
+  build took 3.76s. The non-failing frontend chunk-size warning remains (729 kB).
+- Public BTCUSDT spot H4 history preparation: 5,844 candles in 3.59s; exact verified
+  offline reopening in 0.047s. Six graph strategies at 4h/daily plus two baselines
+  all completed over the common 918-day period in **87.72s**. Losing rows are
+  retained. Baseline reuse, saved checksums, chart intervals and equity comparison
+  passed. This is not an M1-equivalent fill model or a claimed M1 speedup ratio.
+- Compiled Windows inspection confirmed Research-first layout, seven cards,
+  History coverage, H4 selection and automatic prior warmup. Final saved-report
+  navigation checks are recorded below when completed. Component tests use mocked
+  IPC and do not substitute for owner acceptance.
+
+No dependency, product version, database schema or ordinary owner dataset was
+changed by this extension. No merge, binary release, Telegram investigation or
+new long-running live acceptance is included. Coarse execution changes path
+fidelity; it does not establish superior investment returns. Source commit dates
+postdate the measured market period; the cohort is retrospective integration.
 
 ## Product 0.6-dev — five-strategy candidate awaiting owner acceptance
 

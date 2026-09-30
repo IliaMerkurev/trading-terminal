@@ -57,3 +57,9 @@ runtime or original module is bundled.
 The historical-return direction graph independently adapts QuantConnect Lean
 HistoricalReturnsAlphaModel (Apache-2.0), with explicit long-only and insight
 lifecycle differences. Source provenance and the retained license are listed above.
+
+The independently authored EMA trend graph references QuantConnect Lean
+MovingAverageCrossAlgorithm, and the prior-bar Donchian breakout references its
+DonchianChannel indicator (QuantConnect Corporation, Apache-2.0). No Lean runtime
+or original source module is bundled. Exact source hashes, prior-bar adaptation
+and local research defaults are in docs/adr/0026-research-workspace-and-trend-candidates.md.

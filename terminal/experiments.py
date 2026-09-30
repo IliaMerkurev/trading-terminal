@@ -22,7 +22,7 @@ def parameter_fields(graph,profile=None):
     for node in graph['nodes']:
         for key,value in node['params'].items():
             fields.append({'key':f"node.{node['id']}.{key}",'label':f"{node['id']} / {key}",
-                'type':'integer' if key in ('period','fast','slow','signal') else 'number' if isinstance(value,(int,float)) else 'choice',
+                'type':'integer' if key in ('period','fast','slow','signal','upper_period','lower_period') else 'number' if isinstance(value,(int,float)) else 'choice',
                 'choices':['open','high','low','close','volume'] if key=='field' else ['>','>=','<','<=','==','!='] if key=='operator' else None,'current':value})
     fields.extend({'key':f'profile.{key}','label':label,'type':'fraction' if key in ('stop_loss','take_profit') else 'number','choices':None,'current':None}
         for key,label in [('stop_loss','Stop loss (fraction)'),('take_profit','Take profit (fraction)'),('allocation','Capital allocation'),('leverage','Leverage')])
@@ -93,6 +93,7 @@ def warmup_bars(graph):
     for ident in validate_graph(graph):
         node=nodes[ident];p=node['params'];prior=max((required[ref.split('.')[0]] for ref in node['inputs'].values()),default=0)
         own=p.get('period',p.get('slow',0)+p.get('signal',0))
+        if node['type']=='donchian':own=max(p['upper_period'],p['lower_period'])+1
         required[ident]=prior+own+(1 if node['type'].startswith('cross_') else 0)
     return max(required.values(),default=0)
 

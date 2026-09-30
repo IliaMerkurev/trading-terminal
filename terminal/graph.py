@@ -16,11 +16,12 @@ PORTS = {
     "price":{"value":NUMBER}, "constant":{"value":NUMBER}, "multiply":{"value":NUMBER},
     "roc":{"value":NUMBER}, "sma":{"value":NUMBER}, "ema":{"value":NUMBER}, "rsi":{"value":NUMBER},
     "bb":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
+    "donchian":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
     "macd":{"macd":NUMBER,"signal":NUMBER,"histogram":NUMBER}, "atr":{"value":NUMBER},
     **{k:{"value":BOOLEAN} for k in ("compare","cross_above","cross_below","and","or","not")},
     **{k:{"value":NUMBER} for k in POSITION_FIELDS},
 }
-INPUTS = {k:{} for k in ("price","constant","atr")}
+INPUTS = {k:{} for k in ("price","constant","atr","donchian")}
 INPUTS.update({k:{} for k in POSITION_FIELDS})
 INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd","roc")})
 INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below","multiply")})
@@ -31,6 +32,7 @@ PARAMS = {"price":{"field"}, "constant":{"value"}, "compare":{"operator"},
           **{k:{"period"} for k in ("sma","ema","rsi","atr","roc")},
           **{k:set() for k in ("cross_above","cross_below","and","or","not","multiply")}}
 PARAMS.update({k:set() for k in POSITION_FIELDS})
+PARAMS['donchian']={'upper_period','lower_period'}
 
 
 class GraphError(ValueError):
@@ -65,7 +67,7 @@ def validate_graph(graph,allow_incomplete=False):
         params = node["params"]
         if not isinstance(params,dict) or set(params) != PARAMS[kind]:
             raise GraphError(f"Invalid parameters for {kind}")
-        for key in ("period","fast","slow","signal"):
+        for key in ("period","fast","slow","signal","upper_period","lower_period"):
             if key in params and (type(params[key]) is not int or not 1 <= params[key] <= 10000):
                 raise GraphError("Indicator periods must be integers from 1 to 10000")
         if kind == "macd" and params["fast"] >= params["slow"]:
@@ -113,6 +115,7 @@ def validate_graph(graph,allow_incomplete=False):
 
 def indicator_for(node):
     p, kind = node["params"], node["type"]
+    if kind == 'donchian':return (deque(maxlen=p['upper_period']),deque(maxlen=p['lower_period']))
     if kind == "roc": return deque(maxlen=p["period"]+1)
     if kind == "sma": return SimpleMovingAverage(p["period"])
     if kind == "ema": return ExponentialMovingAverage(p["period"])
@@ -165,6 +168,15 @@ class GraphEvaluator:
                 result['value'] = self.position_context[kind]
             elif kind == "constant":
                 result["value"] = params["value"]
+            elif kind == 'donchian':
+                highs,lows=state
+                # Prior committed candles only. Current extrema must never move
+                # the breakout level being tested on this candle.
+                if len(highs)==params['upper_period'] and len(lows)==params['lower_period']:
+                    upper,lower=max(highs),min(lows)
+                    result={'upper':upper,'lower':lower,'middle':(upper+lower)/2}
+                highs.append(candle.high);lows.append(candle.low)
+                states[ident]=state
             elif kind == "roc":
                 source=inputs['source']
                 if source is not None:

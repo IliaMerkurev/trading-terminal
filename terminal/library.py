@@ -15,6 +15,30 @@ LEAN_COMMIT = '985ef30ad3ac774218c5ac516b4cb0aa2655730f'
 EMA_HASH = 'cfdc26b76d03df6cc481d47327d64dd6c23b356236cd061bb87c691b7918d13b'
 
 ENTRIES = [
+    dict(id='donchian-breakout',version=1,name='Donchian breakout',family='breakout',kind='Adapted',
+         author='Independent terminal strategy; indicator idea reviewed against QuantConnect Lean',license='Apache-2.0 (reference)',
+         source_url=f'https://github.com/QuantConnect/Lean/blob/{LEAN_COMMIT}/Indicators/DonchianChannel.cs',
+         source_commit=LEAN_COMMIT,source_version_date='2026-09-18T14:03:24Z',source_sha256='89c2e61ebfd08750f67243a4ca109d041d7bb779c30ec04b9db53c3a176d65b6',
+         source_default_minutes=None,author_recommended_minutes=None,local_default_minutes=1440,
+         timeframe_evidence='The source is an interval-independent indicator. Daily and 55/20 periods are local research defaults, not author recommendations.',
+         markets=['spot','linear'],directions=['long'],modes=['historical_closed'],timeframes=TIMEFRAMES,
+         parameters={'upper_period':dict(type='integer',default=55,min=2,max=1000),'lower_period':dict(type='integer',default=20,min=2,max=1000)},dependencies={},
+         adaptation='Independent long-only strategy: enter close above the highest high of preceding upper_period closed bars; exit below the lowest low of preceding lower_period closed bars. Deliberately excludes the current candle, unlike the referenced indicator. No pyramiding or shorts. Profile controls sizing and costs.',
+         review='Pinned Apache-2.0 indicator and license inspected statically. No copied or loaded external code, new dependency, network/file/process/credential access, dynamic execution or future indexing. State is a bounded pair of queues.',
+         compatibility='Closed primary bars. Strict breakout inequality and fully initialized prior window. False breakouts and giveback remain risks.',
+         availability='verified',verification='Independent costed trade, indicator and causality checks passed. BTCUSDT spot 4h/daily cohort over 918 days completed with Buy & Hold and DCA; losses retained. This verifies implementation, not future profitability.'),
+    dict(id='ema-trend',version=1,name='EMA trend filter',family='trend',kind='Adapted',
+         author='QuantConnect Corporation; independent terminal graph adaptation',license='Apache-2.0',
+         source_url=f'https://github.com/QuantConnect/Lean/blob/{LEAN_COMMIT}/Algorithm.Python/MovingAverageCrossAlgorithm.py',
+         source_commit=LEAN_COMMIT,source_version_date='2026-09-18T14:03:24Z',source_sha256='1db7156684722fd9ddeefdffa2a20d5c60bb02bca39cf973027378ea0c660edf',
+         source_default_minutes=1440,author_recommended_minutes=None,local_default_minutes=1440,
+         timeframe_evidence='Source uses daily SPY, EMA 15/30 and entry tolerance 0.00015. These are source defaults, not author recommendations.',
+         markets=['spot','linear'],directions=['long'],modes=['historical_closed'],timeframes=TIMEFRAMES,
+         parameters={'fast':dict(type='integer',default=15,min=1,max=1000),'slow':dict(type='integer',default=30,min=2,max=1000),'tolerance':dict(type='number',default=.00015,min=0,max=.5)},dependencies={'nautilus_trader':'1.231.0'},
+         adaptation='Long-only graph enters fast EMA > slow EMA * (1+tolerance), exits fast EMA < slow EMA. Retains asymmetric source thresholds; uses Nautilus initialization and profile sizing instead of the Lean SPY portfolio callback. A spot graph alternative to native EMA, not a new strategy family.',
+         review='Pinned Apache-2.0 source and license inspected statically. No external Python copied or executed. Existing typed nodes only; no additional dependency.',
+         compatibility='Confirmed primary bars and slow-period warmup. Can lag turning points and repeatedly lose in sideways markets.',
+         availability='verified',verification='Independent costed trade, indicator and causality checks passed. BTCUSDT spot 4h/daily cohort over 918 days completed with Buy & Hold and DCA; losses retained. This verifies implementation, not future profitability.'),
     dict(id='historical-return',version=1,name='Historical return direction',family='momentum',kind='Adapted',
          author='QuantConnect Corporation; independent terminal graph adaptation',license='Apache-2.0',
          source_url=f'https://github.com/QuantConnect/Lean/blob/{LEAN_COMMIT}/Algorithm.Framework/Alphas/HistoricalReturnsAlphaModel.py',
@@ -106,7 +130,26 @@ def prepare(entry_id, version, minutes, parameters):
         if not dec(field['min']) <= number <= dec(field['max']):
             raise ValueError(f'{name} outside reviewed bounds')
         values[name] = int(number) if field['type'] == 'integer' else str(number) if field['type'] == 'decimal' else float(number)
-    if entry_id == 'native-ema-cross':
+    if entry_id in ('ema-trend','donchian-breakout'):
+        nodes=[dict(id='close',type='price',inputs={},params={'field':'close'})]
+        if entry_id=='ema-trend':
+            if values['fast']>=values['slow']:raise ValueError('Fast EMA must be below slow EMA')
+            nodes.extend([dict(id='fast',type='ema',inputs={'source':'close.value'},params={'period':values['fast']}),
+                          dict(id='slow',type='ema',inputs={'source':'close.value'},params={'period':values['slow']}),
+                          dict(id='buffer',type='constant',inputs={},params={'value':1+values['tolerance']}),
+                          dict(id='threshold',type='multiply',inputs={'left':'slow.value','right':'buffer.value'},params={})])
+            entry_left,entry_right,exit_left,exit_right='fast.value','threshold.value','fast.value','slow.value'
+            warmup=values['slow']
+        else:
+            nodes.append(dict(id='channel',type='donchian',inputs={},params=values.copy()))
+            entry_left,entry_right,exit_left,exit_right='close.value','channel.upper','close.value','channel.lower'
+            warmup=max(values['upper_period'],values['lower_period'])+1
+        nodes.extend([dict(id='entry',type='compare',inputs={'left':entry_left,'right':entry_right},params={'operator':'>'}),
+                      dict(id='exit',type='compare',inputs={'left':exit_left,'right':exit_right},params={'operator':'<'})])
+        graph=dict(version=1,nodes=nodes,outputs=dict(entry_long='entry.value',exit_long='exit.value',entry_short=None,exit_short=None))
+        validate_graph(graph);document={'graph':graph,'layout':{}}
+        profile=Profile(primary_minutes=minutes,version=2).snapshot();kind='graph'
+    elif entry_id == 'native-ema-cross':
         if values['fast'] >= values['slow']:
             raise ValueError('Fast EMA must be below slow EMA')
         path = importlib.metadata.distribution('nautilus_trader').locate_file('nautilus_trader/examples/strategies/ema_cross.py')

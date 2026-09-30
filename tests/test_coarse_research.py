@@ -115,9 +115,30 @@ class CoarseResearchTests(unittest.TestCase):
                 row=report['snapshot']['rows'][0]
                 expected=run_backtest(bars,Profile(**row['profile']),GraphEvaluator(row['document']['graph']),trade_start=params['start'])
                 actual=jobs.store.result(report['rows'][0]['run_id'])
+                from terminal.archives import validate_snapshot
+                validate_snapshot(jobs.store.get(report['rows'][0]['run_id'])['manifest'])
+                validate_snapshot(jobs.store.get(report['rows'][1]['run_id'])['manifest'])
                 self.assertEqual(actual['trades'],expected['trades'])
                 chart=jobs.store.chart_window(report['rows'][0]['run_id'],minutes=30)
                 self.assertEqual(chart['interval_seconds'],86400)
                 self.assertEqual(len(chart['series']['candles']),30)
                 self.assertTrue(all(f['chart_time']%86400==0 for f in chart['series']['fills']))
             finally:manager.close();jobs.close()
+
+    def test_ipc_preserves_native_interval_and_overlap_conflicts_fail(self):
+        from terminal.service import AppService
+        with tempfile.TemporaryDirectory() as temp:
+            service=AppService(temp)
+            try:
+                def save(price,end):
+                    return service.datasets.save('spot','BTCUSDT',0,end,[Candle(t,price,price,price,price,1) for t in range(0,end,14400)],[],{},metadata={},provenance=[],minutes=240)
+                first=save(10,28800);save(11,43200)
+                reply=service.handle({'version':1,'id':'interval','command':'list_datasets','params':{}})
+                self.assertEqual(reply['type'],'result')
+                self.assertTrue(all(row['interval_seconds']==14400 for row in reply['result']))
+                class Offline:
+                    def instruments(self,*_):raise AssertionError('Conflicting local snapshots must fail before network')
+                with self.assertRaisesRegex(DataError,'Conflicting immutable'):
+                    prepare_dataset(Offline(),service.datasets,'spot','BTCUSDT',0,57600,minutes=240)
+                self.assertEqual(service.datasets.describe(first['id'])['range'],[0,28800])
+            finally:service.close()

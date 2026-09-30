@@ -1,6 +1,6 @@
 import {it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
-import LibraryResearch,{sortedLibraryRows,canonical,filterLibraryRows} from './LibraryResearch';
+import LibraryResearch,{sortedLibraryRows,canonical,filterLibraryRows,researchProfileSnapshot} from './LibraryResearch';
 import {defaultProfile} from './model';
 import {api} from './api';
 vi.mock('./api',()=>({api:vi.fn()}));
@@ -22,6 +22,7 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  const {rerender}=render(<LibraryResearch {...props}/>);
  fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'data'}});
  fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T00:10'}});
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Preview batch'}) as HTMLButtonElement).disabled).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Preview batch'}));
  fireEvent.click(await screen.findByRole('button',{name:'Start frozen batch'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_start',{...inputs,expected_contract:'frozen'}));
@@ -32,6 +33,29 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  expect(await screen.findByText(/Prior run — inputs changed/)).toBeTruthy();
  expect(screen.queryByRole('button',{name:'Start frozen batch'})).toBeNull();
  expect(report.rows[0].metrics.final_equity).toBe('998');
+});
+
+it('normalizes detailed profile defaults without falsely changing saved contracts',()=>{
+ expect(researchProfileSnapshot({...defaultProfile,execution_minutes:1})).toEqual(defaultProfile);
+ expect(researchProfileSnapshot({...defaultProfile,execution_minutes:240}).execution_minutes).toBe(240);
+});
+
+it('reserves warmup, waits for preparation, and accepts repeated history selection requests',async()=>{
+ let resolveWarmup!:(value:any)=>void;
+ vi.mocked(api).mockImplementation(async(command:string)=>{
+  if(command==='library_warmup')return new Promise(resolve=>{resolveWarmup=resolve;});
+  if(command==='library_batches')return [];
+  return {};
+ });
+ const props={selections,datasets:[...datasets,{...datasets[0],id:'second'}],profile:defaultProfile,onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn(),preferredDataset:{id:'data',request:1}};
+ const {rerender}=render(<LibraryResearch {...props}/>);
+ await screen.findByText('Preparing warmup and instrument settings…');
+ expect((screen.getByRole('button',{name:'Preview batch'}) as HTMLButtonElement).disabled).toBe(true);
+ resolveWarmup({start:600,end:3600,available:true});
+ await waitFor(()=>expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-01T00:10'));
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'second'}});
+ rerender(<LibraryResearch {...props} preferredDataset={{id:'data',request:2}}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Batch dataset') as HTMLSelectElement).value).toBe('data'));
 });
 
 it('keeps failed rows visible and sorts only inside matching cohorts, with undefined win rates last',()=>{
@@ -93,4 +117,18 @@ it('filters family/timeframe/review/state and sorts measured baseline deltas wit
  expect(filterLibraryRows(report,catalog,{family:'momentum',review:'verified',status:'completed',minutes:String(defaultProfile.primary_minutes)}).map(r=>r.ordinal)).toEqual([0]);
  expect(filterLibraryRows(report,catalog,{status:'failed'}).map(r=>r.ordinal)).toEqual([1]);
  expect(sortedLibraryRows(report,'delta_hold').map(r=>r.ordinal)).toEqual([0,1,2]);
+});
+
+it('keeps a newly chosen resolution and reserves warmup on repeated history use',async()=>{
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_batches'?[]:command==='library_warmup'?{start:144000,end:288000,available:true}:{});
+ const all=[{...datasets[0],id:'hour',interval_seconds:3600,range:[0,288000]},{...datasets[0],id:'four-hour',interval_seconds:14400,range:[0,288000]}];
+ const props={selections:[{...selections[0],minutes:1440}],datasets:all,profile:{...defaultProfile,execution_minutes:60},onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn()};
+ const {rerender}=render(<LibraryResearch {...props} preferredDataset={{id:'hour',request:1}}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T16:00'));
+ rerender(<LibraryResearch {...props} profile={{...props.profile,execution_minutes:240}} preferredDataset={{id:'four-hour',request:2}}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Batch dataset') as HTMLSelectElement).value).toBe('four-hour'));
+ await waitFor(()=>expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T16:00'));
+ rerender(<LibraryResearch {...props} profile={{...props.profile,execution_minutes:240}} preferredDataset={{id:'four-hour',request:3}}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T16:00'));
+ expect(api).toHaveBeenLastCalledWith('library_warmup',{selections:props.selections,dataset_id:'four-hour'});
 });

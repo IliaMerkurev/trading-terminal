@@ -1,14 +1,19 @@
 # Trading Terminal
 
-A local Windows desktop application for strategy research, public market monitoring and virtual paper trading. Create a visual strategy or explicitly trust a compatible native Python strategy, prepare Bybit history, run a backtest, inspect trades, and compare saved results.
+A local Windows desktop application for strategy research. Start with reviewed strategy cards, prepare reusable Bybit history, and compare backtests across timeframes. Pro retains visual editing, explicitly trusted native Python, public monitoring and virtual paper trading. See the [Research workflow](docs/RESEARCH.md).
 
-**Trading Terminal 0.5.1-dev is a maintenance candidate based on owner-accepted 0.5-dev.** It separates market viewing from strategy warmup and adds shared Position Management across historical, paper and experiment workflows. It retains NautilusTrader 1.231.0 and the accepted research/live features. It is not production-ready or stable. It does not submit real exchange orders or accept exchange trading credentials. Remaining UI/UX issues are accepted as non-blocking and deferred to a future version; Telegram delivery remains outside acceptance. See [verified status](docs/STATUS.md), [position assumptions](docs/adr/0019-shared-position-management.md), and the [0.5 demonstration guide](docs/DEMO_05.md). Owner manual acceptance is distinct from automated checks.
-
-0.5.1 adds retryable chart paging, incremental access to older Results, and background recorded Replay with progress and cancellation. It is awaiting owner acceptance.
+**Current branch: Trading Terminal 0.6-dev, Research workspace extension.** It starts
+from the merged 0.6 implementation and retains NautilusTrader 1.231.0. Research
+opens with seven reviewed templates, multi-timeframe comparisons and immutable
+history reuse. Explicit coarse spot execution avoids requiring M1 data for every
+closed-bar study. Pro preserves detailed execution and existing advanced tools.
+This remains a development build; owner acceptance of this extension is pending.
+No real exchange orders or exchange trading credentials are supported.
+See [verified status](docs/STATUS.md) and [execution assumptions](docs/adr/0025-research-resolution.md).
 
 ## Available workflow
 
-- Shared visual graph: OHLCV, SMA, EMA, RSI, Bollinger Bands, MACD, ATR, comparisons, crossings and boolean logic; four entry/exit outputs and read-only position-state nodes.
+- Shared visual graph: OHLCV, SMA, EMA, RSI, prior-bar Donchian channels, Bollinger Bands, MACD, ATR, comparisons, crossings and boolean logic; four entry/exit outputs and read-only position-state nodes.
 - Unborrowed USDT spot and single-position cross-margin USDT perpetual long/short simulation, with editable sizing, fees, slippage, funding and mark-price liquidation assumptions.
 - Closed primary-bar conditions or causal forming-bar evaluation on one-minute steps.
 - Public Bybit downloads, coverage/gap reports, checked local datasets and offline runs.
