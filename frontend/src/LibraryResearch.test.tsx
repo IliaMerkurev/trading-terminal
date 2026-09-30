@@ -22,22 +22,45 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  const {rerender}=render(<LibraryResearch {...props}/>);
  fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'data'}});
  fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T00:10'}});
- await waitFor(()=>expect((screen.getByRole('button',{name:'Preview batch'}) as HTMLButtonElement).disabled).toBe(false));
- fireEvent.click(screen.getByRole('button',{name:'Preview batch'}));
- fireEvent.click(await screen.findByRole('button',{name:'Start frozen batch'}));
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Review test'}));
+ fireEvent.click(await screen.findByRole('button',{name:/Start \d+ tests/}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_start',{...inputs,expected_contract:'frozen'}));
  expect(await screen.findByText(/Matches current inputs/)).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Open report'}));expect(onOpenRun).toHaveBeenCalledWith('saved');
  expect(screen.getAllByText(/N\/A/).length).toBeGreaterThan(0);
  rerender(<LibraryResearch {...props} profile={{...defaultProfile,capital:'2000'}}/>);
  expect(await screen.findByText(/Prior run — inputs changed/)).toBeTruthy();
- expect(screen.queryByRole('button',{name:'Start frozen batch'})).toBeNull();
+ expect(screen.queryByRole('button',{name:/Start \d+ tests/})).toBeNull();
  expect(report.rows[0].metrics.final_equity).toBe('998');
 });
 
 it('normalizes detailed profile defaults without falsely changing saved contracts',()=>{
  expect(researchProfileSnapshot({...defaultProfile,execution_minutes:1})).toEqual(defaultProfile);
  expect(researchProfileSnapshot({...defaultProfile,execution_minutes:240}).execution_minutes).toBe(240);
+});
+
+it('later-period setup uses independent dates and only freezes the saved candidate',async()=>{
+ const report={id:'saved',status:'completed',active_id:null,snapshot:{inputs,end:3600,rows:[{name:'Original candidate',kind:'graph',profile:defaultProfile,dataset:{id:'data'}}]},rows:[{ordinal:0,status:'completed',run_id:'original',metrics:{net_pnl:'4'}}]};
+ vi.mocked(api).mockImplementation(async(command)=>{
+  if(command==='library_batches')return [{id:'saved',status:'completed',created_at:'Saved'}];
+  if(command==='library_batch_status')return report;
+  if(command==='library_validation_freeze')return {batch_id:'later'};
+  return {};
+ });
+ render(<LibraryResearch view="saved" selections={selections} datasets={[{...datasets[0],id:'later-data',range:[3600,10800]}]} profile={{...defaultProfile,capital:'9999'}} onProfile={vi.fn()} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ await screen.findByRole('option',{name:/Saved/});
+ fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'saved'}});
+ fireEvent.click(await screen.findByText('Verify on a later period',{selector:'summary'}));
+ fireEvent.click(screen.getByRole('button',{name:'Set up later-period test'}));
+ expect(screen.queryByRole('button',{name:'Review test'})).toBeNull();
+ expect(screen.queryByRole('spinbutton',{name:'Research capital'})).toBeNull();
+ fireEvent.change(screen.getByLabelText('Later-period history'),{target:{value:'later-data'}});
+ fireEvent.change(screen.getByLabelText('Later evaluation start (UTC)'),{target:{value:'1970-01-01T02:00'}});
+ fireEvent.click(screen.getByRole('button',{name:'Freeze later-period candidate'}));
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_freeze',{batch_id:'saved',ordinal:0,dataset_id:'later-data',start:7200,end:10800,spot_dataset_id:null}));
+ expect(api).not.toHaveBeenCalledWith('library_batch_start',expect.anything());
+ expect(report.snapshot.rows[0].profile.capital).toBe(defaultProfile.capital);
 });
 
 it('reserves warmup, waits for preparation, and accepts repeated history selection requests',async()=>{
@@ -50,7 +73,7 @@ it('reserves warmup, waits for preparation, and accepts repeated history selecti
  const props={selections,datasets:[...datasets,{...datasets[0],id:'second'}],profile:defaultProfile,onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn(),preferredDataset:{id:'data',request:1}};
  const {rerender}=render(<LibraryResearch {...props}/>);
  await screen.findByText('Preparing warmup and instrument settings…');
- expect((screen.getByRole('button',{name:'Preview batch'}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(true);
  resolveWarmup({start:600,end:3600,available:true});
  await waitFor(()=>expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-01T00:10'));
  fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'second'}});
@@ -78,7 +101,7 @@ it('cancels active work and exposes pending-only resume without hiding failed ro
  });
  render(<LibraryResearch selections={selections} datasets={datasets} profile={defaultProfile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
  await screen.findByRole('option',{name:/2026-01-01/});fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'batch'}});
- fireEvent.click(await screen.findByRole('button',{name:'Cancel batch'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Cancel remaining tests'}));
  fireEvent.click(await screen.findByRole('button',{name:'Resume pending rows with frozen inputs'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_resume',{batch_id:'batch'}));
  await screen.findByRole('option',{name:/2026-01-01 · cancelled/});

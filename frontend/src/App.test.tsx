@@ -10,22 +10,22 @@ vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:a
 vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn(async()=>{})}));
 vi.mock('@tauri-apps/api/app',()=>({getVersion:vi.fn(async()=>'0.3.0-dev')}));
 describe('research workspace',()=>{
-  it('opens Research first and preserves independent Pro drafts and research capital',async()=>{
+  it('opens the library first and preserves independent editor drafts and test capital',async()=>{
     vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'?{rows:[],next:null}:[]);
     render(<App/>);
-    expect(await screen.findByText('Find a strategy worth testing.')).toBeTruthy();
+    expect(await screen.findByText('Test a strategy')).toBeTruthy();
     expect(screen.queryByText('Graph workspace')).toBeNull();
     expect(screen.queryByRole('button',{name:/Run backtest/})).toBeNull();
     fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'2222'}});
-    fireEvent.click(screen.getByRole('button',{name:'Pro'}));
+    fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
     fireEvent.change(screen.getByLabelText('Strategy name'),{target:{value:'My working draft'}});
-    fireEvent.click(screen.getByRole('button',{name:'Research'}));
+    fireEvent.click(screen.getByRole('button',{name:'Strategy library'}));
     expect((screen.getByLabelText('Research capital') as HTMLInputElement).value).toBe('2222');
-    fireEvent.click(screen.getByRole('button',{name:'Pro'}));
+    fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
     expect((screen.getByLabelText('Strategy name') as HTMLInputElement).value).toBe('My working draft');
   });
   it('captures physical undo before a canvas handler can stop propagation',async()=>{
-    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));const canvas=await screen.findByText('Graph workspace');
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));const canvas=await screen.findByText('Graph workspace');
     fireEvent.click(screen.getByText('Add node',{selector:'button'}));
     expect((screen.getByText('Undo',{selector:'button'}) as HTMLButtonElement).disabled).toBe(false);
     canvas.addEventListener('keydown',event=>event.stopPropagation());
@@ -35,17 +35,17 @@ describe('research workspace',()=>{
     expect((screen.getByText('Undo',{selector:'button'}) as HTMLButtonElement).disabled).toBe(false);
   });
   it('saves a graph snapshot and exposes all required tabs',async()=>{
-    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
     await screen.findByText('Graph workspace');
-    await screen.findByText('RESEARCH 0.3-dev');
+    await screen.findByText('Local workspace · 0.3-dev');
     fireEvent.change(screen.getByLabelText('Strategy name'),{target:{value:'Causal trend'}});
     fireEvent.click(screen.getByText('Save',{selector:'button'}));
     await waitFor(()=>expect(api).toHaveBeenCalledWith('save_graph',expect.objectContaining({name:'Causal trend',graph:expect.objectContaining({version:1})})));
-    expect(screen.getByText('Backtest',{selector:'button'})).toBeTruthy();
-    expect(screen.getByText('Results',{selector:'button'})).toBeTruthy();
+    expect(screen.getByText('Custom backtest',{selector:'button'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Saved tests'})).toBeTruthy();
   });
   it('does not grant native execution consent on selection or save',async()=>{
-    vi.mocked(api).mockClear();render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));
+    vi.mocked(api).mockClear();render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
     fireEvent.click(screen.getByText('＋ Native Python'));
     expect(screen.getByLabelText('Python source preview')).toBeTruthy();
     fireEvent.click(screen.getByText('Save',{selector:'button'}));
@@ -61,8 +61,8 @@ describe('research workspace',()=>{
       if(command==='run_status')return {id:'active',status:'running',progress:{fraction:.2}};
       return {};
     });
-    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));
-    fireEvent.click(screen.getByText('Backtest',{selector:'button'}));
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
+    fireEvent.click(screen.getByText('Custom backtest',{selector:'button'}));
     await waitFor(()=>expect(screen.getByLabelText('Prepared dataset').querySelectorAll('option').length).toBe(2));
     fireEvent.change(screen.getByLabelText('Prepared dataset'),{target:{value:'dataset'}});
     fireEvent.click(screen.getByText('Run immutable snapshot'));
@@ -96,8 +96,8 @@ it('loads Results beyond 100 saved runs, preserves rows on error, and retries wi
   if(command.startsWith('list_'))return [];
   return {};
  });
- const {container}=render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));
- fireEvent.click(screen.getByText('Results',{selector:'button'}));
+ const {container}=render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
+ fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));fireEvent.click(screen.getByRole('button',{name:'Individual run reports'}));
  await waitFor(()=>expect(container.querySelectorAll('.run-list button')).toHaveLength(50));
  fireEvent.click(screen.getByRole('button',{name:'Load older runs'}));
  await screen.findByText(/Synthetic history failure/);
@@ -113,7 +113,7 @@ it('loads Results beyond 100 saved runs, preserves rows on error, and retries wi
 it('distinguishes initial Results loading from an empty history',async()=>{
  let finish!:(value:any)=>void;
  vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'?new Promise(resolve=>{finish=resolve;}):[]);
- render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));fireEvent.click(screen.getByText('Results',{selector:'button'}));
+ render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));fireEvent.click(screen.getByRole('button',{name:'Individual run reports'}));
  expect(screen.getByText('Loading run history…')).toBeTruthy();
  expect(screen.queryByText('No saved runs.')).toBeNull();
  finish({rows:[],next:null});
@@ -130,7 +130,7 @@ it('prompts and cancels background replay before desktop exit',async()=>{
   if(command.startsWith('list_'))return [];
   return {};
  });
- render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Pro'}));await screen.findByText('Graph workspace');
+ render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));await screen.findByText('Graph workspace');
  windowMock.close!({preventDefault:vi.fn()});
  fireEvent.click(await screen.findByText('Cancel run and exit'));
  await waitFor(()=>expect(invoke).toHaveBeenCalledWith('close_application'));
@@ -148,7 +148,7 @@ it('does not let a delayed previous run replace the current trade table',async()
   if(command.startsWith('list_')||command==='library_catalog'||command==='library_batches')return [];
   throw Error('Unneeded report detail in this fixture');
  });
- const {container}=render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Results'}));
+ const {container}=render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));fireEvent.click(screen.getByRole('button',{name:'Individual run reports'}));
  await waitFor(()=>expect(container.querySelectorAll('.run-list button')).toHaveLength(2));
  fireEvent.click(Array.from(container.querySelectorAll('.run-list button')).find(b=>b.querySelector('strong')?.textContent==='A')!);await waitFor(()=>expect(pending.A).toBeDefined());
  fireEvent.click(Array.from(container.querySelectorAll('.run-list button')).find(b=>b.querySelector('strong')?.textContent==='B')!);await waitFor(()=>expect(pending.B).toBeDefined());

@@ -346,3 +346,17 @@ Backend saved metrics include net PnL, period return, final equity, drawdown, co
 Cards and sortable table expose provenance, compatibility, original/default versus chosen timeframe, actual saved-report links, comparison equity and Create my copy. Bundled templates remain immutable. Input changes label old results stale; untested/failed values are N/A. Rank comparable cohorts only. Freeze selected candidates before separate later-period validation with fresh capital/baselines; retain attempted variants, source dates and repeated-holdout warnings.
 
 Count a strategy only after independent nontrivial synthetic evidence and a finite cached public-data integration run; losses remain valid observations. Preserve accepted features, native trust and user data using copied additive migration checks. Six–ten strategies are optional only after the core and owner budget gate. No Telegram, real trading, new license, 0.7, release or 0.6 merge is authorized. Actual verified progress is recorded in STATUS.md; partial safe checkpoints are not completed core acceptance.
+
+
+### Owner-authorized usability refinement — 2026-09-30
+
+The card-first extension uses task navigation: Strategy library, Market data,
+Saved tests and Strategy editor. This supersedes the Research/Pro switch and
+earlier tab names while retaining their capabilities under explicit tasks or
+More tools. Direct card testing needs no editable copy; Customize strategy
+creates an independent draft. Selection and active work survive navigation.
+History preparation returns to the preserved test setup. Review shows the
+actual period, capital, costs, variants and passive comparisons before start.
+Saved comparisons and individual reports remain reopenable without execution.
+Later-period verification has its own date/data controls and uses the original
+candidate's frozen settings. See [ADR 0027](docs/adr/0027-task-oriented-testing-workspace.md).

@@ -16,7 +16,7 @@ it('browses without execution or invented metrics and copies explicit timeframe/
  expect(card.textContent).toContain('Author recommendation: unknown');
  fireEvent.change(within(card).getByLabelText(entry.name+' timeframe'),{target:{value:'60'}});
  fireEvent.change(within(card).getByLabelText(entry.name+' period'),{target:{value:'7'}});
- fireEvent.click(within(card).getByRole('button',{name:'Create my copy'}));
+ fireEvent.click(within(card).getByRole('button',{name:'Customize strategy'}));
  await vi.waitFor(()=>expect(onCopy).toHaveBeenCalledWith('copy-1'));
  expect(api).toHaveBeenCalledWith('library_copy',{entry_id:'rsi-threshold',version:1,minutes:60,parameters:{period:7}});
 });
@@ -24,7 +24,7 @@ it('browses without execution or invented metrics and copies explicit timeframe/
 it('shows copy errors without navigating or granting consent',async()=>{
  const onCopy=vi.fn();vi.mocked(api).mockImplementation(async(command)=>{if(command==='library_catalog')return [entry];throw Error('Source review required');});
  render(<StrategyLibrary onCopy={onCopy}/>);
- fireEvent.click(await screen.findByRole('button',{name:'Create my copy'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Customize strategy'}));
  expect((await screen.findByRole('alert')).textContent).toContain('Source review required');
  expect(onCopy).not.toHaveBeenCalled();
 });
@@ -41,7 +41,7 @@ it('previews explicit timeframe variants from one selected card',async()=>{
  fireEvent.click(await screen.findByLabelText('Include '+entry.name));
  fireEvent.click(screen.getByRole('button',{name:entry.name+' compare 4h'}));
  fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'h1'}});
- await vi.waitFor(()=>expect((screen.getByRole('button',{name:'Preview batch'}) as HTMLButtonElement).disabled).toBe(false));
- fireEvent.click(screen.getByRole('button',{name:'Preview batch'}));
+ await vi.waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Review test'}));
  await vi.waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({selections:[{entry_id:entry.id,version:1,minutes:240,parameters:{period:14}},{entry_id:entry.id,version:1,minutes:1440,parameters:{period:14}}]})));
 });

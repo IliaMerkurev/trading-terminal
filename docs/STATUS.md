@@ -1,14 +1,56 @@
 # Implementation status
 
+## Task-oriented usability refinement — verified, owner review pending
+
+Research/Pro navigation is replaced by Strategy library, Market data, Saved tests
+and Strategy editor. Cards offer direct testing and explicit comparison;
+prepared history returns to preserved selections. Review shows dates, capital
+and costs before start. Saved comparisons remain mounted during navigation for
+progress/cancellation. Later-period verification has independent data/date
+controls; incomplete downloaded coverage cannot enable Continue. Keyboard focus,
+plain task labels and bounded catalog/setup panes improve navigation.
+
+Windows evidence on 2026-09-30:
+
+- Focused UI and neighboring checks passed 28 entries in 3.84s after correcting
+  an old Results-label assertion. The first pass had 24 passes and that one
+  failure. Review corrections added later-period and incomplete-history checks.
+- `node node_modules/vitest/vitest.mjs run` passed all 83 entries across 21 files
+  in 6.43s. Inspection then removed one accidentally duplicated coverage case;
+  the remaining three HistoryWorkspace checks passed in 1.27s. Evidence covers
+  **82 distinct frontend tests**, including complete first-test, timeframe,
+  saved-result, independent-copy and navigation/cancellation journeys.
+- `node scripts/frontend.mjs build` passed TypeScript/Vite after rendering the
+  capital summary through its string representation. Locked offline Windows
+  Rust builds passed; final shell rebuild took 3.58s. The existing chunk advisory
+  remains (734.47 kB JavaScript). No application dependency changed.
+- Native inspection exposed a setup pane extending below the viewport; cards
+  and setup now scroll independently within the available desktop space. The
+  corrected compiled window displayed the full Review and Start actions.
+- Native flow selected daily Donchian, reused the existing complete BTCUSDT H4
+  snapshot, preserved selection, reserved warmup to 2024-02-26, reviewed 1,000
+  USDT / 0.10% fee / 0.05% slippage, and started three real tests. All three
+  completed through 2026-09-01. The saved table showed Donchian, Buy & Hold and
+  DCA including the negative DCA result. Donchian's report reopened with eight
+  trades, its recorded candles and equity; returning preserved the comparison.
+
+Backend calculations and schemas are unchanged from the 222-test checkpoint
+below. New UI tests mock IPC and do not establish native cancellation timing or
+new-download transport behavior. No additional full backend/live acceptance or
+Windows scaling sweep was repeated. Owner usability acceptance remains open.
+Reviewed text-only authoring skills and their pins/licenses are recorded in
+[ADR 0027](adr/0027-task-oriented-testing-workspace.md).
+
 ## Research workspace extension — implementation verified, owner review pending
 
 Branch `codex/research-studio` starts from merged main `a5bb197` (0.6 PR #7).
 Product version remains 0.6-dev. Historical acceptance wording below is retained
 as checkpoint evidence; this extension is a separate owner review.
 
-Research opens with strategy cards, explicit timeframe comparisons, compact
-capital/cost controls, reusable History and saved Results. Pro retains its own
-draft/profile, editor, native trust, experiments and live/paper surfaces. New
+Strategy library opens with cards, explicit timeframe comparisons and compact
+capital/cost controls. Market data and Saved tests are separate tasks. Strategy
+editor retains its independent draft/profile and native trust. Parameter
+experiments and live/replay remain under More tools. New
 EMA trend and prior-bar Donchian breakout graphs bring the catalog to seven
 templates across four families. Source review and test evidence are separate
 from profitability; see [Research guide](RESEARCH.md),
@@ -47,9 +89,10 @@ Windows validation on 2026-09-30:
   retained. Baseline reuse, saved checksums, chart intervals and equity comparison
   passed. This is not an M1-equivalent fill model or a claimed M1 speedup ratio.
 - Compiled Windows inspection confirmed Research-first layout, seven cards,
-  History coverage, H4 selection and automatic prior warmup. Final saved-report
-  navigation checks are recorded below when completed. Component tests use mocked
-  IPC and do not substitute for owner acceptance.
+  History coverage, H4 selection and automatic prior warmup. The saved 14-row
+  comparison reopened, the Donchian report displayed candles, fills, equity and
+  recorded channels, and the independent graph editor opened. Component tests
+  use mocked IPC and do not substitute for owner acceptance.
 
 No dependency, product version, database schema or ordinary owner dataset was
 changed by this extension. No merge, binary release, Telegram investigation or

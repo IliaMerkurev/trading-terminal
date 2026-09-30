@@ -1,5 +1,7 @@
 # ADR 0026: Research workspace and longer-horizon candidates
 
+Navigation terminology is superseded by [ADR 0027](0027-task-oriented-testing-workspace.md). Strategy and execution decisions below remain applicable.
+
 ## Context and decision
 
 The owner authorized a simpler strategy-card workflow on 2026-09-30. Research is
