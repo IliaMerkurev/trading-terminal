@@ -32,9 +32,14 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  fireEvent.click(screen.getByRole('button',{name:'Open report'}));expect(onOpenRun).toHaveBeenCalledWith('saved');
  expect(screen.getAllByText(/N\/A/).length).toBeGreaterThan(0);
  rerender(<LibraryResearch {...props} profile={{...defaultProfile,capital:'2000'}}/>);
- expect(await screen.findByText(/Prior run — inputs changed/)).toBeTruthy();
+ expect(await screen.findByText(/Saved settings differ from the current draft; saved reports remain available/)).toBeTruthy();
  expect(screen.queryByRole('button',{name:/Start \d+ tests/})).toBeNull();
  expect(report.rows[0].metrics.final_equity).toBe('998');
+ expect(screen.queryByText(/rerun required/)).toBeNull();
+ const table=screen.getByRole('region',{name:'Saved comparison results'});
+ expect(table.getAttribute('tabindex')).toBe('0');
+ expect(screen.getByRole('button',{name:'Open report'}).closest('td')).toBe(table.querySelector('tbody td'));
+ fireEvent.click(screen.getByRole('button',{name:'Open report'}));expect(onOpenRun).toHaveBeenLastCalledWith('saved');
 });
 
 it('normalizes detailed profile defaults without falsely changing saved contracts',()=>{

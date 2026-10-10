@@ -173,3 +173,44 @@ it('opens ordinary Lab setup from Saved tests Data without inventing a later-per
  expect(screen.queryByRole('region',{name:'Later-period setup'})).toBeNull();
  expect(vi.mocked(api).mock.calls.some(([command])=>command==='library_validation_freeze')).toBe(false);
 });
+
+vi.mock('./RunChart',()=>({default:({runId}:{runId:string})=><div aria-label="Saved report chart">{runId}</div>}));
+it('opens a comparison report before collapsed history and returns to the same filtered comparison',async()=>{
+ const run={id:'saved-loss',created_at:'2026-01-01T00:00:00Z',status:'completed',summary:{profile:defaultProfile,metrics:{net_pnl:'-12',max_drawdown:'.02',trade_count:1,win_rate:0,fees:'2',funding:'0'}}};
+ const history=Array.from({length:17},(_,i)=>({...run,id:i===0?run.id:`older-${i}`,created_at:new Date(Date.parse(run.created_at)-i*86400000).toISOString()}));
+ const report={id:'saved',status:'completed',active_id:null,snapshot:{inputs:{},rows:[rows[1]]},rows:[{ordinal:0,status:'completed',run_id:run.id,metrics:{net_pnl:'-12',period_return:'-.012',completed_positions:1,win_rate:0}}]};
+ vi.mocked(api).mockImplementation(async(command)=>{
+  if(command==='library_catalog')return [{...entry,availability:'verified'}];
+  if(command==='library_batch_history')return {rows:[{id:'saved',status:'completed',created_at:'Saved fixture'}],next:null};
+  if(command==='library_batch_status')return report;
+  if(command==='run_history')return {rows:history,next:null};
+  if(command==='run_status')return run;
+  if(command==='result_page')return {rows:[],total:0,next:null};
+  if(command.startsWith('list_'))return [];
+  throw Error(`Unneeded detail: ${command}`);
+ });
+ const {container}=render(<App/>);
+ fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));
+ await screen.findByRole('option',{name:/Saved fixture/});
+ fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'saved'}});
+ await screen.findByText('-12.0000 / -1.20%');
+ fireEvent.change(screen.getByLabelText('Library filter Compatibility / result state'),{target:{value:'completed'}});
+ fireEvent.click(screen.getByRole('button',{name:'Open report'}));
+ expect(await screen.findByRole('heading',{name:'Saved report · BTCUSDT'})).toBeTruthy();
+ const selector=container.querySelector('.saved-run-history') as HTMLDetailsElement;
+ expect(selector.open).toBe(false);
+ expect(screen.getByLabelText('Saved report chart').textContent).toBe('saved-loss');
+ expect(screen.getByText('-12.00 USDT',{selector:'.metrics strong'})).toBeTruthy();
+ expect(container.querySelector('.selected-report-heading')!.compareDocumentPosition(container.querySelector('.comparison')!)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ fireEvent.click(screen.getByText('Run history · 17 loaded',{selector:'summary'}));
+ expect(selector.open).toBe(true);
+ expect(selector.querySelectorAll('.run-list button')).toHaveLength(17);
+ fireEvent.click(selector.querySelectorAll('.run-list button')[1]);
+ expect((container.querySelector('.saved-run-history') as HTMLDetailsElement).open).toBe(false);
+ expect(screen.getByLabelText('Saved report chart').textContent).toBe('older-1');
+ fireEvent.click(screen.getByRole('button',{name:'Back to saved tests'}));
+ expect((screen.getByLabelText('Saved library batches') as HTMLSelectElement).value).toBe('saved');
+ expect((screen.getByLabelText('Library filter Compatibility / result state') as HTMLSelectElement).value).toBe('completed');
+ expect(screen.getByText('-12.0000 / -1.20%')).toBeTruthy();
+ expect(vi.mocked(api).mock.calls.some(([c])=>/prepare|start|warmup|preview|resume/.test(c))).toBe(false);
+});

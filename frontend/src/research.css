@@ -212,3 +212,18 @@ nav .running-link{margin-left:auto;color:#a4efdb;font-size:12px;white-space:nowr
 .batch-timeframes input{width:auto;margin:0;accent-color:#83dfc6}
 .comparison-contract{padding:12px;background:#1b322b;border:1px solid #456354;border-radius:6px}
 @media(max-width:1120px){.studio-stats{display:flex;border:0;padding-left:0}.studio-stats>strong,.studio-stats>span{display:none}.studio-stats>.primary{margin:0}}
+
+/* Retain row identity while reading wide, immutable comparison reports. */
+.research-results .comparison-scroll-help{margin:14px 0 6px;color:#b4c7da}
+.research-results .saved-comparison-table{margin-top:6px;border:1px solid #33485b;border-radius:6px;scrollbar-color:#708aa3 #182330}
+.saved-comparison-table:focus-visible{outline:2px solid #90baff;outline-offset:3px}
+.saved-comparison-table th:first-child,.saved-comparison-table td:first-child{position:sticky;left:0;min-width:210px;width:210px;max-width:210px;white-space:normal;overflow-wrap:anywhere;box-shadow:3px 0 0 #33485b;background:#152330;z-index:1}
+.saved-comparison-table th:first-child{z-index:3;background:#192b3a}
+.saved-comparison-table th{z-index:2}
+.saved-comparison-table td:first-child strong{display:block}
+.research-results .saved-comparison-table td:first-child button{display:block;margin:8px 0}
+.saved-run-history{margin:12px 0 20px;padding-top:12px}
+.selected-report-heading{margin-top:20px}
+.selected-report-heading p{margin:4px 0;overflow-wrap:anywhere}
+.results .saved-run-history .run-list{max-height:230px;overflow:auto}
+@media(max-width:760px){.saved-comparison-table th:first-child,.saved-comparison-table td:first-child{min-width:160px;width:160px;max-width:160px}.results .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}

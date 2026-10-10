@@ -1,5 +1,32 @@
 # Implementation status
 
+## Saved-result presentation refinement — 2026-10-10
+
+Saved comparisons now distinguish their immutable settings from the current
+editable draft without requiring a rerun to view reports. The strategy/cohort
+column and its Open report action stay pinned while scrolling across metrics;
+a keyboard-focusable region and visible horizontal-scroll guidance retain access
+to every metric and action. Losses, N/A values and cohort rules are unchanged.
+Opening an individual report collapses the loaded run history and puts the
+selected report, metrics and chart ahead of comparison/export tools. History,
+paging and run selection remain available; Back retains the saved comparison
+and its filters.
+
+Focused presentation verification passed 36 existing/updated frontend tests in
+three files, plus one new 17-run report/history/back-navigation regression. The
+new fixture initially assumed input ordering for equal timestamps; unique dates
+corrected the fixture, and its focused rerun passed. Production TypeScript/build
+passed with the existing large-JavaScript-chunk advisory. Backend calculations,
+accounting, data, schemas and dependencies are unchanged. Real-browser geometry
+acceptance of this presentation checkpoint remains pending.
+
+At the preceding functional checkpoint, actual local-browser checks verified
+that a double Start produced one three-row batch with all rows completed, copy
+cancellation created no strategy, both copy-setting choices retained their
+selected capital, and a saved report reopened after restart. All 42 immutable
+original report files retained identical hashes, and SQLite integrity was ok.
+This is synthetic browser acceptance, separate from Windows-native acceptance.
+
 ## Storage finalization and safe shutdown — 2026-10-10
 
 Failed final storage writes now release calculation/scheduler ownership and set
