@@ -1,5 +1,47 @@
 # Implementation status
 
+## Conservative historical accounting gates — freshly verified 2026-10-10
+
+Historical linear runs with historical funding require complete trade coverage,
+including leading and trailing coverage in the dataset's declared range.
+Dataset preflight refuses incomplete history; the direct simulator also refuses
+internal gaps or supplied funding events without matching trade candles before
+constructing the engine. The remedy is complete history or a verified continuous
+range. No synthetic prices or automatic zero-funding substitution are introduced.
+Old profile snapshots and saved reports remain readable.
+
+Linear-origin Library comparisons retain Buy & Hold and Scheduled DCA as
+explicitly unavailable until an independent spot execution profile and explicit
+spot fee assumption are available. Linear constraints are not copied into new
+purported spot alternatives. Spot-origin comparisons retain their declared manual
+contract and full cache identity. Unavailable baseline rows have no run or metrics
+and do not block a valid strategy's frozen later-period test; strategy preflight
+errors still block it. Completed batches with unavailable rows retain the existing
+`completed_with_errors` status.
+
+The recovered focused tests cover profile versions 1/2, long/short and both
+funding signs (quantity 1, mark 100, rate ±0.01), internal/leading/trailing gaps,
+Position Management, continuous controls, explicit assumed-zero/spot controls,
+managed-worker refusal without successful output, byte-identical saved-result
+reopening, baseline N/A counts, spot contract invalidation and later-period
+strategy rejection/acceptance. Fresh integrated Linux verification passed all
+**48 tests in 20.804 seconds** across `test_accounting_guards`, `test_simulation`,
+`test_position_execution`, `test_library_batches`, `test_benchmarks`,
+`test_benchmark_jobs` and `test_library_validation`. The command was
+`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:tests .venv/bin/python -m unittest test_accounting_guards test_simulation test_position_execution test_library_batches test_benchmarks test_benchmark_jobs test_library_validation -v`.
+Pinned Python 3.12.14 / NautilusTrader 1.231.0 runtime verification and `pip check`
+also passed. Upstream Pandas Timestamp.utcnow deprecation warnings remain.
+No full-suite or Windows-native acceptance is claimed.
+
+The conservative 2,000,000-source-candle workload cap and existing warmup
+accounting remain unchanged. Benchmark warmup overcount is deferred: reducing
+modeled counts must first preserve a separate source-load memory bound. This
+patch does not repair the funding timeline, introduce independently configured
+cross-market benchmarks, revise schemas/versions, or rewrite historical results.
+Direct callers without a declared dataset range cannot establish missing edge
+coverage from absent information; dataset preflight remains authoritative for
+that range, while every supplied unmatched funding event is refused directly.
+
 ## Recovered Market / Lab workspace — 2026-10-10
 
 The accepted Market/Lab source was reconstructed against the recovered browser

@@ -376,6 +376,13 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
     if any(b.time % seconds for b in candles) or any(b.time <= a.time for a,b in zip(candles, candles[1:])):
         raise ValueError("History must be sorted, unique UTC minute candles")
     gaps = [(a.time+seconds, b.time) for a,b in zip(candles,candles[1:]) if b.time != a.time+seconds]
+    if profile.market == "linear" and profile.funding_mode == "history":
+        # The engine samples funding only on trade-candle boundaries. Refuse
+        # incomplete inputs before creating an engine or loading native code.
+        trade_times = {c.time for c in candles}
+        if gaps or (funding is not None and any(t not in trade_times for t in funding)):
+            raise ValueError("Historical linear funding requires continuous trade history for the requested range; "
+                             "prepare complete history or select a verified continuous range")
     if gaps and (profile.gap_policy == "reject" or profile.evaluation == "intrabar"):
         raise ValueError("Missing minute history: intrabar requires continuous finer data; gaps are never filled")
     if profile.market == "linear":

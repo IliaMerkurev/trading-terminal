@@ -295,6 +295,10 @@ class DatasetStore:
             raise DataError('Dataset interval differs from execution resolution; choose matching history')
         if manifest["market"]!=profile.market or manifest["symbol"]!=profile.symbol:
             raise DataError("Dataset market/instrument differs from the run profile")
+        if (profile.market == "linear" and profile.funding_mode == "history"
+                and not manifest["coverage"]["trade"]["complete"]):
+            raise DataError("Historical linear funding requires continuous trade history for the requested range; "
+                            "prepare complete history or select a verified continuous range")
         if not manifest["coverage"]["trade"]["complete"] and (profile.evaluation=="intrabar" or profile.gap_policy=="reject"):
             raise DataError("Trade coverage is incomplete for the requested range")
         if profile.market=="linear":

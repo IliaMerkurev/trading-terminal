@@ -87,6 +87,10 @@ class LibraryBatchManager(ExperimentManager):
         for schedule,name in [('once','Buy & Hold'),(interval,'Scheduled DCA')]:
             row = dict(kind='benchmark',name=name,error=None)
             try:
+                if profile.market == 'linear':
+                    raise ValueError('Spot benchmark N/A: linear comparisons require an independently specified '
+                                     'spot execution profile and explicit spot fee assumption; use a spot-origin '
+                                     'comparison with reviewed spot settings')
                 if spot_id is None:raise ValueError('No actual matching spot counterpart: benchmark N/A')
                 spot = self.jobs.datasets.describe(spot_id)
                 if spot['source'] != manifest['source']:raise ValueError('Spot counterpart source differs')
@@ -171,7 +175,10 @@ class LibraryBatchManager(ExperimentManager):
         previous=self.jobs.datasets.describe(spec['dataset']['id']);later=self.jobs.datasets.describe(dataset_id)
         if any(previous[k]!=later[k] for k in ('source','market','symbol')):raise ValueError('Later history must match source, market and symbol')
         frozen=self.prepare([spec['selection']],dataset_id,spec['profile'],start,end,source['inputs']['interval'],spot_dataset_id)
-        if any(r['error'] for r in frozen['rows']):raise ValueError('Validation preflight: '+'; '.join(r['error'] for r in frozen['rows'] if r['error']))
+        strategy_errors = [r['error'] for r in frozen['rows'] if r['kind'] != 'benchmark' and r['error']]
+        if strategy_errors:raise ValueError('Validation preflight: '+'; '.join(strategy_errors))
+        # Explicitly unavailable passive alternatives remain N/A; they must not
+        # prevent an otherwise valid frozen strategy from later-period testing.
         entry=next(e for e in library.catalog() if e['id']==spec['selection']['entry_id'])
         with self.store.connect() as db:
             previous_attempts=db.execute("SELECT count(*) FROM library_batches WHERE json_extract(snapshot,'$.phase')='out_of_sample' AND json_extract(snapshot,'$.symbol')=? AND json_extract(snapshot,'$.market')=? AND json_extract(snapshot,'$.start')<? AND json_extract(snapshot,'$.end')>?",(source['symbol'],source['market'],end,start)).fetchone()[0]
