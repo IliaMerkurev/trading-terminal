@@ -420,3 +420,90 @@ For GUI inspection, Review a small source, expand Workload breakdown and
 source-loading limits, then inspect an existing old comparison: its saved count
 must say legacy and remain unchanged. Start remains a separate reviewed action.
 No new run is needed merely to inspect the labels.
+
+## Independent spot passive controls (TT10 / A2)
+
+Linear-origin Library comparisons can include Buy & Hold and scheduled DCA on
+actual matching spot history. In **Passive comparisons**, select a same-source,
+same-symbol, same-resolution spot snapshot, review its own precision/order limits,
+and enter spot fee/slippage percentages and an assumption note. Inputs use
+the same percentage convention as strategy settings; saved contracts use fractions. The explicit copy
+button copies only the numerical strategy cost assumptions once and records
+`explicit_shared`; subsequent strategy edits never update that spot assumption.
+The metadata route uses the selected spot snapshot. It labels current metadata
+as a historical modeling assumption, or synthetic metadata as invented. Missing
+metadata does not silently substitute futures constraints. Choose reviewed manual
+modeling explicitly, supply every constraint and a note, or leave baselines N/A.
+Confirm the independent-assumptions checkbox, then Review test.
+
+The optional `spot_benchmark` request field is admitted by
+`library_batch_preview` and `library_batch_start` only when supplied:
+
+- `version: 1`
+- `profile`: explicit spot `market`, `symbol`, `capital`, `fee_rate`, `slippage`,
+  `tick_size`, `quantity_step`, `min_quantity`, `max_quantity`, `min_notional`,
+  `max_notional`; a full Profile snapshot is accepted.
+- `assumptions`: exactly `version: 1`, `fee_source`, `fee_note`,
+  `slippage_source`, `precision_source`, `precision_note`. Cost sources are
+  `explicit_spot` or `explicit_shared`; precision sources are `dataset_metadata`
+  or `reviewed_manual`. Both notes contain 1–1000 characters.
+
+The profile must match strategy capital, symbol and execution resolution and
+use spot/profile 1 without leverage, stops or Position Management. Passive
+account conventions normalize to 100% scheduled deployment, no funding/margin,
+closed bars and rejected gaps. Full trade coverage and evaluation range are
+required. Path and all costs/precision/order limits remain independent. The
+retained passive scheduler caps purchases by maximum quantity/notional and
+rejects purchases below minimums; this work does not change that math.
+
+Provenance is part of the validated additive benchmark document field
+`execution_assumptions`, included in its immutable hash. Jobs, worker, resume
+and archive validation reconstruct the same hash from document/profile/data/
+runtime. The existing `research: {benchmark_contract: hash}` shape remains.
+Different provenance with identical numbers yields different identity. Ordinary
+spot callers omitting the new field retain the exact legacy document/contract
+shape; no profile or document version bump or database migration is needed.
+
+Incomplete optional settings or absent/mismatched history leave passive rows
+unavailable while valid strategies can run. A disappeared optional source file
+or empty optional evaluation discovered during asynchronous preparation affects
+only its passive rows. Checksum/schema/resource-limit failures, main-source
+failures, storage errors and cancellation retain global handling. Frozen later-
+period verification binds new history/dates to the original spot costs,
+precision and provenance, never refreshed metadata or current draft settings.
+Saved review displays frozen values; old contracts explicitly lack separate
+provenance. Spot and linear comparison cohorts remain separate, with the
+non-equivalent-risk warning retained.
+
+Focused checks (see STATUS.md for the actual initial/corrective chronology):
+
+```sh
+.venv/bin/python -W ignore -m unittest tests.test_independent_spot tests.test_benchmarks tests.test_benchmark_jobs tests.test_library_batches tests.test_library_validation tests.test_accounting_guards tests.test_workload_admission tests.test_source_limits tests.test_archives.ArchiveTests.test_passive_benchmark_archive_preserves_contract_and_result -q
+node node_modules/vitest/vitest.mjs run frontend/src/SpotBenchmarkSettings.test.tsx frontend/src/LibraryResearch.test.tsx frontend/src/WorkloadSummary.test.tsx
+node scripts/frontend.mjs build
+```
+
+For a new isolated offline GUI fixture, with no application owning that root:
+
+```sh
+PYTHONPATH=. .venv/bin/python scripts/seed_independent_spot.py --data-root /absolute/path/to/new-empty-a2-fixture
+.venv/bin/python scripts/browser.py --data-root /absolute/path/to/new-empty-a2-fixture --port 8773
+```
+
+The seeder refuses a nonempty root. It creates one completed three-row synthetic
+comparison and a separate frozen, unexecuted later-period review. In Saved tests,
+open **A2 independent spot controls**: strategy fees/slippage are 2%; passive
+fees/slippage are 1%, quantity step 0.1, tick 0.5, maximum quantity 20 and maximum
+notional 2000. Flat-price passive final equity is 960.8 USDT from 1000 initial
+capital, including both fills' costs. The strategy has no signals. Inspect
+**A2 frozen later-period review** without pressing Run to verify inherited
+settings. This is an accounting/UX fixture, not evidence of market performance.
+Do not merge its database or generated datasets into ordinary research data.
+
+The seeder also returns `complete_linear_dataset_id`: a separate synthetic
+linear source with complete trade/mark data and declared zero funding. Use that
+source for fresh Lab preview with the default historical mark/funding policies.
+The original linear source intentionally lacks mark/funding for the saved
+proxy/assumed-zero comparison; selecting it with historical policies must fail
+visibly beside Review. Choose the complete source to retry without weakening
+coverage checks. No source or prior result is overwritten by this addition.

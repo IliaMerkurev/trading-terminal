@@ -6,6 +6,114 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Original-plan TT10 / A2: independent spot passive contracts — 2026-10-10
+
+Implemented the bounded independent profile/assumption contract for linear-origin
+Buy & Hold and scheduled DCA. Spot costs, slippage, tick/quantity precision and
+quantity/notional limits are explicit, independent inputs. UI metadata loads
+from the selected spot snapshot; unavailable metadata remains visible and does
+not block strategy review. Manual modeling requires a deliberate source choice,
+all values and a note. Copying strategy costs is an explicit one-time action,
+recorded as shared numerical assumptions rather than a live inheritance link.
+Spot forms and frozen review use percentages consistently with strategy forms;
+serialized contracts retain fractions.
+
+The additive validated benchmark document contains versioned execution
+assumptions. Full identity includes the independent profile and provenance;
+provenance-only changes invalidate reuse. Jobs, worker and archive validation
+reconstruct the same contract while retaining `research.benchmark_contract`.
+Legacy spot input/document/hash shape is unchanged when the field is absent.
+No execution-engine, sizing or cost-math change, dependency, database migration
+or product-version change is included; product remains `0.6.0-dev`.
+
+Matching source/symbol/resolution, capital, range and complete spot trade
+coverage are required. Leverage/protection policies cannot carry over. Invalid
+optional settings and missing counterpart history leave N/A passive rows and
+valid strategies runnable. Optional missing-file/empty-evaluation preflight is
+row-local; checksum/schema/resource/storage failures and cancellation keep the
+global boundary. Later-period freeze and pending-row resume use original spot
+costs/precision/provenance and new history without metadata refresh. Saved and
+inherited review show these values and the non-equivalent-risk warning; old
+records explicitly state that separate provenance was not recorded.
+
+Focused evidence, not a full-suite or native-platform pass:
+
+- Initial backend pass: **42 tests**, **41 passed**, one new fixture failed
+  because it incorrectly expected maximum-order limits to reject the whole
+  passive purchase. Retained passive scheduling deliberately caps maximum size
+  before minimum checks. No implementation math was changed: the corrective
+  fixture independently derives quantity 9 / final equity 964 for max quantity
+  9, and quantity 8.9 / equity 964.4 for maximum notional 900 at ask 101/bid 99.
+- The single corrective A2 pass: **8 tests passed in 9.87s**. Together with
+  unchanged adjacent coverage above, **42 distinct backend tests passed**.
+  Independent unconstrained fills buy/sell 9.8 units at 101/99 with fees 19.6,
+  final equity 960.8; a separate 0.5-tick rounding case yields 101.5/98.5,
+  quantity 9.7 and equity 951.5. Minimum limits reject as expected. Checks cover
+  missing financial fields, source mismatch, missing/incomplete spot history,
+  stale review, actual worker/cache reuse, provenance-only identity, frozen
+  later/resume, old/new archive contracts and rehashed provenance tampering.
+- Adjacent passing modules: benchmarks, benchmark jobs, library batches,
+  library validation, accounting guards, workload admission, source limits and
+  the legacy passive archive round-trip. A4 source/prefix accounting remains.
+- **30 frontend tests passed across three files in 7.05s**: independent spot
+  settings, LibraryResearch and WorkloadSummary. Coverage includes explicit
+  copy-only costs, manual fallback, delayed counterpart responses, changed-input
+  preview invalidation, saved/legacy provenance and existing cohort behavior.
+  An initial 30-test pass preceded the parent review correction to percentage
+  input/display; the final pass explicitly proves 0.1% / 0.05% copy display
+  serializes 0.001 / 0.0005, and manual 0.2% serializes 0.002.
+- TypeScript and production build passed. The existing non-failing large-chunk
+  advisory remains. A small isolated synthetic GUI fixture is available via
+  `scripts/seed_independent_spot.py`; no public-data research was started.
+
+Independent read-only review prompted worker-side provenance comparison,
+malformed optional-profile handling and correction of the metadata helper's
+maximum-market-order fallback. Windows/native/live, owner acceptance and
+parent-led production-browser inspection remain separate. TT13 and remaining
+original research are unfinished; no release, merge or push is implied.
+
+
+Subsequent production-browser review confirmed saved passive costs 1% versus
+strategy costs 2%, equity 960.8 and fees 19.6, inherited frozen later-period spot
+costs, and explicit-copy display 0.1% / 0.05% without automatic settings changes.
+It also exposed a blocked fresh review whose legitimate missing-mark-coverage
+error was not visible at the active action. The correction places one focused,
+scroll-into-view alert immediately beside Review, suppresses the duplicate
+background alert, discards stale failed responses and clears old preview before
+retry. No financial guard or execution assumption was relaxed.
+
+The focused correction passed **25 LibraryResearch tests in 6.98s**, followed by
+TypeScript/production build. The new test proves modal alert location/focus,
+no false Start, and successful retry after explicitly corrected settings. Its
+initial attempt clicked while warmup was still loading; the test was corrected
+to wait for the enabled Review action. This brings the frontend evidence to
+**31 distinct tests** across the three A2 files; no broad backend rerun was
+needed. A separate complete synthetic linear source with matching mark/funding
+was added for default Lab history policies. Bounded backend previews establish
+one strategy plus two N/A references without independent settings and three
+ready rows with them. Existing source snapshots, saved selection and frozen
+later-period records remain unchanged. Final corrected production-browser rendering and fresh complete-source preview
+were subsequently verified on the corrected production build:
+
+- Selecting the incomplete-mark source produces a visible, focused alert next to
+  Review, with no Start action. Selecting the separate complete source permits
+  review with one ready strategy and two N/A passive references.
+- Selecting the actual matching spot source, explicitly copying 0.1% fee /
+  0.05% slippage and reviewing assumptions produces three ready rows. Frozen
+  fractions are 0.001 / 0.0005 with `explicit_shared` provenance.
+- Manually changing spot fee to 0.2% invalidates Start until assumptions and the
+  test are reviewed again; the reviewed fraction is 0.002 with `explicit_spot`
+  fee provenance.
+- Earlier saved/frozen checks remain unchanged: 1% passive versus 2% strategy
+  costs, passive equity 960.8 and fees 19.6, with original spot assumptions
+  retained for later-period verification.
+
+No runs or freezes were created during these browser checks. This final update
+is documentation only; the verified implementation/build is unchanged, so no
+redundant test or rebuild was performed. Windows/native/live and owner acceptance
+remain separate; TT13 and remaining original research are still unfinished.
+
+
 ## Original-plan TT10 / A4: modeled work and full-source admission — 2026-10-10
 
 The owner-directed original-plan continuation reopens the remaining substantive
@@ -91,7 +199,10 @@ workload count**, unchanged historical explanation and no recomputation or new
 run. After confirmed host shutdown, the separator correction passed all **three
 WorkloadSummary tests** and TypeScript/production build; the existing chunk-size
 advisory remains non-failing. No backend rerun was needed for this JSX-only fix.
-Corrected production-browser rendering remains the separate subsequent check.
+A subsequent production-browser check confirmed that the saved **1,872 legacy**
+headline and explanation are visually separated. The **168-execution preview**
+was verified in the earlier inspection; only the text separator changed. No new
+run was started during the final separator check.
 
 
 

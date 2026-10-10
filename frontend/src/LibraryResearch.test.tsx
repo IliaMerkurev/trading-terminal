@@ -1,5 +1,5 @@
 import {it,expect,vi} from 'vitest';
-import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {render,screen,fireEvent,waitFor,within} from '@testing-library/react';
 import LibraryResearch,{sortedLibraryRows,canonical,filterLibraryRows,researchProfileSnapshot,historyLabel} from './LibraryResearch';
 import {defaultProfile} from './model';
 import {api} from './api';
@@ -372,4 +372,76 @@ it('labels same-day history choices with source, short identity and precise UTC 
  expect(historyLabel(a)).toContain('Synthetic shared · abcdef01');
  expect(historyLabel(a)).toContain('1970-01-01T00:00 — 1970-01-01T00:48 UTC');
  expect(historyLabel(a)).not.toBe(historyLabel(b));
+});
+
+it('reviews independent spot inputs and discards a stale preview after passive settings change',async()=>{
+ let resolvePreview:(value:any)=>void=()=>{};
+ const linear={...defaultProfile,market:'linear',leverage:'2'};
+ const history=[{...datasets[0],id:'linear',market:'linear'},datasets[0]];
+ const metadata={tick_size:'.5',quantity_step:'.1',min_quantity:'.1',max_quantity:'20',min_notional:'1',max_notional:'2000',tier_assumption:'Reviewed synthetic spot limits'};
+ vi.mocked(api).mockImplementation(async(command)=>{
+  if(command==='library_batch_history')return {rows:[],next:null};
+  if(command==='dataset_profile')return metadata;
+  if(command==='library_batch_preview')return new Promise(resolve=>{resolvePreview=resolve;});
+  return {};
+ });
+ render(<LibraryResearch selections={selections} datasets={history} profile={linear} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'linear'}});
+ fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T00:10'}});
+ fireEvent.click(screen.getByText('Passive comparisons',{selector:'summary'}));
+ fireEvent.change(screen.getByLabelText('Spot alternative dataset'),{target:{value:'data'}});
+ await waitFor(()=>expect((screen.getByLabelText('Spot quantity step') as HTMLInputElement).value).toBe('.1'));
+ fireEvent.click(screen.getByRole('button',{name:'Copy strategy cost assumptions explicitly'}));
+ fireEvent.click(screen.getByLabelText('Review independent spot assumptions'));
+ fireEvent.click(screen.getByRole('button',{name:'Review test'}));
+ await waitFor(()=>expect(vi.mocked(api).mock.calls.some(([command])=>command==='library_batch_preview')).toBe(true));
+ const request=vi.mocked(api).mock.calls.find(([command])=>command==='library_batch_preview')![1] as any;
+ expect(request.spot_benchmark.profile).toMatchObject({market:'spot',quantity_step:'.1',max_notional:'2000',leverage:'1'});
+ expect(request.spot_benchmark.assumptions.fee_source).toBe('explicit_shared');
+ fireEvent.change(screen.getByLabelText('Spot fee (%)'),{target:{value:'.009'}});
+ resolvePreview({contract_sha256:'stale',modeled_minutes:1,rows:[{kind:'graph',name:'RSI',error:null}]});
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
+ expect(screen.queryByRole('button',{name:/Start \d+ tests/})).toBeNull();
+ expect(screen.getByText('Spot comparisons unavailable; strategy tests can still run.')).toBeTruthy();
+});
+
+
+it('keeps failed review visible beside the modal action and retries only with explicitly corrected settings',async()=>{
+ const linear={...defaultProfile,market:'linear',mark_mode:'history',funding_mode:'history'};
+ const history=[{...datasets[0],market:'linear'}];
+ vi.mocked(api).mockImplementation(async(command,params:any)=>{
+  if(command==='library_batch_history')return {rows:[],next:null};
+  if(command==='library_batch_preview'){
+   if(params.profile.mark_mode==='history')throw Error('Mark coverage is incomplete');
+   return {contract_sha256:'corrected',modeled_minutes:30,rows:[{kind:'graph',name:'RSI',error:null}]};
+  }
+  return {};
+ });
+ const props={selections,datasets:history,profile:linear,onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn()};
+ const {rerender}=render(<LibraryResearch {...props}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+ const dialog=screen.getByRole('dialog',{name:'Set up backtest'});
+ fireEvent.change(within(dialog).getByLabelText('Batch dataset'),{target:{value:'data'}});
+ fireEvent.change(within(dialog).getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T00:10'}});
+ await waitFor(()=>expect((within(dialog).getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(within(dialog).getByRole('button',{name:'Review test'}));
+ const alert=await within(dialog).findByRole('alert');
+ expect(alert.textContent).toContain('Mark coverage is incomplete');
+ expect(alert.textContent).toContain('then retry Review test');
+ expect(alert.nextElementSibling).toBe(within(dialog).getByRole('button',{name:'Review test'}));
+ expect(document.activeElement).toBe(alert);
+ expect(screen.getAllByRole('alert',{hidden:true})).toHaveLength(1);
+ expect(screen.queryByRole('button',{name:/Start \d+ tests/})).toBeNull();
+ expect(api).not.toHaveBeenCalledWith('library_batch_start',expect.anything());
+ // Simulates an explicit profile edit, never an automatic relaxation of coverage.
+ rerender(<LibraryResearch {...props} profile={{...linear,mark_mode:'last_proxy',funding_mode:'assumed_zero'}}/>);
+ fireEvent.click(within(dialog).getByRole('button',{name:'Review test'}));
+ expect(await within(dialog).findByRole('button',{name:'Start 1 tests'})).toBeTruthy();
+ expect(within(dialog).queryByRole('alert')).toBeNull();
+ const reviews=vi.mocked(api).mock.calls.filter(([command])=>command==='library_batch_preview');
+ expect(reviews).toHaveLength(2);
+ expect((reviews[0][1] as any).profile.mark_mode).toBe('history');
+ expect((reviews[1][1] as any).profile).toMatchObject({mark_mode:'last_proxy',funding_mode:'assumed_zero'});
+ expect(api).not.toHaveBeenCalledWith('library_batch_start',expect.anything());
 });

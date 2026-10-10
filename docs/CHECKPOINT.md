@@ -5,21 +5,31 @@ Updated 2026-10-10. Working branch: `codex/terminal-mvp`; product remains
 release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
 product specification; [STATUS.md](STATUS.md) owns detailed test evidence.
 
-## Renewed original-plan continuation: TT10 / A4
+## Renewed original-plan continuation: TT10 / A4 and A2
 
 The original remaining engineering/research plan is reopened after the bounded
-UX candidate. This checkpoint implements only modeled-work versus full-source
-loading admission. New library workload version 2 counts full strategy prefix
+UX candidate. This checkpoint implements modeled-work versus full-source
+loading admission and additive independent spot passive contracts. New library workload version 2 counts full strategy prefix
 plus evaluation and evaluation-only passive rows; no cache discount. New reviews
 freeze per-row counts and source-load policy 1. Old saved counts remain legacy
 and unchanged. Full trade/mark/funding sources receive separate bounded metadata,
 physical and materialization-estimate checks before eager decoding; no execution
 or indicator history is shortened. See the new A4 evidence in STATUS.md and
 [development guidance](DEVELOPMENT.md#modeled-work-and-independent-full-source-admission-tt10--a4).
-A2 independent spot contracts, TT13 and remaining bounded research are not
-implemented by this slice. Windows/native and new exchange/live work remain
+A2 now freezes independent spot costs, precision/order limits and explicit
+provenance across preview/start, cache, resume, later-period verification and
+archives. Metadata and deliberately reviewed manual assumptions are available;
+missing optional settings/history retain N/A passive rows. Legacy spot contract
+shapes are preserved. See [A2 guidance](DEVELOPMENT.md#independent-spot-passive-controls-tt10--a2).
+TT13 and remaining bounded research are not implemented by this slice. Windows/native and new exchange/live work remain
 deferred. Parent-led production-browser inspection and publication follow the
 local engineering checkpoint; neither is implied by component tests/build.
+The subsequent A2 production-browser check passed visible failure/retry,
+one-ready-plus-two-N/A and three-ready review paths, percentage-to-fraction
+serialization, explicit cost provenance and stale-preview invalidation. Saved
+and frozen independent-cost values remained unchanged; no runs or freezes were
+created. See STATUS.md for exact evidence. This does not close TT13, remaining
+research, Windows/native/live or owner acceptance.
 
 ## Start here
 

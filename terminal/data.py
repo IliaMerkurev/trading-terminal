@@ -407,7 +407,7 @@ def metadata_profile_fields(manifest):
             fields.update(maintenance_rate=str(tier["maintenanceMargin"]),max_notional=str(tier["riskLimitValue"]))
         else:
             fields.update(quantity_step=lot["basePrecision"],min_notional=lot["minOrderAmt"],
-                          max_quantity=lot.get("maxMarketOrderQty",lot["maxOrderQty"]),max_notional=lot["maxOrderAmt"])
+                          max_quantity=lot["maxMarketOrderQty"] if "maxMarketOrderQty" in lot else lot["maxOrderQty"],max_notional=lot["maxOrderAmt"])
         if manifest["metadata"].get("synthetic") is True:
             fields["tier_assumption"] = ("Invented synthetic precision and size limits for offline testing; "
                                          "not current or historical exchange metadata")

@@ -4,6 +4,8 @@ import json
 import sqlite3
 import uuid
 import math
+import re
+from decimal import DecimalException
 from importlib.metadata import PackageNotFoundError
 
 from terminal import benchmarks, library, research_evidence, source_limits
@@ -31,7 +33,7 @@ class LibraryBatchManager(ExperimentManager):
             db.execute("UPDATE library_batches SET status='interrupted',error='Application stopped; explicit pending-row resume required' WHERE status IN ('running','preparing')")
             db.execute("UPDATE library_rows SET status='interrupted',error='No mid-run recovery' WHERE status='running'")
 
-    def prepare(self, selections, dataset_id, profile, start, end, interval, spot_dataset_id):
+    def prepare(self, selections, dataset_id, profile, start, end, interval, spot_dataset_id, spot_benchmark=None):
         if not isinstance(selections, list) or not 1 <= len(selections) <= MAX_ROWS:
             raise ValueError(f'Select 1–{MAX_ROWS} explicit strategy/timeframe rows')
         profile = Profile(**profile)
@@ -86,23 +88,32 @@ class LibraryBatchManager(ExperimentManager):
                 source_default_minutes=entry['source_default_minutes'],author_recommended_minutes=entry['author_recommended_minutes']))
         # Baselines use real spot history, an independent account and no strategy policies.
         spot_id = dataset_id if profile.market=='spot' else spot_dataset_id
+        spot_manifest = None
+        if isinstance(spot_id,str) and re.fullmatch('[a-f0-9]{64}',spot_id) and (profile.market=='spot' or spot_benchmark is not None):
+            try:spot_manifest=self.jobs.datasets.describe(spot_id)
+            except FileNotFoundError:pass
+        normalized_spot = None
         for schedule,name in [('once','Buy & Hold'),(interval,'Scheduled DCA')]:
             row = dict(kind='benchmark',name=name,error=None)
             try:
-                if profile.market == 'linear':
-                    raise ValueError('Spot benchmark N/A: linear comparisons require an independently specified '
-                                     'spot execution profile and explicit spot fee assumption; use a spot-origin '
-                                     'comparison with reviewed spot settings')
+                if profile.market == 'linear' or spot_benchmark is not None:
+                    normalized_spot = benchmarks.independent_spot(spot_benchmark, profile)
+                    p = normalized_spot['profile']
+                else:
+                    # Exact legacy spot shape is preserved when no optional input exists.
+                    p = Profile(**{**profile.snapshot(),'version':1,'market':'spot','leverage':'1','primary_minutes':profile.execution_minutes,
+                                   'stop_loss':'0','take_profit':'0','position_management':None}).snapshot()
                 if spot_id is None:raise ValueError('No actual matching spot counterpart: benchmark N/A')
-                spot = self.jobs.datasets.describe(spot_id)
+                if spot_manifest is None:raise ValueError('Optional spot history is unavailable; benchmark N/A')
+                spot = spot_manifest
                 if spot['source'] != manifest['source']:raise ValueError('Spot counterpart source differs')
-                p = Profile(**{**profile.snapshot(),'version':1,'market':'spot','leverage':'1','primary_minutes':profile.execution_minutes,
-                               'stop_loss':'0','take_profit':'0','position_management':None}).snapshot()
                 document = dict(benchmark='passive',version=1,start=start,end=end,interval=schedule)
+                if normalized_spot is not None:document['execution_assumptions']=normalized_spot['assumptions']
                 self.jobs.datasets.check_profile(spot,Profile(**p))
                 frozen = benchmarks.validate_document(document,Profile(**p),spot,runtime)
                 row.update(document=document,profile=p,dataset=self._dataset(spot),contract=frozen)
-            except ValueError as exc:row['error']=str(exc)
+            except (ValueError,TypeError,DecimalException) as exc:row['error']=str(exc)
+            except FileNotFoundError:row['error']='Optional spot history is unavailable; benchmark N/A'
             rows.append(row)
         breakdown=[]
         for ordinal,row in enumerate(rows):
@@ -124,6 +135,7 @@ class LibraryBatchManager(ExperimentManager):
                      modeled_minutes=workload,capital=profile.capital,market=profile.market,symbol=profile.symbol,
                      inputs=dict(selections=selections,dataset_id=dataset_id,profile=profile.snapshot(),start=start,end=end,
                                  interval=interval,spot_dataset_id=spot_dataset_id))
+        if spot_benchmark is not None:value['inputs']['spot_benchmark']=normalized_spot or spot_benchmark
         return json.loads(canonical({**value,'contract_sha256':digest(value)}))
 
     def warmup(self,selections,dataset_id):
@@ -200,7 +212,7 @@ class LibraryBatchManager(ExperimentManager):
             raise ValueError('Selected library source changed; run a new selection first')
         previous=self.jobs.datasets.describe(spec['dataset']['id']);later=self.jobs.datasets.describe(dataset_id)
         if any(previous[k]!=later[k] for k in ('source','market','symbol')):raise ValueError('Later history must match source, market and symbol')
-        frozen=self.prepare([spec['selection']],dataset_id,spec['profile'],start,end,source['inputs']['interval'],spot_dataset_id)
+        frozen=self.prepare([spec['selection']],dataset_id,spec['profile'],start,end,source['inputs']['interval'],spot_dataset_id,source['inputs'].get('spot_benchmark'))
         strategy_errors = [r['error'] for r in frozen['rows'] if r['kind'] != 'benchmark' and r['error']]
         if strategy_errors:raise ValueError('Validation preflight: '+'; '.join(strategy_errors))
         # Explicitly unavailable passive alternatives remain N/A; they must not
@@ -260,18 +272,34 @@ class LibraryBatchManager(ExperimentManager):
         if runtime_snapshot()!=frozen['runtime']:raise ValueError('Runtime changed; frozen batch cannot resume')
         for row in frozen['rows']:
             if row['error']:continue
-            if self._dataset(self.jobs.datasets.describe(row['dataset']['id']))!=row['dataset']:
+            try:manifest=self.jobs.datasets.describe(row['dataset']['id'])
+            except FileNotFoundError:
+                if row['kind']=='benchmark' and row['dataset']['id']!=frozen['inputs']['dataset_id']:continue
+                raise
+            if self._dataset(manifest)!=row['dataset']:
                 raise ValueError('Frozen dataset changed')
-            if row['kind']!='benchmark':
+            if row['kind']=='benchmark':
+                actual=benchmarks.validate_document(row['document'],Profile(**row['profile']),manifest,frozen['runtime'])
+                if actual!=row['contract']:raise ValueError('Frozen benchmark contract changed')
+            else:
                 prepared=library.for_window(library.prepare(**row['selection']),frozen['start'])
                 if prepared['contract']!=row['contract'] or prepared['document']!=row['document']:
                     raise ValueError('Reviewed library source changed')
 
     def _preflight_data(self, active, frozen):
         # Hash and coverage checks run on the scheduler thread, never the IPC thread.
+        unavailable={}
         for dataset_id in dict.fromkeys(r['dataset']['id'] for r in frozen['rows'] if not r['error']):
             if active['stop'].is_set():return
-            _,bars,_,_=self.jobs.datasets.load(dataset_id)
+            optional=dataset_id!=frozen['inputs']['dataset_id'] and all(r['kind']=='benchmark' for r in frozen['rows'] if not r['error'] and r['dataset']['id']==dataset_id)
+            try:_,bars,_,_=self.jobs.datasets.load(dataset_id)
+            except FileNotFoundError:
+                if not optional:raise
+                unavailable[dataset_id]='Optional spot history is unavailable; benchmark N/A'
+                continue
+            if optional and not any(frozen['start']<=b.time<frozen['end'] for b in bars):
+                unavailable[dataset_id]='Optional spot evaluation history is empty; benchmark N/A'
+                continue
             for row in frozen['rows']:
                 if row['error'] or row['dataset']['id']!=dataset_id:continue
                 if not any(frozen['start']<=b.time<frozen['end'] for b in bars):raise ValueError('Evaluation history is empty')
@@ -284,17 +312,22 @@ class LibraryBatchManager(ExperimentManager):
                 if len(aggregate.closed)<row['contract']['warmup_bars']:
                     raise ValueError('History gaps leave insufficient complete warmup bars')
 
+        return unavailable
+
     def _batch(self, active):
         ident=active['id'];status='completed';error=None
         try:
             report=self.get(ident);frozen=report['snapshot']
-            self._unchanged(frozen);self._preflight_data(active,frozen)
+            self._unchanged(frozen);unavailable=self._preflight_data(active,frozen) or {}
             with self.store.connect() as db:db.execute("UPDATE library_batches SET status='running' WHERE id=?",(ident,))
             for row in report['rows']:
                 self.jobs.require_storage_ready()
                 if active['stop'].is_set():break
                 if row['status']!='pending':continue
                 ordinal=row['ordinal'];spec=frozen['rows'][ordinal]
+                if spec['dataset']['id'] in unavailable:
+                    with self.store.connect() as db:db.execute("UPDATE library_rows SET status='incompatible',error=? WHERE batch_id=? AND ordinal=?",(unavailable[spec['dataset']['id']],ident,ordinal))
+                    continue
                 def started(run_id):
                     with self.store.connect() as db:db.execute("UPDATE library_rows SET status='running',run_id=? WHERE batch_id=? AND ordinal=?",(run_id,ident,ordinal))
                 try:

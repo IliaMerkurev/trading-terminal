@@ -72,6 +72,7 @@ class AppService:
             fields.update(local_history_window={'dataset_id','start','end'}, observation_history={'before'},
                           observation_get={'observation_id','revision'},
                           observation_save={'observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
+            if command in ('library_batch_preview','library_batch_start') and 'spot_benchmark' in p:fields[command]=fields[command]|{'spot_benchmark'}
             if command=='library_batch_start' and 'observation' in p:fields[command].add('observation')
             fields['research_display_incomplete']=set()
             fields['research_displayed']={'presentation_id','reference','viewport'}

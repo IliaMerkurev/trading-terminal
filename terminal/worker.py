@@ -48,7 +48,9 @@ def main():
         if 'benchmark' in strategy:
             from terminal.benchmarks import validate_document,run
             dataset=DatasetStore(root/'datasets').describe(snapshot['dataset']['id'])
-            validate_document(strategy,profile,dataset)
+            frozen=validate_document(strategy,profile,dataset,snapshot['runtime'])
+            if snapshot.get('research')!={'benchmark_contract':frozen['contract_sha256']}:
+                raise ValueError('Worker benchmark contract mismatch')
             result=run(bars,profile,strategy['start'],strategy['end'],strategy['interval'],progress)
         elif strategy.get("engine")=="nautilus_trader":
             from terminal.process_lifecycle import require_native_execution

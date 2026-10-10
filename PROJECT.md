@@ -406,3 +406,20 @@ policy for new contracts; retain the old alias and unchanged historical reports.
 See [development guidance](docs/DEVELOPMENT.md#modeled-work-and-independent-full-source-admission-tt10--a4).
 This completes this bounded A4 scope only; independent linear-origin spot
 benchmark settings, TT13 and remaining original research work stay separate.
+
+### Original-plan independent passive contract — 2026-10-10
+
+TT10/A2 admits an explicit independent spot execution profile and versioned
+cost/precision provenance for linear-origin Library comparisons. Use actual
+same-source/symbol/resolution spot history, matching initial capital and dates,
+and unleveraged passive policies. No futures fees, precision or order limits may
+be copied implicitly. Explicit numerical cost sharing is separately reviewed and
+frozen. Missing/incomplete optional settings leave passive references N/A without
+blocking valid strategies. Provenance participates in the additive benchmark
+execution document/hash used by jobs, workers, archives and frozen resume.
+Ordinary spot legacy documents remain unchanged when the field is absent.
+Later-period verification retains original costs/precision against new history;
+current metadata never retroactively changes a frozen result. Manual historical
+modeling requires explicit review and a note. Preserve separate risk cohorts and
+all TT10/A4 modeled-work/source-loading guards. TT13 and remaining research are
+outside this bounded implementation; Windows/native/live acceptance stays separate.
