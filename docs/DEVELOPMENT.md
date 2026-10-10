@@ -355,3 +355,68 @@ Stop the host before building and restart afterward. Browser checks establish
 rendered interaction separately from component-injected transport races. Do not
 claim new exposure coverage, financial validation or native acceptance from this
 frontend-only slice. See STATUS.md for the final combined frontend evidence.
+
+## Modeled work and independent full-source admission (TT10 / A4)
+
+The renewed original-plan continuation starts with A4. Keep this slice separate
+from independent spot benchmark settings (A2), heavy-operation responsiveness
+and recoverable import (TT13), and remaining research protocols. The earlier
+bounded UX gate is historical evidence, not a claim that the original plan is
+complete. Windows/native acceptance and new exchange/live work remain deferred.
+
+Library workload version 2 counts each eligible strategy's entire source prefix
+through the exclusive evaluation end, using that row's execution resolution.
+Each eligible passive row counts only `[start,end)`. Incompatible rows count zero;
+cache hits receive no discount. The cap remains 2,000,000 modeled source-candle
+executions. `modeled_minutes` remains an additive compatibility alias; it does
+not mean wall-clock minutes. New snapshots freeze `modeled_source_candles`,
+`workload_version`, per-row `workload_breakdown`, and `source_load_policy`.
+Old snapshots are read unchanged and labeled legacy; they are never recalculated.
+
+`DatasetStore.load` still loads all trade, mark and funding tables, including
+post-evaluation suffixes. A shared lower-level physical guard checks bounded
+manifest metadata first, then each open Parquet descriptor's file hash, footer,
+row count, schema, row groups and declared sizes before any table is eagerly
+decoded. Chart inspection uses the same physical helper without importing the
+observation/evidence layer into loading. Normalized-content checksums and existing
+coverage/gap checks remain required. No indicator prefix or execution window is
+truncated by the budget fix.
+
+Source-load policy 1 bounds the manifest to 4 MiB; full source slots and each
+physical table to 2,000,000 rows; each file to 256 MiB; each footer to 4 MiB;
+each table to 8,192 row groups; each group's encoded uncompressed bytes to
+128 MiB; and the aggregate decoded-size estimate across all three tables to
+512 MiB. Parquet uncompressed page sizes are not fully decoded string sizes:
+funding groups therefore use a deliberately pessimistic bound of group rows
+multiplied by uncompressed rate-column bytes plus 12 bytes per row and 4 bytes
+for Arrow offsets. This prevents dictionary repetition from bypassing admission.
+It can refuse otherwise valid sources; prepare a smaller separate snapshot.
+
+A separate materialization-policy estimate is capped at 1 GiB: 1,024 bytes per
+trade/mark row, 512 bytes per funding row, plus three times the aggregate decoded
+estimate. Per-table caps alone would permit multiplicative allocations, so the
+aggregate checks are mandatory. These are finite admission estimates, not a
+process peak-RAM guarantee; allocator, interpreter, dictionary/page decoding and
+Python representations vary. The scheduler completes its source preflight before
+launching a worker, and does not retain those tables across the return. Other
+application state and output processing are outside this estimate. Refusing a
+full source does not silently shorten it or raise the modeled-work cap.
+
+Focused validation:
+
+```sh
+.venv/bin/python -W ignore -m unittest tests.test_workload_admission tests.test_source_limits tests.test_library_batches tests.test_accounting_guards tests.test_observations -q
+node node_modules/vitest/vitest.mjs run frontend/src/WorkloadSummary.test.tsx frontend/src/LibraryResearch.test.tsx frontend/src/UserJourneys.test.tsx
+node scripts/frontend.mjs build
+.venv/bin/python scripts/measure_source_load.py
+```
+
+The calibration generates only 30,000 synthetic linear trade rows, 30,000 mark
+rows and 63 funding rows. Generation and measurement are separate sibling
+subprocesses; Linux `ru_maxrss` includes the measured interpreter/imports but not
+fixture generation. It measures full-load duration and process high-water RSS,
+not largest-supported execution, cancellation latency or Windows memory.
+For GUI inspection, Review a small source, expand Workload breakdown and
+source-loading limits, then inspect an existing old comparison: its saved count
+must say legacy and remain unchanged. Start remains a separate reviewed action.
+No new run is needed merely to inspect the labels.

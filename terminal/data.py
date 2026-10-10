@@ -1,4 +1,5 @@
 """Credential-free Bybit history, immutable Parquet snapshots and coverage."""
+from contextlib import ExitStack
 from datetime import datetime,timezone
 import hashlib
 import importlib.metadata
@@ -15,6 +16,7 @@ from urllib import request,parse,error
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from terminal import source_limits
 from terminal.profile import dec
 from terminal.series import Candle
 
@@ -264,7 +266,8 @@ class DatasetStore:
     def describe(self,dataset_id):
         if not re.fullmatch(r"[a-f0-9]{64}",dataset_id): raise DataError("Invalid dataset ID")
         directory=self.root/dataset_id
-        manifest=json.loads((directory/"manifest.json").read_bytes())
+        try:manifest=source_limits.read_manifest(directory/"manifest.json")
+        except ValueError as exc:raise DataError(str(exc)) from exc
         payload={k:v for k,v in manifest.items() if k not in ("id","files_sha256")}
         if digest(payload)!=dataset_id: raise DataError("Dataset manifest checksum mismatch")
         return manifest
@@ -273,16 +276,27 @@ class DatasetStore:
         manifest=self.describe(dataset_id)
         directory=self.root/dataset_id
         content={}
-        for name in ("trade","mark","funding"):
-            raw=(directory/(name+".parquet")).read_bytes()
-            if hashlib.sha256(raw).hexdigest()!=manifest["files_sha256"][name]: raise DataError("Dataset file checksum mismatch")
-            content[name]=pq.read_table(pa.BufferReader(raw)).to_pylist()
+        try:
+            source_limits.check_manifest(manifest)
+            # All tables (including unused mark/funding and suffix rows) must pass
+            # physical admission before any eager decode in scheduler or worker.
+            with ExitStack() as stack:
+                checked={};total=0
+                for name in ("trade","mark","funding"):
+                    stream=stack.enter_context((directory/(name+".parquet")).open('rb'))
+                    parquet,estimate=source_limits.checked_parquet(stream,name,manifest["files_sha256"][name])
+                    checked[name]=parquet;total+=estimate
+                    if total>source_limits.MAX_TOTAL_DECODED_BYTES:raise DataError(source_limits.SOURCE_LIMIT)
+                source_limits.check_materialization(checked,total)
+                for name,parquet in checked.items():
+                    content[name]=parquet.read().to_pylist()
+        except ValueError as exc:raise DataError(str(exc)) from exc
         if digest(content)!=manifest["content_sha256"]: raise DataError("Normalized dataset checksum mismatch")
         return manifest,[Candle(**c) for c in content["trade"]],{c["time"]:Candle(**c) for c in content["mark"]},{c["time"]:c["rate"] for c in content["funding"]}
 
     def list(self):
         if not self.root.exists(): return []
-        return [json.loads(p.read_bytes()) for p in self.root.glob("*/manifest.json")]
+        return [source_limits.read_manifest(p) for p in self.root.glob("*/manifest.json")]
 
     def for_run(self,dataset_id,profile):
         manifest,trade,marks,funding=self.load(dataset_id)

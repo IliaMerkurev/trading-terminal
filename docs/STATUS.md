@@ -6,6 +6,95 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Original-plan TT10 / A4: modeled work and full-source admission — 2026-10-10
+
+The owner-directed original-plan continuation reopens the remaining substantive
+work after the bounded UX candidate. This slice completes only A4: accurate
+modeled-work admission plus independent full-source loading limits. A2 independent
+spot contracts, TT13 heavy operations/import continuation and remaining research
+are separate unfinished work; no extra UI-polish program is implied.
+
+Workload version 2 counts full strategy prefix through exclusive evaluation end,
+evaluation-only passive references and zero for unavailable rows, in each row's
+actual execution-candle units. The cap stays 2,000,000 with no cache discount.
+Independent cases prove 600k prefix + 100k evaluation + two baselines gives
+900k / 1.6M for one / two strategies, while three reject 2.3M. The small fixture
+is 30 + 18 + 18 = 66, replacing the old 90. Exact-limit/+1 and H1/H4/D1 units
+are covered. New contracts freeze the breakdown, workload version and separate
+source-load policy. `modeled_minutes` is retained as a compatibility alias.
+Legacy snapshots/counts stay unchanged and readable, with explicit legacy UI.
+Preview/start exact hashes, runtime-based pending-resume invalidation and
+cross-runtime cache separation remain unchanged. Linear-origin passives remain
+N/A and the `spot_dataset_id` API is unchanged.
+
+The source guard checks a bounded manifest and every full trade/mark/funding
+file before eager decoding, including suffix history outside evaluation. It
+checks file hashes, physical counts, footer, schema and row-group size limits,
+then aggregate decoded/materialization estimates. Funding dictionary expansion
+uses a pessimistic variable-width bound; encoded Parquet bytes alone are not a
+safe decoded-size measure. The observation reader shares the lower-level helper.
+Full normalized hashes, gap checks, retained indicators and accounting still
+apply. See DEVELOPMENT.md for exact limits/formula and their deliberate
+conservative refusals. These are admission estimates, not peak-RAM guarantees.
+No source is silently truncated and no old snapshot is rewritten.
+
+Verification chronology:
+
+- Initial focused backend pass ran 56 tests: 55 passed; the sole failure was the
+  prior accounting assertion explicitly expecting the old 90 workload. Its new
+  expectation is independently derived as 66; no financial expectation changed.
+  Modules: workload admission, source limits, library batches, coarse research,
+  benchmark jobs, library validation, accounting guards, data, observations and
+  library. Existing future-perturbation and coarse accounting evidence passed.
+- Independent read-only review exposed funding dictionary expansion. The guard
+  was tightened before completion; tests include a repeated 8,192-byte string,
+  all-table rejection before any eager read, mark/funding schema/count checks,
+  aggregate boundaries and manifest/file/footer/group/materialization limits.
+- The single corrective focused pass passed **36 tests** in 14.14s across
+  `tests.test_workload_admission`, `tests.test_source_limits`,
+  `tests.test_library_batches`, `tests.test_accounting_guards` and
+  `tests.test_observations`. It includes normalized checksum rejection after a
+  valid physical-hash update, genuine populated-cache workload equality, and
+  saved indicator/trade/metric parity with the retained full-prefix calculation.
+  Combined with the unchanged adjacent tests above, this is **60 distinct
+  backend tests**, not a full-suite pass on the new implementation.
+- Final frontend pass passed **37 tests across three files**:
+  `WorkloadSummary.test.tsx`, `LibraryResearch.test.tsx`, `UserJourneys.test.tsx`.
+  `node scripts/frontend.mjs build` passed TypeScript and production build; the
+  existing non-failing large-chunk advisory remains. The earlier 413-test UX
+  aggregate does not validate these new backend changes.
+- A bounded Linux calibration using `scripts/measure_source_load.py` loaded
+  30,000 trade + 30,000 mark + 63 funding rows in **0.2646s**. Measured-process
+  peak RSS was **144,164 KiB**, with pre-load high-water **73,188 KiB**.
+  Fixture generation ran in a separate sibling subprocess and is excluded;
+  interpreter/imports are included. An earlier harness inherited the generator's
+  high-water mark and was corrected before reporting this evidence. This small
+  fixture calibrates behavior, not the largest source or a universal memory cap.
+
+Read-only review found no remaining blocker after the expansion correction.
+No new dependencies, database migration, product-version bump, numerical engine
+change or strategy/benchmark-profile change is included. Production-browser
+inspection, native Windows, largest-load status/cancel latency, remote CI and
+owner acceptance remain separate. Local commit is an engineering checkpoint,
+not merge/release permission.
+
+Subsequent production-browser inspection on the restored synthetic hourly source
+confirmed **168 executions = 120 strategy (96 prefix + 24 evaluation) + 24 Buy &
+Hold + 24 DCA**, with the separate source-loading details visible. No Start action
+or new run occurred. Inspection found a presentation-only defect: the workload
+headline and following explanation were inline without a separator. An explicit
+line break now separates both current and legacy headlines from their explanation;
+nearest component assertions cover that separator. This does not change the
+backend, frozen contract or numerical evidence above. The same browser inspection
+reopened the original linked-observation comparison with its exact **1,872 legacy
+workload count**, unchanged historical explanation and no recomputation or new
+run. After confirmed host shutdown, the separator correction passed all **three
+WorkloadSummary tests** and TypeScript/production build; the existing chunk-size
+advisory remains non-failing. No backend rerun was needed for this JSX-only fix.
+Corrected production-browser rendering remains the separate subsequent check.
+
+
+
 ## Final bounded UX candidate verification — 2026-10-10
 
 Final corrected source is `cfe60f62ff9ba6f866219c80cc2fafbccea0b426`, tree

@@ -5,6 +5,22 @@ Updated 2026-10-10. Working branch: `codex/terminal-mvp`; product remains
 release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
 product specification; [STATUS.md](STATUS.md) owns detailed test evidence.
 
+## Renewed original-plan continuation: TT10 / A4
+
+The original remaining engineering/research plan is reopened after the bounded
+UX candidate. This checkpoint implements only modeled-work versus full-source
+loading admission. New library workload version 2 counts full strategy prefix
+plus evaluation and evaluation-only passive rows; no cache discount. New reviews
+freeze per-row counts and source-load policy 1. Old saved counts remain legacy
+and unchanged. Full trade/mark/funding sources receive separate bounded metadata,
+physical and materialization-estimate checks before eager decoding; no execution
+or indicator history is shortened. See the new A4 evidence in STATUS.md and
+[development guidance](DEVELOPMENT.md#modeled-work-and-independent-full-source-admission-tt10--a4).
+A2 independent spot contracts, TT13 and remaining bounded research are not
+implemented by this slice. Windows/native and new exchange/live work remain
+deferred. Parent-led production-browser inspection and publication follow the
+local engineering checkpoint; neither is implied by component tests/build.
+
 ## Start here
 
 - [Development guide](DEVELOPMENT.md): matching platform setup, browser and

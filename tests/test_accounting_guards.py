@@ -167,7 +167,7 @@ class AccountingGuardTests(unittest.TestCase):
                 first = manager.prepare(**spot_params); second = manager.prepare(**spot_params)
                 self.assertEqual(first, second)
                 self.assertTrue(all(not r['error'] for r in first['rows']))
-                self.assertEqual(first['modeled_minutes'], 90)  # Conservative source-load cap deliberately retained.
+                self.assertEqual(first['modeled_minutes'], 66)  # 30 strategy prefix+evaluation + 18 per passive row.
                 altered = manager.prepare(**{**spot_params, 'profile': replace(spot_profile, fee_rate='.003').snapshot()})
                 for index in (1, 2):
                     self.assertEqual(first['rows'][index]['profile']['fee_rate'], '.001')

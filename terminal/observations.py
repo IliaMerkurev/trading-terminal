@@ -1,22 +1,21 @@
 """Local history observations and revision-bound links; never financial evidence."""
 from datetime import datetime, timezone
-import hashlib
 import json
 import math
 import uuid
 
-import pyarrow.parquet as pq
+from terminal import source_limits
 
 from terminal.data import canonical, digest
 from terminal.research_evidence import provenance
 from terminal.storage import identifier
 
 PAGE_CANDLES = 500
-MAX_FILE_BYTES = 256 * 1024 * 1024
-MAX_FOOTER_BYTES = 4 * 1024 * 1024
-MAX_ROWS = 2_000_000
-MAX_ROW_GROUPS = 8192
-SOURCE_LIMIT = 'Local history exceeds inspection limits (256 MiB file, 4 MiB footer, 2,000,000 rows, 8,192 row groups). Prepare a smaller separate snapshot; no range is changed automatically.'
+MAX_FILE_BYTES = source_limits.MAX_FILE_BYTES
+MAX_FOOTER_BYTES = source_limits.MAX_FOOTER_BYTES
+MAX_ROWS = source_limits.MAX_ROWS
+MAX_ROW_GROUPS = source_limits.MAX_ROW_GROUPS
+SOURCE_LIMIT = 'Local history exceeds inspection limits (256 MiB file, 4 MiB footer, 2,000,000 rows, 8,192 row groups, 128 MiB/row group, 512 MiB decoded-size estimate). Prepare a smaller separate snapshot; no range is changed automatically.'
 LIMITATION = 'Notes do not prove which candles were viewed. Displayed local surfaces are recorded separately; untracked views and external exposure remain incomplete.'
 
 
@@ -69,26 +68,9 @@ class Observations:
         # Constant-memory integrity verification. No DatasetStore.load/read_table or
         # full-file byte buffer: chart paging must not materialize years of bars.
         with path.open('rb') as stream:
-            stream.seek(0,2);size=stream.tell()
-            if size>MAX_FILE_BYTES:raise ValueError(SOURCE_LIMIT)
-            if size<12:raise ValueError('Invalid local Parquet file')
-            stream.seek(-8,2);footer=stream.read(8)
-            if footer[4:]!=b'PAR1':raise ValueError('Invalid local Parquet footer')
-            if int.from_bytes(footer[:4],'little')>MAX_FOOTER_BYTES:raise ValueError(SOURCE_LIMIT)
-            stream.seek(0);sha=hashlib.sha256();hashed=0
-            for chunk in iter(lambda:stream.read(1024*1024),b''):
-                hashed+=len(chunk)
-                if hashed>MAX_FILE_BYTES:raise ValueError(SOURCE_LIMIT)
-                sha.update(chunk)
-            if sha.hexdigest()!=manifest['files_sha256']['trade']:
-                raise ValueError('Local trade history checksum mismatch; source cannot be displayed')
-            stream.seek(0)
-            parquet=pq.ParquetFile(stream,thrift_string_size_limit=1024*1024,thrift_container_size_limit=100_000)
-            if parquet.metadata.num_rows>MAX_ROWS or parquet.metadata.num_row_groups>MAX_ROW_GROUPS:raise ValueError(SOURCE_LIMIT)
-            expected={'time':'int64',**{k:'double' for k in ('open','high','low','close','volume')}}
-            if len(parquet.schema_arrow)!=6 or {f.name:str(f.type) for f in parquet.schema_arrow}!=expected:raise ValueError('Invalid local candle schema')
-            if any(parquet.metadata.row_group(i).total_byte_size>128*1024*1024 for i in range(parquet.metadata.num_row_groups)):
-                raise ValueError('Local Parquet row group exceeds 128 MiB inspection limit; prepare a smaller separate snapshot')
+            parquet,_=source_limits.checked_parquet(stream,'trade',manifest['files_sha256']['trade'],
+                max_file_bytes=MAX_FILE_BYTES,max_rows=MAX_ROWS,limit_message=SOURCE_LIMIT,
+                checksum_message='Local trade history checksum mismatch; source cannot be displayed')
             rows=[];previous=None;decoded=0
             for batch in parquet.iter_batches(batch_size=256,columns=['time','open','high','low','close','volume']):
                 decoded+=batch.num_rows

@@ -385,3 +385,24 @@ At most 96 strategy/timeframe rows plus two passive alternatives are admitted,
 with the existing 2,000,000-source-candle workload cap. No product-version bump,
 database migration, parallel execution or automatic resume is required.
 See [ADR 0028](docs/adr/0028-catalog-batch-comparison.md).
+
+
+### Original-plan workload admission correction — 2026-10-10
+
+TT10/A4 retains the 2,000,000 modeled source-candle execution cap while counting
+actual modeled row windows: full preceding source prefix plus evaluation for
+strategies, evaluation only for passive references, zero for unavailable rows,
+and no cache discount. Resolve source units per row. Preserve all indicator
+history and numerical execution semantics. Thus 600,000 preceding candles plus
+100,000 evaluation candles with two passive references counts 900,000 for one
+strategy, 1,600,000 for two, and rejects 2,300,000 for three.
+
+Full trade/mark/funding source loading is a separate bounded admission policy,
+including suffix history outside the modeled window. Check manifest and physical
+Parquet metadata/schema/integrity before eager decoding, retaining normalized
+content verification. State materialization estimates honestly; they are not a
+peak-memory guarantee. Freeze additive workload version/breakdown and source-load
+policy for new contracts; retain the old alias and unchanged historical reports.
+See [development guidance](docs/DEVELOPMENT.md#modeled-work-and-independent-full-source-admission-tt10--a4).
+This completes this bounded A4 scope only; independent linear-origin spot
+benchmark settings, TT13 and remaining original research work stay separate.

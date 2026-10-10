@@ -6,7 +6,7 @@ import uuid
 import math
 from importlib.metadata import PackageNotFoundError
 
-from terminal import benchmarks, library, research_evidence
+from terminal import benchmarks, library, research_evidence, source_limits
 from terminal.data import canonical, digest, runtime_snapshot
 from terminal.experiments import ExperimentManager, MAX_MINUTE_RUNS, validate_range
 from terminal.native import preview as native_preview
@@ -104,9 +104,23 @@ class LibraryBatchManager(ExperimentManager):
                 row.update(document=document,profile=p,dataset=self._dataset(spot),contract=frozen)
             except ValueError as exc:row['error']=str(exc)
             rows.append(row)
-        workload = sum((end-r['dataset']['range'][0])//(r['profile'].get('execution_minutes',1)*60) for r in rows if not r['error'])
-        if workload > MAX_MINUTE_RUNS:raise ValueError('Batch exceeds 2,000,000 modeled candles including warmup')
+        breakdown=[]
+        for ordinal,row in enumerate(rows):
+            if row['error']:
+                breakdown.append(dict(ordinal=ordinal,kind=row['kind'],prefix_source_candles=0,
+                    evaluation_source_candles=0,modeled_source_candles=0))
+                continue
+            seconds=row['profile'].get('execution_minutes',1)*60
+            prefix=0 if row['kind']=='benchmark' else (start-row['dataset']['range'][0])//seconds
+            evaluation=(end-start)//seconds
+            breakdown.append(dict(ordinal=ordinal,kind=row['kind'],execution_minutes=seconds//60,
+                prefix_source_candles=prefix,evaluation_source_candles=evaluation,
+                modeled_source_candles=prefix+evaluation))
+        workload=sum(row['modeled_source_candles'] for row in breakdown)
+        if workload > MAX_MINUTE_RUNS:raise ValueError('Batch exceeds 2,000,000 modeled source-candle executions including strategy prefix')
         value = dict(version=1,metric_version=benchmarks.VERSION,rows=rows,start=start,end=end,runtime=runtime,
+                     workload_version=2,workload_breakdown=breakdown,modeled_source_candles=workload,
+                     source_load_policy=source_limits.policy(),
                      modeled_minutes=workload,capital=profile.capital,market=profile.market,symbol=profile.symbol,
                      inputs=dict(selections=selections,dataset_id=dataset_id,profile=profile.snapshot(),start=start,end=end,
                                  interval=interval,spot_dataset_id=spot_dataset_id))
@@ -138,6 +152,8 @@ class LibraryBatchManager(ExperimentManager):
     def preview(self, **params):
         frozen = self.prepare(**params)
         return dict(contract_sha256=frozen['contract_sha256'],modeled_minutes=frozen['modeled_minutes'],
+                    modeled_source_candles=frozen['modeled_source_candles'],workload_version=frozen['workload_version'],
+                    workload_breakdown=frozen['workload_breakdown'],source_load_policy=frozen['source_load_policy'],
                     rows=[{k:r.get(k) for k in ('name','kind','error','contract')} for r in frozen['rows']])
 
     def start(self, expected_contract, observation=None, **params):

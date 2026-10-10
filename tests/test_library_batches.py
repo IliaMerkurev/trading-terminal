@@ -41,6 +41,7 @@ class LibraryBatchTests(unittest.TestCase):
         self.fail('Batch exceeded bounded deadline')
 
     def test_window_parity_benchmarks_archive_and_exact_cache(self):
+        before=self.manager.preview(**self.params)
         report=self.wait(self.start())
         self.assertEqual(report['status'],'completed',report)
         self.assertEqual(len(report['rows']),4)
@@ -50,6 +51,7 @@ class LibraryBatchTests(unittest.TestCase):
             result=self.jobs.store.result(row['run_id'])
             self.assertEqual(result['metrics'],standalone['metrics'])
             self.assertEqual(result['trades'],standalone['trades'])
+            self.assertEqual(result['indicators'],standalone['indicators'])
             self.assertGreater(len(result['trades']),0)
             self.assertEqual(row['metrics'],metrics(standalone,self.params['start'],self.params['end']))
             validate_snapshot(self.jobs.store.get(row['run_id'])['manifest'])
@@ -65,6 +67,7 @@ class LibraryBatchTests(unittest.TestCase):
             self.assertTrue(all(p['time_ns']>=self.params['start']*1_000_000_000 for p in curve['points']))
             self.assertEqual(curve['points'][-1]['equity'],self.jobs.store.result(curve['run_id'])['metrics']['final_equity'])
         with self.assertRaisesRegex(ValueError,'strategy row'):self.manager.equity(report['id'],2)
+        self.assertEqual(self.manager.preview(**self.params),before)  # Warm cache never discounts admission.
         second=self.wait(self.start())
         self.assertEqual([r['run_id'] for r in second['rows'][2:]],previous)
         self.assertTrue(all(r['reused'] for r in second['rows'][2:]))
