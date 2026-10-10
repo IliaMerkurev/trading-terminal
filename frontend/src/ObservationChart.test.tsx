@@ -1,7 +1,7 @@
 import {act,fireEvent,render,screen,within} from '@testing-library/react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import ObservationChart from './ObservationChart';
-import {displayRecorder,finishDisplayWrites} from './DisplayedEvidence';
+import {displayRecorder,finishDisplayWrites,DisplayTrackingNotice} from './DisplayedEvidence';
 import {api} from './api';
 
 const charts=vi.hoisted(()=>[] as any[]);
@@ -17,7 +17,7 @@ vi.mock('lightweight-charts',()=>({
    fitContent:vi.fn(()=>{if(state.times.length)state.show(state.times[0],state.times.at(-1));}),
    getVisibleRange:()=>state.range,getVisibleLogicalRange:()=>state.logical,
    setVisibleLogicalRange:vi.fn((range:any)=>{state.logical=range;state.range={from:state.times[Math.max(0,Math.ceil(range.from))],to:state.times[Math.min(state.times.length-1,Math.floor(range.to))]};emit();}),
-   logicalToCoordinate:(index:number)=>state.logical?400*(index-state.logical.from+.5)/(state.logical.to-state.logical.from+1):null,
+   logicalToCoordinate:vi.fn((index:number)=>!Number.isInteger(index)?0:state.logical?400*(index-state.logical.from+.5)/(state.logical.to-state.logical.from+1):null),
    width:()=>400,height:()=>24,
    subscribeVisibleTimeRangeChange:vi.fn((fn:any)=>state.rangeCallbacks.add(fn)),unsubscribeVisibleTimeRangeChange:vi.fn((fn:any)=>state.rangeCallbacks.delete(fn)),
    subscribeVisibleLogicalRangeChange:vi.fn((fn:any)=>state.logicalCallbacks.add(fn)),unsubscribeVisibleLogicalRangeChange:vi.fn((fn:any)=>state.logicalCallbacks.delete(fn)),
@@ -49,7 +49,7 @@ const rows=[
 ];
 const missing=[1704067200,1704074400,1704085200];
 const reference={surface:'observation_chart',page_id:'verified-page'};
-const props=()=>({candles:rows,missing,reference,seconds:3600,record:vi.fn()});
+const props=()=>({candles:rows,missing,reference,seconds:3600,displaySeconds:3600,start:1704067200,end:1704088800,record:vi.fn()});
 const chart=()=>charts.at(-1);
 const surface=()=>screen.getByRole('img',{name:'Prepared local price and volume chart, opening times in UTC'});
 const field=(name:string)=>within(screen.getByRole('status')).getByText(name,{selector:'dt'}).nextElementSibling?.textContent;
@@ -106,7 +106,7 @@ describe('bounded saved-history OHLCV chart',()=>{
    {time:120,open:1.5,high:2,low:1,close:1.75,volume:undefined},
    {time:180,open:Infinity,high:NaN,low:null,close:undefined,volume:Infinity},
   ] as any;
-  render(<ObservationChart {...props()} candles={candles} missing={[]} seconds={60}/>);
+  render(<ObservationChart {...props()} candles={candles} missing={[]} seconds={60} displaySeconds={60} start={60} end={240}/>);
   expect(chart().series[1].data).toEqual([{time:60},{time:120},{time:180}]);
   expect(chart().series[0].data[2]).toEqual({time:180});
   act(()=>chart().pointer(60));expect(field('Recorded volume')).toBe('N/A');expect(field('Close')).toBe('1.5');
@@ -165,12 +165,14 @@ describe('bounded saved-history OHLCV chart',()=>{
   act(()=>c.pointer(1704074400));expect(screen.getByText('Missing source slot. No recorded candle, price or volume.')).toBeTruthy();
  });
 
- it('moves gap bands on fractional logical scrolling even when visible timestamp boundaries do not change',()=>{
+ it('uses integer coordinate centers for gap bands while following fractional scrolling with unchanged timestamp boundaries',()=>{
   render(<ObservationChart {...props()}/>);act(flush);
   const band=()=>document.querySelectorAll<HTMLElement>('.observation-gap-overlay>span')[1];
   const before=band().style.left;
   act(()=>{chart().logical={from:.25,to:5.25};chart().logicalCallbacks.forEach((fn:any)=>fn(chart().logical));flush();});
   expect(band().style.left).not.toBe(before);
+  expect(Number.parseFloat(band().style.width)).toBeGreaterThan(0);
+  expect(chart().scale.logicalToCoordinate.mock.calls.every(([index]:number[])=>Number.isInteger(index))).toBe(true);
   expect(chart().range).toEqual({from:1704067200,to:1704085200});
  });
 
@@ -196,7 +198,7 @@ describe('bounded saved-history OHLCV chart',()=>{
   const p=props(),view=render(<ObservationChart {...p} candles={[]} missing={[]}/>);
   expect((screen.getByRole('button',{name:'Next candle'}) as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole('button',{name:'Previous candle'}) as HTMLButtonElement).disabled).toBe(true);
-  view.rerender(<ObservationChart {...p} candles={[]} missing={[1704067200,1704070800]}/>);
+  view.rerender(<ObservationChart {...p} candles={[]} missing={[1704067200,1704070800]} end={1704074400}/>);
   expect(chart().series[0].data).toEqual([{time:1704067200},{time:1704070800}]);expect(chart().series[1].data).toEqual([{time:1704067200},{time:1704070800}]);
   act(()=>{chart().pointer(1704067200);intersect(surface());flush();});
   expect(screen.getByText('Missing source slot. No recorded candle, price or volume.')).toBeTruthy();expect(p.record).not.toHaveBeenCalled();
@@ -208,13 +210,13 @@ describe('original-candle display evidence integration',()=>{
   const record=displayRecorder();render(<ObservationChart {...props()} record={record}/>);
   expect(observers).toHaveLength(1);expect(api).not.toHaveBeenCalled();
   act(()=>{intersect(surface());flush();});await finishDisplayWrites();
-  expect(vi.mocked(api).mock.calls).toHaveLength(1);
-  expect(api).toHaveBeenLastCalledWith('research_displayed',expect.objectContaining({reference,viewport:[1704070800,1704081600]}));
-  act(()=>{chart().pointer(1704070800,0);chart().pointer(1704078000,1);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(1);
-  act(()=>{chart().show(1704074400,1704074400);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(api).mock.calls.map(([,payload]:any)=>payload.viewport)).toEqual([[1704070800,1704070800],[1704078000,1704081600]]);
+  expect(api).toHaveBeenLastCalledWith('research_displayed',expect.objectContaining({reference,viewport:[1704078000,1704081600]}));
+  act(()=>{chart().pointer(1704070800,0);chart().pointer(1704078000,1);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(2);
+  act(()=>{chart().show(1704074400,1704074400);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(2);
   act(()=>{chart().show(1704074400,1704078000);flush();});await finishDisplayWrites();
   expect(api).toHaveBeenLastCalledWith('research_displayed',expect.objectContaining({viewport:[1704078000,1704078000]}));
-  expect(api).toHaveBeenCalledTimes(2);
+  expect(api).toHaveBeenCalledTimes(3);
  });
 
  it('records keyboard navigation only through the newly visible actual candle window',async()=>{
@@ -239,4 +241,87 @@ describe('original-candle display evidence integration',()=>{
   dialog.remove();act(()=>{chart().show(1704078000,1704081600);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(1);
   expect(api).toHaveBeenLastCalledWith('research_displayed',expect.objectContaining({viewport:[1704078000,1704081600]}));
  });
+});
+
+const h=3600;
+const aggregateRows=Array.from({length:12},(_,i)=>({time:i*h,open:100+i,high:110+i,low:90+i,close:105+i,volume:i+1})).filter(c=>c.time!==6*h);
+const aggregateProps=()=>({...props(),candles:aggregateRows,missing:[6*h],start:0,end:12*h,displaySeconds:4*h});
+
+describe('complete UTC display aggregates',()=>{
+ it('plots complete price and summed volume on shared openings, explains incomplete coverage and skips it by keyboard',()=>{
+  render(<ObservationChart {...aggregateProps()}/>);const c=chart();
+  expect(c.series[0].data).toEqual([{time:0,open:100,high:113,low:90,close:108},{time:4*h},{time:8*h,open:108,high:121,low:98,close:116}]);
+  expect(c.series[1].data).toEqual([{time:0,value:10,color:'#42cda899'},{time:4*h},{time:8*h,value:42,color:'#42cda899'}]);
+  act(()=>c.pointer(0,1));expect(field('Recorded volume')).toBe('10');
+  expect(screen.getByText('4h display interval · 1h source interval · opening time')).toBeTruthy();
+  expect(screen.getByText('Closes 1970-01-01 04:00:00 UTC (exclusive). Complete source coverage: 4/4.')).toBeTruthy();
+  expect(screen.getByText('Contributing source opens: 1970-01-01 00:00:00 UTC to 1970-01-01 03:00:00 UTC.')).toBeTruthy();
+  act(()=>{c.pointer(4*h);flush();});
+  expect(screen.getByText(/Incomplete UTC bucket: 1 missing source slots in the loaded page; 0 source slots outside/)).toBeTruthy();
+  expect(within(screen.getByRole('status')).queryByText('10',{selector:'dd'})).toBeNull();
+  expect(document.querySelectorAll('.observation-gap-overlay>span')).toHaveLength(1);
+  fireEvent.keyDown(surface(),{key:'ArrowRight'});expect(field('Recorded volume')).toBe('42');
+  fireEvent.keyDown(surface(),{key:'ArrowLeft'});expect(field('Recorded volume')).toBe('10');
+ });
+ it('records exact constituent runs with one observer, final source opens included and hidden partial rows excluded',async()=>{
+  render(<ObservationChart {...aggregateProps()} record={displayRecorder()}/>);
+  expect(observers).toHaveLength(1);expect(api).not.toHaveBeenCalled();
+  act(()=>{intersect(surface());flush();});await finishDisplayWrites();
+  expect(vi.mocked(api).mock.calls.map(([,p]:any)=>p.viewport)).toEqual([[0,3*h],[8*h,11*h]]);
+  expect(vi.mocked(api).mock.calls.every(([,p]:any)=>p.reference===reference)).toBe(true);
+  act(()=>{chart().pointer(0);chart().pointer(8*h,1);chart().show(0,8*h);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(2);
+  act(()=>{chart().show(4*h,4*h);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(2);
+  act(()=>{chart().show(8*h,8*h);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(2);
+ });
+ it('reveals the last complete aggregate before inspection and only then records all its underlying source bars',async()=>{
+  render(<ObservationChart {...aggregateProps()} record={displayRecorder()}/>);
+  act(()=>{chart().show(0,0);intersect(surface());flush();});await finishDisplayWrites();
+  expect(api).toHaveBeenCalledTimes(1);expect(api).toHaveBeenLastCalledWith('research_displayed',expect.objectContaining({viewport:[0,3*h]}));
+  fireEvent.keyDown(surface(),{key:'End'});expect(screen.getByText('No candle selected')).toBeTruthy();expect(api).toHaveBeenCalledTimes(1);
+  act(flush);await finishDisplayWrites();expect(field('Recorded volume')).toBe('42');
+  expect(api).toHaveBeenLastCalledWith('research_displayed',expect.objectContaining({viewport:[8*h,11*h]}));
+  act(()=>{chart().show(0,0);flush();});expect(screen.getByText('No candle selected')).toBeTruthy();
+ });
+ it('keeps a compatible incomplete-only page selected, explains outside slots and records nothing',async()=>{
+  render(<ObservationChart {...aggregateProps()} start={h} end={3*h} candles={aggregateRows.slice(1,3)} missing={[]} record={displayRecorder()}/>);
+  expect(screen.getByText(/No complete 4h candle in this loaded page/)).toBeTruthy();
+  expect(chart().series[0].data).toEqual([{time:0}]);expect(chart().series[1].data).toEqual([{time:0}]);
+  act(()=>{chart().pointer(0);intersect(surface());flush();});await finishDisplayWrites();expect(api).not.toHaveBeenCalled();
+  expect(screen.getByText(/0 missing source slots in the loaded page; 2 source slots outside/)).toBeTruthy();
+  const bands=document.querySelectorAll<HTMLElement>('.observation-gap-overlay>span');expect(bands).toHaveLength(1);expect(bands[0].style.width).toBe('400px');
+  expect((screen.getByRole('button',{name:'Next candle'}) as HTMLButtonElement).disabled).toBe(true);
+ });
+ it('disposes projection callbacks and selection on interval switches, restoring exact native values on return',()=>{
+  const p=aggregateProps(),view=render(<ObservationChart {...p}/>),first=chart(),stale=[...first.moveCallbacks][0] as any;
+  act(()=>first.pointer(0));expect(field('Recorded volume')).toBe('10');
+  view.rerender(<ObservationChart {...p} displaySeconds={h}/>);expect(screen.getByText('No candle selected')).toBeTruthy();
+  expect(first.chart.remove).toHaveBeenCalledOnce();expect(first.rangeCallbacks.size).toBe(0);expect(first.moveCallbacks.size).toBe(0);
+  act(()=>{stale({time:0,point:{x:1,y:1},sourceEvent:{}});chart().pointer(0);});expect(field('Recorded volume')).toBe('1');
+  view.rerender(<ObservationChart {...p} displaySeconds={24*h}/>);expect(screen.getByText(/No complete 1d candle/)).toBeTruthy();expect(screen.getByText('No candle selected')).toBeTruthy();
+  view.rerender(<ObservationChart {...p}/>);act(()=>chart().pointer(0));expect(field('Recorded volume')).toBe('10');
+ });
+ it('retains offscreen, hidden ancestor, background document and modal evidence suppression for aggregates',async()=>{
+  const p={...aggregateProps(),record:displayRecorder()},view=render(<div hidden><ObservationChart {...p}/></div>);
+  act(()=>{intersect(chart().host);flush();});expect(api).not.toHaveBeenCalled();view.rerender(<div><ObservationChart {...p}/></div>);
+  act(()=>{intersect(chart().host,false);chart().show(0,8*h);flush();});expect(api).not.toHaveBeenCalled();
+  vi.spyOn(document,'visibilityState','get').mockReturnValue('hidden');act(()=>{intersect(chart().host);flush();});expect(api).not.toHaveBeenCalled();
+  vi.spyOn(document,'visibilityState','get').mockReturnValue('visible');const modal=document.createElement('dialog');modal.setAttribute('open','');document.body.append(modal);
+  act(()=>{chart().show(0,8*h);flush();});expect(api).not.toHaveBeenCalled();modal.remove();
+  act(()=>{chart().show(0,8*h);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(2);
+ });
+ it('fails closed visibly on duplicate timestamps without fabricating either pane or recording exposure',()=>{
+  render(<ObservationChart {...aggregateProps()} candles={[aggregateRows[0],aggregateRows[0]]}/>);
+  expect(screen.getByRole('alert').textContent).toContain('duplicate source opening timestamp');
+  expect(chart().series[0].data).toEqual([]);expect(chart().series[1].data).toEqual([]);
+  act(()=>{intersect(surface());flush();});expect(api).not.toHaveBeenCalled();
+ });
+});
+it('keeps the existing explicit incomplete-tracking warning when mapped runs reach an already-full pending budget',async()=>{
+ const resolves:((v:any)=>void)[]=[];vi.mocked(api).mockImplementation(()=>new Promise(resolve=>resolves.push(resolve)));
+ const record=displayRecorder();for(let i=0;i<256;i++)record({surface:'run_metrics',run_id:String(i)},null);
+ render(<><ObservationChart {...aggregateProps()} record={record}/><DisplayTrackingNotice/></>);
+ act(()=>{intersect(surface());flush();});expect(api).toHaveBeenCalledTimes(256);
+ expect(screen.getByRole('alert').textContent).toContain('bounded recording budget was reached');
+ expect(screen.getByRole('region',{name:'Saved-history candle analysis'})).toBeTruthy();
+ await act(async()=>{resolves.forEach(resolve=>resolve({recorded:1}));await finishDisplayWrites();});
 });

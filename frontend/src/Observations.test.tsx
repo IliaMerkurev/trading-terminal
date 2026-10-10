@@ -5,7 +5,7 @@ import LibraryResearch from './LibraryResearch';
 import {defaultProfile} from './model';
 import {api} from './api';
 vi.mock('./api',()=>({api:vi.fn()}));
-vi.mock('./ObservationChart',()=>({default:({candles,missing,seconds,reference}:any)=><div data-testid="observation-chart" data-chart-page={JSON.stringify({candles,missing,seconds,reference})}>Chart: {candles.length} candles</div>}));
+vi.mock('./ObservationChart',()=>({default:({candles,missing,seconds,displaySeconds,start,end,reference}:any)=><div data-testid="observation-chart" data-chart-page={JSON.stringify({candles,missing,seconds,displaySeconds,start,end,reference})}>Chart: {candles.length} candles</div>}));
 const source={id:'source',source:'Synthetic workflow',market:'spot',symbol:'BTCUSDT',range:[0,3600],interval_seconds:60,classification:'synthetic'};
 const record={id:'note',revision:1,latest_revision:1,source,start:600,end:1200,hypothesis:'Rising prices',falsification:'Lower close',source_error:null,links:[]};
 const selections=[{entry_id:'rsi-threshold',version:1,minutes:1,parameters:{period:2}}];
@@ -261,6 +261,62 @@ it('passes exact verified OHLCV, source interval, missing slots and evidence ref
  vi.mocked(api).mockImplementation(async(c,p)=>c==='local_history_window'?verified:previous(c,p));
  render(<Observations datasets={[source]} request={{dataset:source.id,request:1}} onTest={vi.fn()} onBatch={vi.fn()}/>);
  await screen.findByText('Chart: 1 candles');
- expect(JSON.parse(screen.getByTestId('observation-chart').getAttribute('data-chart-page')!)).toEqual({candles:[{time:60,open:100,high:103,low:99,close:102,volume:0}],missing:[0,120],seconds:60,reference:{surface:'observation_chart',page_id:'verified-page'}});
+ expect(JSON.parse(screen.getByTestId('observation-chart').getAttribute('data-chart-page')!)).toEqual({candles:[{time:60,open:100,high:103,low:99,close:102,volume:0}],missing:[0,120],seconds:60,displaySeconds:60,start:0,end:180,reference:{surface:'observation_chart',page_id:'verified-page'}});
  expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+});
+
+const chartPage=()=>JSON.parse(screen.getByTestId('observation-chart').getAttribute('data-chart-page')!);
+it('switches display only, keeps source-aligned non-display-aligned dates and dirty text, and restores Source without rereading',async()=>{
+ mockPeriod();render(<Observations datasets={[hourlySource]} request={{dataset:hourlySource.id,request:1}} onTest={vi.fn()} onBatch={vi.fn()}/>);
+ await screen.findByTestId('observation-chart');const original=chartPage(),select=screen.getByLabelText('Saved-history display interval');
+ expect([...((select as HTMLSelectElement).options)].map(o=>o.text)).toEqual(['Source · 1h','4h','1d']);
+ fireEvent.change(screen.getByLabelText('Observation start (UTC)'),{target:{value:'2024-01-01T01:00'}});
+ fireEvent.change(screen.getByLabelText('Observation end, exclusive (UTC)'),{target:{value:'2024-01-02T03:00'}});
+ fireEvent.change(screen.getByLabelText('Observation hypothesis'),{target:{value:'Keep my draft'}});
+ for(const [width,expected] of [[14400,14400],[86400,86400],[0,3600]]){
+  fireEvent.change(select,{target:{value:String(width)}});expect(chartPage()).toEqual({...original,displaySeconds:expected});
+  expect((screen.getByLabelText('Observation start (UTC)') as HTMLInputElement).value).toBe('2024-01-01T01:00');
+  expect(screen.getByLabelText('Observation start (UTC)').getAttribute('aria-invalid')).toBe('false');
+  expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).value).toBe('Keep my draft');
+ }
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+});
+it('retains same-source display across explicit pages, but resets on exact source identity changes including return to the earlier source',async()=>{
+ const a={...hourlySource,id:'a',range:[0,900*3600]},b={...a,id:'b'};mock();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(c,p:any)=>c==='observation_history'?{rows:[],next:null}:c==='local_history_window'?{source:p.dataset_id==='a'?a:b,start:p.start,end:p.end,candles:[],missing:[],display_reference:{page_id:String(p.start)}}:{});
+ render(<Observations datasets={[a,b]} request={{dataset:'a',request:1}} onTest={vi.fn()} onBatch={vi.fn()}/>);await screen.findByTestId('observation-chart');
+ fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'86400'}});
+ fireEvent.click(screen.getByRole('button',{name:'Later candles'}));await waitFor(()=>expect(chartPage().start).toBe(500*3600));
+ expect((screen.getByLabelText('Saved-history display interval') as HTMLSelectElement).value).toBe('86400');
+ expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:'a',start:500*3600,end:900*3600});
+ fireEvent.click(screen.getByRole('button',{name:'Earlier candles'}));await waitFor(()=>expect(chartPage().start).toBe(0));expect(chartPage().displaySeconds).toBe(86400);
+ fireEvent.change(screen.getByLabelText('Observation history'),{target:{value:'b'}});await screen.findByTestId('observation-chart');expect(chartPage().displaySeconds).toBe(3600);
+ fireEvent.change(screen.getByLabelText('Observation history'),{target:{value:'a'}});await screen.findByTestId('observation-chart');expect(chartPage().displaySeconds).toBe(3600);
+ expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(5);
+});
+it.each([[60,'1d','Needs 1440 source slots'],[14400,'1h','Finer than the 4h source'],[10800,'4h','Not a whole multiple'],[172800,'1d','Finer than the 2d source']] as const)('explains unavailable choices for a %s-second verified source without another read',async(step,label,reason)=>{
+ const d={...source,interval_seconds:step,range:[0,step*20]};mockPeriod(d);render(<Observations datasets={[d]} request={{dataset:d.id,request:1}} onTest={vi.fn()} onBatch={vi.fn()}/>);
+ await screen.findByTestId('observation-chart');expect((screen.getByRole('option',{name:`${label} · unavailable`}) as HTMLOptionElement).disabled).toBe(true);
+ expect(screen.getByText(new RegExp(`${label} unavailable: ${reason}`))).toBeTruthy();expect(chartPage().seconds).toBe(step);expect(chartPage().displaySeconds).toBe(step);
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+});
+it('retains display choice for a locked exact revision reopen without changing the Lab handoff',async()=>{
+ const d=hourlySource,note={...record,source:d,start:1704070800,end:1704164400,revision:2,latest_revision:3};mock();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(c)=>c==='observation_history'?{rows:[note],next:null}:c==='observation_get'?note:c==='local_history_window'?{...page,source:d,start:note.start,end:d.range[1]}:{});
+ const onTest=vi.fn(),props={datasets:[d],onTest,onBatch:vi.fn(),request:{id:'note',revision:2,request:1}},view=render(<Observations {...props}/>);
+ await screen.findByTestId('observation-chart');fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'14400'}});
+ fireEvent.click(screen.getByRole('button',{name:'Test observation in Lab'}));expect(onTest).toHaveBeenCalledWith({id:'note',revision:2,source:d,start:1704070800,end:1704164400});
+ view.rerender(<Observations {...props} request={{...props.request,request:2}}/>);await waitFor(()=>{expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(2);expect(chartPage().displaySeconds).toBe(14400);});
+ expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).disabled).toBe(true);
+ expect((screen.getByLabelText('Observation start (UTC)') as HTMLInputElement).value).toBe('2024-01-01T01:00');
+ expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|prepare|preview|resume/.test(c))).toBe(false);
+});
+it('resets on a changed verified identity with the same dataset ID and derives chart resolution from the verified page',async()=>{
+ const listed={...hourlySource,interval_seconds:60};let hash='first';mock();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async c=>c==='observation_history'?{rows:[],next:null}:c==='local_history_window'?{...page,start:1704067200,end:1704081600,source:{...hourlySource,content_sha256:hash}}:{});
+ const props={datasets:[listed],onTest:vi.fn(),onBatch:vi.fn(),request:{dataset:listed.id,request:1}},view=render(<Observations {...props}/>);
+ await screen.findByTestId('observation-chart');expect(chartPage().seconds).toBe(3600);
+ fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'14400'}});expect(chartPage().displaySeconds).toBe(14400);
+ hash='replacement';view.rerender(<Observations {...props} request={{...props.request,request:2}}/>);
+ await waitFor(()=>{expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(2);expect(chartPage().displaySeconds).toBe(3600);});
 });

@@ -30,7 +30,21 @@ synthetic fixture database for ordinary research data.
 
 ## Current UX-series evidence
 
-The newest slice adds explicit saved-comparison card ordering in Lab. Name,
+The newest slice adds bounded Source/1h/4h/1d display projections to Saved
+history. Only complete UTC buckets render; missing and outside-page coverage
+stay distinct, with exact contributing-source display evidence. The original
+500-source-slot page budget, source-aligned observations and Lab inputs stay
+unchanged. Same-source display choice survives navigation; exact-source changes
+reset it. Focused coverage is **106 tests across five files**, and TypeScript/
+production build pass. Corrected production-browser checks passed at 1180px
+and 750px widths, including visible gap bands, exact aggregate values, incomplete
+daily page edges, navigation and same-source retention. The check also corrected
+a pre-existing fractional-coordinate band defect and its inaccurate test mock.
+Persisted exposure counts remain component evidence. See
+[saved-history display intervals](STATUS.md#saved-history-display-intervals--2026-10-10)
+for exact evidence and explicit daily-from-minute/cross-page limits.
+
+The preceding slice adds explicit saved-comparison card ordering in Lab. Name,
 return, drawdown and completed-position ordering preserve card drafts and
 catalog-order Test all payloads. Numeric ranking requires the saved timeframe
 and compatible cohort; ambiguous parameter variants remain N/A. Actual finite

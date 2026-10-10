@@ -5,6 +5,93 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Saved-history display intervals — 2026-10-10
+
+Saved history now defaults to exact native Source candles and supports compatible
+local 1h/4h/1d display projections, omitting the native duplicate. The selector
+never reads or prepares more data. Each complete UTC bucket uses every expected
+source opening exactly once and lies wholly inside the verified loaded page.
+OHLC uses first/max/min/last; volume sums recorded values without inferring units.
+Zero, unavailable volume, non-finite sums and invalid price remain distinct.
+Malformed timestamps fail closed visibly. Incomplete and wholly missing buckets
+remain whitespace in both synchronized panes, with striped bands and inspectable
+missing-versus-outside-page counts, never partial OHLCV.
+
+The inspector separates display and source intervals, opening/exclusive closing
+times, source coverage and contributing opens. Keyboard navigation skips
+incomplete/unavailable candles, reveals an offscreen target before inspection,
+and retains the prior pointer/synthetic-redraw lifecycle correction. Page/source/
+display replacement clears selection and listeners. Display choice survives
+same-source paging and Market/Lab return, but a different verified source identity
+resets it even when the dataset ID is unchanged. Source-aligned observation dates,
+unsaved text, locked historical revisions and selected Lab strategy timeframes
+are unchanged.
+
+All displayed aggregate constituents map back through the existing verified
+reference to separate inclusive source-opening viewports. The final constituent
+is included and valid rows hidden in an incomplete aggregate are excluded.
+There is one actual-visibility observer for both panes; hidden, offscreen,
+background and modal-covered surfaces do not record. Hover deduplicates, and
+pending-budget overflow retains the existing visible incomplete-tracking warning.
+Shared RunChart close-label semantics and the backend recorder are untouched.
+
+The 500-source-slot page/read bounds remain unchanged. Finer, non-divisible or
+over-budget choices show explicit reasons. Daily display from one-minute source
+needs 1,440 slots and is unavailable. Adjacent pages are not prefetched or
+stitched: a 500-slot boundary can leave a UTC bucket incomplete on both pages.
+A compatible choice remains selected with an explanation when no complete bucket
+fits. Completeness concerns the selected snapshot/page, not market completeness
+or human reading. No new backend/schema, live/network route, accounting,
+dependency, strategy or product version is introduced.
+
+Focused automated evidence covers **106 distinct tests across five files**:
+`observationChartData`, `ObservationChart`, `Observations`, `DisplayedEvidence`
+and `UserJourneys`. The initial pass had 103 passes and one new test that queried
+a prior chart before its asynchronous reopen finished. After fixing that wait,
+the two-file ObservationChart/Observations corrective pass passed **53 tests**,
+including added same-ID exact-source reset and already-full pending-budget
+regressions. The other three files' 53 passing tests were not repeated.
+Initial production-browser inspection exposed a pre-existing striped-band
+rendering defect: the pinned chart API returns coordinate zero for fractional
+logical indices, unlike the earlier test mock. Bands now derive their edges
+from adjacent integer centers in the full slot list, including whitespace and
+single-slot pages. The corrected real-API mock and chart-only pass passed all
+**23 tests**; an explicit single-incomplete-slot width assertion also passed in
+its focused check. TypeScript and the production assets were rebuilt after the band correction.
+Independent expectations cover native identity, four-hour and UTC month-boundary
+daily OHLCV goldens, complete source evidence through the last constituent,
+incomplete/missing/edge buckets, duplicates/alignment, invalid values, budget
+limits, future perturbation, visibility/cleanup, retained context and no extra
+reads/mutation calls. TypeScript and the production Vite build passed, with the
+existing large-chunk advisory. These are pure/component/App tests using simulated
+DOM and mocked chart/IPC, not a new full-regression total. Reproduce with the
+[focused commands](DEVELOPMENT.md#saved-history-display-projection-checks).
+
+Corrected production-browser inspection passed at **1180px and 750px widths**
+using the existing isolated hourly synthetic sources:
+
+- The first 4h bar showed O100/H105/L99/C103.5 and volume 40; the first full day
+  showed O100/H125/L99/C123.5 and volume 240. Source/4h/1d changes and page
+  navigation retained the documented values and reset stale inspection.
+- Daily display survived Later navigation. The next page's leading January 21
+  bucket explained 4/24 retained source slots, zero missing and 20 outside-page
+  slots. It remained whitespace rather than an invented partial daily candle.
+- The January 2 daily gap explained 23/24 source coverage, one missing and zero
+  outside-page slots. Home then Right skipped that incomplete day; clicking its
+  whitespace displayed the explanation. After the correction, striped bands
+  were visibly present across both price and volume, in Source and daily modes,
+  at both widths. A clipped page-edge band also remained visible.
+- Home/End/Right navigation, page selection reset and source reset passed.
+  Ordinary Market/Lab/Market navigation retained daily display and the exact gap
+  source. No new history, note or strategy run was created for this check.
+
+The browser pass did not recount persisted exposure writes; constituent mapping,
+visibility suppression and bounded failure behavior remain component evidence.
+Locked exact-revision return, non-display-aligned dates and independent Lab
+strategy/timeframe preservation are covered by the focused App/component tests.
+Existing backend, RunChart and live evidence are reused rather than rerun;
+owner-led unaided usability and current Windows/native acceptance remain separate.
+
 ## Saved-comparison card ordering — 2026-10-10
 
 Lab cards now support Name A–Z/Z–A and bidirectional saved period-return,

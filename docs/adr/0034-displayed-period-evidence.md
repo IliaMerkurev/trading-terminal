@@ -43,6 +43,32 @@ new frozen reviews include the caveat; old frozen reviews are never recomputed.
 The UI caps outstanding writes and per-presentation distinct records, warning
 rather than silently discarding overflow.
 
+## Saved-history aggregate mapping
+
+Saved history's strict local display projection retains all original source
+openings for each complete rendered UTC bucket. Its single visibility observer
+uses the same intersecting/document/ancestor/modal conditions, selects visible
+display-opening labels, then maps them to inclusive source-opening viewports.
+Only adjacent contributing source openings merge. An incomplete aggregate's
+retained rows are excluded because no displayed aggregate represents them.
+The final source bar of the final visible bucket is included. Incomplete-only
+and empty windows record nothing. Native gaps also produce separate source runs.
+
+For hourly-to-four-hour display with complete 00:00 and 08:00 buckets but an
+incomplete 04:00 bucket, the recorder receives [00:00,03:00] and [08:00,11:00].
+The backend retains the original verified page reference and persists half-open
+[00:00,04:00) and [08:00,12:00) coverage. Sending aggregate labels unchanged
+would undercount the last bucket; one expanded span would overcount retained
+rows suppressed by the incomplete bucket.
+
+The shared RunChart close-label observer, backend viewport contract, recorder
+identity/deduplication, expiration warnings, pending limits and freeze draining
+are unchanged. Switching projections may expose a different actual source range;
+hover/inspection is not another recording path. The maximum 500 source slots
+permit at most 250 separated native runs in one callback, but earlier pending
+writes can still exhaust the 256-write budget. That condition retains the
+explicit incomplete-tracking warning instead of silently dropping coverage.
+
 ## Validation and limits
 
 Focused synthetic backend/component tests cover split gaps, open/close mapping,

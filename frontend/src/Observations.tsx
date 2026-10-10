@@ -4,6 +4,7 @@ import {historyLabel,canonical} from './LibraryResearch';
 import {timeframe} from './research';
 import {displayRecorder,DisplayTrackingNotice} from './DisplayedEvidence';
 import ObservationChart from './ObservationChart';
+import {displayUnavailable,observationDisplayWidths,observationInterval} from './observationChartData';
 
 export type ObservationContext={id:string;revision:number;source:any;start:number;end:number};
 export type HistoryRequest={id:string;request:number;target?:'later';observation?:ObservationContext};
@@ -32,10 +33,14 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  const [dataset,setDataset]=useState(''),[range,setRange]=useState(['','']),[pageStart,setPageStart]=useState<number|null>(null),[page,setPage]=useState<any>(null),[pageRequest,setPageRequest]=useState(0);
  const [record,setRecord]=useState<any>(null),[hypothesis,setHypothesis]=useState(''),[falsification,setFalsification]=useState('');
  const [rows,setRows]=useState<any[]>([]),[next,setNext]=useState<HistoryCursor|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(false);
+ const [displayChoice,setDisplayChoice]=useState({source:'',width:0});
  const [listState,setListState]=useState<ListState>({status:'loading'});
  const listPending=useRef(false),listEpoch=useRef(0);
  const actionEpoch=useRef(0),lock=useRef(false),handledRequest=useRef<number|null>(null);
  const source=record?.source??datasets.find(d=>d.id===dataset),step=source?.interval_seconds??60;
+ const verifiedSource=page?canonical(page.source):'',verifiedStep=page?.source.interval_seconds??step;
+ const displayWidth=displayChoice.source===verifiedSource&&!displayUnavailable(verifiedStep,displayChoice.width||verifiedStep)?displayChoice.width:0;
+ useEffect(()=>{if(verifiedSource)setDisplayChoice(old=>old.source===verifiedSource?old:{source:verifiedSource,width:0});},[verifiedSource]);
  const dirty=!!record&&(hypothesis!==record.hypothesis||falsification!==record.falsification);
  const draft=!!hypothesis||!!falsification;
  const blocked=busy||dirty||(!record&&draft);
@@ -64,7 +69,9 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  {!datasets.length&&<p>No prepared local history. Open Data to prepare a snapshot first.</p>}
  {source&&<><p>{historyLabel(source)}<br/>Local snapshot · {page?.source.classification??source.classification??'Provenance shown after page verification'}</p>{(page?.source.classification??source.classification)==='synthetic'&&<p className="warning-text">Synthetic fixture. Useful for checking the workflow, not evidence of market profitability.</p>}{(page?.source.classification??source.classification)==='unknown'&&<p className="warning-text">Source provenance is uncertain.</p>}
  {record?.source_error&&<p role="alert">{record.source_error}. No replacement or network download is automatic.</p>}
- {loading&&<p role="status">Reading verified local history…</p>}{page&&<><ObservationChart record={display.current} candles={page.candles} missing={page.missing} seconds={step} reference={page.display_reference}/><p>{utc(page.start).replace('T',' ')} — {utc(page.end).replace('T',' ')} UTC · {page.candles.length} source candles · opening times</p>{page.missing.length>0&&<p role="alert">Missing local history: {page.missing.length} candle slots in this page. No candles are fabricated.</p>}<div className="run-actions"><button disabled={loading||page.start<=source.range[0]} onClick={()=>setPageStart(Math.max(source.range[0],page.start-500*step))}>Earlier candles</button><button disabled={loading||page.end>=source.range[1]} onClick={()=>setPageStart(page.end)}>Later candles</button></div></>}
+ {loading&&<p role="status">Reading verified local history…</p>}{page&&<><div className="observation-display-controls"><label>Display interval<select aria-label="Saved-history display interval" value={displayWidth} onChange={event=>setDisplayChoice({source:verifiedSource,width:Number(event.target.value)})}><option value={0}>Source · {observationInterval(verifiedStep)}</option>{observationDisplayWidths.filter(width=>width!==verifiedStep).map(width=>{const reason=displayUnavailable(verifiedStep,width);return <option key={width} value={width} disabled={!!reason}>{observationInterval(width)}{reason?' · unavailable':''}</option>;})}</select></label><span>Local display only · observation dates and test settings stay unchanged</span></div>
+ {observationDisplayWidths.filter(width=>width!==verifiedStep).map(width=>{const reason=displayUnavailable(verifiedStep,width);return reason?<p className="muted observation-display-limit" key={width}>{observationInterval(width)} unavailable: {reason}</p>:null;})}
+ <ObservationChart record={display.current} candles={page.candles} missing={page.missing} seconds={verifiedStep} displaySeconds={displayWidth||verifiedStep} start={page.start} end={page.end} reference={page.display_reference}/><p>{utc(page.start).replace('T',' ')} — {utc(page.end).replace('T',' ')} UTC · {page.candles.length} source candles · opening times</p>{page.missing.length>0&&<p role="alert">Missing local history: {page.missing.length} candle slots in this page. No candles are fabricated.</p>}<div className="run-actions"><button disabled={loading||page.start<=source.range[0]} onClick={()=>setPageStart(Math.max(source.range[0],page.start-500*step))}>Earlier candles</button><button disabled={loading||page.end>=source.range[1]} onClick={()=>setPageStart(page.end)}>Later candles</button></div></>}
  <p className="muted">Visible local candles are recorded as displayed in this app, not proof of reading. Notes do not create display evidence. Other views and outside-app exposure remain incomplete.</p>
  <DisplayTrackingNotice/><h2>{record?`Observation · revision ${record.revision}`:'New observation'}</h2>
  {record&&record.revision!==record.latest_revision&&<p className="warning-text">Historical revision. Linked tests keep this exact note. Open the latest revision to edit.</p>}

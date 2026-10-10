@@ -273,7 +273,7 @@ it('opens local observation directly from Data without mounting live market or e
 });
 
 it('keeps manual observation identity and selected tests through closed setup and ordinary navigation',async()=>{
- const observation={id:'manual-observation',revision:2,latest_revision:3,source:{...data,classification:'synthetic'},start:86400,end:172800,hypothesis:'Saved historical hypothesis',falsification:'Lower close',source_error:null,links:[]};
+ const observation={id:'manual-observation',revision:2,latest_revision:3,source:{...data,classification:'synthetic'},start:90000,end:176400,hypothesis:'Saved historical hypothesis',falsification:'Lower close',source_error:null,links:[]};
  vi.mocked(api).mockClear();
  vi.mocked(api).mockImplementation(async(command)=>{
   if(command==='library_catalog')return [entry];
@@ -289,11 +289,14 @@ it('keeps manual observation identity and selected tests through closed setup an
  });
  render(<App/>);
  fireEvent.click(await screen.findByLabelText('Include Test trend'));
+ fireEvent.change(screen.getByLabelText('Test trend timeframe'),{target:{value:'60'}});
+ fireEvent.click(screen.getByLabelText('Test trend compare 4h'));
  fireEvent.click(screen.getByRole('button',{name:'Data'}));
  fireEvent.click(await screen.findByRole('button',{name:'Observe this history'}));
  fireEvent.click(await screen.findByRole('button',{name:/Saved historical hypothesis/}));
  await screen.findByRole('heading',{name:'Observation · revision 2'});
  await waitFor(()=>expect((screen.getByRole('button',{name:'Test observation in Lab'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'14400'}});
  fireEvent.click(screen.getByRole('button',{name:'Test observation in Lab'}));
  await screen.findByRole('dialog');
  fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
@@ -307,12 +310,16 @@ it('keeps manual observation identity and selected tests through closed setup an
  fireEvent.click(within(attachment).getByRole('button',{name:'Return to observation'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('observation_get',{observation_id:'manual-observation',revision:2}));
  expect(await screen.findByRole('heading',{name:'Observation · revision 2'})).toBeTruthy();
+ await waitFor(()=>expect((screen.getByLabelText('Saved-history display interval') as HTMLSelectElement).value).toBe('14400'));
+ expect((screen.getByLabelText('Observation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T01:00');
  fireEvent.click(screen.getByRole('button',{name:'Lab'}));
  expect(screen.getByRole('region',{name:'Attached observation for draft test'})).toBeTruthy();
  expect((screen.getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
+ expect((screen.getByLabelText('Test trend timeframe') as HTMLSelectElement).value).toBe('60');
+ expect(screen.getByLabelText('Test trend compare 4h').getAttribute('aria-pressed')).toBe('true');
  fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
- expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T00:00');
- expect((screen.getByLabelText('Evaluation end, exclusive (UTC)') as HTMLInputElement).value).toBe('1970-01-03T00:00');
+ expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T01:00');
+ expect((screen.getByLabelText('Evaluation end, exclusive (UTC)') as HTMLInputElement).value).toBe('1970-01-03T01:00');
  expect((screen.getByLabelText('Batch dataset') as HTMLSelectElement).value).toBe('hourly');
  expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).disabled).toBe(true);
  expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|resume|prepare|market_open/.test(c))).toBe(false);

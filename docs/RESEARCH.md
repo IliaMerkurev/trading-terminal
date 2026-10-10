@@ -12,25 +12,49 @@ In Market, choose **Saved history · local**, or use **Observe this history**
 from Data. Open a prepared local chart, select a period and save a hypothesis
 with an optional falsification condition. Saving does not start a test.
 
-The chart shows price and recorded source volume in synchronized panes with the
-same UTC candle-opening timestamps. Hover or click either pane to inspect the
-source interval, opening time and OHLCV values. **Previous candle** / **Next
-candle** also work without a pointer. Focus the chart to use Left/Right; Home/End
-select the first/last actual candle in the loaded page. Navigation reveals an
-offscreen target before showing its values and skips missing slots. Panning the
-selected candle out of view clears it; choosing another source/page resets it.
-**Fit page** returns to the complete loaded page, which remains bounded to 500
-source slots. Earlier/Later candles load another page; they do not resample it.
+The chart starts with **Source**, showing exact recorded price and volume on a
+shared UTC opening-time scale. **Display interval** also offers compatible 1h,
+4h and 1d projections, omitting a duplicate of the native interval. Aggregation
+uses only the verified loaded page: first open, highest high, lowest low, final
+close and summed recorded volume. Daily buckets start at UTC midnight. Switching
+display intervals does not read more history, change observation dates or test
+settings, save notes or start a strategy. The choice survives same-source page
+and Market/Lab navigation; another exact source resets it to Source.
 
-Striped bands and blank slots in both panes mark missing source history, including
-missing page edges. Hovering a gap explicitly shows that no candle, price or
-volume was recorded. No price or zero-volume candle fills a gap. Volume is shown
-in recorded source units; its currency/contract unit is unspecified. `0` is a
-recorded zero and `N/A` is unavailable, not interchangeable values. The chart does
-not compute indicators, aggregate candles or fetch live data. Reading or selecting
-a candle does not save notes or start a test. Only actual visible source candles
-participate in the existing partial displayed-period evidence; the volume pane
-does not create a second exposure record.
+Hover or click either pane to inspect OHLCV, separate display/source intervals,
+opening and exclusive closing times, and underlying source coverage. **Previous
+candle** / **Next candle** also work without a pointer. Focus the chart to use
+Left/Right; Home/End select the first/last rendered price candle in the page.
+Navigation reveals an offscreen target before showing its values and skips
+incomplete or unavailable candles. Panning the selection out of view clears it;
+changing source, page or display interval resets it. **Fit page** returns to the
+loaded page. Earlier/Later candles explicitly load another page of at most 500
+original source slots, including missing slots.
+
+Every aggregate requires the entire UTC bucket and every expected source opening
+in that page. Incomplete buckets remain blank in both panes with striped bands.
+Their inspector distinguishes missing source slots inside the page from slots
+outside its bounds, without displaying partial OHLCV. A compatible interval
+stays selected even if the page has no complete bucket. Source mode exposes the
+actual retained candles and original gaps. Page-edge buckets are not stitched
+across pages: the 500-hour boundary can leave the same daily bucket incomplete
+on both adjacent pages. Observation dates are never moved to complete a bucket.
+
+Finer or non-divisible intervals are unavailable with reasons. Daily display
+from one-minute history requires 1,440 source slots, exceeding this slice's
+500-slot bound; there is no automatic read, download or source substitution.
+Five-minute history can provide a day from 288 slots when that entire day is in
+the loaded page. Volume remains in unspecified recorded source units. `0` is
+recorded zero; missing/non-finite volume or an overflowing sum is `N/A` and
+histogram whitespace, never a partial sum. Invalid prices stay unavailable
+independently of volume. No indicators or live data are computed/fetched here.
+
+Actual visible aggregates participate in the existing partial displayed-period
+evidence through all their contributing source candles, including the last
+constituent. Separate ranges exclude retained rows hidden in an incomplete
+aggregate. Both panes share one visibility observer and recorder; inspecting
+or hovering does not create a second exposure record. Displayed in this app is
+not proof of human reading or independent market-history completeness.
 
 The saved-observation list distinguishes loading, read failure and confirmed
 empty history. **Retry saved observations** repeats only the failed list read;

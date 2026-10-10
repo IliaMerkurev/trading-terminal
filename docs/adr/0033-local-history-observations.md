@@ -50,11 +50,43 @@ funding files. Existing calculation admission retains its own full dataset check
 Unsupported or missing history stays unavailable with an explicit error; no source
 substitution, silent date truncation or network fallback is allowed.
 
+## Bounded local display intervals
+
+Saved history keeps a local Source/1h/4h/1d display choice separate from source,
+strategy and execution resolutions. The native-equivalent option is shown only
+as Source. The verified page source supplies chart resolution; observation date
+validation and paging retain their original source alignment. Exact-source
+identity changes reset the display choice synchronously; ordinary page and
+Market/Lab navigation preserve it. Existing immutable source/range/revision and
+Lab handoff contracts do not change.
+
+A dedicated frontend projection accepts explicit verified page bounds. A UTC
+bucket is complete only when wholly inside that page and every aligned source
+opening occurs exactly once. Complete buckets use first open, maximum high,
+minimum low, last close and sum of recorded volumes. Bad timestamps fail closed
+visibly; invalid prices and unavailable/non-finite/overflowing volume cannot
+fabricate valid numeric aggregates. Missing and outside-page constituents are
+separate counts. Incomplete buckets stay inspectable whitespace in both panes.
+
+Only integral coarser intervals fitting within 500 source slots are available.
+One-minute-to-daily display requires 1,440 slots and is explicitly unavailable.
+There is no adjacent-page cache, prefetch, stitching, source substitution or
+persisted aggregate. A 500-slot boundary can bisect the same UTC bucket on both
+adjoining pages; this limitation is preferable to hidden read amplification or
+rewriting saved dates. Completeness describes this selected verified snapshot
+and page, not independently verified market completeness. Display evidence maps
+back to exact contributing source rows under ADR 0034.
+
+Live aggregation is deliberately not reused: it permits partial/forming buckets
+and uses closing labels. Saved history retains opening labels and requires full
+coverage. General interval selection, aligned cross-page reads and larger
+projection budgets are separate scope.
+
 ## Alternatives and deferred scope
 
 Reusing live MarketChart would risk network access and wrong provenance. Loading
 DatasetStore.load would materialize full history for a small page. Both were
 rejected. No dependency, new dashboard framework, rich text, chart drawings,
 strategy, accounting model or product-version change is introduced. Indexed
-history, manual-view telemetry and deeper evidence-journal features remain
-separate work. Browser/component evidence does not establish Windows acceptance.
+history and deeper evidence-journal features remain separate work; bounded
+actual-display evidence is described in ADR 0034. Browser/component evidence does not establish Windows acceptance.

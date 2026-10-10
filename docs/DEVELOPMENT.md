@@ -238,3 +238,32 @@ from original admission coverage. Backend-issued chart references retain up to
 frontend allows 256 outstanding records and 4,096 distinct callbacks per
 presentation, warning explicitly if that bound is reached. Read-only use does
 not start a strategy, and no financial artifact is rewritten.
+
+
+## Saved-history display projection checks
+
+Reuse an existing isolated observation fixture for this UI-only slice; no new
+history, note or test run is necessary. Source starts with the native resolution.
+On the hourly cycle, the first complete 4h bar is O100/H105/L99/C103.5 with volume
+40; a full day is O100/H125/L99/C123.5 with volume 240. The gap source suppresses
+the January 2 00:00 four-hour bucket and daily bucket. Source still exposes the
+other recorded hours. The first 500-hour page's final day has 20/24 slots; the
+next page starts with the same day's remaining 4/24. Neither partial day renders
+an aggregate, and outside-page slots are not labeled missing history.
+
+Check keyboard reveal, pointer selection after display changes, Fit page and
+page switching at ordinary and narrow widths. Reopen an exact saved revision,
+switch display, visit Lab and return without saving or starting a test. Existing
+source-aligned dates, locked notes and test choices must stay intact. Browser
+layout/navigation inspection alone does not establish persisted exposure counts;
+separate deterministic mapping tests cover that boundary when no read-only
+database diagnostic is used.
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/observationChartData.test.ts frontend/src/ObservationChart.test.tsx frontend/src/Observations.test.tsx frontend/src/DisplayedEvidence.test.tsx frontend/src/UserJourneys.test.tsx
+node scripts/frontend.mjs build
+```
+
+Stop the local host before rebuilding, then restart to refresh its static-file
+inventory. This adds no backend/schema, dependency, product-version or native
+acceptance gate. Actual evidence and remaining limits are in STATUS.md.
