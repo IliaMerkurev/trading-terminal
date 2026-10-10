@@ -13,7 +13,7 @@ const leave=()=>{const event=new Event('beforeunload',{cancelable:true});window.
 it('warns for active work without cancelling or stopping when leaving, and removes the listener on cleanup',async()=>{
   const {rerender,unmount}=render(<BrowserServiceControls active onStopped={()=>{}}/>);
   await waitFor(()=>expect(api).toHaveBeenCalledWith('live_status'));
-  expect(screen.getByText(/Closing this tab does not stop/)).toBeTruthy();
+  expect(screen.getByText(/closing this tab keeps work running/)).toBeTruthy();
   expect(leave().defaultPrevented).toBe(true);
   expect(stopLocalService).not.toHaveBeenCalled();expect(vi.mocked(api).mock.calls.some(([command])=>/cancel|close|pause|start/.test(command))).toBe(false);
   rerender(<BrowserServiceControls active={false} onStopped={()=>{}}/>);

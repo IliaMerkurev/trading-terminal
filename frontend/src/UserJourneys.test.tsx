@@ -56,7 +56,7 @@ it('guides first-time testing through history, exact timeframe review, navigatio
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_start',expect.objectContaining({expected_contract:'reviewed-contract',dataset_id:'hourly',start:86400,end:31536000,profile:expect.objectContaining({capital:'1000',execution_minutes:60}),selections:[60,240,1440].map(minutes=>({entry_id:'trend',version:1,minutes,parameters:{}}))})));
  expect(await screen.findByRole('heading',{name:'Saved tests'})).toBeTruthy();
  expect(screen.queryByRole('dialog',{name:'Set up backtest'})).toBeNull();
- fireEvent.click(screen.getByRole('button',{name:'Market data'}));
+ fireEvent.click(screen.getByRole('button',{name:'Data'}));
  fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));
  fireEvent.click(await screen.findByRole('button',{name:'Cancel remaining tests'}));
  expect(await screen.findByText(/cancelled · 1\/5 completed/)).toBeTruthy();
@@ -89,7 +89,9 @@ it('reopens saved gains, losses and no-trade results without setup or execution'
  expect(screen.getByText('0 / N/A')).toBeTruthy();
  expect(screen.queryByRole('region',{name:'Test setup'})).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'New test'}));
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
  fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'2000'}});
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
  fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));
  expect(screen.getByText('25.0000 / 2.50%')).toBeTruthy();
  expect(report.snapshot.rows[0].profile.capital).toBe('1000');
@@ -115,7 +117,7 @@ it('customizes an independent draft and preserves the card selection when return
  fireEvent.click(within(first).getByRole('button',{name:'Customize strategy'}));
  await screen.findByText('Graph workspace');
  expect((screen.getByLabelText('Strategy name') as HTMLInputElement).value).toBe('Independent draft');
- fireEvent.click(screen.getByRole('button',{name:'Strategy library'}));
+ fireEvent.click(screen.getByRole('button',{name:'Lab'}));
  expect((screen.getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
  expect(api).toHaveBeenCalledWith('get_strategy',{strategy_id:'independent'});
  expect(vi.mocked(api).mock.calls.some(([c])=>['trust_native','start_run','library_batch_start'].includes(c))).toBe(false);

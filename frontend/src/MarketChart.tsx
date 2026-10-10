@@ -5,7 +5,7 @@ import {poll} from './poll';
 import {displayIndicator,displayIntervals,liveMarkers,type LiveCandle} from './liveChartData';
 import {mergeChartWindow,prependShift} from './chartWindow';
 
-export default function MarketChart({sessionId,market='spot',symbol='BTCUSDT',paper,price,mark,fresh}:{sessionId?:string;market?:string;symbol?:string;paper?:any;price?:string;mark?:string;fresh:boolean}){
+export default function MarketChart({sessionId,market='spot',symbol='BTCUSDT',paper,price,mark,fresh,active=true}:{active?:boolean;sessionId?:string;market?:string;symbol?:string;paper?:any;price?:string;mark?:string;fresh:boolean}){
  const host=useRef<HTMLDivElement>(null),chartRef=useRef<any>(null),candleRef=useRef<any>(null),lineRef=useRef<any>(null),markerRef=useRef<any>(null),priceLines=useRef<any[]>([]);
  const [minutes,setMinutes]=useState(1),[indicator,setIndicator]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false),[exhausted,setExhausted]=useState(false);
  const [overlay,setOverlay]=useState<any>({}),[rows,setRows]=useState<LiveCandle[]>([]),[reload,setReload]=useState(0);
@@ -39,7 +39,11 @@ export default function MarketChart({sessionId,market='spot',symbol='BTCUSDT',pa
  },[]);
  useEffect(()=>{
   const version=++generation.current;current.current=[];setRows([]);paging.current=null;historical.current=false;fitted.current=false;setError('');setOlderError('');setExhausted(false);
-  candleRef.current?.setData([]);let ended=false;
+  candleRef.current?.setData([]);
+ },[market,symbol,minutes,reload]);
+ useEffect(()=>{
+  if(!active)return;
+  const version=generation.current;let ended=false;
   loadPrevious.current=()=>{if(paging.current==null&&current.current.length&&current.current[0].time>0){paging.current=current.current[0].time;setOlderError('');setLoading(true);}};
   const cancel=poll(async()=>{const before=paging.current;return {page:await api<any>('market_chart',{market,symbol,minutes,before}),before};},({page,before})=>{
    if(ended||version!==generation.current)return;
@@ -61,8 +65,8 @@ export default function MarketChart({sessionId,market='spot',symbol='BTCUSDT',pa
    }
   },()=>{setLoading(false);if(paging.current!=null){paging.current=null;setOlderError('Older history unavailable; retry.');}else setError('Market chart unavailable; retrying.');},1000);
   return()=>{ended=true;cancel();loadPrevious.current=()=>{};};
- },[market,symbol,minutes,reload]);
- useEffect(()=>{setOverlay({});if(!sessionId)return;return poll(()=>api<any>('live_chart',{session_id:sessionId}),setOverlay,()=>{},3000);},[sessionId]);
+ },[market,symbol,minutes,reload,active]);
+ useEffect(()=>{if(!active)return;setOverlay({});if(!sessionId)return;return poll(()=>api<any>('live_chart',{session_id:sessionId}),setOverlay,()=>{},3000);},[sessionId,active]);
  useEffect(()=>{
   if(!lineRef.current)return;
   const start=rows[0]?.time??Infinity,end=(rows.at(-1)?.time??0)+minutes*60;
@@ -77,5 +81,5 @@ export default function MarketChart({sessionId,market='spot',symbol='BTCUSDT',pa
   for(const [title,value,color] of levels)if(value&&Number.isFinite(Number(value)))priceLines.current.push(candles.createPriceLine({price:Number(value),color,lineWidth:1,lineStyle:2,axisLabelVisible:true,title}));
  },[paper,price,mark,fresh]);
  const keys=[...new Set<string>((overlay.evaluations??[]).flatMap((p:any)=>Object.keys(p.values??{}).filter(k=>typeof p.values[k]==='number')))];
- return <section className="live-chart" aria-label="Live candlestick chart"><div className="live-chart-toolbar"><strong>Market chart</strong><label>Chart display<select aria-label="Chart display timeframe" value={minutes} onChange={e=>setMinutes(Number(e.target.value))}>{displayIntervals.map(n=><option key={n} value={n}>{n<60?`${n}m`:n<1440?`${n/60}H`:'1D'}</option>)}</select></label><label>Recorded indicator<select aria-label="Live chart indicator" value={indicator} onChange={e=>setIndicator(e.target.value)}><option value="">None</option>{keys.map(k=><option key={k}>{k}</option>)}</select></label><button onClick={()=>chartRef.current?.timeScale().fitContent()}>Fit chart</button><button onClick={()=>setReload(v=>v+1)}>Latest market</button><button disabled={loading||exhausted||!rows.length} onClick={()=>loadPrevious.current()}>{olderError?'Retry older history':'Older history'}</button></div>{(olderError||error)&&<small role="alert">{olderError||error}</small>}<div className="live-chart-canvas" ref={host}/><small>{loading?'Loading market history… ':''}{exhausted?'Available history boundary reached. ':''}Native market candles · UTC interval-end labels · bounded 1,800-bar viewport; older history stays cached. IR values are recorded, never recomputed. {fresh?'':'Market data is paused or stale.'}</small></section>;
+ return <section className="live-chart" aria-label="Live candlestick chart"><div className="live-chart-toolbar"><strong>Market chart</strong><label>Chart display<select aria-label="Chart display timeframe" value={minutes} onChange={e=>setMinutes(Number(e.target.value))}>{displayIntervals.map(n=><option key={n} value={n}>{n<60?`${n}m`:n<1440?`${n/60}H`:'1D'}</option>)}</select></label><label>Recorded indicator<select aria-label="Live chart indicator" value={indicator} onChange={e=>setIndicator(e.target.value)}><option value="">None</option>{keys.map(k=><option key={k}>{k}</option>)}</select></label><button onClick={()=>chartRef.current?.timeScale().fitContent()}>Fit chart</button><button onClick={()=>setReload(v=>v+1)}>Latest market</button><button disabled={loading||exhausted||!rows.length} onClick={()=>loadPrevious.current()}>{olderError?'Retry older history':'Older history'}</button></div>{(olderError||error)&&<small role="alert">{olderError||error}</small>}<div className="chart-plot"><div className="live-chart-canvas" ref={host}/>{!rows.length&&<div className="chart-empty" role="status"><strong>{error?'Market history is unavailable':'Waiting for public market data'}</strong><p>{error?'The public source could not provide chart history. Check the connection or try Latest market. No prices have been substituted.':`${symbol} candles will appear when the public source responds. No strategy or paper account is required.`}</p></div>}</div><small>{loading?'Loading market history… ':''}{exhausted?'Available history boundary reached. ':''}Native market candles · UTC interval-end labels · bounded 1,800-bar viewport; older history stays cached. IR values are recorded, never recomputed. {fresh?'':'Market data is paused or stale.'}</small></section>;
 }

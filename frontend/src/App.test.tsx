@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import { describe,it,expect,vi } from 'vitest';
 import { render,screen,fireEvent,waitFor,act } from '@testing-library/react';
 import App from './App';
@@ -13,14 +14,18 @@ describe('research workspace',()=>{
   it('opens the library first and preserves independent editor drafts and test capital',async()=>{
     vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'?{rows:[],next:null}:[]);
     render(<App/>);
-    expect(await screen.findByText('Test a strategy')).toBeTruthy();
+    expect(await screen.findByText('Strategy lab')).toBeTruthy();
     expect(screen.queryByText('Graph workspace')).toBeNull();
     expect(screen.queryByRole('button',{name:/Run backtest/})).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
     fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'2222'}});
+    fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
     fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
     fireEvent.change(screen.getByLabelText('Strategy name'),{target:{value:'My working draft'}});
-    fireEvent.click(screen.getByRole('button',{name:'Strategy library'}));
+    fireEvent.click(screen.getByRole('button',{name:'Lab'}));
+    fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
     expect((screen.getByLabelText('Research capital') as HTMLInputElement).value).toBe('2222');
+    fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
     fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
     expect((screen.getByLabelText('Strategy name') as HTMLInputElement).value).toBe('My working draft');
   });
@@ -190,11 +195,37 @@ it('shows Linux capability limits and disables native execution without blocking
   return {};
  });
  render(<App/>);
- expect(await screen.findByText(/Linux research preview:/)).toBeTruthy();
+ expect(await screen.findByText(/Linux preview · graph research available/)).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
  expect((screen.getByRole('button',{name:/Run backtest/}) as HTMLButtonElement).disabled).toBe(false);
  fireEvent.click(screen.getByText('＋ Native Python'));
  expect((screen.getByRole('button',{name:/Run backtest/}) as HTMLButtonElement).disabled).toBe(true);
  expect(screen.getByLabelText('Python source preview')).toBeTruthy();
  expect(vi.mocked(api).mock.calls.some(([command])=>command==='start_run')).toBe(false);
+});
+
+vi.mock('./LiveChart',()=>({default:()=>{const [minutes,setMinutes]=useState('1');return <select aria-label="Chart display timeframe" value={minutes} onChange={e=>setMinutes(e.target.value)}><option value="1">1m</option><option value="240">4H</option></select>;}}));
+it('round trips Market and Lab without resetting view state or changing the test profile',async()=>{
+ vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(command:string)=>{
+  if(command==='run_history')return {rows:[],next:null};
+  if(command==='live_status')return {active:false,market:{active:true,market:'spot',symbol:'BTCUSDT',fresh:false},terminal_state:'RECONNECTING'};
+  if(command==='library_catalog'||command.startsWith('list_')||command==='library_batches')return [];
+  return {};
+ });
+ render(<App/>);
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+ fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'2222'}});
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
+ fireEvent.click(screen.getByRole('button',{name:'Market'}));
+ expect(screen.queryByLabelText('Strategy name')).toBeNull();
+ fireEvent.change(screen.getByLabelText('Chart display timeframe'),{target:{value:'240'}});
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT'}));
+ fireEvent.click(screen.getByRole('button',{name:'Lab'}));
+ expect(screen.getByText('2222 USDT')).toBeTruthy();
+ expect(vi.mocked(api).mock.calls.filter(([command])=>command==='market_close')).toHaveLength(1);
+ fireEvent.click(screen.getByRole('button',{name:'Market'}));
+ expect((screen.getByLabelText('Chart display timeframe') as HTMLSelectElement).value).toBe('240');
+ await waitFor(()=>expect(vi.mocked(api).mock.calls.filter(([command])=>command==='market_open')).toHaveLength(2));
+ expect(vi.mocked(api).mock.calls.some(([command])=>['start_run','library_batch_start','history_prepare','live_start_terminal','paper_start_manual'].includes(command))).toBe(false);
 });

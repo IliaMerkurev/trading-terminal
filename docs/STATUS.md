@@ -1,5 +1,39 @@
 # Implementation status
 
+## Recovered Market / Lab workspace — 2026-10-10
+
+The accepted Market/Lab source was reconstructed against the recovered browser
+frontend. This is a new verified source reconstruction, not recovery of the lost
+Git commit or reuse of its historical test results.
+
+- Market and Lab are peer tasks. Market has an independent draft profile and no
+  editor chrome. Its chart stays mounted across navigation, retaining display
+  interval, candles and fitted viewport; hidden market status/chart polling stops.
+  Leaving Market releases viewing without pausing an explicitly active strategy.
+- Advanced strategy/paper controls and diagnostics start collapsed. Replay and
+  paper lifecycle panels mount only when visible and selected. Frozen active
+  session instruments label the screen correctly, including non-BTC instruments.
+- Lab retains its controller state while closed setup fields are unmounted.
+  Current context stays visible; card actions precede optional metadata. History
+  preparation returns to the preserved setup. Hidden completed batches stop
+  polling; active batches continue until completion.
+- The restored CSS stacks a full-width 420px chart above depth/tape at widths
+  at or below 900px and places the no-data explanation above chart canvases.
+
+Fresh focused validation on Linux used nine affected frontend test files. The
+first pass had 60 passes and three outdated-test failures (63 total). One
+corrective pass updated explicit modal interaction and a duplicate-label query,
+added two batch lifecycle cases, and passed all 20 tests in the three affected
+files. Together with the unchanged six files from the first pass, all 65 distinct
+focused tests pass. TypeScript and the production Vite build pass; the existing
+747.64 kB JavaScript size advisory remains. Final test edits also pass TypeScript.
+
+These checks use simulated DOM and mocked IPC. Fresh real-browser geometry,
+public candles and Windows native/scaling/keyboard acceptance are not established
+by this patch. Browser service shutdown logic, backend accounting, schema and
+Windows integration files are unchanged. Integrated release validation remains
+separate.
+
 ## Recovered local browser mode — 2026-10-10
 
 The browser transport has been reintegrated on the independently verified Linux

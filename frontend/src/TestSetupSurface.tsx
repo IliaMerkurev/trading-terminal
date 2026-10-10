@@ -11,7 +11,7 @@ export default function TestSetupSurface({open,onClose,children}:{open:boolean;o
   dialog.current?.querySelector<HTMLElement>('#test-setup')?.focus();
   return()=>{if(trigger?.isConnected&&!trigger.closest('[hidden]'))trigger.focus({preventScroll:true});};
  },[open]);
- if(!open)return <>{children}</>;
+ if(!open)return null;
  return createPortal(<dialog ref={dialog} className="test-dialog" aria-label="Set up backtest" onCancel={e=>{e.preventDefault();onClose();}}>
   <div className="test-dialog-heading"><span>Set up backtest</span><button onClick={onClose}>Back to strategies</button></div>
   {children}

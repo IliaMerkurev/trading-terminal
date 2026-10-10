@@ -37,7 +37,7 @@ export default function BrowserServiceControls({active,onStopped}:{active:boolea
     finally{stoppingRef.current=false;setStopping(false);}
   }
   return <div className="banner info browser-service" aria-label="Local browser service">
-    <span>Browser mode. Closing this tab does not stop the local service or active work. Reopen the launcher address to reconnect.</span>
+    <span>Browser mode · closing this tab keeps work running.</span>
     <button className="danger" disabled={stopping} onClick={stop}>{stopping?'Stopping local service…':'Stop local service'}</button>
     {statusError&&<p role="status">{statusError}</p>}{error&&<p role="alert">{error}</p>}
   </div>;

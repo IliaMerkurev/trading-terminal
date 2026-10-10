@@ -10,6 +10,8 @@ it('opens a visible setup on every card click and returns keyboard focus without
  vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?[entry]:command==='library_batches'?[]:{});
  render(<StrategyLibrary onCopy={vi.fn()} profile={defaultProfile}/>);
  const trigger=await screen.findByRole('button',{name:'Test this strategy'});
+ expect(screen.getByRole('region',{name:'Current test context'})).toBeTruthy();
+ expect(screen.queryByLabelText('Batch dataset')).toBeNull();
  trigger.focus();fireEvent.click(trigger);
  const dialog=screen.getByRole('dialog',{name:'Set up backtest'});
  expect(within(dialog).getByText(entry.name)).toBeTruthy();
@@ -19,6 +21,7 @@ it('opens a visible setup on every card click and returns keyboard focus without
  fireEvent(dialog,new Event('cancel',{bubbles:false,cancelable:true}));
  expect(screen.queryByRole('dialog')).toBeNull();
  expect(document.activeElement).toBe(trigger);
+ expect(screen.queryByLabelText('Batch dataset')).toBeNull();
  fireEvent.click(trigger);
  expect(screen.getAllByRole('dialog')).toHaveLength(1);
  expect((within(screen.getByRole('dialog')).getByLabelText('DCA schedule') as HTMLSelectElement).value).toBe('monthly');
@@ -73,6 +76,7 @@ it('previews explicit timeframe variants from one selected card',async()=>{
  render(<StrategyLibrary onCopy={vi.fn()} profile={{...defaultProfile,execution_minutes:60}} datasets={[{id:'h1',market:'spot',symbol:'BTCUSDT',interval_seconds:3600,range:[0,172800],source:'Synthetic'}]}/>);
  fireEvent.click(await screen.findByLabelText('Include '+entry.name));
  fireEvent.click(screen.getByRole('button',{name:entry.name+' compare 4h'}));
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
  fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'h1'}});
  await vi.waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Review test'}));

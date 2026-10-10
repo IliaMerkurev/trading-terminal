@@ -83,3 +83,23 @@ it('keeps a failed older page retryable and prepends only a successful page with
  expect((screen.getByRole('button',{name:'Older history'}) as HTMLButtonElement).disabled).toBe(false);
  unmount();mock.visible.mockReturnValue(null);
 });
+
+it('retains display interval, candles and viewport across hidden navigation without polling',async()=>{
+ mock.api.mockClear();mock.fit.mockClear();mock.candles.mockClear();
+ mock.api.mockResolvedValue({candles:[{time:0,open:100,high:110,low:90,close:105,volume:1}],loading:false});
+ const {rerender}=render(<LiveChart fresh active/>);
+ fireEvent.change(screen.getByLabelText('Chart display timeframe'),{target:{value:'240'}});
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_chart',{market:'spot',symbol:'BTCUSDT',minutes:240,before:null}));
+ await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([expect.objectContaining({time:14400,close:105})]));
+ const fits=mock.fit.mock.calls.length;
+ rerender(<LiveChart fresh={false} active={false}/>);
+ const count=mock.api.mock.calls.length;
+ await new Promise(resolve=>setTimeout(resolve,1100));
+ expect(mock.api.mock.calls).toHaveLength(count);
+ expect((screen.getByLabelText('Chart display timeframe') as HTMLSelectElement).value).toBe('240');
+ expect(mock.candles).toHaveBeenLastCalledWith([expect.objectContaining({time:14400,close:105})]);
+ rerender(<LiveChart fresh active/>);
+ await waitFor(()=>expect(mock.api.mock.calls.length).toBeGreaterThan(count));
+ expect(mock.fit).toHaveBeenCalledTimes(fits);
+ expect(mock.api.mock.calls.every(c=>c[0]==='market_chart')).toBe(true);
+});

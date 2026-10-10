@@ -20,6 +20,7 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  });
  const props={selections,datasets,profile:defaultProfile,onActive,onReport,onOpenRun};
  const {rerender}=render(<LibraryResearch {...props}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
  fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'data'}});
  fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T00:10'}});
  await waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
@@ -72,6 +73,7 @@ it('reserves warmup, waits for preparation, and accepts repeated history selecti
  });
  const props={selections,datasets:[...datasets,{...datasets[0],id:'second'}],profile:defaultProfile,onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn(),preferredDataset:{id:'data',request:1}};
  const {rerender}=render(<LibraryResearch {...props}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
  await screen.findByText('Preparing warmup and instrument settings…');
  expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(true);
  resolveWarmup({start:600,end:3600,available:true});
@@ -101,7 +103,9 @@ it('cancels active work and exposes pending-only resume without hiding failed ro
  });
  render(<LibraryResearch selections={selections} datasets={datasets} profile={defaultProfile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
  await screen.findByRole('option',{name:/2026-01-01/});fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'batch'}});
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
  fireEvent.click(await screen.findByRole('button',{name:'Cancel remaining tests'}));
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
  fireEvent.click(await screen.findByRole('button',{name:'Resume pending rows with frozen inputs'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_resume',{batch_id:'batch'}));
  await screen.findByRole('option',{name:/2026-01-01 · cancelled/});
@@ -120,9 +124,11 @@ it('freezes a saved candidate separately and never ranks or attaches holdout met
  });
  render(<LibraryResearch selections={selections} datasets={datasets} profile={defaultProfile} onActive={vi.fn()} onReport={onReport} onOpenRun={vi.fn()}/>);
  await screen.findByRole('option',{name:/Selection/});fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'selection'}});
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
  fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'data'}});
  fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T02:00'}});
  fireEvent.change(screen.getByLabelText('Evaluation end, exclusive (UTC)'),{target:{value:'1970-01-01T03:00'}});
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
  fireEvent.click(await screen.findByRole('button',{name:'Freeze later-period candidate'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_freeze',{batch_id:'selection',ordinal:0,dataset_id:'data',start:7200,end:10800,spot_dataset_id:null}));
  expect(await screen.findByText(/Later-period verification — excluded/)).toBeTruthy();
@@ -147,6 +153,7 @@ it('keeps a newly chosen resolution and reserves warmup on repeated history use'
  const all=[{...datasets[0],id:'hour',interval_seconds:3600,range:[0,288000]},{...datasets[0],id:'four-hour',interval_seconds:14400,range:[0,288000]}];
  const props={selections:[{...selections[0],minutes:1440}],datasets:all,profile:{...defaultProfile,execution_minutes:60},onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn()};
  const {rerender}=render(<LibraryResearch {...props} preferredDataset={{id:'hour',request:1}}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
  await waitFor(()=>expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T16:00'));
  rerender(<LibraryResearch {...props} profile={{...props.profile,execution_minutes:240}} preferredDataset={{id:'four-hour',request:2}}/>);
  await waitFor(()=>expect((screen.getByLabelText('Batch dataset') as HTMLSelectElement).value).toBe('four-hour'));
@@ -163,4 +170,30 @@ it('sorts both directions within matching models while losses and unavailable re
  expect(sortedLibraryRows(report,'net_pnl','desc').map(r=>r.ordinal)).toEqual([1,0,2,3]);
  expect(sortedLibraryRows(report,'net_pnl','asc').map(r=>r.ordinal)).toEqual([0,1,2,3]);
  expect(report.rows.map(r=>r.ordinal)).toEqual([0,1,2,3]);
+});
+
+
+it.each([false,true])('suspends hidden completed batches but retains active polling (active=%s)',async(running)=>{
+ vi.mocked(api).mockClear();
+ let active=running;
+ const report=()=>({id:'retained',status:active?'running':'completed',active_id:active?'retained':null,snapshot:{inputs,rows:[]},rows:[]});
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_batches'?[{id:'retained',status:'completed',created_at:'Retained'}]:command==='library_batch_status'?report():{});
+ const props={selections,datasets,profile:defaultProfile,onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn()};
+ const {rerender}=render(<LibraryResearch {...props}/>);
+ await screen.findByRole('option',{name:/Retained/});
+ fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'retained'}});
+ await waitFor(()=>expect(props.onActive).toHaveBeenCalledWith(running?'retained':null));
+ rerender(<LibraryResearch {...props} suspendSetup/>);
+ const calls=()=>vi.mocked(api).mock.calls.filter(([command])=>command==='library_batch_status').length;
+ const hiddenCount=calls();
+ await new Promise(resolve=>setTimeout(resolve,780));
+ if(running){
+  expect(calls()).toBeGreaterThan(hiddenCount);
+  active=false;
+  await waitFor(()=>expect(props.onActive).toHaveBeenLastCalledWith(null),{timeout:1200});
+  const completedCount=calls();
+  await new Promise(resolve=>setTimeout(resolve,780));
+  expect(calls()).toBe(completedCount);
+ }else expect(calls()).toBe(hiddenCount);
+ expect(vi.mocked(api).mock.calls.some(([command])=>/start|cancel|resume/.test(command))).toBe(false);
 });

@@ -1,0 +1,38 @@
+/* Market and Lab are peer tasks; editor chrome is local to editor routes. */
+.app header,.research-mode header{height:58px;min-height:58px;padding:0 24px}
+.browser-service{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:6px 24px;font-size:11px;background:#15232d!important}
+.browser-service>span{flex:1}.browser-service button{float:none;min-height:27px;padding:4px 9px;border:1px solid #6e4752;font-size:11px}.browser-service p{margin:0;width:100%}
+.capability-note{margin:0;padding:5px 24px;border:0;border-bottom:1px solid #273340;background:#111b24;flex-shrink:0}
+.capability-note summary{font-size:10px;color:#aab7c4}.capability-note p{margin:8px 0;font-size:12px}
+.primary-navigation button:nth-child(-n+2){font-size:15px;min-width:64px}
+.primary-navigation button:nth-child(3){margin-left:20px}
+.market-host{overflow:hidden}.market-host>.live-terminal{width:100%}
+.market-workspace-heading{display:flex;align-items:center;gap:22px;padding:16px 24px 12px;flex-shrink:0}
+.market-workspace-heading h1{font-size:25px;letter-spacing:-.6px;margin:0 0 4px}.market-workspace-heading p{margin:0;font-size:12px}
+.market-workspace-heading label{display:flex;gap:9px;align-items:center;color:#adbfcd;font-size:12px}.market-workspace-heading select{min-width:138px}
+.market-workspace-heading>small{margin-left:auto;max-width:220px;font-size:10px}
+.market-header{padding:9px 24px;background:#111c25;flex-shrink:0;gap:20px}.market-header b{font-size:22px}.market-header>div:first-child{display:none}
+.market-advanced,.market-diagnostics{margin:0;padding:0;border:0;flex-shrink:0}
+.market-advanced>summary,.market-diagnostics>summary{padding:10px 24px;background:#131e28;border-bottom:1px solid #293846;list-style-position:inside;font-size:12px}
+.market-advanced>summary span,.market-diagnostics>summary span{margin-left:14px;color:#7f96a9;font-size:11px}
+.market-advanced[open]{max-height:34vh;overflow:auto}.market-advanced .terminal-controls{padding:14px 24px;gap:10px;align-items:center}
+.market-advanced .live-settings[open]>div{position:static;width:min(620px,80vw);max-height:none}.market-advanced .live-settings{margin:0;padding:0;border:0}
+.market-diagnostics>.terminal-bottom{height:230px;min-height:0}.market-diagnostics .terminal-bottom nav{padding:0 18px;gap:14px}
+.market-diagnostics .terminal-bottom nav button{white-space:nowrap}.market-diagnostics .terminal-bottom nav{overflow-x:auto}
+.market-host .terminal-market{min-height:230px;grid-template-columns:minmax(0,1fr) 230px}
+.market-host .live-chart{padding:12px 16px 8px}.market-host .live-chart-toolbar{gap:9px;margin-bottom:10px}.market-host .live-chart-canvas{min-height:190px}
+.chart-empty{position:absolute;inset:45px 20px 40px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;color:#9aafbf;text-align:center}.chart-empty strong{font-weight:500;font-size:15px;color:#c1d1dc}.chart-empty p{max-width:420px;font-size:12px;margin:9px}.chart-plot{position:relative;display:flex;flex:1;min-height:190px}.chart-plot>.live-chart-canvas{width:100%}
+@media(max-width:900px){.market-host .terminal-market{grid-template-columns:minmax(0,1fr) 190px}.market-workspace-heading{padding:13px 18px;gap:16px}.market-workspace-heading>small{display:none}.primary-navigation button:nth-child(3){margin-left:4px}.primary-navigation{gap:15px}.market-header{padding:8px 18px;gap:14px}}
+@media(max-width:760px){nav[aria-label=Workspace]{height:auto;min-height:48px;flex-wrap:wrap;gap:0 16px;padding:4px 16px}.primary-navigation{gap:8px 16px;flex-wrap:wrap}.primary-navigation button:nth-child(-n+2){min-width:50px}.primary-navigation button:nth-child(3){margin-left:0}.market-host .live-terminal{overflow:auto}.market-host .terminal-market{display:flex;flex-direction:column;min-height:620px;overflow:visible;flex-shrink:0}.market-host .live-chart{min-height:400px;border:0}.market-host .market-side{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:180px;flex-shrink:0}.market-workspace-heading{flex-wrap:wrap}.market-header>div:nth-child(n+5){display:none}.market-advanced>summary span,.market-diagnostics>summary span{display:none}.browser-service{padding:5px 16px}.capability-note{padding:5px 16px}}
+/* Lightweight Charts owns positioned canvases; keep the no-data explanation above them. */
+.chart-empty{z-index:5;background:#111720e8;border-radius:8px}
+.market-host .terminal-market,.market-host .market-side,.market-host .live-chart,.market-host .chart-plot{min-width:0}
+@media(max-width:900px){
+ .market-host .live-terminal{overflow:auto}
+ .market-host .terminal-market{display:flex;flex-direction:column;flex:none;min-height:0;overflow:visible}
+ .market-host .live-chart{height:420px;min-height:420px;flex:none;border-right:0}
+ .market-host .market-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:190px;flex:none;width:100%;border-top:1px solid #303848}
+ .market-host .market-side section{min-width:0}
+ .market-header{flex-wrap:wrap}.market-header>strong:last-child{margin-left:0}
+ .market-workspace-heading{flex-wrap:wrap}
+}
