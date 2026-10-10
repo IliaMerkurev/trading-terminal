@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import { describe,it,expect,vi } from 'vitest';
 import { render,screen,fireEvent,waitFor,act } from '@testing-library/react';
-import App from './App';
+import App,{savedRunDate} from './App';
 import { api } from './api';
 import {invoke} from '@tauri-apps/api/core';
 const windowMock=vi.hoisted(()=>({close:null as null|((event:{preventDefault:()=>void})=>void)}));
@@ -231,4 +231,14 @@ it('round trips Market and Lab without resetting view state or changing the test
  expect((screen.getByLabelText('Chart display timeframe') as HTMLSelectElement).value).toBe('240');
  await waitFor(()=>expect(vi.mocked(api).mock.calls.filter(([command])=>command==='market_open')).toHaveLength(2));
  expect(vi.mocked(api).mock.calls.some(([command])=>['start_run','library_batch_start','history_prepare','live_start_terminal','paper_start_manual'].includes(command))).toBe(false);
+});
+
+
+it('formats only valid saved-report dates and falls back to matching history',()=>{
+ const date='2026-01-01T00:00:00Z',history=[{id:'run',created_at:date}];
+ expect(savedRunDate({id:'run'},history)).toBe(new Date(date).toLocaleString());
+ expect(savedRunDate({id:'run',created_at:'invalid'},history)).toBe(new Date(date).toLocaleString());
+ expect(savedRunDate({id:'other'},history)).toBeNull();
+ expect(savedRunDate({id:'run',created_at:null},[{id:'run',created_at:'invalid'}])).toBeNull();
+ expect(savedRunDate({id:'run',created_at:date},[])).toBe(new Date(date).toLocaleString());
 });

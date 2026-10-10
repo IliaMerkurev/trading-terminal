@@ -17,8 +17,13 @@ three files, plus one new 17-run report/history/back-navigation regression. The
 new fixture initially assumed input ordering for equal timestamps; unique dates
 corrected the fixture, and its focused rerun passed. Production TypeScript/build
 passed with the existing large-JavaScript-chunk advisory. Backend calculations,
-accounting, data, schemas and dependencies are unchanged. Real-browser geometry
-acceptance of this presentation checkpoint remains pending.
+accounting, data, schemas and dependencies are unchanged. Actual browser checks
+at 1180px and 750px verified pinned row identity, horizontal scrolling, collapsed
+history and report-first layout. Those checks found that the run-status response
+may omit its creation date. The heading now falls back to a valid timestamp from
+the matching history row, or explicitly says the date is unavailable. Two focused
+regressions and production TypeScript/build passed for this correction; its
+actual browser recheck remains pending.
 
 At the preceding functional checkpoint, actual local-browser checks verified
 that a double Start produced one three-row batch with all rows completed, copy

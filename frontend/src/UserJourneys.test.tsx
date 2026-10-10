@@ -184,7 +184,7 @@ it('opens a comparison report before collapsed history and returns to the same f
   if(command==='library_batch_history')return {rows:[{id:'saved',status:'completed',created_at:'Saved fixture'}],next:null};
   if(command==='library_batch_status')return report;
   if(command==='run_history')return {rows:history,next:null};
-  if(command==='run_status')return run;
+  if(command==='run_status'){const {created_at,...status}=run;return status;}
   if(command==='result_page')return {rows:[],total:0,next:null};
   if(command.startsWith('list_'))return [];
   throw Error(`Unneeded detail: ${command}`);
@@ -199,6 +199,8 @@ it('opens a comparison report before collapsed history and returns to the same f
  expect(await screen.findByRole('heading',{name:'Saved report · BTCUSDT'})).toBeTruthy();
  const selector=container.querySelector('.saved-run-history') as HTMLDetailsElement;
  expect(selector.open).toBe(false);
+ expect(container.querySelector('.selected-report-heading p')!.textContent).toContain(new Date(run.created_at).toLocaleString());
+ expect(screen.queryByText(/Invalid Date/)).toBeNull();
  expect(screen.getByLabelText('Saved report chart').textContent).toBe('saved-loss');
  expect(screen.getByText('-12.00 USDT',{selector:'.metrics strong'})).toBeTruthy();
  expect(container.querySelector('.selected-report-heading')!.compareDocumentPosition(container.querySelector('.comparison')!)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
