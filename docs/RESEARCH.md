@@ -59,6 +59,44 @@ not a claim of verified current live-feed behavior.
 
 ## Catalog testing, filtering and comparison
 
+**Order cards** starts with Name A–Z. Choose a saved selection comparison through
+**Choose saved comparison**, then return to Lab to order by saved period return,
+maximum drawdown or completed positions in either direction. The comparison name
+and exact UTC evaluation interval stay visible. Choose its **Saved timeframe**
+and **Compatible group**; each is filled automatically only when it has one
+valid choice. Group numbers match Saved tests, and the label identifies the
+market, source/execution resolution, capital and model version.
+The compact comparison disclosure keeps the applied comparison, timeframe,
+group and exact period visible beside the metric and direction. Expand it to
+change the context. Missing numeric-ordering choices open it automatically;
+once complete, close it with its summary to restore more room for cards. It
+does not automatically hide a focused selector after a choice.
+
+Only one completed saved row matching the card's catalog version, timeframe and
+group supplies a finite ordering value. Its row is marked **used for card order**.
+Different parameter variants remain **N/A · multiple saved variants**, even if
+only one completed. Missing, unfinished, unavailable and other-group results
+stay at the end in both directions with their reason. Losses and recorded zero
+are valid values; zero completed positions is labeled **no trades**. Historical
+rows stay visible, including older catalog versions. Later-period verification
+results are excluded from card selection ranking.
+
+Ordering and filters change the view only: card parameters, chosen test
+timeframes, selection and reviewed setup remain intact. Editing a card retains
+its saved evidence and **Prior run — changed inputs** label. Opening a different
+comparison resets the timeframe/group context; refreshing or renaming the same
+comparison does not. Switching through an excluded later-period comparison also
+resets the selection context. **Test all strategies** still includes every catalog card,
+regardless of its visible position or filters.
+
+Visible finite card summary return, drawdown and position cells and ordering
+badges use the same recorded comparison-period evidence as Saved tests.
+The older expanded source/details metrics are not separately instrumented.
+Hidden, offscreen and modal-covered cells do not count;
+reordering alone does not create another presentation. A recording failure is
+visible in Lab while reading remains available. This remains bounded in-app
+display evidence, not proof of human reading or complete exposure history.
+
 1. On a card, choose its timeframe and any **Compare also** timeframes. Click
    **Test this strategy** to open its backtest setup dialog. Changing a timeframe
    alone does not start execution. **Add to comparison** includes other cards

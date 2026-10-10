@@ -30,7 +30,19 @@ synthetic fixture database for ordinary research data.
 
 ## Current UX-series evidence
 
-The newest slice adds synchronized source-volume inspection, exact UTC OHLCV,
+The newest slice adds explicit saved-comparison card ordering in Lab. Name,
+return, drawdown and completed-position ordering preserve card drafts and
+catalog-order Test all payloads. Numeric ranking requires the saved timeframe
+and compatible cohort; ambiguous parameter variants remain N/A. Actual finite
+card metrics reuse displayed-period evidence with stable presentation recorders.
+Focused coverage is **70 distinct tests across six files**; TypeScript and the
+production build pass. Bounded production-browser checks passed at 1180×757 and
+750×757, including the compact context disclosure, keyboard use, draft retention
+and filtered Test all. Holdout reset and display-write counts remain automated
+evidence only. See [saved-comparison card ordering](STATUS.md#saved-comparison-card-ordering--2026-10-10)
+for the exact focused passes and separate platform/owner acceptance limits.
+
+The preceding slice adds synchronized source-volume inspection, exact UTC OHLCV,
 keyboard candle navigation and explicit gap whitespace/bands to Saved history.
 Its focused scope has 64 passing tests across six files, including regressions
 for a browser-discovered synthetic crosshair callback issue; TypeScript and the

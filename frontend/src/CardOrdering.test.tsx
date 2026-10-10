@@ -1,0 +1,185 @@
+import {it,expect,vi} from 'vitest';
+import {act,render,screen,fireEvent,within,waitFor} from '@testing-library/react';
+import StrategyLibrary from './StrategyLibrary';
+import {api} from './api';
+import {defaultProfile} from './model';
+import {cohortKey} from './LibraryResearch';
+import {finishDisplayWrites} from './DisplayedEvidence';
+
+vi.mock('./api',()=>({api:vi.fn()}));
+const profile={...defaultProfile,execution_minutes:60};
+const entries=['Zulu','Alpha','Native','Absent'].map((name,i)=>({id:`idea-${i}`,version:1,name,family:'trend',kind:i===2?'Native':'Adapted',source_url:'https://example.org/source',license:'MIT',markets:['spot'],directions:['long'],source_default_minutes:1440,author_recommended_minutes:null,local_default_minutes:1440,timeframes:[60,240,1440],timeframe_evidence:'Synthetic fixture',adaptation:'Synthetic fixture',review:'Static review',compatibility:'Closed bars',verification:'Synthetic fixture',parameters:{period:{type:'integer',default:14,min:2,max:1000}}}));
+const data={id:'history',market:'spot',symbol:'BTCUSDT',interval_seconds:3600,range:[0,259200],source:'Synthetic'};
+const spec=(index:number,minutes=240,version=1)=>({name:entries[index].name,kind:index===2?'native':'graph',profile:{...profile,primary_minutes:minutes,version},dataset:{id:data.id},selection:{entry_id:entries[index].id,version:1,minutes,parameters:{period:14}}});
+const makeReport=(id='saved',specs=[spec(0),spec(1),spec(2)])=>({id,status:'completed_with_errors',active_id:null,metadata:{name:'Saved comparison',notes:'',revision:0},snapshot:{phase:'selection',start:86400,end:172800,inputs:{profile,selections:specs.map(s=>s.selection)},rows:specs},rows:specs.map((_,ordinal)=>({ordinal,status:ordinal===2?'incompatible':'completed',run_id:`run-${ordinal}`,error:ordinal===2?'Native execution unavailable':null,metrics:ordinal===2?null:{period_return:ordinal===0?'-.05':'0',max_drawdown:ordinal===0?'.08':'0',completed_positions:ordinal===0?2:0}}))});
+const props={onCopy:vi.fn(async()=>{}),profile,datasets:[data],preferredBatch:{id:'saved',request:1}};
+const names=()=>screen.getAllByRole('article').map(card=>card.getAttribute('aria-label'));
+function serve(report:any){vi.mocked(api).mockReset().mockImplementation(async command=>command==='library_catalog'?entries:command==='library_batch_history'?{rows:[{id:report.id,status:report.status,created_at:'Saved fixture'}],next:null}:command==='library_batch_status'?report:command==='library_warmup'?{start:86400,end:259200,available:true}:command==='library_batch_preview'?{contract_sha256:'checked',modeled_minutes:100,rows:[{name:'Ready',error:null}]}:{});}
+
+it('offers name ordering and an explicit Saved tests route before a comparison exists',async()=>{
+ vi.mocked(api).mockReset().mockImplementation(async command=>command==='library_catalog'?entries:command==='library_batch_history'?{rows:[],next:null}:{});
+ const onSaved=vi.fn();render(<StrategyLibrary onCopy={props.onCopy} profile={profile} onSaved={onSaved}/>);
+ await screen.findByRole('article',{name:'Zulu'});
+ expect(names()).toEqual(['Absent','Alpha','Native','Zulu']);
+ expect((screen.getByRole('option',{name:'Saved period return'}) as HTMLOptionElement).disabled).toBe(true);
+ fireEvent.change(screen.getByLabelText('Card order direction'),{target:{value:'desc'}});expect(names()).toEqual(['Zulu','Native','Alpha','Absent']);
+ fireEvent.click(screen.getByRole('button',{name:'Choose saved comparison'}));expect(onSaved).toHaveBeenCalledOnce();
+ expect(vi.mocked(api).mock.calls.some(([command])=>/preview|start|trust|library_copy/.test(command))).toBe(false);
+});
+
+it('requires ambiguous timeframe/cohort choices, retains same-report refresh and resets a different comparison',async()=>{
+ let report:any=makeReport('saved',[spec(0),spec(1),spec(0,1440),spec(1,240,2)]);
+ serve(report);vi.mocked(api).mockImplementation(async command=>command==='library_catalog'?entries:command==='library_batch_history'?{rows:[],next:null}:command==='library_batch_status'?report:{});
+ const {rerender}=render(<StrategyLibrary {...props}/>);
+ await screen.findByText('Saved comparison',{selector:'.card-order-comparison strong'});
+ fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'period_return'}});
+ expect((screen.getByLabelText('Card saved timeframe') as HTMLSelectElement).value).toBe('');
+ const disclosure=screen.getByText('Saved comparison',{selector:'.card-order-comparison strong'}).closest('details')!;
+ expect(disclosure.open).toBe(true);
+ expect(screen.getByText(/Metric ordering is not applied/)).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Card saved timeframe'),{target:{value:'240'}});
+ expect((screen.getByLabelText('Card compatible group') as HTMLSelectElement).value).toBe('');
+ const group=cohortKey(report.snapshot.rows[0]),groupSelect=screen.getByLabelText('Card compatible group');groupSelect.focus();fireEvent.change(groupSelect,{target:{value:group}});
+ expect(names()).toEqual(['Alpha','Zulu','Absent','Native']);
+ expect(disclosure.open).toBe(true);expect(document.activeElement).toBe(groupSelect);
+ const summary=disclosure.querySelector('summary')!;summary.focus();fireEvent.click(summary);
+ expect(disclosure.open).toBe(false);expect(document.activeElement).toBe(summary);
+ expect(summary.textContent).toContain('4h · Group');expect(summary.textContent).toContain('UTC (end exclusive)');
+ fireEvent.click(summary);expect(disclosure.open).toBe(true);
+ fireEvent.change(screen.getByLabelText('Card order direction'),{target:{value:'asc'}});
+ report={...report,metadata:{...report.metadata,name:'Renamed comparison',revision:1}};
+ rerender(<StrategyLibrary {...props} suspendSetup/>);rerender(<StrategyLibrary {...props}/>);
+ await screen.findByText('Renamed comparison',{selector:'.card-order-comparison strong'});
+ expect((screen.getByLabelText('Card saved timeframe') as HTMLSelectElement).value).toBe('240');
+ expect((screen.getByLabelText('Card compatible group') as HTMLSelectElement).value).toBe(group);
+ expect((screen.getByLabelText('Card order direction') as HTMLSelectElement).value).toBe('asc');
+ report={...report,id:'other'};rerender(<StrategyLibrary {...props} preferredBatch={{id:'other',request:2}}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Card saved timeframe') as HTMLSelectElement).value).toBe(''));
+ expect((screen.getByLabelText('Card compatible group') as HTMLSelectElement).value).toBe('');
+ expect(names()).toEqual(['Absent','Alpha','Native','Zulu']);
+ expect(vi.mocked(api).mock.calls.some(([command])=>/preview|start|trust|library_copy/.test(command))).toBe(false);
+});
+
+it('resets context through selection A, excluded holdout, and selection A without attaching holdout scores',async()=>{
+ const selection=makeReport('saved',[spec(0),spec(0,1440),spec(1,240,2)]);
+ const holdout={...selection,id:'holdout',snapshot:{...selection.snapshot,phase:'out_of_sample',validation:{selection_range:[86400,172800],selection_attempted_variants:3,holdout_attempt:1,source_version_date:'2026-10-10',warning:'Repeated holdout is not independent evidence.'}},rows:selection.rows.map(row=>({...row,status:'completed',metrics:{period_return:99,max_drawdown:0,completed_positions:7}}))};
+ serve(selection);vi.mocked(api).mockImplementation(async(command,params:any)=>command==='library_catalog'?entries:command==='library_batch_history'?{rows:[],next:null}:command==='library_batch_status'?params.batch_id==='holdout'?holdout:selection:{});
+ const {rerender}=render(<StrategyLibrary {...props}/>);
+ await screen.findByText('Saved comparison',{selector:'.card-order-comparison strong'});
+ fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'period_return'}});
+ fireEvent.change(screen.getByLabelText('Card saved timeframe'),{target:{value:'240'}});
+ fireEvent.change(screen.getByLabelText('Card compatible group'),{target:{value:cohortKey(selection.snapshot.rows[0])}});
+ const card=screen.getByRole('article',{name:'Zulu'});fireEvent.change(within(card).getByLabelText('Zulu period'),{target:{value:'7'}});
+ expect(card.querySelector('.card-result-ordered')).toBeTruthy();
+ rerender(<StrategyLibrary {...props} preferredBatch={{id:'holdout',request:2}}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Order cards').querySelector('option[value=period_return]') as HTMLOptionElement).disabled).toBe(true));
+ expect(card.querySelector('.card-result-row')).toBeNull();expect(card.textContent).not.toContain('9900.00%');
+ rerender(<StrategyLibrary {...props} preferredBatch={{id:'saved',request:3}}/>);
+ await screen.findByText('Saved comparison',{selector:'.card-order-comparison strong'});
+ expect((screen.getByLabelText('Card saved timeframe') as HTMLSelectElement).value).toBe('');
+ expect((screen.getByLabelText('Card compatible group') as HTMLSelectElement).value).toBe('');
+ expect(card.querySelector('.card-result-ordered')).toBeNull();expect((within(card).getByLabelText('Zulu period') as HTMLInputElement).value).toBe('7');
+ expect(screen.getByText(/Metric ordering is not applied; cards remain in name order/)).toBeTruthy();
+ expect(vi.mocked(api).mock.calls.some(([command])=>/preview|start|trust|library_copy/.test(command))).toBe(false);
+});
+
+it('keeps drafts, selection and reviewed catalog-order Test all payloads through filtering and metric reordering',async()=>{
+ const report=makeReport();serve(report);const {container}=render(<StrategyLibrary {...props}/>);
+ await screen.findByText('Saved comparison',{selector:'.card-order-comparison strong'});
+ const zulu=screen.getByRole('article',{name:'Zulu'}),alpha=screen.getByRole('article',{name:'Alpha'});
+ fireEvent.change(within(zulu).getByLabelText('Zulu period'),{target:{value:'7'}});
+ fireEvent.change(within(zulu).getByLabelText('Zulu timeframe'),{target:{value:'60'}});
+ fireEvent.click(within(zulu).getByLabelText('Zulu compare 4h'));
+ fireEvent.click(within(alpha).getByLabelText('Include Alpha'));fireEvent.click(within(zulu).getByLabelText('Include Zulu'));
+ fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'period_return'}});
+ expect(names()).toEqual(['Alpha','Zulu','Absent','Native']);
+ expect(screen.getByRole('article',{name:'Zulu'})).toBe(zulu);
+ expect((within(zulu).getByLabelText('Zulu timeframe') as HTMLSelectElement).value).toBe('60');
+ expect(within(zulu).getByLabelText('Zulu compare 4h').getAttribute('aria-pressed')).toBe('true');
+ expect((within(zulu).getByLabelText('Include Zulu') as HTMLInputElement).checked).toBe(true);
+ expect(within(alpha).getByText(/0 completed positions/)).toBeTruthy();expect(within(alpha).getByText(/no trades/)).toBeTruthy();
+ expect(within(screen.getByRole('article',{name:'Native'})).getByText(/Card order: N\/A · incompatible · Native execution unavailable/)).toBeTruthy();
+ expect(within(screen.getByRole('article',{name:'Absent'})).getByText(/Card order: N\/A · not in selected comparison/)).toBeTruthy();
+ expect(within(zulu).getByText('Prior run — changed inputs')).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Search strategies'),{target:{value:'Zulu'}});
+ expect(names()).toEqual(['Zulu']);expect(container.querySelectorAll('article')).toHaveLength(4);
+ fireEvent.click(screen.getByRole('button',{name:'Test all strategies'}));
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'history'}});
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Review test'}));await screen.findByRole('button',{name:'Start 1 tests'});
+ const expected=entries.flatMap((entry,index)=>[240,1440].map(minutes=>({entry_id:entry.id,version:1,minutes,parameters:{period:index===0?7:14}})));
+ expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({selections:expected}));
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
+ fireEvent.change(screen.getByLabelText('Card order direction'),{target:{value:'asc'}});
+ fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'max_drawdown'}});
+ expect((screen.getByLabelText('Card order direction') as HTMLSelectElement).value).toBe('asc');
+ fireEvent.change(screen.getByLabelText('Search strategies'),{target:{value:''}});
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+ expect(screen.getByRole('button',{name:'Start 1 tests'})).toBeTruthy();
+ expect(vi.mocked(api).mock.calls.filter(([command])=>command==='library_batch_preview')).toHaveLength(1);
+ expect(vi.mocked(api).mock.calls.some(([command])=>/start|trust|library_copy/.test(command))).toBe(false);
+});
+
+it('labels ambiguous saved variants without choosing defaults and keeps the saved evidence after card edits',async()=>{
+ const duplicate={...spec(0),selection:{...spec(0).selection,parameters:{period:7}}};
+ const report=makeReport('saved',[spec(0),duplicate,spec(1)]);report.rows[1].status='failed';report.rows[2]={...report.rows[0],ordinal:2,metrics:{period_return:'0',max_drawdown:'0',completed_positions:0}};
+ serve(report);render(<StrategyLibrary {...props}/>);
+ await screen.findByText('Saved comparison',{selector:'.card-order-comparison strong'});
+ fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'completed_positions'}});
+ expect((screen.getByLabelText('Card order direction') as HTMLSelectElement).value).toBe('desc');
+ const zulu=screen.getByRole('article',{name:'Zulu'});expect(within(zulu).getByText('Card order: N/A · multiple saved variants')).toBeTruthy();
+ fireEvent.change(within(zulu).getByLabelText('Zulu period'),{target:{value:'7'}});
+ expect(within(zulu).getByText('Card order: N/A · multiple saved variants')).toBeTruthy();
+ expect(zulu.querySelector('.card-result-ordered')).toBeNull();
+ expect(screen.getByRole('article',{name:'Alpha'}).querySelector('.card-order-value [data-metric]:not([hidden])')?.textContent).toBe('0');
+});
+
+it('records actual finite card badges once, excludes hidden/modal-covered cells, and observes newly completed values',async()=>{
+ const observers:{target:HTMLElement|null;callback:(entries:any[])=>void}[]=[],frames:(()=>void)[]=[];
+ vi.stubGlobal('IntersectionObserver',class{item:any;constructor(callback:any){this.item={target:null,callback};observers.push(this.item);}observe(target:HTMLElement){this.item.target=target;}disconnect(){this.item.target=null;}});
+ vi.stubGlobal('requestAnimationFrame',(callback:()=>void)=>{frames.push(callback);return frames.length;});vi.stubGlobal('cancelAnimationFrame',()=>{});
+ vi.spyOn(HTMLElement.prototype,'getClientRects').mockReturnValue([{width:100,height:100}] as any);
+ const show=(target:HTMLElement)=>act(()=>{for(const item of observers)if(item.target===target)item.callback([{target,isIntersecting:true,intersectionRect:{width:100,height:100}}]);frames.splice(0).forEach(callback=>callback());});
+ const writes=()=>vi.mocked(api).mock.calls.filter(([command])=>command==='research_displayed');
+ try{
+  let report:any=makeReport();serve(report);
+  vi.mocked(api).mockImplementation(async command=>command==='library_catalog'?entries:command==='library_batch_history'?{rows:[],next:null}:command==='library_batch_status'?report:command==='research_displayed'?{recorded:1}:{});
+  const {rerender}=render(<StrategyLibrary {...props}/>);
+  await screen.findByText('Saved comparison',{selector:'.card-order-comparison strong'});
+  const zulu=screen.getByRole('article',{name:'Zulu'}),alpha=screen.getByRole('article',{name:'Alpha'});
+  const hiddenBadge=zulu.querySelector<HTMLElement>('.card-order-value [data-metric]')!;
+  show(hiddenBadge);expect(writes()).toHaveLength(0);
+  fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'period_return'}});
+  const badge=zulu.querySelector<HTMLElement>('.card-order-value [data-metric]:not([hidden])')!;
+  show(badge);await finishDisplayWrites();expect(writes()).toHaveLength(1);
+  expect(writes()[0][1]).toMatchObject({reference:{surface:'comparison_metrics',batch_id:'saved',ordinal:0},viewport:null});
+  fireEvent.change(screen.getByLabelText('Card order direction'),{target:{value:'asc'}});show(badge);
+  fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'completed_positions'}});show(badge);
+  expect(writes()).toHaveLength(1);
+  fireEvent.change(screen.getByLabelText('Search strategies'),{target:{value:'Zulu'}});
+  const alphaBadge=alpha.querySelector<HTMLElement>('.card-order-value [data-metric]:not([hidden])')!;show(alphaBadge);expect(writes()).toHaveLength(1);
+  fireEvent.change(screen.getByLabelText('Search strategies'),{target:{value:'Alpha'}});
+  fireEvent.click(within(alpha).getByRole('button',{name:'Test this strategy'}));show(alphaBadge);expect(writes()).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));show(alphaBadge);await finishDisplayWrites();expect(writes()).toHaveLength(2);
+  fireEvent.change(screen.getByLabelText('Search strategies'),{target:{value:'Native'}});
+  const native=screen.getByRole('article',{name:'Native'});expect(native.querySelector('[data-metric]')).toBeNull();
+  report={...report,rows:report.rows.map((row:any)=>row.ordinal===2?{...row,status:'completed',metrics:{period_return:'NaN',max_drawdown:0,completed_positions:0}}:row)};
+  rerender(<StrategyLibrary {...props} suspendSetup/>);rerender(<StrategyLibrary {...props}/>);
+  await waitFor(()=>expect(native.querySelector('.card-result-ordered')).toBeTruthy());
+  expect(native.querySelector('.card-result-row strong>span')?.hasAttribute('data-metric')).toBe(false);
+  const nativeBadge=native.querySelector<HTMLElement>('.card-order-value [data-metric]:not([hidden])')!;show(nativeBadge);await finishDisplayWrites();expect(writes()).toHaveLength(3);
+  expect(writes()[2][1]).toMatchObject({reference:{surface:'comparison_metrics',batch_id:'saved',ordinal:2}});
+  fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'period_return'}});
+  fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'completed_positions'}});
+  expect(native.querySelector('.card-order-value [data-metric]:not([hidden])')).toBe(nativeBadge);
+  show(nativeBadge);expect(writes()).toHaveLength(3);
+  // A new comparison is a new presentation, with the failure notice visible in Lab.
+  report={...report,id:'other'};
+  vi.mocked(api).mockImplementation(async command=>command==='library_batch_status'?report:command==='research_displayed'?Promise.reject(Error('Synthetic display failure')):{});
+  rerender(<StrategyLibrary {...props} preferredBatch={{id:'other',request:2}}/>);
+  await waitFor(()=>expect(native.querySelector('.card-order-value [data-metric]:not([hidden])')).not.toBe(nativeBadge));
+  await waitFor(()=>expect(native.querySelector('.card-order-value [data-metric]:not([hidden])')).toBeTruthy());
+  await act(async()=>{show(native.querySelector<HTMLElement>('.card-order-value [data-metric]:not([hidden])')!);await finishDisplayWrites();});
+  expect(within(screen.getByRole('region',{name:'Card ordering'})).getByRole('alert').textContent).toContain('Display tracking incomplete');
+ }finally{vi.restoreAllMocks();vi.unstubAllGlobals();}
+});

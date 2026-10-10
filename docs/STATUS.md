@@ -5,6 +5,93 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Saved-comparison card ordering — 2026-10-10
+
+Lab cards now support Name A–Z/Z–A and bidirectional saved period-return,
+drawdown and completed-position ordering. The selected comparison's saved name
+or short identity and exact UTC evaluation interval remain visible. Numeric
+ordering requires an explicit saved timeframe and compatible cohort; only a
+unique available choice is filled automatically. Cohort numbering uses the full
+sorted saved cohort-key list, matching the Saved tests table. Group labels show
+market/instrument, source/execution resolution, capital and model version.
+Secondary comparison/timeframe/cohort controls use a compact native disclosure.
+Its closed summary keeps the applied context and exact UTC period visible beside
+the metric/direction controls. Missing choices open it automatically; completing
+a choice leaves keyboard focus visible until the user closes the summary.
+
+Ranking uses only that comparison and an exact catalog ID/version/timeframe/
+cohort match. Multiple frozen parameter variants stay ambiguous, including a
+completed variant alongside a failed or pending one. Missing, incompatible,
+unfinished and non-finite results retain specific N/A reasons and sort last in
+both directions. Losses and zero remain valid; ties use deterministic name and
+identity order. Passive baselines and later-period verification never become
+selection-card scores. Existing historical rows remain visible, and the exact
+ranked row shows its saved timeframe/group, metric and completed positions.
+Changed draft inputs retain the prior-run warning rather than changing the
+saved evidence being ranked.
+
+All cards retain stable identity keys and remain mounted under filtering.
+Selection payloads use original catalog order, independently of presentation
+order or inclusion timing. Test all still includes the complete catalog with
+each card's current parameters and the shared batch timeframes. Sorting neither
+invalidates an already reviewed draft nor starts, copies or trusts a strategy.
+Saved tests/Lab navigation preserves view and draft state; only a different
+comparison identity resets saved timeframe/group context, including a route
+through an excluded later-period report and back to the original comparison.
+
+Finite card summary return/drawdown/position cells and ordering badges reuse
+`comparison_metrics` display references; the older expanded source/details
+metrics are not separately instrumented. New finite cells rebind observers
+without replacing the existing presentation recorder. Metric changes and direction changes keep badge DOM
+identity; hidden/filter-excluded, offscreen and modal-covered values do not
+record exposure. Lab now presents the existing tracking-failure notice visibly.
+No backend/schema, strategy, financial calculation, saved artifact, dependency
+or product-version changes are included.
+
+Focused automated evidence covers **70 distinct tests across six files**:
+`cardOrdering`, `CardOrdering`, `StrategyLibrary`, `LibraryResearch`,
+`DisplayedEvidence` and `UserJourneys`. The initial focused command passed 67
+tests with one failure in a new App fixture that omitted its asserted net PnL.
+After supplying the independently specified fixture value, all 11 UserJourneys
+tests passed. Review then tightened recorder stability for metric availability
+changes and added a direct regression; the final two-file CardOrdering /
+DisplayedEvidence pass passed **14 tests**. A browser-discovered overly tall
+control panel was then compacted, and strict selection-to-holdout-to-selection
+identity reset was added. The final CardOrdering / LibraryResearch /
+UserJourneys pass passed **40 tests**, including disclosure/focus preservation
+and holdout exclusion/reset. Unaffected passing files were not repeated.
+These are pure, component and App-integration checks with simulated
+DOM/mocked IPC, not a new full-regression total.
+
+`node scripts/frontend.mjs build` passed TypeScript and the production Vite
+build, retaining the existing large-chunk advisory. Unchanged backend evidence
+was reused rather than rerun.
+
+Actual production-browser inspection passed at **1180×757** and **750×757**
+using an existing saved matrix without starting new work. Descending and
+ascending return ordering retained losses and kept unavailable native results
+last. Editing a card parameter, including the card and changing order preserved
+the draft. Under a one-card search filter, Test all still showed **14 tests / 7
+strategies** in catalog order with the edited parameter; Escape restored focus
+to its trigger. No preview or start was initiated.
+
+The initial wide panel left only about 76 pixels of card viewport. After the
+bounded disclosure correction, the closed panel was about 72 rather than 180
+pixels tall and the card viewport about 180 pixels, exposing card headings and
+descriptions again. Required choices opened the disclosure; Enter closed and
+reopened the completed context while preserving the visible comparison,
+timeframe, group and exact UTC period. Subsequent Tab navigation reached the
+saved-timeframe selector. Changing timeframe cleared an ambiguous cohort,
+visibly disabled metric ordering and restored name order; selecting the intended
+context reapplied ordering. Saved tests-to-Lab return retained metric,
+direction, timeframe/group and the closed summary. Both tested widths remained
+usable without horizontal page overflow.
+
+The holdout-return reset and display-event deduplication/failure counts are
+automated component evidence only; this browser pass did not add a holdout or
+recount display writes. Current Windows/native and owner-led unaided usability
+acceptance remain separate checks.
+
 ## Saved-history OHLCV inspection — 2026-10-10
 
 Saved history now presents price and recorded volume in two synchronized panes

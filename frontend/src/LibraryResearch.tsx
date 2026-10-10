@@ -53,7 +53,7 @@ function Equity({data}:{data:any}){
  <p>{data.curves.map((c:any,i:number)=><span key={i} style={{color:colors[i],marginRight:16}}>{c.name}: {c.status}{!c.points.length?' · N/A':''}</span>)}</p><small>{data.note}</small></figure>;
 }
 
-export default function LibraryResearch({selections,datasets,profile,onActive,onOpenRun,onReport,catalog=[],onProfile,onHistory=()=>{},preferredDataset,view='all',onSaved=()=>{},setupRequest=0,suspendSetup=false,batchControls,onObservation,preferredBatch}:{onObservation?:(id:string,revision:number)=>void;preferredBatch?:{id:string;request:number};batchControls?:ReactNode;suspendSetup?:boolean;setupRequest?:number;view?:'all'|'catalog'|'saved';onSaved?:()=>void;selections:any[];datasets:any[];profile:Profile;catalog?:any[];onActive:(id:string|null)=>void;onOpenRun:(id:string)=>void;onReport:(report:any,stale:boolean)=>void;onProfile?:(p:Profile)=>void;onHistory?:(origin?:'later',profile?:Profile)=>void;preferredDataset?:HistoryRequest}){
+export default function LibraryResearch({selections,datasets,profile,onActive,onOpenRun,onReport,catalog=[],onProfile,onHistory=()=>{},preferredDataset,view='all',onSaved=()=>{},setupRequest=0,suspendSetup=false,batchControls,onObservation,preferredBatch}:{onObservation?:(id:string,revision:number)=>void;preferredBatch?:{id:string;request:number};batchControls?:ReactNode;suspendSetup?:boolean;setupRequest?:number;view?:'all'|'catalog'|'saved';onSaved?:()=>void;selections:any[];datasets:any[];profile:Profile;catalog?:any[];onActive:(id:string|null)=>void;onOpenRun:(id:string)=>void;onReport:(report:any,stale:boolean,comparisonId:string)=>void;onProfile?:(p:Profile)=>void;onHistory?:(origin?:'later',profile?:Profile)=>void;preferredDataset?:HistoryRequest}){
  const [observation,setObservation]=useState<ObservationContext|null>(null);
  const [savedEditorLocked,setSavedEditorLocked]=useState(false);
  const [configure,setConfigure]=useState(false),[setupOpen,setSetupOpen]=useState(false);
@@ -92,7 +92,7 @@ export default function LibraryResearch({selections,datasets,profile,onActive,on
  useEffect(()=>{setPreview(null);setError('');},[requestKey,canonical(observation)]);
  useEffect(()=>{if(!preferredBatch?.id||handledBatch.current===preferredBatch.request)return;if(savedEditorLocked||active||busy){setError('Save or discard comparison details and wait for the active action before opening a linked test.');return;}handledBatch.current=preferredBatch.request;setSelected(preferredBatch.id);setReport(null);setSetupOpen(false);},[preferredBatch?.request,savedEditorLocked,active,busy]);
  useEffect(()=>{setEquity(null);setFilters({family:'',minutes:'',status:'',review:''});setConfigure(false);setLater({dataset:'',spot:'',range:['','']});},[selected]);
- useEffect(()=>{onReport(holdout?null:report,stale);},[report,stale,holdout]);
+ useEffect(()=>{onReport(holdout?null:report,stale,selected);},[report,stale,holdout,selected]);
  useEffect(()=>{if(!selected||(suspendSetup&&!active))return;return poll(()=>api<any>('library_batch_status',{batch_id:selected}),r=>{setReport(r);setStarting(false);setList(rows=>rows.map(row=>row.id===r.id?{...row,status:r.status}:row));onActive(r.active_id);},e=>setError(String(e)),700);},[selected,suspendSetup,!!active]);
  function choose(id:string){setHistoryRequest(v=>v+1);editedRange.current=false;setDataset(id);setWarmup(null);const d=datasets.find(d=>d.id===id);if(d)setRange([utc(d.range[0]),utc(d.range[1])]);}
  useEffect(()=>{if(!preferredDataset?.id)return;const d=datasets.find(d=>d.id===preferredDataset.id);if(!d)return;

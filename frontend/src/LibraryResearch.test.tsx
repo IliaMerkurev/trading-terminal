@@ -170,7 +170,7 @@ it('freezes a saved candidate separately and never ranks or attaches holdout met
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_freeze',{batch_id:'selection',ordinal:0,dataset_id:'data',start:7200,end:10800,spot_dataset_id:null}));
  expect(await screen.findByText(/Later-period verification — excluded/)).toBeTruthy();
  expect((screen.getByLabelText('Library sort') as HTMLSelectElement).disabled).toBe(true);
- await waitFor(()=>expect(onReport).toHaveBeenLastCalledWith(null,true));
+ await waitFor(()=>expect(onReport).toHaveBeenLastCalledWith(null,true,'holdout'));
  fireEvent.click(screen.getByRole('button',{name:'Run frozen later-period verification'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_start',{batch_id:'holdout'}));
  expect(sortedLibraryRows({...frozen,rows:[{ordinal:1,metrics:{net_pnl:1}},{ordinal:0,metrics:{net_pnl:10}}]},'net_pnl').map(r=>r.ordinal)).toEqual([1,0]);

@@ -69,11 +69,11 @@ export function observeChartDisplay(element:HTMLElement,chart:any,candles:any[],
  return()=>{chart.timeScale().unsubscribeVisibleTimeRangeChange(observer.schedule);observer.dispose();};
 }
 
-export function DisplayedMetrics({reference,children}:{reference:any;children:ReactNode}){
+export function DisplayedMetrics({reference,children,observationKey=''}:{reference:any;children:ReactNode;observationKey?:string}){
  const host=useRef<HTMLDivElement>(null),record=useRef<ReturnType<typeof displayRecorder>|null>(null);
  if(!record.current)record.current=displayRecorder();
  const key=JSON.stringify(reference);
- useEffect(()=>{if(!host.current)return;const observers=[...host.current.querySelectorAll<HTMLElement>('[data-metric]')].map(value=>observeDisplay(value,()=>record.current!(reference,null)));return()=>observers.forEach(o=>o.dispose());},[key]);
+ useEffect(()=>{if(!host.current)return;const observers=[...host.current.querySelectorAll<HTMLElement>('[data-metric]')].map(value=>observeDisplay(value,()=>record.current!(reference,null)));return()=>observers.forEach(o=>o.dispose());},[key,observationKey]);
  return <div ref={host}>{children}</div>;
 }
 

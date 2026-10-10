@@ -15,6 +15,35 @@ const entry={id:'trend',version:1,name:'Test trend',family:'trend',kind:'Adapted
 const data={id:'hourly',source:'Synthetic',market:'spot',symbol:'BTCUSDT',interval_seconds:3600,range:[0,31536000],coverage:{trade:{count:8760,complete:true,gaps:[]}}};
 const rows=['Daily trend','Hourly trend','Four-hour trend','Buy & Hold','DCA'].map((name,ordinal)=>({name,kind:ordinal<3?'graph':'benchmark',profile:{...defaultProfile,capital:'1000',execution_minutes:60,primary_minutes:[1440,60,240,60,60][ordinal]},dataset:{id:data.id}}));
 
+it('keeps card result ordering, edited inputs and selection through Saved tests and Lab return',async()=>{
+ const catalog=[{...entry,name:'Zulu trend',parameters:{period:{type:'integer',default:14,min:2,max:100}}},{...entry,id:'alpha',name:'Alpha trend',parameters:{period:{type:'integer',default:14,min:2,max:100}}}];
+ const specs=catalog.map(item=>({name:item.name,kind:'graph',profile:{...defaultProfile,execution_minutes:60,primary_minutes:240},dataset:{id:data.id},selection:{entry_id:item.id,version:1,minutes:240,parameters:{period:14}}}));
+ const report={id:'ordered',status:'completed',active_id:null,metadata:{name:'October check',notes:'',revision:0},snapshot:{start:86400,end:172800,inputs:{},rows:specs},rows:specs.map((_,ordinal)=>({ordinal,status:'completed',run_id:`run-${ordinal}`,metrics:{net_pnl:ordinal===0?'-20':'0',period_return:ordinal===0?'-.02':'0',max_drawdown:'.02',completed_positions:ordinal===0?1:0}}))};
+ vi.mocked(api).mockReset().mockImplementation(async command=>command==='library_catalog'?catalog:command==='library_batch_history'?{rows:[{id:'ordered',status:'completed',created_at:'Saved card fixture'}],next:null}:command==='library_batch_status'?report:command==='run_history'?{rows:[],next:null}:command.startsWith('list_')?[]:{});
+ render(<App/>);
+ const card=await screen.findByRole('article',{name:'Zulu trend'});
+ fireEvent.change(within(card).getByLabelText('Zulu trend period'),{target:{value:'7'}});
+ fireEvent.change(within(card).getByLabelText('Zulu trend timeframe'),{target:{value:'60'}});
+ fireEvent.click(within(card).getByLabelText('Zulu trend compare 4h'));fireEvent.click(within(card).getByLabelText('Include Zulu trend'));
+ fireEvent.click(screen.getByRole('button',{name:'Choose saved comparison'}));
+ await screen.findByRole('option',{name:/Saved card fixture/});fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'ordered'}});
+ await screen.findByText('-20.0000 / -2.00%');fireEvent.click(screen.getByRole('button',{name:'New test'}));
+ fireEvent.change(screen.getByLabelText('Order cards'),{target:{value:'period_return'}});
+ fireEvent.change(screen.getByLabelText('Card order direction'),{target:{value:'asc'}});
+ expect(screen.getAllByRole('article').map(item=>item.getAttribute('aria-label'))).toEqual(['Zulu trend','Alpha trend']);
+ fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));fireEvent.click(screen.getByRole('button',{name:'Lab'}));
+ expect((screen.getByLabelText('Order cards') as HTMLSelectElement).value).toBe('period_return');
+ expect((screen.getByLabelText('Card order direction') as HTMLSelectElement).value).toBe('asc');
+ expect(screen.getByRole('article',{name:'Zulu trend'})).toBe(card);
+ expect((within(card).getByLabelText('Zulu trend period') as HTMLInputElement).value).toBe('7');
+ expect((within(card).getByLabelText('Zulu trend timeframe') as HTMLSelectElement).value).toBe('60');
+ expect(within(card).getByLabelText('Zulu trend compare 4h').getAttribute('aria-pressed')).toBe('true');
+ expect((within(card).getByLabelText('Include Zulu trend') as HTMLInputElement).checked).toBe(true);
+ const trigger=within(card).getByRole('button',{name:'Test this strategy'});trigger.focus();fireEvent.click(trigger);
+ fireEvent(screen.getByRole('dialog'),new Event('cancel',{bubbles:false,cancelable:true}));expect(document.activeElement).toBe(trigger);
+ expect(vi.mocked(api).mock.calls.some(([command])=>/preview|start|trust|library_copy/.test(command))).toBe(false);
+});
+
 it('guides first-time testing through history, exact timeframe review, navigation and cancellation',async()=>{
  let prepared=false,cancelled=false;
  const report=()=>({id:'new',status:cancelled?'cancelled':'running',active_id:cancelled?null:'new',snapshot:{inputs:{},rows},rows:rows.map((_,ordinal)=>({ordinal,status:ordinal===0?'completed':'pending',run_id:ordinal===0?'daily-run':null,metrics:ordinal===0?{net_pnl:'10',period_return:'.01'}:null}))});

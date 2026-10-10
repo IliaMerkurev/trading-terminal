@@ -42,3 +42,23 @@
 }
 
 .profile-transfer-options { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px; margin:16px 0; font-size:13px; overflow-wrap:anywhere; }
+
+.card-ordering{flex-shrink:0;border:1px solid #30434d;border-radius:8px;padding:10px 12px;margin-bottom:14px;min-width:0;background:#121e27}
+.card-order-controls{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 14px;min-width:0}
+.card-order-controls label{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:11px;color:#a7bac8}
+.card-order-controls select{max-width:100%;min-width:0;font-size:12px}
+.card-order-controls button{min-height:34px;font-size:12px}
+.card-order-group{flex:1 1 320px}
+.card-ordering p{font-size:11px;line-height:1.5;color:#a8bac8;margin:8px 0 0;overflow-wrap:anywhere}
+.card-order-context{flex:1 1 350px;min-width:0;margin:0;padding:0;border:0;align-self:center}
+.card-order-comparison{font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.card-order-comparison strong{color:#d2e5df}
+.card-order-comparison small{display:block;font-size:10px;margin:3px 0 0}
+.card-order-config{padding-top:10px}
+.card-order-config>.card-order-controls{margin-top:8px}
+.card-result-state{grid-column:1/-1}
+.card-result-ordered{border-left:2px solid #78ccb5;padding-left:7px}
+.card-order-value{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:6px 0;color:#d2e5df;font-size:10px}
+.card-order-value>strong{font-size:14px;white-space:nowrap}
+.card-order-unavailable{font-size:11px;line-height:1.5;color:#9daeba;margin:0 0 8px;overflow-wrap:anywhere}
+@media(max-width:760px){.card-order-controls>label{flex:1 1 150px}.card-order-controls>.card-order-group,.card-order-context{flex-basis:100%}}

@@ -44,6 +44,15 @@ describe('actual displayed evidence',()=>{
   act(()=>{intersection(cells[0]);intersection(cells[1]);flush();});expect(api).not.toHaveBeenCalled();
   act(()=>{intersection(values[1]);flush();intersection(values[0]);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(1);
  });
+ it('rebinds newly finite metrics without replacing the same-reference presentation recorder',async()=>{
+  const reference={surface:'comparison_metrics',batch_id:'saved',ordinal:0};
+  const {container,rerender}=render(<DisplayedMetrics reference={reference} observationKey="none"><span>N/A</span></DisplayedMetrics>);
+  expect(observers).toHaveLength(0);
+  rerender(<DisplayedMetrics reference={reference} observationKey="return"><span data-metric>0%</span></DisplayedMetrics>);
+  act(()=>{intersection(container.querySelector('span')!);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(1);
+  rerender(<DisplayedMetrics reference={reference} observationKey="return:positions"><span data-metric>0%</span><span data-metric>2 positions</span></DisplayedMetrics>);
+  act(()=>{intersection(container.querySelectorAll('span')[1]);flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(1);
+ });
  it('retains earlier ranges and bounds identical callbacks; freeze drain waits pending writes',async()=>{
   let resolve!:(v:any)=>void;vi.mocked(api).mockImplementationOnce(()=>new Promise(r=>resolve=r));
   const record=displayRecorder();for(let i=0;i<50;i++)record({surface:'observation_chart',page_id:'p'},[1,2]);
