@@ -37,6 +37,8 @@ class JobManager:
         self.reservation=None
         self.storage_failure=None
         self.store.recover()
+        from terminal.archive_receipts import ArchiveReceipts
+        ArchiveReceipts(self.store).reconcile()
         with self.store.connect() as db:
             db.execute('''CREATE TABLE IF NOT EXISTS replay_jobs(
                 id TEXT PRIMARY KEY,session_id TEXT NOT NULL,status TEXT NOT NULL,error TEXT,result TEXT)''')
@@ -53,7 +55,7 @@ class JobManager:
         with self.lock:
             if self.storage_failure is None:
                 self.storage_failure={'id':ident,'kind':kind,'durable':False,
-                    'message':'Calculations blocked by storage finalization failure. The worker has stopped; saved status may be unfinished. Check available storage and restart the application. No automatic retry.'}
+                    'message':('New calculations and archive imports blocked by storage finalization failure. Inspect the archive operation and saved work, check available storage, and restart the application. Other active work may still be running. No automatic retry.' if kind=='archive_import' else 'Calculations blocked by storage finalization failure. The worker has stopped; saved status may be unfinished. Check available storage and restart the application. No automatic retry.')}
 
     def storage_diagnostic(self):
         with self.lock:

@@ -6,6 +6,7 @@ from terminal.comparison import compare_runs
 from terminal.graph import validate_graph
 from terminal.jobs import JobManager
 from terminal.profile import Profile
+from terminal.storage import identifier
 
 
 class AppService:
@@ -14,7 +15,7 @@ class AppService:
         self.store=self.jobs.store
         self.datasets=DatasetStore(self.store.root/"datasets")
         self.downloads=DownloadManager(self.store.root)
-        self.archives=ArchiveManager(self.store)
+        self.archives=ArchiveManager(self.store,self.jobs)
         from terminal.experiments import ExperimentManager
         self.experiments=ExperimentManager(self.jobs)
         from terminal.library_batches import LibraryBatchManager
@@ -42,6 +43,7 @@ class AppService:
                 "dataset_profile":{"dataset_id"},"download_start":{"market","symbol","start","end"},
                 "download_status":set(),"download_cancel":set(),"chart_window":{"run_id","start","minutes"},"run_logs":{"run_id"},
                 "compare_runs":{"run_ids"},"archive_export":{"strategy","profile","run_ids"},"archive_begin":{"size"},
+                "archive_import_status":{"operation_id"},"archive_import_list":{"before","limit"},"archive_import_cancel":{"operation_id"},
                 "archive_append":{"upload_id","offset","data"},"archive_finish":{"upload_id"},"archive_cancel":set()}
             experiment_fields={'strategy_id','dataset_id','profile','is_range','oos_range','axes'}
             fields.update(experiment_fields={'strategy_id'},experiment_preview=experiment_fields,experiment_start=experiment_fields,
@@ -171,6 +173,9 @@ class AppService:
             elif command=="archive_append": result=self.archives.append(**p)
             elif command=="archive_finish": result=self.archives.finish(**p)
             elif command=="archive_cancel": result=self.archives.cancel()
+            elif command=="archive_import_cancel": result=self.archives.cancel(identifier(p["operation_id"]))
+            elif command=="archive_import_status": result=self.archives.status(**p)
+            elif command=="archive_import_list": result=self.archives.recent(**p)
             elif command in ('experiment_fields','managed_experiment_fields'):result=self.experiments.fields(**p)
             elif command=='research_display_incomplete':
                 from terminal.displayed_evidence import mark_incomplete,persist_warning

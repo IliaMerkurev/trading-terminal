@@ -250,3 +250,24 @@ The catalog contains reviewed research templates, not proven profitable systems.
 Losses and no-trade results remain visible. See [source review](library/SOURCES.md),
 [measured integration](library/VERIFICATION.md), [navigation design](adr/0027-task-oriented-testing-workspace.md)
 and [current status](STATUS.md).
+
+
+## Inspect a saved archive import
+
+Open Saved tests → Individual run reports → Project archive → Recent imports.
+Select an operation to inspect its committed outcome and exact reserved report
+IDs. Partial imports can contain an openable completed report and separate
+incomplete destinations. Opening saved reports or a recovered strategy is explicit;
+inspection never uploads, resumes, retries, grants Python consent or runs a test.
+
+If an import's final response is lost, use Inspect this import. After reload or a
+service restart, use Recent imports without selecting the original archive again.
+A new import creates new IDs and may duplicate saved work. Finalization is
+synchronous; inspection can wait until it finishes or require restart. Cancellation
+is available only before finish is accepted and never undoes saved reports.
+
+Receipts record publication history, not artifact-file verification or authentic
+performance. Ordinary reports read saved database values; artifact verification
+remains not checked. A modified saved strategy is identified separately from the
+original import. Legacy imports made before receipt support have no reconstructed
+receipt. Unknown/unavailable inspection must not be interpreted as nothing saved.

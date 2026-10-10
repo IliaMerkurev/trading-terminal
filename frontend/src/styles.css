@@ -44,3 +44,11 @@
 .position-settings fieldset{border:0;padding:8px 0;min-width:0}.position-settings small{display:block;color:#91a4bd;line-height:1.5;margin:8px 0}.position-settings details{margin:12px 0;border-top:1px solid #303848;padding-top:8px}.position-step{margin:12px 0;padding:10px;border:1px solid #303848;border-radius:6px}.position-step input{max-width:100%}.position-step label{display:block;margin:6px 0}.position-lifecycle{border-top:1px solid #303848;margin:20px 0;padding-top:12px}.position-lifecycle p{font-size:12px;color:#91a4bd}
 
 .browser-service{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.browser-service>span{flex:1;min-width:220px}.browser-service>p{flex-basis:100%;margin:0}
+
+/* Import receipts remain readable without widening the archived-report surface. */
+.import-identity{display:block;overflow-wrap:anywhere;font-family:monospace;font-size:.85rem}
+.import-inspection-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin:.75rem 0}
+.import-receipt{border:1px solid var(--border,#394451);border-radius:8px;padding:1rem;margin-top:1rem}
+.import-receipt ul,.recent-imports{list-style:none;margin:0;padding:0}
+.import-receipt li{display:flex;align-items:flex-start;flex-direction:column;gap:.4rem;padding:.75rem 0;border-top:1px solid var(--border,#394451)}
+.recent-imports li{margin:.5rem 0}.recent-imports button{max-width:100%;text-align:left;white-space:normal}

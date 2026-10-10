@@ -76,88 +76,25 @@ class ArchiveTests(unittest.TestCase):
         info=self.manager.export(self.strategy,self.profile.snapshot(),[self.run_id,second])
         return (self.store.root/'exports'/info['filename']).read_bytes()
 
-    def test_partial_two_run_failure_reports_committed_and_importing_ids_preserving_bytes(self):
+    def test_partial_two_run_failure_has_durable_mapping_and_preserves_bytes(self):
         raw=self.two_run_archive();destination=RunStore(self.root/'partial');manager=ArchiveManager(destination)
         existing=destination.create(self.store.get(self.run_id)['manifest'])
         destination.status(existing,'running');destination.complete(existing,self.store.result(self.run_id))
         before={p:p.read_bytes() for p in destination.directory(existing).glob('*.json')}
-        original=destination.complete;attempted=[]
-        def fail_second(run_id,result,origin='local'):
-            attempted.append(run_id)
-            if len(attempted)==2:
-                # Match the real file-before-database boundary in complete().
-                write_new(destination.directory(run_id)/'result.json',canonical(result))
-                raise OSError('private-storage-details-must-not-leak')
-            return original(run_id,result,origin)
-        with patch.object(destination,'complete',side_effect=fail_second),self.assertRaises(ValueError) as error:
+        original=manager.receipts.publish_run
+        def fail_second(operation_id,ordinal,*args):
+            if ordinal==1:raise OSError('private-storage-details-must-not-leak')
+            return original(operation_id,ordinal,*args)
+        with patch.object(manager.receipts,'publish_run',side_effect=fail_second),self.assertRaises(ValueError) as error:
             self.upload(manager,raw)
-        note=str(error.exception)
-        for run_id,status in zip(attempted,('completed','importing')):
-            self.assertEqual(destination.get(run_id)['status'],status)
-            self.assertIn(f'{run_id} ({status})',note)
-            self.assertTrue((destination.directory(run_id)/'result.json').exists())
-        self.assertIn('Strategy save was not attempted',note)
-        self.assertIn('Do not retry blindly',note);self.assertIn('no rollback',note)
-        self.assertNotIn('private-storage',note);self.assertLess(len(note),2000)
+        operation=manager.recent()['rows'][0]['operation_id'];receipt=manager.status(operation)
+        self.assertEqual(receipt['outcome'],'partial')
+        self.assertEqual([item['publication_state'] for item in receipt['items']],['published','reserved','reserved'])
+        self.assertEqual([item['current_status'] for item in receipt['items']],['completed','importing','missing'])
+        self.assertIn(operation,str(error.exception));self.assertNotIn('private-storage',str(error.exception))
         self.assertEqual(destination.strategies(),[]);self.assertIsNone(manager.upload)
         self.assertEqual({p:p.read_bytes() for p in before},before)
-        self.assertEqual(destination.result(attempted[0])['metrics'],self.store.result(self.run_id)['metrics'])
-        manager.cancel()
         self.assertEqual(len(destination.recent()),3)
-
-    def test_status_failure_reports_created_not_completed(self):
-        destination=RunStore(self.root/'created')
-        with patch.object(destination,'status',side_effect=OSError('private')),self.assertRaises(ValueError) as error:
-            self.upload(ArchiveManager(destination),self.export())
-        row=destination.recent()[0]
-        self.assertEqual(row['status'],'created');self.assertIn(f"{row['id']} (created)",str(error.exception))
-
-    def test_postcommit_failure_reads_completed_status_without_repeating_write(self):
-        destination=RunStore(self.root/'committed');original=destination.complete
-        def commit_then_fail(*args,**kwargs):
-            original(*args,**kwargs);raise OSError('private')
-        with patch.object(destination,'complete',side_effect=commit_then_fail) as complete,self.assertRaises(ValueError) as error:
-            self.upload(ArchiveManager(destination),self.export())
-        row=destination.recent()[0]
-        self.assertIn(f"{row['id']} (completed)",str(error.exception));self.assertEqual(complete.call_count,1)
-
-    def test_unknown_create_outcome_does_not_claim_nothing_was_saved(self):
-        for after_commit in (False,True):
-            with self.subTest(after_commit=after_commit):
-                destination=RunStore(self.root/f'unknown-{after_commit}');original=destination.create
-                def fail_create(*args,**kwargs):
-                    if after_commit:original(*args,**kwargs)
-                    raise OSError('private')
-                with patch.object(destination,'create',side_effect=fail_create),self.assertRaises(ValueError) as error:
-                    self.upload(ArchiveManager(destination),self.export())
-                note=str(error.exception)
-                self.assertIn('No run IDs were confirmed',note);self.assertIn('Run creation outcome is unknown',note)
-                self.assertIn('records or files may exist',note);self.assertNotIn('private',note)
-                self.assertEqual(len(destination.recent()),int(after_commit))
-
-    def test_strategy_failure_discloses_unknown_save_and_completed_runs(self):
-        raw=self.two_run_archive()
-        for after_commit in (False,True):
-            with self.subTest(after_commit=after_commit):
-                destination=RunStore(self.root/f'strategy-{after_commit}');original=destination.save_strategy
-                def fail_save(*args,**kwargs):
-                    if after_commit:original(*args,**kwargs)
-                    raise OSError('private')
-                with patch.object(destination,'save_strategy',side_effect=fail_save),self.assertRaises(ValueError) as error:
-                    self.upload(ArchiveManager(destination),raw)
-                note=str(error.exception)
-                self.assertIn('Strategy save outcome is unknown',note)
-                for row in destination.recent():self.assertIn(f"{row['id']} (completed)",note)
-                self.assertEqual(len(destination.recent()),2);self.assertEqual(len(destination.strategies()),int(after_commit))
-
-    def test_failed_status_read_is_unknown_and_failure_summary_fits_ipc_budget(self):
-        destination=RunStore(self.root/'unknown-status');manager=ArchiveManager(destination)
-        with patch.object(destination,'status',side_effect=OSError('private')),patch.object(destination,'get',side_effect=OSError('private')),self.assertRaises(ValueError) as error:
-            self.upload(manager,self.export())
-        self.assertIn(f"{destination.recent()[0]['id']} (unknown)",str(error.exception))
-        with patch.object(destination,'get',side_effect=OSError('private')):
-            note=manager._failure_note([f'{i:032x}' for i in range(8)],None,'strategy save')
-        self.assertLess(len(note),2000);self.assertIn('cannot be resumed',note)
 
     def test_invalid_strategy_save_fields_are_rejected_before_any_run_write(self):
         raw=self.two_run_archive()
@@ -174,16 +111,17 @@ class ArchiveTests(unittest.TestCase):
                 self.assertEqual(destination.recent(),[]);self.assertEqual(destination.strategies(),[])
                 self.assertFalse((destination.root/'runs').exists());self.assertIsNone(manager.upload)
 
-    def test_service_error_envelope_keeps_partial_import_guidance(self):
+    def test_service_error_envelope_keeps_operation_identity_and_redacts_storage(self):
         from terminal.service import AppService
         service=AppService(self.root/'service');self.addCleanup(service.close)
         raw=self.export();transfer=service.archives.begin(len(raw))
         service.archives.append(transfer['upload_id'],0,base64.b64encode(raw).decode())
-        with patch.object(service.store,'status',side_effect=OSError('private')):
+        with patch.object(service.archives.receipts,'publish_run',side_effect=OSError('private')):
             response=service.handle({'version':1,'id':'archive-error-test','command':'archive_finish','params':{'upload_id':transfer['upload_id']}})
         self.assertEqual(response['type'],'error')
-        row=service.store.recent()[0];note=response['error']['message']
-        self.assertIn(f"{row['id']} (created)",note);self.assertIn('Do not retry blindly',note);self.assertNotIn('private',note)
+        note=response['error']['message']
+        self.assertIn(transfer['operation_id'],note);self.assertIn('Do not retry blindly',note);self.assertNotIn('private',note)
+        self.assertEqual(service.archives.status(transfer['operation_id'])['outcome'],'failed')
 
     def test_roundtrip_preserves_metrics_but_never_bundles_history_or_overwrites_runs(self):
         raw=self.export();project,files=read_archive(raw)
@@ -233,7 +171,7 @@ class ArchiveTests(unittest.TestCase):
         with zipfile.ZipFile(output,'w') as archive:
             for name,value in docs.items():archive.writestr(name,canonical(value))
         destination=RunStore(self.root/'invalid');manager=ArchiveManager(destination)
-        with self.assertRaisesRegex(ValueError,'checksum'):self.upload(manager,output.getvalue())
+        with self.assertRaisesRegex(ValueError,'validation rejected'):self.upload(manager,output.getvalue())
         self.assertEqual(destination.recent(),[]);self.assertEqual(destination.strategies(),[])
         transfer=manager.begin(5)
         with self.assertRaises(ValueError):manager.append(transfer['upload_id'],1,base64.b64encode(b'abc').decode())

@@ -294,3 +294,41 @@ Stop the host before building, then restart with the same isolated root and the
 printed numeric loopback URL. Check wrapping, keyboard Go and reachable actions
 at ordinary and narrow widths. Windows/native and owner-led unaided acceptance
 remain separate; no new backend or full-regression gate is implied.
+
+
+## Durable import receipt checks
+
+Use a new disposable synthetic root for storage faults; never inject a fault into
+ordinary research data. The fixture archive contains two independently authored,
+different results and no market downloads or imported source execution. The
+subprocess probe terminates at explicit barriers rather than timing sleeps.
+
+```sh
+.venv/bin/python -W ignore -m unittest tests.test_archive_receipts tests.test_archive_receipt_backup tests.test_archive_receipt_transport tests.test_archives tests.test_storage_resilience -q
+node node_modules/vitest/vitest.mjs run frontend/src/ProjectTransfer.test.tsx frontend/src/ImportRecovery.test.tsx frontend/src/AppImportRecovery.test.tsx frontend/src/api.test.ts frontend/src/AppStorageSafety.test.tsx frontend/src/UserJourneys.test.tsx
+node scripts/frontend.mjs build
+```
+
+On Windows use the matching `.venv/Scripts/python.exe`; do not infer native
+acceptance from these commands running elsewhere. The complete backend pass and
+subsequent focused corrections are distinguished in STATUS.md.
+
+For browser inspection, use Saved tests → Individual run reports → Project
+archive → Recent imports. Inspect completed, partial and interrupted receipts;
+open only a published member, return, reload and restart the same isolated service.
+The exact operation and destination IDs must persist. A completed report can still
+be read from SQLite when an artifact is missing: this UI always says artifact
+verification is not checked. Never deliberately damage ordinary artifacts.
+
+A lost-response acceptance harness, if used, must remain outside production code
+and act only on a new synthetic workspace after ordinary authenticated request
+handling has really committed completion. Do not add a product fault switch,
+proxy, authentication bypass or automatic POST retry. Keep actual browser upload,
+automated HTTP lost-reply recovery, Windows/native acceptance and maximum-load
+timing as separate evidence.
+
+`tests.test_archive_receipt_backup.copy_closed` is a bounded synthetic helper,
+not a live-workspace copier. Its caller closes the source, backs up SQLite and
+copies every other directory into a new destination. Existing
+`scripts/verify_migration.py` still copies only SQLite/runs; its success alone is
+not a complete receipt/workspace restore check.

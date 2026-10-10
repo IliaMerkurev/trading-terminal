@@ -39,6 +39,8 @@ class RunStore:
                     document TEXT NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS native_trust(identity TEXT PRIMARY KEY, granted_at TEXT NOT NULL);
             """)
+            from terminal.archive_receipts import initialize as initialize_archive_receipts
+            initialize_archive_receipts(db)
             from terminal.research_evidence import initialize
             initialize(db)
             from terminal.observations import initialize as initialize_observations

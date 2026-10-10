@@ -10,7 +10,7 @@ export function useRunHistory(){
  const [error,setError]=useState(''),[loaded,setLoaded]=useState(false),[next,setNext]=useState<Cursor|null>(null);
  const cursor=useRef<Cursor|null>(null),generation=useRef(0),pending=useRef(false);
  useEffect(()=>()=>{generation.current++;},[]);
- const load=useCallback(async(reset=false)=>{
+ const load=useCallback(async(reset=false,propagateError=false)=>{
   if(pending.current&&!reset)return;
   const version=++generation.current;pending.current=true;setLoading(true);setError('');
   try{
@@ -22,8 +22,8 @@ export function useRunHistory(){
     return [...unique.values()].sort((a,b)=>b.created_at.localeCompare(a.created_at)||b.id.localeCompare(a.id));
    });
    cursor.current=page.next;setNext(page.next);setLoaded(true);
-  }catch(e){if(version===generation.current)setError(String(e instanceof Error?e.message:e));}
+  }catch(e){if(version===generation.current)setError(String(e instanceof Error?e.message:e));if(propagateError)throw e;}
   finally{if(version===generation.current){pending.current=false;setLoading(false);}}
  },[]);
- return {runs,loading,error,loaded,next,refresh:useCallback(()=>load(true),[load]),loadMore:useCallback(()=>load(false),[load])};
+ return {runs,loading,error,loaded,next,refresh:useCallback(()=>load(true),[load]),refreshStrict:useCallback(()=>load(true,true),[load]),loadMore:useCallback(()=>load(false),[load])};
 }

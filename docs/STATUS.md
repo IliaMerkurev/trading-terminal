@@ -5,6 +5,128 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+
+## Durable archive import inspection — 2026-10-10
+
+Archive imports now have a durable local operation identity before upload-file
+creation, complete output-ID reservation before artifact writes, atomic per-run
+publication/receipt updates and insert-only strategy/terminal completion. The
+additive receipt ledger preserves intended mappings across lost replies and
+process interruption. Startup reconciles metadata only; no upload is resumed,
+artifact promoted, source executed or trust/admission granted. Old imports remain
+untracked. See [ADR 0008](adr/0008-archives-comparison.md).
+
+The UI adds explicit operation inspection and paged Recent imports under Project
+archive. Only published/currently completed reports are openable; incomplete
+members remain distinct. Strict import-only refresh/open callbacks retain a
+completed receipt when list, run-history or strategy reads fail. Ownership checks
+after awaits prevent late import/open/cancel responses from replacing newer
+receipt selections or editor drafts. Targeted cancellation rejects null/empty IDs,
+ignores stale valid targets and refuses cancellation after the one-shot finish
+claim. No automatic POST/import retry or global action/native Rust change is added.
+
+Storage-first verification used two independently different synthetic results and
+existing run/strategy sentinels. It covers reservation rollback/post-commit error,
+UUID/row/orphan/strategy collisions, before/after snapshot/result publication,
+partial SERIES rollback, joint run/receipt and strategy/terminal commits, failed
+failure-record persistence, malformed/inconsistent metadata, zero/eight-run
+archives, content identities, deliberate duplicate imports, advisory data lookup
+failure, pagination and read-only repeated inspection. Real subprocess kills at
+reservation, snapshot, first-run and terminal boundaries check exact destination
+mappings, expected hashes, materialized bytes, normalized rows/counts, origin,
+trust/admission and unchanged sentinels after restart. Query-only connections
+reject any inspection mutation.
+
+One integrated Linux backend run passed **325 tests with eight Windows-only skips**
+(333 total) in 115.778 seconds. This run preceded the final narrow operation-ID
+collision, duplicate-claim and explicit targeted-cancel validation corrections.
+After those corrections, the affected archive/receipt/real-HTTP/storage-quarantine
+pass passed **46 tests** in 5.074 seconds. A later final integrated regression on
+the final backend source passed **327 tests with eight Windows-only skips**
+(335 total) in 120.518 seconds, including those guards and both full closed-workspace
+backup/restore tests. These final totals supersede the earlier pre-correction pass
+for this candidate. Existing accounting, native trust and worker completion
+contracts were not changed.
+
+The final affected frontend pass passed **20 tests across three files**:
+ProjectTransfer, ImportRecovery and AppImportRecovery. It covers exact File bytes
+and chunk order, discarded reply → read-only inspection, recent-list/reload
+recovery, partial report opening, unavailable/stale reads, separate persistence/
+opening errors, strict run-history failure propagation, cancellation cutoff,
+unmount and late editor reads, receipt-switch opening state and stale cancellation
+feedback, explicit UTC receipt timestamps and visible imported provenance in the
+main report view. The earlier API/AppStorageSafety/UserJourneys focused checks passed
+**25 additional unchanged tests**. Initial test corrections fixed an empty-series
+fault injector and an incorrect navigation label; later review findings added
+explicit regressions. TypeScript and the production frontend build pass, retaining
+the existing large-chunk advisory. The final complete frontend suite subsequently
+passed **377 tests across 42 files** in 12.85 seconds on the final UI source,
+including the later date-navigation and receipt slices. Simulated-DOM evidence is
+not native acceptance.
+
+A real local HTTP test discards a final response only after the ordinary handler
+has committed completion. A deterministic publication barrier confirms status
+cannot be served concurrently by the serialized server; after release and service
+restart, inspection returns the same operation/destination IDs with unchanged
+run counts. This is bounded automatic HTTP evidence, not a current browser File
+upload or maximum-admitted-archive timing measurement. A separate single observed
+backend finish for the 7,977-byte, two-run synthetic ZIP took 0.0074 seconds on
+this Linux filesystem. It excludes startup/upload/HTTP/UI and does not establish
+maximum-load latency, throughput or deadline safety.
+
+A consistent full copy of an existing closed synthetic workspace preserved all
+**26 preexisting tables and 41 non-database files** across two clean service
+lifetimes. Six completed reports, two datasets and three saved observations
+remained readable offline; SQLite integrity/foreign keys and every completed
+result hash passed. Only the two empty receipt tables were added; the source was
+unchanged. Separately, a complete and interrupted receipt workspace survived full
+backup/restore with only documented interruption metadata transitions and no
+resume. No ordinary user workspace was migrated or fault-injected.
+
+Production-browser read-only receipt checks passed at 1180px and 750px widths.
+Completed/partial/interrupted operations retained exact IDs across an actual
+service restart. Partial exposed only its first published report; interrupted
+exposed no report-opening action; completed exposed both reports and its saved
+strategy. Explicit opens displayed the expected records without execution.
+Receipt timestamps now show UTC, and a directly opened imported report has its
+unverified/imported-origin warning in the main view. Repeated Refresh retained
+the mapping and narrow-width wrapping remained usable.
+
+Post-close read-only SQLite reconciliation preserved every operation/item field,
+all seven run IDs and both strategy IDs: three receipts, nine items, zero native
+trust and only two research coverage markers. The six published imported artifact
+files match the hashes recorded in the pre-GUI receipt baseline, and normalized
+series counts match. No full pre-GUI filesystem inventory was captured, so this
+is not a claim that every workspace file received a before/after comparison.
+
+An actual production-browser upload in a separate synthetic workspace then lost
+its final HTTP reply after real completion. The UI retained the operation identity
+and offered inspection without another upload. Inspection returned both completed
+reports and the strategy with their exact destination IDs; explicitly opening the
+second report displayed its independently expected 1.00 net PnL and imported
+warning. A final message correction replaces the obsolete lost-response error with
+the confirmed receipt outcome; its 11-test ImportRecovery recheck and TypeScript/
+production build passed. An ordinary service restart returned the same operation,
+two report IDs and strategy ID; the final confirmed-outcome message was visible,
+and explicit strategy opening loaded the saved graph without execution. The
+warning-clear transition itself has focused component coverage; the final browser
+check reused the existing receipt rather than performing a second lost-reply upload.
+
+Read-only post-close reconciliation against the original partial receipt and the
+completed receipt captured before response loss preserved all operation/item
+metadata and the exact five run/two strategy IDs. There were exactly two receipts
+and six items, zero trust records and only two research coverage markers. Published
+snapshot/result bytes matched receipt-bound expected hashes; normalized counts,
+SQLite integrity and foreign keys passed. No second import was created by inspection,
+opening or restart.
+
+Finalization stays synchronous; no responsive in-flight status, maximum-load
+deadline safety, artifact-file verification by the UI, power-loss durability,
+Windows/native timeout-close recovery or owner-led acceptance is claimed. Receipt
+inspection and ordinary report opening always expose artifact verification as not
+checked. Native failed-transport close remains a separate follow-up.
+
+
 ## Independent saved-history date navigation — 2026-10-10
 
 Saved history now has an independent **Go to UTC date** draft, explicit Go,

@@ -16,7 +16,7 @@ it('transfers selected file bytes in exact bounded order and opens only the vali
   const bytes=new Uint8Array([80,75,3,4,5,6,7]);
   const selectedFile={size:bytes.length,slice:(start:number,end:number)=>({arrayBuffer:async()=>bytes.slice(start,end).buffer})};
   fireEvent.change(screen.getByLabelText('Import project archive'),{target:{files:[selectedFile]}});
-  await waitFor(()=>expect(imported).toHaveBeenCalledWith(expect.objectContaining({strategy_id:'validated'})));
+  await waitFor(()=>expect(imported).toHaveBeenCalledWith(expect.objectContaining({strategy_id:'validated'}),expect.any(Function)));
   const calls=vi.mocked(api).mock.calls;
   expect(calls.map(([command])=>command)).toEqual(['archive_begin','archive_append','archive_append','archive_append','archive_finish']);
   const chunks=calls.filter(([c])=>c==='archive_append').map(([,p])=>p!);
@@ -56,6 +56,7 @@ it.each(['desktop','browser'] as const)('shows partial import IDs and guidance i
   fireEvent.change(screen.getByLabelText('Import project archive'),{target:{files:[{size:1,slice:()=>({arrayBuffer:async()=>new Uint8Array([80]).buffer})}]}});
   expect((await screen.findByRole('alert')).textContent).toBe(`Error: ${note}`);
   await waitFor(()=>expect((screen.getByLabelText('Import project archive') as HTMLInputElement).disabled).toBe(false));
-  expect(screen.queryByRole('status')).toBeNull();expect(imported).not.toHaveBeenCalled();
-  expect(vi.mocked(api).mock.calls.map(([command])=>command)).toEqual(['archive_begin','archive_append','archive_finish','archive_cancel']);
+  expect(screen.getByRole('status').textContent).not.toContain('Reading archive');expect(imported).not.toHaveBeenCalled();
+  expect(screen.getByRole('button',{name:'Inspect this import'})).toBeTruthy();
+  expect(vi.mocked(api).mock.calls.map(([command])=>command)).toEqual(['archive_begin','archive_append','archive_finish']);
 });

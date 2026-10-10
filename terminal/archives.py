@@ -7,6 +7,7 @@ import math
 from pathlib import Path,PurePosixPath
 import re
 import stat
+import sqlite3
 import uuid
 import zipfile
 
@@ -160,8 +161,37 @@ def read_archive(raw):
 
 
 class ArchiveManager:
-    def __init__(self,store):
-        self.store=store;self.upload=None
+    def __init__(self,store,jobs=None):
+        from terminal.archive_receipts import ArchiveReceipts
+        self.store=store;self.jobs=jobs;self.upload=None;self.blocked=False
+        self.receipts=ArchiveReceipts(store)
+
+    def _ready(self):
+        if self.jobs is not None:self.jobs.require_storage_ready()
+        if self.blocked:raise ValueError('Archive imports blocked by storage finalization failure. Inspect saved imports and restart; no automatic retry.')
+
+    def _storage_failure(self,operation_id):
+        self.blocked=True
+        if self.jobs is not None:self.jobs.latch_storage_failure(operation_id,'archive_import')
+        try:self.receipts.stop(operation_id,'storage_failure')
+        except Exception:pass  # Earlier durable phase/IDs remain authoritative.
+
+    @staticmethod
+    def _failure_note(operation_id):
+        return (f'Archive import outcome requires inspection. Operation {operation_id}. '
+                'Completed and incomplete records may remain; no rollback was performed. '
+                'Inspect this import or Recent imports. Inspection may require waiting for synchronous finalization or restarting the service. '
+                'Do not retry blindly: a new import creates new IDs. This transfer cannot be resumed. '
+                'If inspection is unavailable, its persisted outcome is unknown; this error is not a durable receipt.')
+
+    def status(self,operation_id):
+        identifier(operation_id)
+        try:return self.receipts.status(operation_id)
+        except Exception:raise ValueError(f'Import inspection unavailable for operation {operation_id}; outcome unknown. No changes were requested.') from None
+
+    def recent(self,before=None,limit=25):
+        try:return self.receipts.list(before,limit)
+        except Exception:raise ValueError('Recent import inspection unavailable; saved outcomes are unknown. No changes were requested.') from None
 
     def export(self,strategy,profile,run_ids):
         validate_strategy(strategy);Profile(**profile)
@@ -189,12 +219,20 @@ class ArchiveManager:
                 'history_included':False,'note':'Saved in the local exports folder. Dataset descriptions do not guarantee a rerun; worker logs, consent records and raw candles are excluded.'}
 
     def begin(self,size):
+        self._ready()
         if type(size) is not int or not 1<=size<=MAX_ARCHIVE:raise ValueError('Expected an archive of at most 64 MiB')
         if self.upload:raise ValueError('An archive transfer is already active; cancel it first')
-        upload_id=uuid.uuid4().hex;file=self.store.root/'imports'/f'{upload_id}.partial'
-        file.parent.mkdir(exist_ok=True);file.touch(exist_ok=False)
-        self.upload={'id':upload_id,'size':size,'offset':0,'file':file}
-        return {'upload_id':upload_id,'chunk_bytes':CHUNK}
+        operation_id=uuid.uuid4().hex;file=self.store.root/'imports'/f'{operation_id}.partial'
+        try:
+            self.receipts.begin(operation_id,size)
+            file.parent.mkdir(exist_ok=True);file.touch(exist_ok=False)
+        except sqlite3.IntegrityError:
+            raise ValueError('Import operation identifier collision; no transfer was started.') from None
+        except Exception:
+            self._storage_failure(operation_id)
+            raise ValueError(self._failure_note(operation_id)) from None
+        self.upload={'id':operation_id,'size':size,'offset':0,'file':file}
+        return {'operation_id':operation_id,'upload_id':operation_id,'chunk_bytes':CHUNK}
 
     def append(self,upload_id,offset,data):
         upload=self.upload
@@ -202,63 +240,69 @@ class ArchiveManager:
         if not isinstance(data,str) or len(data)>4*((CHUNK+2)//3):raise ValueError('Upload chunk exceeds budget')
         raw=base64.b64decode(data,validate=True)
         if not raw or len(raw)>CHUNK or offset+len(raw)>upload['size']:raise ValueError('Invalid upload size')
-        with upload['file'].open('ab') as stream:stream.write(raw)
+        try:
+            with upload['file'].open('ab') as stream:stream.write(raw)
+        except OSError:
+            self._storage_failure(upload_id);self.upload=None
+            raise ValueError(self._failure_note(upload_id)) from None
         upload['offset']+=len(raw)
         return {'offset':upload['offset']}
 
-    def cancel(self):
-        self.upload=None  # Interrupted local bytes remain untrusted, never opened automatically.
-        return {'status':'cancelled'}
+    def cancel(self,operation_id=None):
+        # Legacy cancellation is restricted to the current receiving transfer.
+        ident=operation_id if operation_id is not None else (self.upload['id'] if self.upload else None)
+        if ident is None:return {'status':'no_active_transfer'}
+        try:result=self.receipts.cancel(ident)
+        except Exception:raise ValueError(f'Cancellation outcome unavailable for operation {identifier(ident)}; inspect before another action.') from None
+        if result['status']=='cancelled' and self.upload and self.upload['id']==ident:self.upload=None
+        return result  # Retained upload bytes are never parsed or resumed at startup.
 
     def finish(self,upload_id):
+        identifier(upload_id)
+        self._ready()
         upload=self.upload
-        if not upload or upload_id!=upload['id'] or upload['offset']!=upload['size']:raise ValueError('Archive transfer is incomplete')
+        if not upload or upload_id!=upload['id']:
+            raise ValueError(f'Import cannot be finished again. Inspect operation {upload_id}; no retry or resume is supported.')
+        if upload['offset']!=upload['size']:raise ValueError('Archive transfer is incomplete')
+        try:self.receipts.claim(upload_id)
+        except ValueError:
+            raise ValueError(f'Import finish was already claimed. Inspect operation {upload_id}; no changes were requested.') from None
+        except Exception:
+            self._storage_failure(upload_id);self.upload=None
+            raise ValueError(self._failure_note(upload_id)) from None
         try:
-            project,documents=read_archive(upload['file'].read_bytes())
-            # Every entry is validated before any strategy or run is persisted.
-            new_runs=[];strategy_id=None;stage='run creation'
             try:
-                for old_id in project['runs']:
-                    snapshot=documents[f'runs/{old_id}/snapshot.json'];result=documents[f'runs/{old_id}/result.json']
-                    stage='run creation'
-                    new_id=self.store.create(snapshot)
-                    new_runs.append(new_id)
-                    stage='run persistence'
-                    self.store.status(new_id,'importing')
-                    self.store.complete(new_id,result,origin='imported')
-                stage='strategy save'
-                s=project['strategy'];strategy_id=self.store.save_strategy(s['name'],s['kind'],s['document'],profile=project['profile'])
-                stage='dataset lookup'
-                available=[]
-                for old_id in project['runs']:
-                    dataset=documents[f'runs/{old_id}/snapshot.json']['dataset']
-                    try:
-                        actual=DatasetStore(self.store.root/'datasets').describe(dataset['id'])
-                        if actual['content_sha256']==dataset['content_sha256']:available.append(old_id)
-                    except (ValueError,OSError):pass
-                return {'strategy_id':strategy_id,'profile':project['profile'],'run_ids':new_runs,'history_included':False,
-                        'datasets_found':len(available),'note':'Imported results are saved reports, not locally verified calculations. Python was not executed and no new trust was granted. Rerunning requires matching checked data, dependencies and separate source consent.'}
+                raw=upload['file'].read_bytes()
             except Exception:
-                raise ValueError(self._failure_note(new_runs,strategy_id,stage)) from None
-        finally:self.upload=None
-
-
-    def _failure_note(self,run_ids,strategy_id,stage):
-        # IDs are returned by local storage, never supplied by the archive. Do not
-        # echo storage exceptions (which can contain paths or document contents).
-        runs=[]
-        for run_id in run_ids:
+                self._storage_failure(upload_id)
+                raise ValueError(self._failure_note(upload_id)) from None
+            try:project,documents=read_archive(raw)
+            except Exception:
+                try:self.receipts.stop(upload_id,'validation_rejected',rejected=True)
+                except Exception:self._storage_failure(upload_id)
+                raise ValueError(f'Archive validation rejected for operation {upload_id}. No output identities were reserved. Inspect this import for its persisted outcome.') from None
             try:
-                status=self.store.get(run_id)['status']
-                if status not in ('created','importing','completed','interrupted'):status='unknown'
-            except Exception:status='unknown'
-            runs.append(f'{run_id} ({status})')
-        known='Known local runs: '+', '.join(runs)+'.' if runs else 'No run IDs were confirmed.'
-        creation=' Run creation outcome is unknown; additional records or files may exist.' if stage=='run creation' else ''
-        strategy=(f'Strategy saved: {strategy_id}.' if strategy_id else
-                  'Strategy save outcome is unknown; a strategy may have been saved.' if stage=='strategy save' else
-                  'Strategy save was not attempted.')
-        return (f'Archive import did not finish. Import is not atomic. {known}{creation} {strategy} '
-                'Incomplete runs may retain files. Check Saved tests and the strategy list before any new import. '
-                'Do not retry blindly: another import creates new IDs and may duplicate saved work. '
-                'This transfer cannot be resumed; no rollback was performed.')
+                self.receipts.reserve(upload_id,raw,project,documents)
+                for ordinal,source in enumerate(project['runs']):
+                    self.receipts.publish_run(upload_id,ordinal,documents[f'runs/{source}/snapshot.json'],documents[f'runs/{source}/result.json'])
+                self.receipts.publish_strategy(upload_id,project['strategy'],project['profile'])
+                receipt=self.receipts.status(upload_id)
+            except Exception:
+                self._storage_failure(upload_id)
+                raise ValueError(self._failure_note(upload_id)) from None
+            # Advisory lookup cannot change a committed publication outcome.
+            found=0;availability='checked'
+            for source in project['runs']:
+                dataset=documents[f'runs/{source}/snapshot.json']['dataset']
+                try:
+                    actual=DatasetStore(self.store.root/'datasets').describe(dataset['id'])
+                    if actual['content_sha256']==dataset['content_sha256']:found+=1
+                except (FileNotFoundError,ValueError):pass
+                except Exception:found=None;availability='unchecked';break
+            return {'operation_id':upload_id,'receipt':receipt,
+                    'strategy_id':next(item['destination_id'] for item in receipt['items'] if item['kind']=='strategy'),
+                    'profile':project['profile'],'run_ids':[item['destination_id'] for item in receipt['items'] if item['kind']=='run'],
+                    'history_included':False,'datasets_found':found,'dataset_availability':availability,
+                    'note':'Import completed. Saved reports are not locally verified calculations. Artifact files have not been verified by this inspection. Python was not executed and no new trust was granted. Rerunning requires matching checked data, dependencies and separate source consent.'}
+        finally:
+            if self.upload is upload:self.upload=None

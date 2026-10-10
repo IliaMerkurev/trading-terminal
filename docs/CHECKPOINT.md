@@ -28,6 +28,30 @@ routes, not a portable executable bundle: moving a desktop checkout requires a
 rebuild. Back up the complete data root after shutdown; never substitute a
 synthetic fixture database for ordinary research data.
 
+## Current storage/recovery slice
+
+The newest bounded slice adds durable status-only archive-import receipts, all-ID
+reservation before artifact writes, transactional per-run publication and
+insert-only strategy/terminal completion. Recent imports restores inspection after
+reload/restart; it never resumes or retries. Partial receipts distinguish completed
+reports from reserved/incomplete items. Import refresh/open errors and late
+navigation callbacks cannot rewrite a completed outcome or replace a newer draft.
+
+The final complete backend pass passed 327 tests plus eight Windows-only skips
+(335 total). The final complete frontend pass passed 377 tests across 42 files;
+TypeScript/production build passed. Full closed-copy validation preserved
+26 existing tables and 41 non-database files across two
+lifetimes. See [durable import inspection](STATUS.md#durable-archive-import-inspection--2026-10-10)
+for exact fault/crash/HTTP evidence, correction chronology and platform limits.
+Production-browser read-only receipt/restart inspection passed at 1180px and
+750px widths, with unchanged mapping/counts and receipt-bound artifact hashes
+confirmed after shutdown. A fresh actual browser upload also recovered its exact
+completed IDs after a deliberately discarded reply, without reupload; ordinary
+restart and explicit report/strategy opening retained those same IDs. Post-close
+read-only reconciliation confirmed no duplicate import or execution. Finalization
+is synchronous; artifact verification by the UI is not checked, and Windows/native
+recovery is unverified.
+
 ## Current UX-series evidence
 
 The newest slice adds independent exact-UTC Saved history navigation, anchored
@@ -171,9 +195,10 @@ No new product/schema/dependency version is implied by an internal milestone.
 
 - Linux research supports graph tests and saved reports; native Python execution,
   Windows notifications/sound and protected Telegram storage are unavailable.
-- Archive imports are sequential and non-atomic. Partial failure discloses known
-  IDs/statuses; cancel does not undo records. No automatic retry/resume, rollback
-  or durable receipt is promised for an unknown final response.
+- Archive-wide imports remain sequential and non-atomic, with durable status-only
+  receipts and atomic per-run publication. Cancel does not undo records. No
+  automatic retry/resume, rollback or in-flight responsiveness is promised.
+  Inspection/ordinary report opening does not verify artifact files.
 - Research admission/freeze/display evidence is bounded. It does not prove human
   reading or complete legacy/imported, live/replay or outside-app exposure.
 - Funding gaps are conservatively refused; unsupported linear-to-spot benchmark
