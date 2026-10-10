@@ -267,3 +267,30 @@ node scripts/frontend.mjs build
 Stop the local host before rebuilding, then restart to refresh its static-file
 inventory. This adds no backend/schema, dependency, product-version or native
 acceptance gate. Actual evidence and remaining limits are in STATUS.md.
+
+
+## Saved-history date navigation checks
+
+Reuse an isolated existing 900-hour observation fixture; no new market data,
+observation save or strategy run is needed. First reads 500 source slots and
+Latest the final 400. An arbitrary native UTC target must remain exact, including
+a short page at the last opening; the exclusive end and misaligned dates are
+rejected. The independent browse draft, dirty note and compatible display choice
+survive ordinary Market/Lab returns. Explicit Return to observation start uses
+the note's original date. Test the known missing opening and display-misaligned
+page edges without fabricating bars or extending the 500-source-slot budget.
+
+The focused frontend pass covers strict UTC/source arithmetic, immutable failed-
+page retry, stale response/declaration guards, note and Lab preservation and
+actual-chart visibility cleanup. Existing chart projection/recorder behavior is
+unchanged; do not report component fault injection as a production-browser test.
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/observationNavigation.test.ts frontend/src/ObservationsNavigation.test.tsx frontend/src/Observations.test.tsx frontend/src/ObservationsHistory.test.tsx frontend/src/UserJourneys.test.tsx frontend/src/DisplayedEvidence.test.tsx frontend/src/ObservationChart.test.tsx
+node scripts/frontend.mjs build
+```
+
+Stop the host before building, then restart with the same isolated root and the
+printed numeric loopback URL. Check wrapping, keyboard Go and reachable actions
+at ordinary and narrow widths. Windows/native and owner-led unaided acceptance
+remain separate; no new backend or full-regression gate is implied.

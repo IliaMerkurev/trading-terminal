@@ -30,7 +30,18 @@ synthetic fixture database for ordinary research data.
 
 ## Current UX-series evidence
 
-The newest slice gives desktop Lab one natural outer scroll surface instead of
+The newest slice adds independent exact-UTC Saved history navigation, anchored
+First/Latest pages and explicit failed-page Retry. Note dates/revisions/text,
+Lab inputs and compatible display choice remain separate. Focused evidence is
+**155 distinct tests across seven files**; final TypeScript/production build
+passed. Production-browser checks passed at 1180×757 and 750×757: exact 500/400/
+last-slot pages, invalid dates, missing openings, wrapping/keyboard use and
+saved/dirty/historical note context all behaved as specified. Retry/races and
+persisted exposure counts remain component evidence. The preceding combined
+285-test frontend pass remains evidence for its unchanged surfaces, not a new
+full regression claim. See [independent saved-history date navigation](STATUS.md#independent-saved-history-date-navigation--2026-10-10).
+
+The preceding slice gives desktop Lab one natural outer scroll surface instead of
 a fixed inner card well. Lab and Saved tests retain independent session-local
 offsets without remounting cards or moving focus. Corrected production-browser
 checks passed at 1180×757 and 750×757: expanded parameters and actions remain

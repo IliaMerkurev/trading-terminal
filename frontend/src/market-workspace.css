@@ -58,3 +58,8 @@
 .observation-inspector dl{display:flex;flex-wrap:wrap;gap:8px 20px;margin:10px 0 0}.observation-inspector dl>div{min-width:55px}.observation-inspector dt{font-size:10px;color:#9cabc0}.observation-inspector dd{margin:4px 0 0;font-size:12px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.observation-inspector p{margin:10px 0 0;font-size:12px;color:#d8bc7b}
 .observation-chart-help{font-size:11px;line-height:1.5;margin:8px 12px;color:#99a9bf}
 .observation-display-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:10px 0}.observation-display-controls label{display:flex;align-items:center;gap:8px;font-size:12px}.observation-display-controls select{width:auto;min-width:125px}.observation-display-controls>span,.observation-display-limit{font-size:11px;color:#a1aec2}.observation-display-limit{margin:5px 0}
+
+/* Navigation is independent of note dates and remains available after read failure. */
+.observation-navigation{min-width:0;margin:12px 0;padding:12px;border:1px solid #2b374b;border-radius:8px}
+.observation-date-jump{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 12px}.observation-date-jump .field{flex:1;min-width:190px;max-width:310px;margin:0}.observation-date-jump input{width:100%;min-width:0;font-variant-numeric:tabular-nums}.observation-date-jump button{margin:0}
+.observation-navigation .run-actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.observation-navigation .run-actions button{padding:7px 9px;font-size:11px}.observation-navigation p{font-size:11px;line-height:1.5;overflow-wrap:anywhere;margin:8px 0}.observation-page-error{overflow-wrap:anywhere}

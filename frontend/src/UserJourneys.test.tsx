@@ -250,11 +250,11 @@ it('opens a comparison report before collapsed history and returns to the same f
 
 
 it('opens local observation directly from Data without mounting live market or executing a strategy',async()=>{
- vi.mocked(api).mockImplementation(async(command)=>{
+ vi.mocked(api).mockImplementation(async(command,p:any)=>{
   if(command==='library_catalog')return [entry];
   if(command==='list_datasets')return [data];
   if(command==='library_batch_history'||command==='run_history'||command==='observation_history')return {rows:[],next:null};
-  if(command==='local_history_window')return {source:{...data,classification:'synthetic'},start:0,end:500*3600,candles:[],missing:[]};
+  if(command==='local_history_window')return {source:{...data,classification:'synthetic'},start:p.start,end:p.end,candles:[],missing:[]};
   if(command.startsWith('list_'))return [];
   return {};
  });
@@ -275,13 +275,13 @@ it('opens local observation directly from Data without mounting live market or e
 it('keeps manual observation identity and selected tests through closed setup and ordinary navigation',async()=>{
  const observation={id:'manual-observation',revision:2,latest_revision:3,source:{...data,classification:'synthetic'},start:90000,end:176400,hypothesis:'Saved historical hypothesis',falsification:'Lower close',source_error:null,links:[]};
  vi.mocked(api).mockClear();
- vi.mocked(api).mockImplementation(async(command)=>{
+ vi.mocked(api).mockImplementation(async(command,p:any)=>{
   if(command==='library_catalog')return [entry];
   if(command==='list_datasets')return [data];
   if(command==='library_batch_history'||command==='run_history')return {rows:[],next:null};
   if(command==='observation_history')return {rows:[observation],next:null};
   if(command==='observation_get')return observation;
-  if(command==='local_history_window')return {source:observation.source,start:0,end:500*3600,candles:[],missing:[]};
+  if(command==='local_history_window')return {source:observation.source,start:p.start,end:p.end,candles:[],missing:[]};
   if(command==='library_warmup')return {start:3600,end:31536000,available:true};
   if(command==='dataset_profile')return {};
   if(command.startsWith('list_'))return [];
@@ -329,13 +329,13 @@ it('recovers saved observations after tab changes without replacing the unsaved 
  let reads=0;
  const observation={id:'recovered-note',revision:3,latest_revision:3,source:{...data,classification:'synthetic'},start:86400,end:172800,hypothesis:'Recovered saved hypothesis',falsification:'',source_error:null,links:[]};
  vi.mocked(api).mockClear();
- vi.mocked(api).mockImplementation(async command=>{
+ vi.mocked(api).mockImplementation(async(command,p:any)=>{
   if(command==='library_catalog')return [entry];
   if(command==='list_datasets')return [data];
   if(command==='library_batch_history'||command==='run_history')return {rows:[],next:null};
   if(command==='observation_history'){if(++reads===1)throw Error('Temporary observation read failure');return {rows:[observation],next:null};}
   if(command==='observation_get')return observation;
-  if(command==='local_history_window')return {source:observation.source,start:0,end:500*3600,candles:[],missing:[]};
+  if(command==='local_history_window')return {source:observation.source,start:p.start,end:p.end,candles:[],missing:[]};
   if(command.startsWith('list_'))return [];
   throw Error(`Unexpected command: ${command}`);
  });
@@ -348,6 +348,12 @@ it('recovers saved observations after tab changes without replacing the unsaved 
  fireEvent.change(screen.getByLabelText('Observation end, exclusive (UTC)'),{target:{value:'1970-01-03T00:00'}});
  fireEvent.change(screen.getByLabelText('Observation hypothesis'),{target:{value:'Unsaved hypothesis'}});
  fireEvent.change(screen.getByLabelText('Observation falsification'),{target:{value:'Unsaved falsification'}});
+ fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'14400'}});
+ fireEvent.change(screen.getByLabelText('Go to UTC date'),{target:{value:'1970-01-10T01:00'}});
+ fireEvent.submit(screen.getByLabelText('Go to UTC date').closest('form')!);
+ await waitFor(()=>expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(2));
+ await screen.findByLabelText('Saved-history display interval');
+ fireEvent.change(screen.getByLabelText('Go to UTC date'),{target:{value:'Pending invalid browse draft'}});
  fireEvent.click(screen.getByRole('button',{name:'Lab'}));
  expect((screen.getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
  fireEvent.click(screen.getByRole('button',{name:'Market'}));
@@ -361,7 +367,10 @@ it('recovers saved observations after tab changes without replacing the unsaved 
  expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).value).toBe('Unsaved hypothesis');
  expect((screen.getByLabelText('Observation falsification') as HTMLTextAreaElement).value).toBe('Unsaved falsification');
  expect(screen.getByRole('heading',{name:'New observation'})).toBeTruthy();
- expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(1);
+ expect((screen.getByLabelText('Go to UTC date') as HTMLInputElement).value).toBe('Pending invalid browse draft');
+ expect((screen.getByLabelText('Saved-history display interval') as HTMLSelectElement).value).toBe('14400');
+ expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:data.id,start:781200,end:2581200});
+ expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(2);
  expect(vi.mocked(api).mock.calls.filter(([c])=>c==='observation_get')).toHaveLength(0);
  fireEvent.click(screen.getByRole('button',{name:'Discard note edits'}));
  fireEvent.click(recovered);

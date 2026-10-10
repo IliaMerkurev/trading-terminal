@@ -82,6 +82,56 @@ and uses closing labels. Saved history retains opening labels and requires full
 coverage. General interval selection, aligned cross-page reads and larger
 projection budgets are separate scope.
 
+## Independent exact-date navigation and page recovery
+
+Browsing has its own UTC text draft and tagged idle/loading/ready/error page
+state. It never rewrites an observation range, revision or text, and never
+changes Lab selection/profile or starts a test. Literal date fields use an
+exact UTC calendar round-trip; no local timezone, normalized invalid calendar,
+fractional timestamp, native-boundary rounding or display-bucket alignment is
+accepted. Safe integral source bounds and native resolution are checked before
+formatting dates or constructing requests. The exclusive source end is invalid
+as a target opening.
+
+For source `[S,E)`, native step `s` and `N=(E-S)/s`, a valid target `T` reads
+exactly `[T,min(E,T+500*s))`. First targets `S`; Latest targets
+`S+floor((N-1)/500)*500*s`. Thus 500 and 1000 slots have full final pages, while
+501, 900 and 1200 have final pages of 1, 400 and 200 slots respectively. An
+arbitrary slot-613 jump in a 1200-slot source reads `[613,1113)`; Later reads
+`[1113,1200)`, while Latest remains `[1000,1200)`. Earlier is relative to the
+loaded start and clamps only at S. No adjacent pages or full-source table are
+loaded. The verified source, not display aggregation width, supplies navigation
+arithmetic after the initial read.
+
+Each accepted request captures its dataset, selected-declaration fingerprint,
+source identity, exact boundaries and epoch. Acceptance immediately removes the
+old chart, selection and error. Cleanup plus epoch/declaration guards exclude
+stale success, rejection and finalization. Returned dataset/window ownership is
+checked before presentation. A list manifest fingerprint is not compared with
+the reduced verified source identity; exact saved/established verified identities
+are compared separately. Unexpected same-ID identity replacement, changed
+selected declarations and unavailable saved sources fail closed without silently
+replacing a note. Explicit source selection/reopen can establish a new source;
+ordinary paging cannot. Save responses also reconcile exact source identity and
+retain source-unavailable state when starting a new draft.
+
+Failure owns immutable numeric request parameters and a captured source label,
+including the full snapshot identifier. Explicit Retry repeats those parameters,
+not the current text draft. Repeated failure remains retryable when the exact
+source is still available. Input editing neither queues a read nor changes its
+result ownership. Synchronous pending guards prevent duplicate submissions;
+save/open operations block navigation. No automatic retry or transport timeout
+change is introduced. Native transport failure can require a separate restart.
+
+Missing openings and all-gap pages are successful bounded reads. Incomplete
+display buckets keep the chosen compatible interval and their missing/outside-
+page explanation. Typing, validation, submission, failed and stale requests do
+not produce displayed evidence. The unchanged actual-visibility recorder may
+record a verified chart only after it is rendered and visible, with the existing
+exact constituent mapping and hidden/modal/offscreen exclusions. Display tracking
+failure remains separate from page-read failure. There is no new durable write,
+automatic note revision, dataset preparation, bookmark or settings persistence.
+
 ## Alternatives and deferred scope
 
 Reusing live MarketChart would risk network access and wrong provenance. Loading

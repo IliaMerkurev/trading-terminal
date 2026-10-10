@@ -1,6 +1,7 @@
-import {act,fireEvent,render,screen,within} from '@testing-library/react';
+import {act,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import ObservationChart from './ObservationChart';
+import Observations from './Observations';
 import {displayRecorder,finishDisplayWrites,DisplayTrackingNotice} from './DisplayedEvidence';
 import {api} from './api';
 
@@ -324,4 +325,34 @@ it('keeps the existing explicit incomplete-tracking warning when mapped runs rea
  expect(screen.getByRole('alert').textContent).toContain('bounded recording budget was reached');
  expect(screen.getByRole('region',{name:'Saved-history candle analysis'})).toBeTruthy();
  await act(async()=>{resolves.forEach(resolve=>resolve({recorded:1}));await finishDisplayWrites();});
+});
+
+
+it('records only the genuinely visible replacement page after exact navigation and explicit failure recovery',async()=>{
+ const hour=3600,source={id:'navigation-evidence',source:'Synthetic',symbol:'BTCUSDT',market:'spot',range:[0,1200*hour],interval_seconds:hour,classification:'synthetic'};
+ let reads=0,reject!:(error:Error)=>void;
+ const makePage=(p:any)=>({source,start:p.start,end:p.end,candles:Array.from({length:(p.end-p.start)/hour},(_,i)=>p.start+i*hour).filter(t=>t!==4*hour).map(time=>({time,open:100,high:102,low:99,close:101,volume:2})),missing:p.start<=4*hour&&p.end>4*hour?[4*hour]:[],display_reference:{surface:'observation_chart',page_id:String(p.start)}});
+ vi.mocked(api).mockImplementation(async(c,p:any)=>{
+  if(c==='observation_history')return {rows:[],next:null};
+  if(c==='local_history_window'){if(++reads===2)return new Promise((_resolve,no)=>{reject=no;});return makePage(p);}
+  if(c==='research_displayed')return {recorded:1};throw Error(`Unexpected command ${c}`);
+ });
+ const view=render(<Observations datasets={[source]} request={{dataset:source.id,request:1}} onTest={vi.fn()} onBatch={vi.fn()}/>);
+ await waitFor(()=>expect(charts).toHaveLength(1));const first=chart();
+ act(()=>{first.pointer(0);intersect(surface());});expect(screen.getByText('1970-01-01 00:00:00 UTC')).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Go to UTC date'),{target:{value:'1970-01-01T01:00'}});
+ fireEvent.submit(screen.getByLabelText('Go to UTC date').closest('form')!);
+ expect(screen.queryByRole('img')).toBeNull();expect(first.chart.remove).toHaveBeenCalledOnce();act(flush);
+ expect(vi.mocked(api).mock.calls.filter(([c])=>c==='research_displayed')).toHaveLength(0);
+ await act(async()=>reject(Error('Controlled local read failure')));expect(screen.queryByRole('img')).toBeNull();
+ fireEvent.change(screen.getByLabelText('Go to UTC date'),{target:{value:'invalid pending text'}});fireEvent.click(screen.getByRole('button',{name:'Retry saved-history page'}));
+ await waitFor(()=>expect(charts).toHaveLength(2));expect(screen.getByText('No candle selected')).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'14400'}});
+ act(()=>{intersect(surface());flush();});await finishDisplayWrites();
+ const writes=vi.mocked(api).mock.calls.filter(([c])=>c==='research_displayed');
+ expect(writes.map(([,p]:any)=>p.viewport)).toEqual([[8*hour,499*hour]]);
+ expect(writes[0][1]).toMatchObject({reference:{surface:'observation_chart',page_id:String(hour)}});
+ expect((screen.getByLabelText('Go to UTC date') as HTMLInputElement).value).toBe('invalid pending text');
+ act(()=>chart().pointer(0));expect(screen.getByText(/0 missing source slots in the loaded page; 1 source slots outside/)).toBeTruthy();
+ view.unmount();act(flush);await finishDisplayWrites();expect(vi.mocked(api).mock.calls.filter(([c])=>c==='research_displayed')).toHaveLength(1);
 });

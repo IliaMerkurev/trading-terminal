@@ -28,8 +28,43 @@ Left/Right; Home/End select the first/last rendered price candle in the page.
 Navigation reveals an offscreen target before showing its values and skips
 incomplete or unavailable candles. Panning the selection out of view clears it;
 changing source, page or display interval resets it. **Fit page** returns to the
-loaded page. Earlier/Later candles explicitly load another page of at most 500
-original source slots, including missing slots.
+loaded page.
+
+**Go to UTC date** browses independently of the observation period. Enter
+`YYYY-MM-DDTHH:mm` (optionally `:ss`) and choose **Go** or press Enter. The literal
+fields are interpreted as UTC, regardless of the computer timezone. An exact
+native opening is required: invalid calendar dates, fractional seconds, timezone
+suffixes, out-of-range values and unaligned times are rejected without rounding
+or replacing the current page. The exclusive source end is not an opening;
+the last valid opening is one source interval earlier. Typing alone reads nothing.
+
+Every requested page starts exactly at its target and covers up to 500 original
+source slots, including gaps. **First saved page** and **Latest saved page** use
+500-slot pages counted from the saved range's beginning. A 900-slot snapshot
+therefore has a 500-slot first page and a 400-slot latest page. Latest means the
+end of this saved snapshot. **Earlier candles** / **Later candles** move relative
+to the loaded page; after an arbitrary-date jump they need not share the
+first/latest page grid. **Return to observation start** returns to the saved
+revision's start, or the current valid unsaved observation start, without
+changing its dates, text or revision. Invalid note dates or dirty note text do
+not disable independent Go/First/Latest browsing.
+
+Loading and failure show the requested half-open UTC page. Only a verified
+response is labelled Loaded page. A missing requested opening is a valid gap,
+not a read failure; no later candle is selected automatically. A failed page
+removes the old chart and inspection. **Retry saved-history page** repeats the
+failed source and exact numeric boundaries, even if the browse field has since
+been edited. It is independent of saved-observation-list recovery and does not
+repeat a note save. Recovery is explicit, with no automatic retry, prefetch,
+live fallback or persisted bookmark. The existing local transport must still
+be available; Retry cannot repair a failed native transport.
+
+Ordinary Market/Lab returns retain the browse draft, verified page, compatible
+display choice and note edits. Explicitly reopening an observation returns to
+that exact revision's start. A changed exact source fails closed; existing note
+edits stay intact until the existing explicit discard/source/reopen flow.
+Reads still verify the trade-file checksum and may decode a prefix for a late
+page, so a bounded response is not a constant-time-read promise.
 
 Every aggregate requires the entire UTC bucket and every expected source opening
 in that page. Incomplete buckets remain blank in both panes with striped bands.
@@ -64,8 +99,8 @@ the list refresh fails, the message confirms the save; retrying does not save
 another revision or start a test.
 The date fields show the available UTC history range and its candle interval;
 the end is exclusive. Inline guidance explains missing, reversed, out-of-range
-or unaligned dates. Correct the marked fields to enable saving or showing the
-observation start; your dates and draft text are never adjusted automatically.
+or unaligned dates. Correct the marked fields to enable saving or returning to
+the observation start; your dates and draft text are never adjusted automatically.
 Lab requires an explicitly saved observation with no unsaved note edits.
 **Test observation** opens Lab setup with the exact source, period and note
 revision. Closing setup keeps a compact **Attached to draft test** row visible

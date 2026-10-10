@@ -5,6 +5,84 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Independent saved-history date navigation — 2026-10-10
+
+Saved history now has an independent **Go to UTC date** draft, explicit Go,
+First/Latest pages and Return to observation start. Exact native opening times
+are parsed as literal UTC with calendar round-trip validation. Invalid,
+misaligned and exclusive-end targets retain the loaded chart and never issue a
+read. First/Latest are anchored to 500 source slots from the saved range start;
+an arbitrary jump retains its exact opening and relative Earlier/Later behavior.
+The display aggregation interval never changes request bounds. Missing openings
+and all-gap pages remain successful local reads with explicit explanations.
+
+Accepted replacement reads remove the old chart/inspection immediately. A
+separate failed-page state owns the exact dataset and half-open boundaries;
+Retry ignores a subsequently edited date draft and repeats only that local read.
+It does not retry note saving or observation-list recovery. Epoch, cleanup and
+selected-declaration checks discard stale success/error/finally callbacks, and
+response dataset/window and established exact-source identity are checked before
+rendering. Source-unavailable state survives New observation, and note save
+responses also reconcile source identity/availability. Same-ID replacement is
+never silently accepted during ordinary paging. Source change/reopen is explicit.
+
+The existing note range, revision, text, source locks and Lab handoff are retained.
+Dirty notes and invalid observation dates do not block independent browsing.
+Ordinary route return retains the browse draft and display choice; an explicit
+exact-revision reopen returns to that observation start. No backend/schema,
+strategy, accounting, API transport, dependency, version or new persistence path
+changed. Existing actual-visible-chart `research_displayed` recording and its
+constituent mapping remain active; typed/failed/stale targets never reach the
+chart. No prefetch, live request, automatic retry, bookmark or full-source read
+was introduced. The existing checksum/prefix reader is not constant-time.
+
+Focused evidence covers **155 distinct tests across seven files**. The first
+coherent pass passed **154 tests** in `observationNavigation`,
+`ObservationsNavigation`, `Observations`, `ObservationsHistory`, `UserJourneys`,
+`DisplayedEvidence` and `ObservationChart`. Review then retained unavailable-source
+state from save responses and tightened exact First/Latest-page matching. The
+affected five-file follow-up passed **96 tests**, including one added regression;
+59 unchanged pure-boundary/evidence tests were reused. No full frontend/backend
+suite was rerun. Tests use deterministic UTC/source-slot expectations, deferred
+responses and simulated DOM/mocked IPC. An actual ObservationChart component
+asserts that a scheduled old visibility callback is disposed at submission and
+that successful retried aggregate visibility records only the complete source
+constituents of its exact replacement page.
+
+TypeScript and the production build passed on the final implementation with the
+existing large-chunk advisory. An intervening fixture-only callback cleanup was
+caught by TypeScript and restored before that final successful build; no runtime
+change was needed. Reproduce the focused pass with the
+[navigation checks](DEVELOPMENT.md#saved-history-date-navigation-checks).
+
+Production-browser inspection passed at **1180×757** and **750×757** using the
+existing isolated 900-hour synthetic source and its gap variant:
+
+- Latest loaded January 21 20:00–February 7 12:00 UTC, exactly 400 source slots.
+  Enter on January 15 03:00 loaded that exact opening through February 4 23:00,
+  exactly 500 slots, without changing the observation range.
+- February 7 12:00 (exclusive end) and a 03:01 misaligned opening were rejected.
+  First remained usable with an invalid draft and retained 4h display. The last
+  valid February 7 11:00 opening produced a one-candle page; Home inspection
+  showed that exact opening.
+- The gap source jump to January 2 00:00 loaded 499 recorded candles with the
+  direct missing-requested-opening explanation. No later candle was implicitly
+  selected or fabricated.
+- A saved January 26–27 revision-2 note retained its unsaved text, exact dates,
+  revision and 4h display through a January 15 jump, Return to observation start
+  and ordinary Lab/Market returns. The temporary text edit was explicitly
+  discarded without saving. Returning from a linked test to historical revision
+  1 and then navigating Latest retained locked notes.
+- Controls wrapped and remained reachable at both widths with no horizontal
+  overflow. At 1180 pixels, the content client/scroll widths both measured 1165
+  pixels. Tab moved from the UTC input to Go, Shift+Tab returned, and Enter kept
+  focus in the input. No Save, Review or Start action was initiated.
+
+Controlled read failure/retry, races and persisted exposure counts remain
+component evidence; the production browser pass did not inject a transport
+fault or recount database writes. Current Windows/native, live-feed/reconnect
+and owner-led unaided acceptance remain separate.
+
 ## Natural Lab catalog scrolling — 2026-10-10
 
 Desktop Lab now uses the existing outer content region as one scroll surface.

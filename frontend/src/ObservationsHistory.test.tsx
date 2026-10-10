@@ -16,7 +16,7 @@ function setup(history:(params:any)=>any){
  vi.mocked(api).mockImplementation(async(command,p:any)=>{
   if(command==='observation_history')return history(p);
   if(command==='observation_get')return note;
-  if(command==='local_history_window')return page;
+  if(command==='local_history_window')return {...page,start:p.start,end:p.end};
   if(command==='observation_save')return {...note,revision:2,latest_revision:2,hypothesis:p.hypothesis,falsification:p.falsification};
   throw Error(`Unexpected command: ${command}`);
  });
