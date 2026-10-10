@@ -1,5 +1,10 @@
 # Implementation status
 
+For the current branch, navigation, portable launch routes and prioritized UX
+continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
+dated evidence: later checks supersede only the corresponding earlier pending
+gates, not unrelated platform or owner acceptance.
+
 ## Final bounded MVP verification — 2026-10-10
 
 The final tested code was local commit `1da24d8`, published as `bc10a4c` with

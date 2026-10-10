@@ -1,12 +1,13 @@
 # Trading Terminal
 
-A local Windows desktop application for strategy research. Start with reviewed strategy cards, prepare reusable Bybit history, and compare backtests across timeframes. Pro retains visual editing, explicitly trusted native Python, public monitoring and virtual paper trading. See the [Research workflow](docs/RESEARCH.md).
+A local strategy research application with a retained Windows desktop route and a Linux/browser research candidate. Market supports chart-led observation; Lab supports reviewed strategy cards, reusable Bybit history and saved comparisons. Advanced editing and platform-supported monitoring/paper tools remain available. See the [current checkpoint](docs/CHECKPOINT.md) and [Research workflow](docs/RESEARCH.md).
 
-**Current branch: Trading Terminal 0.6-dev, Research workspace extension.** It starts
+**Current branch: `codex/terminal-mvp`, Trading Terminal 0.6-dev.** It starts
 from the merged 0.6 implementation and retains NautilusTrader 1.231.0. Research
 opens with seven reviewed templates, multi-timeframe comparisons and immutable
 history reuse. Explicit coarse spot execution avoids requiring M1 data for every
-closed-bar study. Pro preserves detailed execution and existing advanced tools.
+closed-bar study. Strategy editor and More tools preserve detailed execution
+and advanced research.
 This remains a development build; owner acceptance of this extension is pending.
 No real exchange orders or exchange trading credentials are supported.
 See [verified status](docs/STATUS.md) and [execution assumptions](docs/adr/0025-research-resolution.md).
@@ -53,9 +54,9 @@ This branch adds a Linux x86_64 source-checkout path while retaining Windows.
 See [Linux setup](docs/DEVELOPMENT.md#linux-source-checkout-research-preview) and
 [exact validation status](docs/STATUS.md). The original native build and IPC
 checks passed, but the actual native window was blocked by a missing system
-WebKitGTK helper. After VM replacement, the changes were reconstructed and must
-be validated independently; historical results do not prove recovered code.
-Windows regression also remains unrun on this adaptation.
+WebKitGTK helper. After reconstruction, independent Linux/backend and
+production-browser checks passed as recorded in the current status. This does not establish a working
+native Linux window or current Windows regression acceptance.
 
 Linux native Python execution, Windows/sound notifications and protected
 Telegram storage are explicitly unavailable. No plaintext credential fallback,
@@ -77,7 +78,7 @@ Live trading, exchange credentials, optimization beyond bounded explicit grids, 
 
 - [PROJECT.md](PROJECT.md): authoritative product specification and deferred scope.
 - [Architecture](docs/ARCHITECTURE.md) and [engine evaluation](docs/ENGINE_SELECTION.md).
-- [Implementation status](docs/STATUS.md) and [development guidance](docs/DEVELOPMENT.md).
+- [Current checkpoint and UX continuation](docs/CHECKPOINT.md), [implementation status](docs/STATUS.md) and [development guidance](docs/DEVELOPMENT.md).
 - [0.5 market/position demonstration](docs/DEMO_05.md), [retained 0.4 Live Terminal demonstration](docs/DEMO_04.md) and [0.3 live/paper demonstration](docs/DEMO_03.md).
 - [0.2 demonstration and owner acceptance](docs/DEMO_V2.md), and [retained 0.1 demonstration](docs/DEMO.md).
 

@@ -1,9 +1,24 @@
 # Strategy testing workspace
 
-Use **Strategy library** to test supplied strategies, **Market data** to prepare
-or update history, and **Saved tests** to reopen comparisons. **Strategy editor**
-is for creating or customizing strategies. Custom backtests, parameter
-experiments and live/replay tools remain under **More tools**.
+**Market** and **Lab** are the two primary journeys. **Data** prepares or updates
+history; **Saved tests** reopens comparisons. **Strategy editor** creates or
+customizes strategies. **More tools** contains Custom backtest and Parameter
+experiments; live/paper/replay controls belong to Market. See the
+[current checkpoint](CHECKPOINT.md) for evidence and remaining acceptance.
+
+## Manual observation and explicit test
+
+In Market, choose **Saved history · local**, or use **Observe this history**
+from Data. Open a prepared local chart, select a period and save a hypothesis
+with an optional falsification condition. Saving does not start a test.
+**Test observation** opens Lab setup with the exact source, period and note
+revision. Select compatible strategies and settings, then explicitly Review and
+Start. Insufficient preceding warmup blocks Review rather than moving the dates.
+Reopen a linked saved test and return to its original observation revision; later
+note edits do not rewrite that link or the result. This route uses local candles,
+not a claim of verified current live-feed behavior.
+
+## Catalog testing, filtering and comparison
 
 1. On a card, choose its timeframe and any **Compare also** timeframes. Click
    **Test this strategy** to open its backtest setup dialog. Changing a timeframe
