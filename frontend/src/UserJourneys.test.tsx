@@ -20,7 +20,7 @@ it('guides first-time testing through history, exact timeframe review, navigatio
  vi.mocked(api).mockImplementation(async(command,p:any)=>{
   if(command==='library_catalog')return [entry];
   if(command==='list_datasets')return prepared?[data]:[];
-  if(command==='library_batches')return [];
+  if(command==='library_batch_history')return {rows:[],next:null};
   if(command==='run_history')return {rows:[],next:null};
   if(command.startsWith('list_'))return [];
   if(command==='history_prepare')return {status:'running'};
@@ -74,7 +74,7 @@ it('reopens saved gains, losses and no-trade results without setup or execution'
  ]};
  vi.mocked(api).mockImplementation(async(command)=>{
   if(command==='library_catalog')return [entry];
-  if(command==='library_batches')return [{id:'saved',status:'completed',created_at:'Saved fixture'}];
+  if(command==='library_batch_history')return {rows:[{id:'saved',status:'completed',created_at:'Saved fixture'}],next:null};
   if(command==='library_batch_status')return report;
   if(command==='run_history')return {rows:[],next:null};
   if(command.startsWith('list_'))return [];
@@ -101,9 +101,10 @@ it('reopens saved gains, losses and no-trade results without setup or execution'
 it('customizes an independent draft and preserves the card selection when returning',async()=>{
  vi.mocked(api).mockImplementation(async(command)=>{
   if(command==='library_catalog')return [entry,{...entry,id:'second',name:'Second idea'}];
+  if(command==='library_batch_history')return {rows:[],next:null};
   if(command==='library_batches'||command.startsWith('list_'))return [];
   if(command==='run_history')return {rows:[],next:null};
-  if(command==='library_copy')return {strategy_id:'independent'};
+  if(command==='library_copy'||command==='save_graph')return {strategy_id:'independent'};
   if(command==='get_strategy')return {name:'Independent draft',kind:'graph',document:{graph:exampleGraph(),layout:{}}};
   throw Error(`Unexpected execution: ${command}`);
  });
@@ -115,10 +116,60 @@ it('customizes an independent draft and preserves the card selection when return
  expect((within(first).getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
  fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
  fireEvent.click(within(first).getByRole('button',{name:'Customize strategy'}));
+ expect(screen.getByRole('dialog',{name:'Choose copy settings'})).toBeTruthy();
+ expect(screen.getByText('Source / execution resolution')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Use Lab test settings'}));
  await screen.findByText('Graph workspace');
  expect((screen.getByLabelText('Strategy name') as HTMLInputElement).value).toBe('Independent draft');
  fireEvent.click(screen.getByRole('button',{name:'Lab'}));
  expect((screen.getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
  expect(api).toHaveBeenCalledWith('get_strategy',{strategy_id:'independent'});
+ expect(api).toHaveBeenCalledWith('library_copy',expect.objectContaining({profile:expect.objectContaining({execution_minutes:60,sizing:'percent',allocation:'95',slippage:'0.0005'})}));
  expect(vi.mocked(api).mock.calls.some(([c])=>['trust_native','start_run','library_batch_start'].includes(c))).toBe(false);
+});
+
+it('uses Data from the custom backtest without replacing the Lab selection',async()=>{
+ const minuteData={...data,id:'minute',interval_seconds:60};
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?[entry]:command==='list_datasets'?[minuteData]:command==='run_history'?{rows:[],next:null}:command==='library_batch_history'?{rows:[],next:null}:command==='library_batches'||command.startsWith('list_')?[]:{});
+ render(<App/>);await screen.findByRole('button',{name:'Test this strategy'});
+ fireEvent.click(screen.getByLabelText('Include Test trend'));
+ fireEvent.click(screen.getByRole('button',{name:'Custom backtest'}));
+ fireEvent.click(screen.getByRole('button',{name:'Data'}));
+ expect(screen.getByRole('button',{name:'Back to custom backtest'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Use this history'}));
+ expect((screen.getByLabelText('Prepared dataset') as HTMLSelectElement).value).toBe('minute');
+ fireEvent.click(screen.getByRole('button',{name:'Lab'}));
+ expect((screen.getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
+ expect(vi.mocked(api).mock.calls.some(([c])=>/start|prepare|preview/.test(c))).toBe(false);
+});
+
+it('can cancel copy settings or explicitly keep the editor profile',async()=>{
+ vi.mocked(api).mockImplementation(async(command)=>{
+  if(command==='library_catalog')return [entry];
+  if(command==='library_batch_history')return {rows:[],next:null};
+  if(command==='library_batches'||command.startsWith('list_'))return [];
+  if(command==='run_history')return {rows:[],next:null};
+  if(command==='library_copy'||command==='save_graph')return {strategy_id:'copy'};
+  if(command==='get_strategy')return {name:'Copy',kind:'graph',profile:{...defaultProfile,capital:'123'},document:{graph:exampleGraph(),layout:{}}};
+  return {};
+ });
+ render(<App/>);fireEvent.click(await screen.findByRole('button',{name:'Customize strategy'}));
+ fireEvent.click(screen.getByRole('button',{name:'Cancel copy'}));
+ expect(api).not.toHaveBeenCalledWith('library_copy',expect.anything());
+ fireEvent.click(screen.getByRole('button',{name:'Customize strategy'}));fireEvent.click(screen.getByRole('button',{name:'Keep current editor settings'}));
+ await screen.findByText('Graph workspace');
+ expect(api).toHaveBeenCalledWith('library_copy',expect.objectContaining({profile:expect.objectContaining({capital:'1000',sizing:'fixed',allocation:'100',slippage:'0',primary_minutes:1440})}));
+ expect(vi.mocked(api).mock.calls.some(([c])=>/start|trust/.test(c))).toBe(false);
+});
+
+it('opens ordinary Lab setup from Saved tests Data without inventing a later-period candidate',async()=>{
+ vi.mocked(api).mockImplementation(async command=>command==='library_catalog'?[entry]:command==='list_datasets'?[data]:['run_history','library_batch_history'].includes(command)?{rows:[],next:null}:command.startsWith('list_')?[]:{});
+ render(<App/>);await screen.findByRole('button',{name:'Test this strategy'});
+ fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));fireEvent.click(screen.getByRole('button',{name:'Data'}));
+ expect(screen.getByRole('button',{name:'Back to saved tests'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Use this history'}));
+ expect(await screen.findByRole('dialog',{name:'Set up backtest'})).toBeTruthy();
+ expect((screen.getByLabelText('Batch dataset') as HTMLSelectElement).value).toBe('hourly');
+ expect(screen.queryByRole('region',{name:'Later-period setup'})).toBeNull();
+ expect(vi.mocked(api).mock.calls.some(([command])=>command==='library_validation_freeze')).toBe(false);
 });

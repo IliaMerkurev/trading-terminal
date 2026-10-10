@@ -6,13 +6,13 @@ import { api } from './api';
 import {invoke} from '@tauri-apps/api/core';
 const windowMock=vi.hoisted(()=>({close:null as null|((event:{preventDefault:()=>void})=>void)}));
 vi.mock('./GraphEditor',()=>({default:()=> <div>Graph workspace</div>}));
-vi.mock('./api',()=>({isDesktop:()=>true,transportCapabilities:()=>({mode:'desktop',localService:true,nativeWindow:true,openExportsFolder:true,downloadArchives:false,stopService:false}),productVersion:async()=>(await import('@tauri-apps/api/app')).getVersion(),downloadArchive:vi.fn(),api:vi.fn(async(command:string)=>command==='run_history'?{rows:[],next:null}:command.startsWith('list_')?[]:{strategy_id:'saved'})}));
+vi.mock('./api',()=>({isDesktop:()=>true,transportCapabilities:()=>({mode:'desktop',localService:true,nativeWindow:true,openExportsFolder:true,downloadArchives:false,stopService:false}),productVersion:async()=>(await import('@tauri-apps/api/app')).getVersion(),downloadArchive:vi.fn(),api:vi.fn(async(command:string)=>command==='run_history'||command==='library_batch_history'?{rows:[],next:null}:command.startsWith('list_')?[]:{strategy_id:'saved'})}));
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async(fn:any)=>{windowMock.close=fn;return ()=>{windowMock.close=null;};}})}));
 vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn(async()=>{})}));
 vi.mock('@tauri-apps/api/app',()=>({getVersion:vi.fn(async()=>'0.3.0-dev')}));
 describe('research workspace',()=>{
   it('opens the library first and preserves independent editor drafts and test capital',async()=>{
-    vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'?{rows:[],next:null}:[]);
+    vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'||command==='library_batch_history'?{rows:[],next:null}:[]);
     render(<App/>);
     expect(await screen.findByText('Strategy lab')).toBeTruthy();
     expect(screen.queryByText('Graph workspace')).toBeNull();
@@ -150,6 +150,7 @@ it('does not let a delayed previous run replace the current trade table',async()
  vi.mocked(api).mockImplementation(async(command:string,p:any)=>{
   if(command==='run_history')return {rows,next:null};
   if(command==='result_page')return new Promise(resolve=>{pending[p.run_id]=resolve;});
+  if(command==='library_batch_history')return {rows:[],next:null};
   if(command.startsWith('list_')||command==='library_catalog'||command==='library_batches')return [];
   throw Error('Unneeded report detail in this fixture');
  });
@@ -169,6 +170,7 @@ it('suspends setup for the active-work exit prompt and restores inputs on return
   if(command==='library_catalog')return [{id:'trend',version:1,name:'Test trend',family:'trend',markets:['spot'],directions:['long'],local_default_minutes:1440,timeframes:[60,1440],parameters:{}}];
   if(command==='replay_status')return {id:'replay',status:'running'};
   if(command==='run_history')return {rows:[],next:null};
+  if(command==='library_batch_history')return {rows:[],next:null};
   if(command.startsWith('list_')||command==='library_batches')return [];
   return {};
  });
@@ -210,6 +212,7 @@ it('round trips Market and Lab without resetting view state or changing the test
  vi.mocked(api).mockImplementation(async(command:string)=>{
   if(command==='run_history')return {rows:[],next:null};
   if(command==='live_status')return {active:false,market:{active:true,market:'spot',symbol:'BTCUSDT',fresh:false},terminal_state:'RECONNECTING'};
+  if(command==='library_batch_history')return {rows:[],next:null};
   if(command==='library_catalog'||command.startsWith('list_')||command==='library_batches')return [];
   return {};
  });

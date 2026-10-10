@@ -17,6 +17,7 @@ vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:vi.fn()}));
 vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn()}));
 const base=async(command:string):Promise<any>=>{
   if(command==='run_history')return {rows:[],next:null};
+  if(command==='library_batch_history')return {rows:[],next:null};
   if(command.startsWith('list_')||command==='library_batches')return [];
   if(command==='download_status')return {status:'idle'};
   if(command==='platform_capabilities')return {platform:'linux',native_execution:{available:false,reason:'Unavailable on Linux'}};

@@ -380,17 +380,24 @@ def run_manifest(strategy,profile,dataset):
 
 def metadata_profile_fields(manifest):
     """Explicit current-metadata assumptions; never claim historical precision."""
-    item=manifest["metadata"]["instrument"]
-    lot=item["lotSizeFilter"]
-    fields={"market":manifest["market"],"symbol":manifest["symbol"],"tick_size":item["priceFilter"]["tickSize"],
-            "min_quantity":lot["minOrderQty"],"tier_assumption":"Current exchange metadata projected over the historical run; historical changes are unknown"}
-    if manifest["market"]=="linear":
-        fields.update(quantity_step=lot["qtyStep"],min_notional=lot["minNotionalValue"],max_quantity=lot["maxMktOrderQty"])
-        tiers=manifest["metadata"]["current_risk_tiers"]
-        tier=next((t for t in tiers if int(t["isLowestRisk"])==1),None)
-        if tier is None: raise DataError("No lowest risk tier in current metadata")
-        fields.update(maintenance_rate=str(tier["maintenanceMargin"]),max_notional=str(tier["riskLimitValue"]))
-    else:
-        fields.update(quantity_step=lot["basePrecision"],min_notional=lot["minOrderAmt"],
-                      max_quantity=lot.get("maxMarketOrderQty",lot["maxOrderQty"]),max_notional=lot["maxOrderAmt"])
-    return fields
+    try:
+        item=manifest["metadata"]["instrument"]
+        lot=item["lotSizeFilter"]
+        fields={"market":manifest["market"],"symbol":manifest["symbol"],"tick_size":item["priceFilter"]["tickSize"],
+                "min_quantity":lot["minOrderQty"],"tier_assumption":"Current exchange metadata projected over the historical run; historical changes are unknown"}
+        if manifest["market"]=="linear":
+            fields.update(quantity_step=lot["qtyStep"],min_notional=lot["minNotionalValue"],max_quantity=lot["maxMktOrderQty"])
+            tiers=manifest["metadata"]["current_risk_tiers"]
+            tier=next((t for t in tiers if int(t["isLowestRisk"])==1),None)
+            if tier is None: raise DataError("No lowest risk tier in current metadata")
+            fields.update(maintenance_rate=str(tier["maintenanceMargin"]),max_notional=str(tier["riskLimitValue"]))
+        else:
+            fields.update(quantity_step=lot["basePrecision"],min_notional=lot["minOrderAmt"],
+                          max_quantity=lot.get("maxMarketOrderQty",lot["maxOrderQty"]),max_notional=lot["maxOrderAmt"])
+        if manifest["metadata"].get("synthetic") is True:
+            fields["tier_assumption"] = ("Invented synthetic precision and size limits for offline testing; "
+                                         "not current or historical exchange metadata")
+        return fields
+    except (KeyError, TypeError) as exc:
+        raise DataError("Dataset instrument metadata is missing or incomplete; choose history with complete "
+                        "instrument metadata, or use the Strategy editor with reviewed manual execution settings") from exc

@@ -7,7 +7,7 @@ vi.mock('./api',()=>({api:vi.fn()}));
 const entry={id:'rsi-threshold',version:1,name:'RSI threshold reversion',family:'mean_reversion',kind:'Adapted',source_url:'https://example.org/source',license:'Apache-2.0',markets:['spot'],directions:['long'],source_default_minutes:1440,author_recommended_minutes:null,local_default_minutes:1440,timeframes:[1,60,1440],timeframe_evidence:'Daily is a source default.',adaptation:'Long only.',review:'Static review.',compatibility:'Closed bars.',verification:'Integration pending.',parameters:{period:{type:'integer',default:14,min:2,max:1000}}};
 
 it('opens a visible setup on every card click and returns keyboard focus without starting work',async()=>{
- vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?[entry]:command==='library_batches'?[]:{});
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?[entry]:command==='library_batch_history'?{rows:[],next:null}:{});
  render(<StrategyLibrary onCopy={vi.fn()} profile={defaultProfile}/>);
  const trigger=await screen.findByRole('button',{name:'Test this strategy'});
  expect(screen.getByRole('region',{name:'Current test context'})).toBeTruthy();
@@ -32,7 +32,7 @@ it('opens a visible setup on every card click and returns keyboard focus without
 });
 
 it('explains a selected timeframe that cannot use the source interval instead of leaving an inert test',async()=>{
- vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?[{...entry,timeframes:[60,240,360,1440]}]:command==='library_batches'?[]:{});
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?[{...entry,timeframes:[60,240,360,1440]}]:command==='library_batch_history'?{rows:[],next:null}:{});
  render(<StrategyLibrary onCopy={vi.fn()} profile={{...defaultProfile,execution_minutes:240}} onProfile={vi.fn()} datasets={[{id:'h4',market:'spot',symbol:'BTCUSDT',interval_seconds:14400,range:[0,172800],source:'Synthetic'}]}/>);
  fireEvent.change(await screen.findByLabelText(entry.name+' timeframe'),{target:{value:'360'}});
  fireEvent.click(screen.getByRole('button',{name:'Test this strategy'}));
@@ -68,7 +68,7 @@ it('shows copy errors without navigating or granting consent',async()=>{
 it('previews explicit timeframe variants from one selected card',async()=>{
  vi.mocked(api).mockImplementation(async(command)=>{
   if(command==='library_catalog')return [{...entry,timeframes:[60,240,1440]}];
-  if(command==='library_batches')return [];
+  if(command==='library_batch_history')return {rows:[],next:null};
   if(command==='library_warmup')return {start:86400,end:172800,available:true};
   if(command==='library_batch_preview')return {rows:[],modeled_minutes:0};
   return {};
@@ -86,7 +86,7 @@ it('previews explicit timeframe variants from one selected card',async()=>{
 
 it('batches every catalog card despite filters with shared settings and fixed per-strategy parameters',async()=>{
  const entries=Array.from({length:7},(_,i)=>({...entry,id:`idea-${i}`,name:`Idea ${i}`,timeframes:[60,240,1440]}));
- vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?entries:command==='library_batches'?[]:command==='library_warmup'?{start:86400,end:172800,available:true}:{});
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?entries:command==='library_batch_history'?{rows:[],next:null}:command==='library_warmup'?{start:86400,end:172800,available:true}:{});
  render(<StrategyLibrary onCopy={vi.fn()} profile={{...defaultProfile,execution_minutes:60}} datasets={[{id:'history',market:'spot',symbol:'BTCUSDT',interval_seconds:3600,range:[0,172800],source:'Synthetic'}]}/>);
  await screen.findByRole('article',{name:'Idea 0'});
  fireEvent.change(screen.getByLabelText('Idea 0 period'),{target:{value:'7'}});

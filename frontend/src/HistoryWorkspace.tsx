@@ -2,7 +2,7 @@ import {useState} from 'react';
 import type {Profile} from './model';
 import {dateOnly,dateTime,timeframe} from './research';
 
-export default function HistoryWorkspace({datasets,profile,status,onPrepare,onCancel,onUse,disabled}:{datasets:any[];profile:Profile;status:any;onPrepare:(p:any)=>void;onCancel:()=>void;onUse:(d:any)=>void;disabled:boolean}){
+export default function HistoryWorkspace({datasets,profile,status,onPrepare,onCancel,onUse,disabled,onBack,returnLabel}:{onBack?:()=>void;returnLabel?:string;datasets:any[];profile:Profile;status:any;onPrepare:(p:any)=>void;onCancel:()=>void;onUse:(d:any)=>void;disabled:boolean}){
  const [market,setMarket]=useState(profile.market),[symbol,setSymbol]=useState(profile.symbol),[minutes,setMinutes]=useState(Number(profile.execution_minutes??60));
  const [start,setStart]=useState(dateOnly(Math.floor(Date.now()/86400000)*86400-2*365*86400)),[end,setEnd]=useState(dateOnly(Math.floor(Date.now()/86400000)*86400));
  const complete=(d:any)=>d.coverage.trade.complete&&(d.market==='spot'||d.coverage.mark?.complete&&d.coverage.funding?.complete_against_current_interval);
@@ -12,7 +12,7 @@ export default function HistoryWorkspace({datasets,profile,status,onPrepare,onCa
  const rows=[...datasets].sort((a,b)=>b.range[1]-a.range[1]);
  return <section className="content history-workspace">
   <div className="studio-heading"><div><h1>Market data</h1><p>Prepare once. Reuse offline. Extend the range as new candles close.</p></div><span className="count-badge">{datasets.length} saved snapshots</span></div>
-  <div className="history-layout"><section className="history-form"><h2>Prepare history</h2>
+  {onBack&&<button onClick={onBack}>{returnLabel??'Back'}</button>}<div className="history-layout"><section className="history-form"><h2>Prepare history</h2>
    <label className="field">Market<select aria-label="History market" value={market} onChange={e=>{setMarket(e.target.value);if(e.target.value==='linear')setMinutes(1);}}><option value="spot">Spot</option><option value="linear">Perpetual</option></select></label>
    <label className="field">Instrument<input aria-label="History instrument" value={symbol} onChange={e=>setSymbol(e.target.value.toUpperCase())}/></label>
    <label className="field">Candle resolution<select aria-label="History resolution" value={minutes} onChange={e=>setMinutes(Number(e.target.value))}>{(market==='spot'?[60,240,1440,15,5,1]:[1]).map(m=><option key={m} value={m}>{timeframe(m)}{m===1?' · detailed execution':''}</option>)}</select></label>

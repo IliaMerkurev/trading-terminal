@@ -250,7 +250,18 @@ def native_window_document(document, start):
         raise ValueError('Native separate-window execution requires the reviewed library adapter') from exc
 
 
-def create_copy(store, **request):
+def create_copy(store, profile=None, **request):
     prepared = prepare(**request)
-    ident = store.save_strategy(prepared['name']+' copy',prepared['kind'],prepared['document'],None,profile=prepared['profile'])
+    chosen = prepared['profile']
+    if profile is not None:
+        if prepared['kind'] != 'graph':
+            raise ValueError('Native copies require their reviewed template profile')
+        if not isinstance(profile, dict):raise ValueError('Copy profile must be an object')
+        # Validate before persistence: a refused transfer must leave no default copy.
+        chosen = Profile(**{**profile, 'primary_minutes':prepared['profile']['primary_minutes'],
+                            'version':prepared['profile']['version']}).snapshot()
+        entry = next(e for e in catalog() if e['id']==request['entry_id'])
+        if chosen['market'] not in entry['markets']:
+            raise ValueError('Strategy does not support this market')
+    ident = store.save_strategy(prepared['name']+' copy',prepared['kind'],prepared['document'],None,profile=chosen)
     return {'strategy_id':ident,'contract':prepared['contract']}

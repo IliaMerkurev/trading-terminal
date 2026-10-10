@@ -12,7 +12,7 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  const onActive=vi.fn(),onReport=vi.fn(),onOpenRun=vi.fn();
  const report={id:'batch',status:'completed',active_id:null,snapshot:{inputs,rows:[{name:'RSI',kind:'graph',profile:defaultProfile,dataset:{id:'data'},selection:selections[0]}]},rows:[{ordinal:0,status:'completed',run_id:'saved',metrics:{net_pnl:'-2',period_return:'-.002',final_equity:'998',max_drawdown:'.01',completed_positions:0,win_rate:null,fees:'2',funding:'0',annualized_geometric_return:null}}]};
  vi.mocked(api).mockImplementation(async(command)=>{
-  if(command==='library_batches')return [{id:'batch',status:'completed',created_at:'2026-01-01'}];
+  if(command==='library_batch_history')return {rows:[{id:'batch',status:'completed',created_at:'2026-01-01'}],next:null};
   if(command==='library_batch_preview')return {contract_sha256:'frozen',modeled_minutes:100,rows:[{name:'RSI',kind:'graph',error:null}]};
   if(command==='library_batch_start')return {batch_id:'batch'};
   if(command==='library_batch_status')return report;
@@ -25,8 +25,9 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T00:10'}});
  await waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Review test'}));
- fireEvent.click(await screen.findByRole('button',{name:/Start \d+ tests/}));
+ const startButton=await screen.findByRole('button',{name:/Start \d+ tests/});fireEvent.click(startButton);fireEvent.click(startButton);
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_start',{...inputs,expected_contract:'frozen'}));
+ expect(vi.mocked(api).mock.calls.filter(([command])=>command==='library_batch_start')).toHaveLength(1);
  expect(await screen.findByText(/Matches current inputs/)).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Open report'}));expect(onOpenRun).toHaveBeenCalledWith('saved');
  expect(screen.getAllByText(/N\/A/).length).toBeGreaterThan(0);
@@ -44,7 +45,7 @@ it('normalizes detailed profile defaults without falsely changing saved contract
 it('later-period setup uses independent dates and only freezes the saved candidate',async()=>{
  const report={id:'saved',status:'completed',active_id:null,snapshot:{inputs,end:3600,rows:[{name:'Original candidate',kind:'graph',profile:defaultProfile,dataset:{id:'data'}}]},rows:[{ordinal:0,status:'completed',run_id:'original',metrics:{net_pnl:'4'}}]};
  vi.mocked(api).mockImplementation(async(command)=>{
-  if(command==='library_batches')return [{id:'saved',status:'completed',created_at:'Saved'}];
+  if(command==='library_batch_history')return {rows:[{id:'saved',status:'completed',created_at:'Saved'}],next:null};
   if(command==='library_batch_status')return report;
   if(command==='library_validation_freeze')return {batch_id:'later'};
   return {};
@@ -68,7 +69,7 @@ it('reserves warmup, waits for preparation, and accepts repeated history selecti
  let resolveWarmup!:(value:any)=>void;
  vi.mocked(api).mockImplementation(async(command:string)=>{
   if(command==='library_warmup')return new Promise(resolve=>{resolveWarmup=resolve;});
-  if(command==='library_batches')return [];
+  if(command==='library_batch_history')return {rows:[],next:null};
   return {};
  });
  const props={selections,datasets:[...datasets,{...datasets[0],id:'second'}],profile:defaultProfile,onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn(),preferredDataset:{id:'data',request:1}};
@@ -95,7 +96,7 @@ it('keeps failed rows visible and sorts only inside matching cohorts, with undef
 it('cancels active work and exposes pending-only resume without hiding failed rows',async()=>{
  let active=true;
  vi.mocked(api).mockImplementation(async(command)=>{
-  if(command==='library_batches')return [{id:'batch',status:'running',created_at:'2026-01-01'}];
+  if(command==='library_batch_history')return {rows:[{id:'batch',status:'running',created_at:'2026-01-01'}],next:null};
   if(command==='library_batch_status')return {id:'batch',status:active?'running':'cancelled',active_id:active?'batch':null,
    snapshot:{inputs,rows:[{kind:'graph',name:'Failed candidate',profile:defaultProfile,dataset:{id:'data'}}]},rows:[{ordinal:0,status:'pending',metrics:null}]};
   if(command==='library_batch_cancel'){active=false;return {};}
@@ -117,7 +118,7 @@ it('freezes a saved candidate separately and never ranks or attaches holdout met
  const base={id:'selection',status:'completed',active_id:null,snapshot:{inputs,start:600,end:3600,rows:[{name:'RSI',kind:'graph',profile:defaultProfile,dataset:{id:'data'}}]},rows:[{ordinal:0,status:'completed',run_id:'run',metrics:{net_pnl:'2'}}]};
  const frozen={...base,id:'holdout',status:'frozen',snapshot:{...base.snapshot,phase:'out_of_sample',start:7200,end:10800,validation:{selection_range:[600,3600],selection_attempted_variants:3,holdout_attempt:2,source_version_date:'2026-09-18',warning:'Repeated holdout is not independent evidence.'}},rows:[{ordinal:0,status:'pending',metrics:null}]};
  vi.mocked(api).mockImplementation(async(command,params:any)=>{
-  if(command==='library_batches')return [{id:'selection',status:'completed',created_at:'Selection'}];
+  if(command==='library_batch_history')return {rows:[{id:'selection',status:'completed',created_at:'Selection'}],next:null};
   if(command==='library_batch_status')return params.batch_id==='holdout'?frozen:base;
   if(command==='library_validation_freeze')return {batch_id:'holdout'};
   return {};
@@ -143,13 +144,13 @@ it('freezes a saved candidate separately and never ranks or attaches holdout met
 it('filters family/timeframe/review/state and sorts measured baseline deltas without converting failures to zero',()=>{
  const catalog=[{id:'a',family:'momentum',availability:'verified'},{id:'b',family:'trend',availability:'preview'}];
  const report={snapshot:{rows:[{kind:'graph',selection:{entry_id:'a'},profile:defaultProfile,dataset:{id:'same'}},{kind:'graph',selection:{entry_id:'b'},profile:defaultProfile,dataset:{id:'same'}},{kind:'benchmark',profile:defaultProfile,dataset:{id:'same'}}]},rows:[{ordinal:0,status:'completed',metrics:{period_return:.1}},{ordinal:1,status:'failed',metrics:null},{ordinal:2,status:'completed',metrics:{period_return:.2}}]};
- expect(filterLibraryRows(report,catalog,{family:'momentum',review:'verified',status:'completed',minutes:String(defaultProfile.primary_minutes)}).map(r=>r.ordinal)).toEqual([0]);
- expect(filterLibraryRows(report,catalog,{status:'failed'}).map(r=>r.ordinal)).toEqual([1]);
+ expect(filterLibraryRows(report,catalog,{family:'momentum',review:'verified',status:'completed',minutes:String(defaultProfile.primary_minutes)}).map(r=>r.ordinal)).toEqual([0,2]);
+ expect(filterLibraryRows(report,catalog,{status:'failed'}).map(r=>r.ordinal)).toEqual([1,2]);
  expect(sortedLibraryRows(report,'delta_hold').map(r=>r.ordinal)).toEqual([0,1,2]);
 });
 
 it('keeps a newly chosen resolution and reserves warmup on repeated history use',async()=>{
- vi.mocked(api).mockImplementation(async(command)=>command==='library_batches'?[]:command==='library_warmup'?{start:144000,end:288000,available:true}:{});
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_batch_history'?{rows:[],next:null}:command==='library_warmup'?{start:144000,end:288000,available:true}:{});
  const all=[{...datasets[0],id:'hour',interval_seconds:3600,range:[0,288000]},{...datasets[0],id:'four-hour',interval_seconds:14400,range:[0,288000]}];
  const props={selections:[{...selections[0],minutes:1440}],datasets:all,profile:{...defaultProfile,execution_minutes:60},onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn()};
  const {rerender}=render(<LibraryResearch {...props} preferredDataset={{id:'hour',request:1}}/>);
@@ -177,7 +178,7 @@ it.each([false,true])('suspends hidden completed batches but retains active poll
  vi.mocked(api).mockClear();
  let active=running;
  const report=()=>({id:'retained',status:active?'running':'completed',active_id:active?'retained':null,snapshot:{inputs,rows:[]},rows:[]});
- vi.mocked(api).mockImplementation(async(command)=>command==='library_batches'?[{id:'retained',status:'completed',created_at:'Retained'}]:command==='library_batch_status'?report():{});
+ vi.mocked(api).mockImplementation(async(command)=>command==='library_batch_history'?{rows:[{id:'retained',status:'completed',created_at:'Retained'}],next:null}:command==='library_batch_status'?report():{});
  const props={selections,datasets,profile:defaultProfile,onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn()};
  const {rerender}=render(<LibraryResearch {...props}/>);
  await screen.findByRole('option',{name:/Retained/});
@@ -196,4 +197,90 @@ it.each([false,true])('suspends hidden completed batches but retains active poll
   expect(calls()).toBe(completedCount);
  }else expect(calls()).toBe(hiddenCount);
  expect(vi.mocked(api).mock.calls.some(([command])=>/start|cancel|resume/.test(command))).toBe(false);
+});
+
+it('blocks review on missing metadata and early warmup instead of starting an invalid test',async()=>{
+ vi.mocked(api).mockImplementation(async(command)=>{
+  if(command==='library_batch_history')return {rows:[],next:null};
+  if(command==='dataset_profile')throw Error('Instrument metadata is missing. Prepare history again.');
+  if(command==='library_warmup')return {start:600,end:3600,available:true};
+  return {};
+ });
+ render(<LibraryResearch selections={selections} datasets={datasets} profile={defaultProfile} onProfile={vi.fn()} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'data'}});
+ await screen.findByText('Instrument metadata is missing. Prepare history again.');
+ fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T00:01'}});
+ expect(screen.getByText(/Not enough preceding warmup/)).toBeTruthy();
+ expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(true);
+ expect(api).not.toHaveBeenCalledWith('library_batch_preview',expect.anything());
+});
+
+it('returns prepared history to the later-period candidate without changing ordinary setup',async()=>{
+ const frozenInputs={...inputs,profile:defaultProfile};
+ const report={id:'saved',status:'completed',active_id:null,snapshot:{inputs:frozenInputs,end:3600,rows:[{name:'Candidate',kind:'graph',profile:defaultProfile,dataset:{id:'data'}}]},rows:[{ordinal:0,status:'completed',run_id:'run',metrics:{net_pnl:'1'}}]};
+ vi.mocked(api).mockImplementation(async command=>command==='library_batch_history'?{rows:[{id:'saved',status:'completed',created_at:'Saved'}],next:null}:command==='library_batch_status'?report:{});
+ const onHistory=vi.fn(),props={view:'saved' as const,selections,datasets:[...datasets,{...datasets[0],id:'later',range:[3600,10800]}],profile:defaultProfile,onHistory,onActive:vi.fn(),onReport:vi.fn(),onOpenRun:vi.fn()};
+ const {rerender}=render(<LibraryResearch {...props}/>);
+ await screen.findByRole('option',{name:/Saved/});fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'saved'}});
+ fireEvent.click(await screen.findByText('Verify on a later period',{selector:'summary'}));fireEvent.click(screen.getByRole('button',{name:'Set up later-period test'}));
+ fireEvent.click(screen.getByRole('button',{name:'Prepare more market data'}));expect(onHistory).toHaveBeenCalledWith('later',defaultProfile);
+ rerender(<LibraryResearch {...props} preferredDataset={{id:'later',request:1,target:'later'}}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Later-period history') as HTMLSelectElement).value).toBe('later'));
+ expect((screen.getByLabelText('Later evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-01T01:00');
+ expect(screen.queryByRole('dialog')).toBeNull();
+ expect(api).not.toHaveBeenCalledWith('library_validation_freeze',expect.anything());
+});
+
+it('loads an older comparison page and opens its frozen report without execution',async()=>{
+ const initial=Array.from({length:50},(_,i)=>({id:`new-${i}`,status:'completed',created_at:`2026-${i}`}));
+ const report={id:'old',status:'completed',active_id:null,snapshot:{inputs,rows:[]},rows:[]};
+ vi.mocked(api).mockImplementation(async(command,params:any)=>command==='library_batch_history'?(params.before?{rows:[{id:'old',status:'completed',created_at:'Older fixture'}],next:null}:{rows:initial,next:{id:'new-49',created_at:'2026-49'}}):command==='library_batch_status'?report:{});
+ render(<LibraryResearch view="saved" selections={selections} datasets={datasets} profile={defaultProfile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Load older comparisons'}));
+ await screen.findByRole('option',{name:/Older fixture/});
+ expect(api).toHaveBeenCalledWith('library_batch_history',{before:{id:'new-49',created_at:'2026-49'}});
+ fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'old'}});
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_status',{batch_id:'old'}));
+ expect(screen.queryByRole('button',{name:'Load older comparisons'})).toBeNull();
+ expect(vi.mocked(api).mock.calls.some(([c])=>/start|prepare|warmup|preview/.test(c))).toBe(false);
+});
+
+it('retains baseline deltas between strategy model 2 and passive model 1',()=>{
+ const report={snapshot:{rows:[{kind:'graph',profile:{...defaultProfile,version:2},dataset:{id:'same'}},{kind:'graph',profile:{...defaultProfile,version:2},dataset:{id:'same'}},{kind:'benchmark',profile:{...defaultProfile,version:1},dataset:{id:'same'}}]},rows:[{ordinal:0,metrics:{period_return:'.1'}},{ordinal:1,metrics:{period_return:'.2'}},{ordinal:2,metrics:{period_return:'.05'}}]};
+ // Passive model 1 is intentionally separate from graph model 2; both remain visible.
+ expect(sortedLibraryRows(report,'delta_hold').filter(r=>r.ordinal!==2).map(r=>r.ordinal)).toEqual([1,0]);
+});
+
+it('retains continuation when the byte-bound first history page has fewer than 50 rows',async()=>{
+ vi.mocked(api).mockImplementation(async(command,params:any)=>command==='library_batch_history'?{rows:params.before?[{id:'older',created_at:'2025-01-01',status:'completed'}]:[{id:'first',created_at:'2026-01-01',status:'completed'}],next:params.before?null:{id:'first',created_at:'2026-01-01'}}:{});
+ render(<LibraryResearch view="saved" selections={selections} datasets={datasets} profile={defaultProfile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Load older comparisons'}));
+ await screen.findByRole('option',{name:/2025-01-01/});
+ expect(api).toHaveBeenCalledWith('library_batch_history',{before:{id:'first',created_at:'2026-01-01'}});
+ expect(screen.queryByRole('button',{name:'Load older comparisons'})).toBeNull();
+});
+
+it('shows exact small declared costs in review and saved settings without changing the request',async()=>{
+ const profile={...defaultProfile,fee_rate:'0.00001',slippage:'0.00002',tier_assumption:'Invented synthetic limits; not exchange metadata'};
+ const report={id:'small-cost',status:'completed',active_id:null,snapshot:{inputs:{...inputs,profile},start:600,end:3600,rows:[]},rows:[]};
+ vi.mocked(api).mockImplementation(async(command)=>{
+  if(command==='library_batch_history')return {rows:[{id:'small-cost',created_at:'Small cost fixture',status:'completed'}],next:null};
+  if(command==='library_batch_status')return report;
+  if(command==='library_batch_preview')return {rows:[],modeled_minutes:1,contract_sha256:'fixture'};
+  return {};
+ });
+ render(<LibraryResearch selections={selections} datasets={datasets} profile={profile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ await screen.findByRole('option',{name:/Small cost fixture/});
+ fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'small-cost'}});
+ expect(await screen.findByText(/Source.*Fee 0.001% \(fraction 0.00001\).*Slippage 0.002% \(fraction 0.00002\)/)).toBeTruthy();
+ expect(screen.getByText(/Instrument assumptions: Invented synthetic limits/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'data'}});
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Review test'}));
+ const reviewed=await screen.findByRole('region',{name:'Reviewed test settings'});
+ expect(reviewed.textContent).toContain('Fee 0.001% (fraction 0.00001) per fill');
+ expect(reviewed.textContent).toContain('slippage 0.002% (fraction 0.00002)');
+ expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({profile:expect.objectContaining({fee_rate:'0.00001',slippage:'0.00002'})}));
 });

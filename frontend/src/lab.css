@@ -37,3 +37,5 @@
  .lab-context-history{flex-basis:100%}
  .lab-studio .studio-stats{display:flex}
 }
+
+.profile-transfer-options { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px; margin:16px 0; font-size:13px; overflow-wrap:anywhere; }

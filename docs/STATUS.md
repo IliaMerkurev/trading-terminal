@@ -1,5 +1,50 @@
 # Implementation status
 
+## Card-to-saved-test journey — 2026-10-10
+
+Lab setup now retains its origin when preparing data. Custom-backtest history
+returns to its editor route, while later-period preparation returns to the
+selected frozen candidate. Global Data navigation does not invent a later-period
+candidate. Wrong instruments, resolutions, dates, warmup and incomplete metadata
+have specific remedies; backend preflight remains authoritative.
+
+Graph customization explicitly chooses Lab or editor settings, exposes differing
+costs and assumptions, and discloses the graph's model-2 contract. Invalid
+transfers are rejected before any strategy is saved. Native copies retain their
+reviewed template settings and never grant trust or load Python. Missing metadata
+raises an actionable data error; explicitly synthetic metadata cannot claim
+current exchange precision.
+
+Review and saved settings show exact declared cost fractions, separate from
+rounded performance metrics. Synthetic instrument assumptions remain visible in
+saved comparison and individual report views. Saved-card empty states distinguish
+no selected comparison from absent rows in that comparison. Losses, zero-trade
+rows and unavailable metrics remain visible; passive rows survive candidate
+filters. Existing compatible-cohort sorting and passive calculation semantics
+are unchanged. Later-period guidance explicitly notes incomplete exposure records.
+
+Saved comparisons have fixed 50-row keyset pages with a bounded response budget,
+including continuation when the byte limit shortens a page. Reopening older work
+is read-only. The copy API extension and history endpoint do not change schemas,
+engine versions, dependencies, financial formulas or existing report bytes.
+
+Fresh focused verification passed 49 frontend tests in seven files and 32 backend
+tests covering atomic copy, native trust, metadata, fixture preparation, coarse
+execution and history pagination. Independent review found a small-cost display
+rounding issue; its correction passed 20 targeted tests across two files. These
+counts overlap and are not a full-suite total. Production TypeScript/build passed;
+the existing large-bundle advisory remains (about 757 kB JavaScript).
+
+A separate independently generated 4,032-hour BTCUSDT spot fixture executed the
+existing seven-template H4/D1 matrix: 12 graph variants and two passive alternatives
+completed; two native/spot variants remained explicitly unavailable. Model-2 graph
+and model-1 passive reports retained measurable deltas and losing outcomes.
+All 14 completed reports reopened after service restart, 42 immutable JSON files
+kept identical hashes, and SQLite integrity was ok. This is synthetic integration
+evidence, not market-performance or Windows-native acceptance. Actual browser
+acceptance of this journey and final combined regression remain pending.
+
+
 ## Conservative historical accounting gates — freshly verified 2026-10-10
 
 Historical linear runs with historical funding require complete trade coverage,

@@ -303,9 +303,32 @@ class LibraryBatchManager(ExperimentManager):
         result['active_id']=self.active['id'] if self.active else None
         return result
 
-    def recent(self):
+    def history_page(self, before=None):
+        """Read-only 50-row keyset page, including comparisons older than recent()."""
+        params=[];where=''
+        if before is not None:
+            if not isinstance(before,dict) or set(before)!={'created_at','id'}:
+                raise ValueError('Invalid comparison history cursor')
+            identifier(before['id'])
+            if not isinstance(before['created_at'],str) or len(before['created_at'])>64:
+                raise ValueError('Invalid comparison history timestamp')
+            datetime.fromisoformat(before['created_at'])
+            where='WHERE (created_at,id)<(?,?)'
+            params=[before['created_at'],before['id']]
         with self.store.connect() as db:
-            return [dict(r) for r in db.execute("SELECT id,created_at,status,error,coalesce(json_extract(snapshot,'$.phase'),'selection') AS phase FROM library_batches ORDER BY created_at DESC,id DESC LIMIT 50")]
+            rows=db.execute(f"SELECT id,created_at,status,error,coalesce(json_extract(snapshot,'$.phase'),'selection') AS phase FROM library_batches {where} ORDER BY created_at DESC,id DESC LIMIT 51",params).fetchall()
+        selected=[];size=0
+        for row in rows[:50]:
+            value=dict(row);size+=len(canonical(value))
+            if size>512*1024:
+                if not selected:raise ValueError('Individual comparison row exceeds IPC budget')
+                break
+            selected.append(value)
+        cursor={k:selected[-1][k] for k in ('created_at','id')} if len(rows)>len(selected) else None
+        return {'rows':selected,'next':cursor}
+
+    def recent(self):
+        return self.history_page()['rows']
 
     def equity(self, batch_id, ordinal):
         report=self.get(batch_id)
