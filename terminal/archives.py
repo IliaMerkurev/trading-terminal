@@ -160,6 +160,43 @@ def read_archive(raw):
     return project,documents
 
 
+def build_export(store,strategy,profile,run_ids,*,expected=None,progress=lambda phase:None):
+    validate_strategy(strategy);Profile(**profile)
+    if not isinstance(run_ids,list) or len(run_ids)>8 or len(set(run_ids))!=len(run_ids):raise ValueError('Choose up to eight different saved runs')
+    documents={}
+    progress('read_verify')
+    for run_id in run_ids:
+        run=store.get(run_id);snapshot=run['manifest']
+        if expected is not None and (run['status']!='completed' or run['result_hash']!=expected[run_id]['result_hash'] or snapshot['snapshot_sha256']!=expected[run_id]['snapshot_sha256']):raise ValueError('Selected saved run identity changed')
+        if expected is None:result=store.result(run_id)
+        else:
+            from terminal.archive_export import open_regular,identity
+            import os
+            path=store.directory(run_id)/'result.json'
+            if (store.root/'runs').is_symlink():raise ValueError('Saved result directory changed')
+            with open_regular(path) as stream:
+                before=identity(os.fstat(stream.fileno()));raw=stream.read()
+                if identity(os.fstat(stream.fileno()))!=before or identity(path.lstat())!=before:raise ValueError('Saved result changed during export')
+            if hashlib.sha256(raw).hexdigest()!=expected[run_id]['result_hash']:raise ValueError('Saved result checksum changed')
+            result=json.loads(raw)
+        documents[f'runs/{run_id}/snapshot.json']=snapshot
+        # Raw historical OHLCV and worker logs are deliberately not copied.
+        result={**result,'candles':[],'history_omitted':True}
+        documents[f'runs/{run_id}/result.json']=result
+    progress('encode_privacy')
+    project={'schema_version':1,'strategy':strategy,'profile':profile,'runs':run_ids,
+             'files':{name:digest(value) for name,value in documents.items()},'history_included':False}
+    documents['project.json']=project
+    if sum(len(canonical(value)) for value in documents.values())>MAX_EXPANDED:raise ValueError('Selected results exceed archive budget; export fewer runs')
+    for name,value in documents.items():privacy_check(value,name)
+    progress('compress_validate')
+    output=io.BytesIO()
+    with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
+        for name,value in documents.items():archive.writestr(name,canonical(value))
+    raw=output.getvalue();read_archive(raw)
+    return raw
+
+
 class ArchiveManager:
     def __init__(self,store,jobs=None):
         from terminal.archive_receipts import ArchiveReceipts
@@ -196,24 +233,8 @@ class ArchiveManager:
         except Exception:raise ValueError('Recent import inspection unavailable; saved outcomes are unknown. No changes were requested.') from None
 
     def export(self,strategy,profile,run_ids):
-        validate_strategy(strategy);Profile(**profile)
-        if not isinstance(run_ids,list) or len(run_ids)>8 or len(set(run_ids))!=len(run_ids):raise ValueError('Choose up to eight different saved runs')
-        documents={}
-        for run_id in run_ids:
-            snapshot=self.store.get(run_id)['manifest'];result=self.store.result(run_id)
-            documents[f'runs/{run_id}/snapshot.json']=snapshot
-            # Raw historical OHLCV and worker logs are deliberately not copied.
-            result={**result,'candles':[],'history_omitted':True}
-            documents[f'runs/{run_id}/result.json']=result
-        project={'schema_version':1,'strategy':strategy,'profile':profile,'runs':run_ids,
-                 'files':{name:digest(value) for name,value in documents.items()},'history_included':False}
-        documents['project.json']=project
-        if sum(len(canonical(value)) for value in documents.values())>MAX_EXPANDED:raise ValueError('Selected results exceed archive budget; export fewer runs')
-        for name,value in documents.items():privacy_check(value,name)
-        output=io.BytesIO()
-        with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
-            for name,value in documents.items():archive.writestr(name,canonical(value))
-        raw=output.getvalue();read_archive(raw)
+        """Synchronous internal compatibility helper; not exposed by IPC."""
+        raw=build_export(self.store,strategy,profile,run_ids)
         export_id=uuid.uuid4().hex
         file=self.store.root/'exports'/f'{export_id}.ttproject.zip'
         write_new(file,raw)

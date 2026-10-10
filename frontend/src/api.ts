@@ -20,6 +20,11 @@ class LocalHttpError extends Error {}
 async function localFetch<T>(path: string, init: RequestInit, read: (response: Response) => Promise<T>, bootstrap = false): Promise<T> {
   const controller = new AbortController();
   let timeout: ReturnType<typeof setTimeout> | undefined;
+  let aborted: (()=>void) | undefined;
+  const cancelled = new Promise<never>((_resolve,reject)=>{
+    aborted=()=>{controller.abort();reject(new Error('Local request cancelled'));};
+    if(init.signal?.aborted)aborted();else init.signal?.addEventListener('abort',aborted,{once:true});
+  });
   const deadline = new Promise<never>((_resolve,reject) => {
     timeout = setTimeout(() => {controller.abort();reject(new Error('Local response timeout'));}, bootstrap ? 10000 : 60000);
   });
@@ -30,13 +35,13 @@ async function localFetch<T>(path: string, init: RequestInit, read: (response: R
       : `Local service request failed (HTTP ${response.status}).`);
     return read(response);
   };
-  try {return await Promise.race([exchange(),deadline]);}
+  try {return await Promise.race([exchange(),deadline,cancelled]);}
   catch (error) {
     if (error instanceof LocalHttpError) throw error;
     throw new Error(bootstrap
       ? 'Could not reach the local service. Start the browser launcher and use the address it prints.'
       : 'The local service response was lost or timed out. The request may have completed. Check current status and saved results before trying again.');
-  } finally {clearTimeout(timeout);}
+  } finally {clearTimeout(timeout);if(aborted)init.signal?.removeEventListener('abort',aborted);}
 }
 
 function browserSession(): Promise<BrowserSession> {
@@ -54,12 +59,12 @@ function browserSession(): Promise<BrowserSession> {
   return session;
 }
 
-async function browserPost<T = any>(path: string, body: unknown, read: (response: Response) => Promise<T> = response => response.json()): Promise<T> {
+async function browserPost<T = any>(path: string, body: unknown, read: (response: Response) => Promise<T> = response => response.json(), signal?:AbortSignal): Promise<T> {
   const {token} = await browserSession();
   // Never retry a POST: a disconnected response does not mean an action failed.
   return localFetch(path, {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Terminal-Session': token},
-    body: JSON.stringify(body), credentials: 'same-origin', mode: 'same-origin',
+    body: JSON.stringify(body), signal, credentials: 'same-origin', mode: 'same-origin',
     cache: 'no-store', redirect: 'error',
   }, read);
 }
@@ -81,21 +86,31 @@ export async function api<T = any>(command: string, params: Record<string, unkno
   return response.result as T;
 }
 
-export async function downloadArchive(filename: string): Promise<void> {
+export type ExportDescriptor = {export_id:string;filename:string;bytes:number;sha256:string;chunk_bytes:number;chunk_sha256:string[];history_included:false;note:string};
+const checksum = async (bytes:Uint8Array<ArrayBuffer>) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),value=>value.toString(16).padStart(2,'0')).join('');
+
+export async function downloadArchive(descriptor: ExportDescriptor, isCurrent:()=>boolean = ()=>true, progress:(bytes:number)=>void = ()=>{}, signal?:AbortSignal): Promise<void> {
   if (!transportCapabilities().downloadArchives) throw new Error('Archive downloads require browser mode.');
-  if (!filename || /[/\\\u0000-\u001f]/.test(filename) || !filename.endsWith('.zip')) {
-    throw new Error('Invalid archive filename.');
+  const d=descriptor,hash=/^[a-f0-9]{64}$/;
+  if (!d||!/^[a-f0-9]{32}$/.test(d.export_id)||d.filename!==`${d.export_id}.ttproject.zip`||!Number.isSafeInteger(d.bytes)||d.bytes<1||d.bytes>64*1024*1024||d.chunk_bytes!==256*1024||!hash.test(d.sha256)||!Array.isArray(d.chunk_sha256)||d.chunk_sha256.length!==Math.ceil(d.bytes/d.chunk_bytes)||d.chunk_sha256.some(value=>!hash.test(value))) {
+    throw new Error('Invalid archive descriptor.');
   }
-  const blob = await browserPost('/api/export', {filename}, response => response.blob());
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url; link.download = filename;
+  const check=()=>{if(signal?.aborted||!isCurrent())throw new Error('Archive download stopped. The completed export is retained.');};
+  check();const bytes=new Uint8Array(d.bytes);
+  for(let offset=0;offset<d.bytes;offset+=d.chunk_bytes){
+    // Sequential chunks yield the event loop and serialized service to other
+    // status/cancel/write requests. No automatic replay after a lost response.
+    if(offset)await new Promise(resolve=>setTimeout(resolve,0));
+    check();const size=Math.min(d.chunk_bytes,d.bytes-offset);
+    const part=new Uint8Array(await browserPost('/api/export/chunk',{export_id:d.export_id,filename:d.filename,offset,size},response=>response.arrayBuffer(),signal));
+    check();if(part.length!==size||await checksum(part)!==d.chunk_sha256[offset/d.chunk_bytes])throw new Error('Archive chunk checksum or length mismatch. No download was presented.');
+    check();bytes.set(part,offset);progress(offset+part.length);
+  }
+  if(await checksum(bytes)!==d.sha256)throw new Error('Archive final checksum mismatch. No download was presented.');
+  check();const blob=new Blob([bytes],{type:'application/zip'}),url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download=d.filename;
   document.body.appendChild(link);
-  try {link.click();} finally {
-    link.remove();
-    // Let the browser consume the download before releasing its blob URL.
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+  try{link.click();}finally{link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 }
 
 export async function stopLocalService(): Promise<void> {

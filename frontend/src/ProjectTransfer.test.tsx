@@ -30,15 +30,16 @@ it('transfers selected file bytes in exact bounded order and opens only the vali
 it('downloads exported archives in browser mode and keeps native folder opening unavailable',async()=>{
   vi.mocked(api).mockClear();
   vi.mocked(transportCapabilities).mockReturnValue({mode:'browser',localService:true,nativeWindow:false,openExportsFolder:false,downloadArchives:true,stopService:true});
-  vi.mocked(api).mockResolvedValue({filename:'research.zip',bytes:2048,note:'Saved report'});
+  const descriptor={filename:'research.zip',bytes:2048,note:'Saved report'};
+  vi.mocked(api).mockResolvedValue({export_id:'e'.repeat(32),status:'completed',phase:'terminal',descriptor,error:null});
   vi.mocked(downloadArchive).mockResolvedValue();
   render(<ProjectTransfer strategy={()=>({name:'Graph'})} profile={{}} runIds={['saved-run']} onImported={async()=>{}}/>);
   fireEvent.click(screen.getByText('Project archive'));
   expect(screen.queryByRole('button',{name:'Open local exports folder'})).toBeNull();
   expect((screen.getByLabelText('Import project archive') as HTMLInputElement).disabled).toBe(false);
   fireEvent.click(screen.getByRole('button',{name:'Export project archive'}));
-  await waitFor(()=>expect(downloadArchive).toHaveBeenCalledWith('research.zip'));
-  expect(api).toHaveBeenCalledWith('archive_export',{strategy:{name:'Graph'},profile:{},run_ids:['saved-run']});
+  await waitFor(()=>expect(downloadArchive).toHaveBeenCalledWith(descriptor,expect.any(Function),expect.any(Function),expect.any(AbortSignal)));
+  expect(api).toHaveBeenCalledWith('archive_export_start',{request_id:expect.stringMatching(/^[a-f0-9]{32}$/),strategy:{name:'Graph'},profile:{},run_ids:['saved-run']});
   expect(await screen.findByText(/research.zip · 2.0 KiB/)).toBeTruthy();
 });
 

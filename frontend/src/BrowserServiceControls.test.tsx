@@ -48,10 +48,10 @@ it('reports uncertain shutdown and does not retry it automatically',async()=>{
 });
 
 
-it('warns for an archive reservation discovered after reload without cancelling it',async()=>{
- vi.mocked(api).mockImplementation(async command=>command==='scheduler_status'?{reservation:'archive:operation'}:['list_runs','list_experiments','library_batches'].includes(command)?[]:{status:'idle'});
+it.each(['archive:','export:'])('warns for a %s reservation discovered after reload without cancelling it',async(prefix)=>{
+ vi.mocked(api).mockImplementation(async command=>command==='scheduler_status'?{reservation:prefix+'operation'}:['list_runs','list_experiments','library_batches'].includes(command)?[]:{status:'idle'});
  render(<BrowserServiceControls active={false} onStopped={()=>{}}/>);
  await waitFor(()=>expect(api).toHaveBeenCalledWith('scheduler_status'));
  expect(leave().defaultPrevented).toBe(true);expect(stopLocalService).not.toHaveBeenCalled();
- expect(vi.mocked(api).mock.calls.some(([command])=>command==='archive_import_cancel')).toBe(false);
+ expect(vi.mocked(api).mock.calls.some(([command])=>['archive_import_cancel','archive_export_cancel'].includes(command))).toBe(false);
 });

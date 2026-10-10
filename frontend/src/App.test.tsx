@@ -260,3 +260,21 @@ it('prompts for background import and targets its attempt before desktop exit',a
  const cancel=vi.mocked(api).mock.calls.findIndex(([c])=>c==='archive_import_cancel');
  expect(vi.mocked(api).mock.invocationCallOrder[cancel]).toBeLessThan(vi.mocked(invoke).mock.invocationCallOrder[0]);
 });
+
+it('prompts for background export and targets its identity before desktop exit',async()=>{
+ vi.mocked(invoke).mockClear();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async command=>{
+  if(command==='scheduler_status')return {reservation:'export:operation'};
+  if(command==='archive_import_status')return {execution:{attempt_key:'attempt'}};
+  if(command==='run_history'||command==='library_batch_history')return {rows:[],next:null};
+  if(command.startsWith('list_'))return [];
+  return {};
+ });
+ render(<App/>);await waitFor(()=>expect(windowMock.close).toBeTruthy());
+ windowMock.close!({preventDefault:vi.fn()});
+ fireEvent.click(await screen.findByText('Cancel run and exit'));
+ await waitFor(()=>expect(invoke).toHaveBeenCalledWith('close_application'));
+ expect(api).toHaveBeenCalledWith('archive_export_cancel',{export_id:'operation'});
+ const cancel=vi.mocked(api).mock.calls.findIndex(([c])=>c==='archive_export_cancel');
+ expect(vi.mocked(api).mock.invocationCallOrder[cancel]).toBeLessThan(vi.mocked(invoke).mock.invocationCallOrder[0]);
+});

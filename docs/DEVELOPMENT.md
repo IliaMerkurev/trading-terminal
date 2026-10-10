@@ -531,3 +531,26 @@ The scripts refuse existing output roots. Their results are engineering evidence
 not market history, financial research or a Windows performance promise. Preserve
 existing supported limits if measurements fail; report the measured blocker.
 Export/download, chart reads and local result-finalization work remain unfinished.
+
+
+## Background project export and bounded download
+
+Project archive exports use a managed background process. Inspect or cancel the
+exact operation from Project archive; cancellation is a request until the worker
+has stopped. Recent exports is launch-local. An uncertain start can be inspected
+or retried with its original frozen request identity without creating duplicates.
+Restart never resumes unfinished exports and revokes browser download grants,
+while completed local ZIPs remain in the exports folder.
+
+The browser fetches ordered 256-KiB chunks, verifies each hash and the final
+SHA-256/count before presenting a download. Stop archive download aborts the
+transfer and retains the completed export. A slow receiver may fail the bounded
+response and require an explicit download retry. Closing a tab does not cancel
+export; Stop local service cancels active work and retains saved results.
+
+Synthetic load tooling extends the existing archive fixture generator with
+`--mode export`; `scripts/measure_archive_export.py` measures actual authenticated
+HTTP status, cancellation, SQLite foreground writes and chunk transfer on a new
+isolated workspace. Its `--workspace` input must be a closed synthetic workspace
+and is copied before use. See [ADR 0036](adr/0036-background-project-export.md)
+and [STATUS](STATUS.md); direct HTTP RSS excludes browser/WebCrypto/Blob copies.

@@ -14,7 +14,7 @@ export default function BrowserServiceControls({active,onStopped}:{active:boolea
       api<any[]>('list_runs'),api('download_status'),api('replay_status',{replay_id:null}),
       api<any[]>('list_experiments'),api<any[]>('library_batches'),api('live_status'),api<any>('scheduler_status'),
     ]);
-    return Boolean(scheduler?.reservation?.startsWith('archive:'))||runs.some(hasActiveWork)||hasActiveWork(download)||hasActiveWork(replay)
+    return Boolean(scheduler?.reservation?.startsWith('archive:')||scheduler?.reservation?.startsWith('export:'))||runs.some(hasActiveWork)||hasActiveWork(download)||hasActiveWork(replay)
       ||experiments.some(hasActiveWork)||batches.some(hasActiveWork)||live?.active===true||live?.market?.active===true;
   },value=>{setBackground(value);setStatusError('');},()=>{
     setBackground(null);setStatusError('Service status is unavailable. Work may still be running; check the launcher.');
@@ -30,7 +30,7 @@ export default function BrowserServiceControls({active,onStopped}:{active:boolea
   },[]);
   async function stop(){
     if(stoppingRef.current)return;
-    if(!window.confirm('Stop the local service? This cancels active tests, archive imports, downloads and replays, and stops live monitoring. Saved results are retained.'))return;
+    if(!window.confirm('Stop the local service? This cancels active tests, archive imports and exports, downloads and replays, and stops live monitoring. Saved results are retained.'))return;
     stoppingRef.current=true;setStopping(true);setError('');
     try{await stopLocalService();onStopped();}
     catch{setError('Could not confirm shutdown. The service may have stopped; check the launcher before trying again.');}

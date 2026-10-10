@@ -94,20 +94,33 @@ describe('local service transports',()=>{
     expect(fetch.mock.calls.filter(([path])=>path==='/api/session')).toHaveLength(2);
   });
 
-  it('downloads authenticated archive bytes with a basename and releases the object URL',async()=>{
-    vi.useFakeTimers();
-    const blob=new Blob(['synthetic zip bytes'],{type:'application/zip'});
+  it('downloads authenticated verified chunks and releases the object URL',async()=>{
+    // @ts-expect-error Node builtin is used only by this Vitest test; app types exclude Node.
+    const {webcrypto}=await import('node:crypto');vi.stubGlobal('crypto',webcrypto);
+    const bytes=new TextEncoder().encode('synthetic zip bytes');
+    const hash=Array.from(new Uint8Array(await webcrypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('');
+    const descriptor={export_id:'a'.repeat(32),filename:'a'.repeat(32)+'.ttproject.zip',bytes:bytes.length,sha256:hash,chunk_bytes:262144,chunk_sha256:[hash],history_included:false as const,note:''};
     const fetch=vi.fn().mockResolvedValueOnce(json({token:'synthetic-session-value',product_version:'0.6.0-dev'}))
-      .mockResolvedValueOnce({ok:true,status:200,blob:async()=>blob});vi.stubGlobal('fetch',fetch);
+      .mockResolvedValueOnce({ok:true,status:200,arrayBuffer:async()=>bytes.buffer});vi.stubGlobal('fetch',fetch);
     const create=vi.fn(()=>'blob:synthetic-download'),revoke=vi.fn();
     vi.stubGlobal('URL',class extends URL{static createObjectURL=create;static revokeObjectURL=revoke;});
-    const click=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(function(this:HTMLAnchorElement){expect(this.download).toBe('report.zip');expect(this.href).toBe('blob:synthetic-download');});
+    const click=vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(function(this:HTMLAnchorElement){expect(this.download).toBe(descriptor.filename);});
     const {downloadArchive}=await import('./api');
-    await expect(downloadArchive('../report.zip')).rejects.toThrow('Invalid archive filename');expect(fetch).not.toHaveBeenCalled();
-    await downloadArchive('report.zip');
-    expect(fetch).toHaveBeenLastCalledWith('/api/export',expect.objectContaining({body:'{"filename":"report.zip"}',headers:expect.objectContaining({'X-Terminal-Session':'synthetic-session-value'})}));
-    expect(create).toHaveBeenCalledWith(blob);expect(click).toHaveBeenCalledOnce();expect(document.querySelector('a[download]')).toBeNull();
+    await expect(downloadArchive({...descriptor,filename:'../report.zip'})).rejects.toThrow('Invalid archive descriptor');expect(fetch).not.toHaveBeenCalled();
+    vi.useFakeTimers();await downloadArchive(descriptor);
+    expect(fetch).toHaveBeenLastCalledWith('/api/export/chunk',expect.objectContaining({body:JSON.stringify({export_id:descriptor.export_id,filename:descriptor.filename,offset:0,size:bytes.length}),headers:expect.objectContaining({'X-Terminal-Session':'synthetic-session-value'})}));
+    expect(create).toHaveBeenCalledOnce();expect(click).toHaveBeenCalledOnce();expect(document.querySelector('a[download]')).toBeNull();
     await vi.advanceTimersByTimeAsync(1000);expect(revoke).toHaveBeenCalledWith('blob:synthetic-download');
+  });
+
+  it.each(['length','chunk','final','obsolete'])('withholds Blob download after %s verification failure',async(kind)=>{
+    // @ts-expect-error Node builtin is used only by this Vitest test; app types exclude Node.
+    const {webcrypto}=await import('node:crypto');vi.stubGlobal('crypto',webcrypto);
+    const bytes=new Uint8Array([1,2,3]),hash=Array.from(new Uint8Array(await webcrypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join('');
+    const descriptor={export_id:'b'.repeat(32),filename:'b'.repeat(32)+'.ttproject.zip',bytes:3,sha256:kind==='final'?'f'.repeat(64):hash,chunk_bytes:262144,chunk_sha256:[kind==='chunk'?'f'.repeat(64):hash],history_included:false as const,note:''};
+    let current=true;const fetch=vi.fn().mockResolvedValueOnce(json({token:'synthetic-session-value',product_version:'0.6.0-dev'})).mockImplementationOnce(async()=>({ok:true,arrayBuffer:async()=>{if(kind==='obsolete')current=false;return kind==='length'?new Uint8Array([1,2]).buffer:bytes.buffer;}}));vi.stubGlobal('fetch',fetch);
+    const create=vi.fn();vi.stubGlobal('URL',class extends URL{static createObjectURL=create;});
+    await expect((await import('./api')).downloadArchive(descriptor,()=>current)).rejects.toThrow();expect(create).not.toHaveBeenCalled();
   });
 
   it('stops only through an authenticated POST and prevents further requests after success',async()=>{
@@ -117,4 +130,23 @@ describe('local service transports',()=>{
     expect(transportCapabilities().localService).toBe(false);
     await expect(api('list_runs')).rejects.toThrow('Local service stopped');expect(fetch).toHaveBeenCalledTimes(2);
   });
+});
+
+it('aborts a pending archive transfer instead of keeping reconstruction memory alive',async()=>{
+  const controller=new AbortController(),create=vi.fn();vi.stubGlobal('URL',class extends URL{static createObjectURL=create;});
+  let sent=false;vi.stubGlobal('fetch',vi.fn().mockResolvedValueOnce(json({token:'synthetic-session-value',product_version:'0.6.0-dev'})).mockImplementationOnce(async()=>{sent=true;return new Promise(()=>{});}));
+  const d={export_id:'a'.repeat(32),filename:'a'.repeat(32)+'.ttproject.zip',bytes:3,sha256:'a'.repeat(64),chunk_bytes:262144,chunk_sha256:['a'.repeat(64)],history_included:false as const,note:''};
+  const pending=(await import('./api')).downloadArchive(d,()=>true,()=>{},controller.signal);const rejected=expect(pending).rejects.toThrow();
+  while(!sent)await new Promise(resolve=>setTimeout(resolve,0));controller.abort();await rejected;expect(create).not.toHaveBeenCalled();
+});
+
+it('requests multiple chunks in order and validates the final joined checksum',async()=>{
+  // @ts-expect-error Node builtin is used only by this Vitest test; app types exclude Node.
+  const {webcrypto}=await import('node:crypto');vi.stubGlobal('crypto',webcrypto);
+  const bytes=new Uint8Array(262145);for(let i=0;i<bytes.length;i++)bytes[i]=i%251;
+  const sha=async(value:Uint8Array)=>Array.from(new Uint8Array(await webcrypto.subtle.digest('SHA-256',value)),v=>v.toString(16).padStart(2,'0')).join('');
+  const d={export_id:'c'.repeat(32),filename:'c'.repeat(32)+'.ttproject.zip',bytes:bytes.length,sha256:await sha(bytes),chunk_bytes:262144,chunk_sha256:[await sha(bytes.slice(0,262144)),await sha(bytes.slice(262144))],history_included:false as const,note:''};
+  const offsets:number[]=[];vi.stubGlobal('fetch',vi.fn(async(path,init)=>{if(path==='/api/session')return json({token:'synthetic-session-value',product_version:'0.6.0-dev'});const p=JSON.parse(init.body);offsets.push(p.offset);return {ok:true,arrayBuffer:async()=>bytes.slice(p.offset,p.offset+p.size).buffer};}));
+  const create=vi.fn(()=>'blob:verified');vi.stubGlobal('URL',class extends URL{static createObjectURL=create;static revokeObjectURL=vi.fn();});vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
+  await (await import('./api')).downloadArchive(d);expect(offsets).toEqual([0,262144]);expect(create).toHaveBeenCalledOnce();
 });

@@ -1,7 +1,8 @@
 import {useEffect,useRef,useState} from 'react';
 import {poll} from './poll';
 import {invoke} from '@tauri-apps/api/core';
-import {api,transportCapabilities,downloadArchive} from './api';
+import {api,transportCapabilities} from './api';
+import ProjectExport from './ProjectExport';
 import {ImportReceiptDetails,type ImportReceipt,type ImportPage,type ImportCursor} from './ImportReceipts';
 
 type Props={strategy:()=>any;profile:any;runIds:string[];onImported:(result:any,isCurrent:()=>boolean)=>Promise<void>;onOpenReport?:(id:string,isCurrent:()=>boolean)=>Promise<void>;onOpenStrategy?:(id:string,isCurrent:()=>boolean)=>Promise<void>};
@@ -35,7 +36,6 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported,onOp
   },[operation,phase,watch]);
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;generation.current++;listGeneration.current++;};},[]);
   const transport=transportCapabilities();
-  async function exportProject(){setBusy(true);setError('');try{const result=await api<any>('archive_export',{strategy:strategy(),profile,run_ids:runIds});if(transport.downloadArchives)await downloadArchive(result.filename);setMessage(`${result.filename} · ${(result.bytes/1024).toFixed(1)} KiB. ${result.note}`);}catch(e){setError(String(e));}finally{setBusy(false);}}
   async function inspect(id:string){
     const request=++generation.current;setWatch(request);autoOpen.current=null;setOperation(id);setReceipt(null);setInspectionError('');setOpeningError('');setOpening(false);setInspecting(true);
     try{const value=await api<ImportReceipt>('archive_import_status',{operation_id:id});if(request===generation.current){acceptReceipt(value);setPhase(value.execution&&value.execution.state!=='terminal'?'finalizing':'known');setError('');setMessage(value.inspection_state!=='available'?'Receipt metadata is inconsistent. Publication outcome remains unknown.':value.outcome?`Saved receipt confirms ${value.outcome}. Inspection did not retry the import.`:`Saved receipt is ${value.phase}. Finalization outcome is not yet recorded. Inspection did not retry the import.`);}}
@@ -124,7 +124,7 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported,onOp
   }
   return <details className="project-transfer"><summary>Project archive</summary>
     <p>Export the current strategy, simulation settings and {runIds.length} selected results. Raw market candles, worker logs and Python consent records are excluded. Native source is included; review it before sharing. Recognized credentials and personal paths block export.</p>
-    <button disabled={busy||!transport.localService} onClick={exportProject}>Export project archive</button>
+    <ProjectExport strategy={strategy} profile={profile} runIds={runIds} disabled={busy}/>
     {transport.openExportsFolder&&<button onClick={()=>invoke('open_exports').catch(e=>setError(String(e)))}>Open local exports folder</button>}
     <label className="field"><span>Import a project archive (does not execute Python)</span><input aria-label="Import project archive" type="file" accept=".zip" disabled={busy||opening||!transport.localService} onChange={e=>{const file=e.target.files?.[0];if(file)void importProject(file);e.target.value='';}}/></label>
     {operation&&<p className="import-identity">Current operation: {operation}</p>}

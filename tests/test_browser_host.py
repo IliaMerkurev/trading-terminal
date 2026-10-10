@@ -132,13 +132,20 @@ class BrowserHostTests(unittest.TestCase):
     def test_archive_export_import_and_reload_session(self):
         profile = Profile().snapshot()
         strategy = {'name':'Browser fixture','kind':'graph','document':{'graph':example_graph(),'layout':{}}}
-        result = self.call('archive_export',{'strategy':strategy,'profile':profile,'run_ids':[]})
+        import uuid
+        ident=uuid.uuid4().hex
+        result = self.call('archive_export_start',{'request_id':ident,'strategy':strategy,'profile':profile,'run_ids':[]})
         self.assertEqual(result['type'],'result',result)
-        name = result['result']['filename']
-        status, raw, headers = self.request('/api/export','POST',json.dumps({'filename':name}),self.headers)
-        self.assertEqual(status,200); self.assertEqual(headers['Content-Type'],'application/zip')
-        self.assertEqual(self.request('/api/export','POST',json.dumps({'filename':'../private'}),self.headers)[0],400)
-        self.assertEqual(self.request('/api/export','POST',json.dumps({'filename':'0'*32+'.ttproject.zip'}),self.headers)[0],404)
+        deadline=time.monotonic()+8
+        while self.server.service.exports.active and time.monotonic()<deadline:time.sleep(.02)
+        descriptor=self.call('archive_export_status',{'export_id':ident})['result']['descriptor']
+        name=descriptor['filename'];params={'export_id':ident,'filename':name,'offset':0,'size':descriptor['bytes']}
+        status,raw,headers=self.request('/api/export/chunk','POST',json.dumps(params),self.headers)
+        self.assertEqual(status,200);self.assertEqual(headers['Content-Type'],'application/octet-stream')
+        self.assertEqual(self.request('/api/export/chunk','POST',json.dumps({'filename':'../private'}),self.headers)[0],400)
+        self.assertEqual(self.request('/api/export/chunk','POST',json.dumps(params|{'filename':'0'*32+'.ttproject.zip'}),self.headers)[0],409)
+        for change,status in [({'X-Terminal-Session':'wrong'},401),({'Origin':'http://wrong.example'},403)]:
+            self.assertEqual(self.request('/api/export/chunk','POST',json.dumps(params),self.headers|change)[0],status)
         upload = self.call('archive_begin',{'size':len(raw)})['result']
         self.call('archive_append',{'upload_id':upload['upload_id'],'offset':0,'data':base64.b64encode(raw).decode()})
         imported = self.call('archive_finish',{'upload_id':upload['upload_id']})
@@ -147,7 +154,7 @@ class BrowserHostTests(unittest.TestCase):
         self.assertEqual(json.loads(session)['token'],self.headers['X-Terminal-Session'])
         self.assertEqual(len(self.call('list_strategies')['result']),1)
         (self.root/'data'/'exports'/name).write_bytes(b'changed')
-        self.assertEqual(self.request('/api/export','POST',json.dumps({'filename':name}),self.headers)[0],404)
+        self.assertEqual(self.request('/api/export/chunk','POST',json.dumps(params),self.headers)[0],409)
 
     def test_real_worker_cancel_and_shutdown_release(self):
         bars = [Candle(i*60,100,101,99,100,10) for i in range(120)]

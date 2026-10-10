@@ -6,6 +6,122 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Original-plan TT13: background export and bounded verified transfer — 2026-10-10
+
+Based on published `d350be914356be9e115ded113a509646c5d89919`, on
+`codex/terminal-mvp`; product remains `0.6.0-dev`, MIT licensed. Managed export
+start/status/cancel, frozen identity checks, cancellation/publication cutoff,
+launch-local grants, bounded authenticated chunks and final browser verification
+are implemented. Import receipts/attempt history are unchanged. See
+[ADR 0036](adr/0036-background-project-export.md).
+
+Measured blocking baseline on a separate copy of the existing near-expanded
+synthetic fixture: synchronous export **26.795 s**, queued scheduler **26.492 s**,
+stalled whole-ZIP receiver queued scheduler **4.826 s**. No financial work or
+market acquisition was performed for export acceptance.
+
+Verification on Linux x86_64 (kernel 6.18.44, glibc 2.41, AMD EPYC 9V74,
+9 visible logical CPUs), CPython 3.12.14, SQLite 3.53.1, PyArrow 25.0.1 and
+Node 24.19.0, using existing pinned project environments:
+
+- `.venv/bin/python -m unittest tests.test_archive_export tests.test_browser_host
+  tests.test_archive_async tests.test_archives tests.test_linux_lifecycle -q`
+  passed **59 tests** at the first combined checkpoint.
+- Subsequent narrow export fault/lifecycle checks passed **16 cases**, followed
+  by **2 cleanup/bootstrap cases** after the final independent-review correction.
+  These overlap the earlier suite; they are not additional unique-test counts.
+  Final exact-source `tests.test_archive_export tests.test_browser_host` passed
+  **23 tests** after that correction.
+  Coverage includes actual owner death and inherited-lock retention, immutable
+  request binding, source changes, zero/eight-run limits, publication faults,
+  terminal-outcome preservation across anchor cleanup retry, invalid chunks,
+  session/origin boundaries, actual lost start response and paused-supervisor
+  status/cancel/ordinary save_graph requests before barrier release.
+- `node node_modules/vitest/vitest.mjs run frontend/src/ProjectExport.test.tsx
+  frontend/src/ProjectTransfer.test.tsx frontend/src/api.test.ts
+  frontend/src/ImportRecovery.test.tsx frontend/src/BrowserServiceControls.test.tsx
+  frontend/src/App.test.tsx` passed **60 tests**. Later focused transport/export
+  checks passed **27 tests**; export/import close-warning checks passed **21**.
+  A final exact-source run of the six listed frontend files passed **64 tests**.
+  These overlapping checks cover lost responses, exact-request retry, stale/
+  unmounted results, invalid draft preparation, terminal cancellation notices,
+  read-only recent inspection, chunk/final checksum errors, ordered chunks and
+  aborting stopped transfer before any downloadable Blob is presented.
+- TypeScript `--noEmit` and `node scripts/frontend.mjs build` passed. The existing
+  large-bundle warning remains; no dependency or product-version change was made.
+- Independent read-only review findings were corrected, including Windows
+  handle/publication ordering, request-file bootstrap binding, exceptional
+  lifecycle cleanup, stale notices and an absolute chunk-write deadline.
+
+Supported-load commands, each on a new isolated synthetic destination:
+
+- Generate with `.venv/bin/python scripts/prepare_archive_load_fixture.py
+  <new-fixtures> --mode export`; measure with `.venv/bin/python
+  scripts/measure_archive_export.py <new-measurement> --archive
+  <new-fixtures>/export.ttproject.zip`.
+- Distinct near-expanded case: same measurement command with `--workspace
+  <closed-synthetic-import-workspace>`; the script copies it first. It does not
+  change the original source or ordinary user workspace.
+
+Predeclared request target **<=2 s** and ordinary cancellation quiescence
+**<=5 s** passed in both cases. The near-64-MiB ZIP had **65,439,089 bytes**,
+250 chunks and 568 semantic numeric indicator rows across eight runs. The
+near-expanded case re-exported **28,753,929 bytes**. The measured export windows
+(including the preceding small cancelled attempt) were **19.252 s / 33.282 s**;
+those heavy operations no longer held the service dispatcher. Loopback transfers
+were **0.301 s / 0.136 s**, excluding browser reconstruction/UI.
+
+Across both runs: maximum start **0.00463 s**, export status **0.01396 s**,
+ordinary foreground SQLite save_graph **0.00504 s**, cancel acknowledgement
+**0.00590 s**, verified chunk response **0.00274 s**. Cancellation quiescence
+was **0.0214 s / 0.0265 s**. An unread peer with deliberately small send/receive
+buffers delayed the status-plus-write probe **0.9044 s / 0.9040 s**. This is a
+forced backpressure test, not an organic browser/network measurement.
+
+Sampled parent + test client + descendant peak RSS was **1,122,586,624 /
+1,337,008,128 bytes**. Every transferred chunk and final file count/SHA matched;
+result hashes, normalized row counts and import receipts stayed unchanged;
+SQLite integrity was `ok`, foreign-key violations and native trust were zero.
+The final cleanup-only monitor correction was checked separately after these
+load passes; the measured bulk encoder/transfer paths did not change.
+
+Parent-led production-browser acceptance subsequently passed on exact source
+`3f287f700b71e595c17515b5a14defa89b30ca92` and its matching production bundle:
+
+- Selected both independently authored small fixture reports. A deliberately
+  paused supervisor left the UI usable; navigating to Lab and back recovered the
+  same running operation through Recent exports. Cancellation remained requested
+  until barrier release, then became terminal cancelled with no downloadable
+  output and an updated history row. This was a controlled lifecycle barrier,
+  not an organic slow-disk measurement.
+- An unpaused operation completed and automatically presented a verified **4,155
+  byte** browser download. Explicit repeat download produced identical bytes
+  from the same operation, without a new export. SHA-256:
+  `18449fbfd648c2a6c568d88a8488525832a340ffeecec3125676bad99beea077`.
+  Query-only verification matched both results and snapshots, validated exactly
+  five archive entries/privacy gates and preserved original artifact hashes.
+- Normal stop/restart preserved both saved reports and the completed local ZIP,
+  showed empty launch-local export history, and resumed no operation. The reopened
+  host was stopped normally.
+- On a new closed copy of the large synthetic fixture, selected all eight reports.
+  Actual browser reconstruction/final verification presented a **65,439,135-byte**
+  download, byte-for-byte identical to the generated local ZIP, SHA-256:
+  `d06036cecd2f5a849c4490cd5bceb12e7540c4285c12e2ce7eaa0b80dfd1f462`.
+  After normal shutdown, query-only reconciliation validated all 17 entries and
+  privacy gates, exact eight result/snapshot documents, 584 normalized rows,
+  unchanged import receipt and result hashes, zero native trust, SQLite integrity
+  `ok` and no foreign-key violations.
+
+Browser RSS/heap/Blob peak remains **unmeasured**, not zero: the bounded
+process-resource sampler could not observe Chrome roots through the available
+process namespaces, including the native-launched attempt, and produced no valid
+browser samples. Earlier Linux parent/client/worker RSS remains separate evidence.
+The actual near-limit browser download establishes behavior, not isolated browser
+memory attribution or a universal browser memory bound. Windows/native and live
+exchange work remain deferred. The separate original TT13 result-finalization and
+verified asynchronous chart-read obligations are still open. No full TT13,
+whole-plan or final owner product acceptance is claimed.
+
 ## Original-plan TT13: asynchronous recoverable import slice — 2026-10-10
 
 Source: implementation commit `fbecf0017c7d26dffb9c9ce37fd9f7196e0e98bf` on

@@ -13,6 +13,7 @@ import re
 import secrets
 import signal
 import threading
+import time
 import tomllib
 
 from terminal.data import canonical
@@ -42,7 +43,6 @@ class BrowserServer(HTTPServer):
         if '/index.html' not in self.assets:
             raise ValueError('Build the frontend before starting browser mode')
         self.token = secrets.token_urlsafe(32)
-        self.exports = {}
         self.closing = False
         self.service = None
         super().__init__(('127.0.0.1', port), BrowserHandler)
@@ -81,7 +81,7 @@ class BrowserHandler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass  # Never log headers, payloads, URLs or per-launch session material.
 
-    def reply(self, status, body=b'', content_type='application/json', filename=None):
+    def reply(self, status, body=b'', content_type='application/json', filename=None, deadline=None):
         self.send_response(status)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(len(body)))
@@ -93,7 +93,12 @@ class BrowserHandler(BaseHTTPRequestHandler):
         self.send_header('Connection', 'close')
         if filename:
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+        if deadline is not None:self.connection.settimeout(max(.001,deadline-time.monotonic()))
         self.end_headers()
+        if deadline is not None:
+            remaining=deadline-time.monotonic()
+            if remaining<=0:raise TimeoutError('Export response deadline')
+            self.connection.settimeout(remaining)
         self.wfile.write(body)
         self.close_connection = True
 
@@ -159,23 +164,18 @@ class BrowserHandler(BaseHTTPRequestHandler):
             self.failure(400, 'Invalid JSON request'); return
         if self.path == '/api/request':
             response = self.server.service.handle(value)
-            if isinstance(value, dict) and value.get('command') == 'archive_export' and response['type'] == 'result':
-                exported = response['result']
-                self.server.exports[exported['filename']] = (exported['bytes'], exported['sha256'])
             self.reply(200, canonical(response))
-        elif self.path == '/api/export':
-            if not isinstance(value, dict) or set(value) != {'filename'} or not isinstance(value['filename'], str) or not re.fullmatch(r'[a-f0-9]{32}\.ttproject\.zip', value['filename']):
-                self.failure(400, 'Invalid export descriptor'); return
-            name = value['filename']
-            grant = self.server.exports.get(name)
-            directory = self.server.service.store.root / 'exports'
-            path = directory / name
-            if grant is None or not path.is_file() or path.is_symlink() or path.resolve().parent != directory.resolve() or path.stat().st_size != grant[0]:
-                self.failure(404, 'Export is not available in this session'); return
-            raw = path.read_bytes()
-            if hashlib.sha256(raw).hexdigest() != grant[1]:
-                self.failure(409, 'Export changed after creation'); return
-            self.reply(200, raw, 'application/zip', filename=name)
+        elif self.path == '/api/export/chunk':
+            if not isinstance(value,dict) or set(value)!={'export_id','filename','offset','size'}:
+                self.failure(400,'Invalid bounded export descriptor');return
+            try:
+                raw=self.server.service.exports.chunk(**value)
+            except (ValueError,OSError,TypeError):
+                self.failure(409,'Export chunk unavailable or changed; inspect the completed export');return
+            # Keep the serialized mutation dispatcher. A stalled peer can delay
+            # the next request only for this bounded chunk's write deadline.
+            try:self.reply(200,raw,'application/octet-stream',deadline=time.monotonic()+1.0)
+            except (TimeoutError,ConnectionError,OSError):self.close_connection=True
         elif self.path == '/api/shutdown' and value == {}:
             self.reply(200, canonical({'stopping': True}))
             self.server.request_shutdown()

@@ -5,6 +5,28 @@ Updated 2026-10-10. Working branch: `codex/terminal-mvp`; product remains
 release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
 product specification; [STATUS.md](STATUS.md) owns detailed test evidence.
 
+## Current TT13 export checkpoint
+
+Managed background export and bounded authenticated download are implemented in
+[ADR 0036](adr/0036-background-project-export.md). Explicit request identities,
+frozen inputs, cancel/publication ordering, launch-local grants, 256-KiB verified
+chunks and browser final checksum retain the archive privacy/integrity limits.
+The near-64-MiB compressed and distinct near-128-MiB expanded synthetic cases
+passed the declared 2-second request and 5-second cancellation targets, including
+ordinary SQLite writes and a deliberately stalled receiver. See STATUS for exact
+commands, source scope, metrics and memory exclusions.
+
+Parent-led production-browser export acceptance passed on source `3f287f7`:
+two-report cancellation/restart/repeat-download checks and an actual eight-report
+**65,439,135-byte** verified browser download. Closed-workspace reconciliation
+preserved exact results/snapshots, normalized rows and import receipts. Browser
+RSS/heap/Blob peak remains unmeasured because Chrome process roots were not
+observable through the available process-resource interfaces; no zero-memory
+claim is made. Windows/native and live exchange work remain deferred. Import GUI
+acceptance below remains valid. Local result finalization and asynchronous
+verified chart reads still prevent full TT13 completion. No new financial
+calculation or source trust was introduced.
+
 ## Current TT13 import checkpoint
 
 The latest source implements the managed asynchronous import and explicit
@@ -24,9 +46,9 @@ production-browser import acceptance passed on corrected build `54152e8`, includ
 immediate continuation notice/history updates, same-ID completion and normal
 shutdown. Query-only post-close reconciliation preserved exact source/reservation
 identity, artifacts, normalized values and both attempt outcomes with zero trust.
-Publication remains the next handoff; see STATUS.md for the bounded GUI evidence.
+This import checkpoint was published before the export slice; see STATUS.md for the bounded GUI evidence.
 
-TT13 export/download, chart-integrity reads and local result finalization remain
+TT13 chart-integrity reads and local result finalization remain
 unfinished, as do the separate remaining bounded research requirements. Keep the
 accepted independent baseline and do not reopen TT10 accounting/contracts merely
 because this import slice changes storage/lifecycle code. Product stays

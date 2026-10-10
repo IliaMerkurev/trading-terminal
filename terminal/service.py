@@ -16,6 +16,8 @@ class AppService:
         self.datasets=DatasetStore(self.store.root/"datasets")
         self.downloads=DownloadManager(self.store.root)
         self.archives=ArchiveManager(self.store,self.jobs)
+        from terminal.archive_export import ExportManager
+        self.exports=ExportManager(self.jobs)
         from terminal.experiments import ExperimentManager
         self.experiments=ExperimentManager(self.jobs)
         from terminal.library_batches import LibraryBatchManager
@@ -42,7 +44,7 @@ class AppService:
                 "trust_native":{"document","expected_sha256","acknowledge_user_permissions"},
                 "dataset_profile":{"dataset_id"},"download_start":{"market","symbol","start","end"},
                 "download_status":set(),"download_cancel":set(),"chart_window":{"run_id","start","minutes"},"run_logs":{"run_id"},
-                "compare_runs":{"run_ids"},"archive_export":{"strategy","profile","run_ids"},"archive_begin":{"size"},
+                "compare_runs":{"run_ids"},"archive_export_start":{"request_id","strategy","profile","run_ids"},"archive_export_status":{"export_id"},"archive_export_cancel":{"export_id"},"archive_export_list":set(),"archive_begin":{"size"},
                 "archive_import_status":{"operation_id"},"archive_import_list":{"before","limit"},"archive_import_cancel":{"operation_id"},
                 "archive_append":{"upload_id","offset","data"},"archive_finish":{"upload_id"},"archive_cancel":set()}
             fields.update(archive_recovery_begin={'operation_id','size'},archive_recovery_finish={'upload_id'},archive_recovery_cancel={'upload_id'})
@@ -172,7 +174,10 @@ class AppService:
             elif command=="download_status": result=self.downloads.status()
             elif command=="download_cancel": result=self.downloads.cancel()
             elif command=="compare_runs": result=compare_runs(self.store,p['run_ids'])
-            elif command=="archive_export": result=self.archives.export(**p)
+            elif command=="archive_export_start": result=self.exports.start(**p)
+            elif command=="archive_export_status": result=self.exports.status(**p)
+            elif command=="archive_export_cancel": result=self.exports.cancel(**p)
+            elif command=="archive_export_list": result=self.exports.recent()
             elif command=="archive_begin": result=self.archives.begin(**p)
             elif command=="archive_append": result=self.archives.append(**p)
             elif command=='archive_recovery_begin':result=self.archives.recovery_begin(**p)
@@ -230,12 +235,13 @@ class AppService:
         attempt(self.experiments.close)
         # The calculation process is only one workspace owner. Defer unlocking
         # until live/history/download threads have also actually stopped.
+        attempt(self.exports.close)
         attempt(self.archives.close)
         attempt(lambda:self.jobs.close(release_workspace=False))
         attempt(self.downloads.close)
         threads=(self.live.thread,self.live.warmup_thread,self.live.hub.thread,self.live.chart_history.thread,
                  self.live.delivery_thread,self.downloads.thread)
-        if self.archives.worker.active or self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
+        if self.exports.active or self.archives.worker.active or self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
             errors.append(RuntimeError('Service shutdown is incomplete; workspace ownership is retained'))
         else:attempt(self.jobs.close)
         if errors:raise ExceptionGroup('Service shutdown cleanup failed',errors)
