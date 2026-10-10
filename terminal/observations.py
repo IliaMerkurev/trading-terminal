@@ -17,7 +17,7 @@ MAX_FOOTER_BYTES = 4 * 1024 * 1024
 MAX_ROWS = 2_000_000
 MAX_ROW_GROUPS = 8192
 SOURCE_LIMIT = 'Local history exceeds inspection limits (256 MiB file, 4 MiB footer, 2,000,000 rows, 8,192 row groups). Prepare a smaller separate snapshot; no range is changed automatically.'
-LIMITATION = 'Notes do not prove which candles were viewed. Chart/report viewing and external exposure remain unrecorded.'
+LIMITATION = 'Notes do not prove which candles were viewed. Displayed local surfaces are recorded separately; untracked views and external exposure remain incomplete.'
 
 
 def initialize(db):

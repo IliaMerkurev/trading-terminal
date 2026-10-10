@@ -1,8 +1,9 @@
+import {displayRecorder,observeChartDisplay} from './DisplayedEvidence';
 import {useEffect,useRef} from 'react';
 import {createChart,CandlestickSeries,ColorType,type UTCTimestamp} from 'lightweight-charts';
 
-// Deliberately has no service access. Only the bounded, verified local page is drawn.
-export default function ObservationChart({candles}:{candles:any[]}){
+// Only the bounded, verified local page is drawn; evidence follows visible candles.
+export default function ObservationChart({candles,reference,seconds,record}:{candles:any[];reference:any;seconds:number;record:ReturnType<typeof displayRecorder>}){
  const host=useRef<HTMLDivElement>(null);
  useEffect(()=>{
   if(!host.current)return;
@@ -10,7 +11,8 @@ export default function ObservationChart({candles}:{candles:any[]}){
   const series=chart.addSeries(CandlestickSeries);
   series.setData(candles.map(c=>({time:c.time as UTCTimestamp,open:c.open,high:c.high,low:c.low,close:c.close})));
   chart.timeScale().fitContent();
-  return()=>chart.remove();
- },[candles]);
+  const stop=observeChartDisplay(host.current,chart,candles,seconds,false,range=>record(reference,range));
+  return()=>{stop();chart.remove();};
+ },[candles,JSON.stringify(reference),seconds]);
  return <div ref={host} role="img" aria-label="Prepared local trade candles, opening times in UTC"/>;
 }

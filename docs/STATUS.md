@@ -1,5 +1,69 @@
 # Implementation status
 
+## Bounded displayed-period evidence — 2026-10-10
+
+The append-only registry now separates displayed ranges from admissions and
+freezes. It covers visible local Observation candles, selected Saved comparison
+numeric rows, and selected individual report metrics/candle panes. Metric views
+expose their full evaluation range; chart views intersect verified actual candle
+timestamps and preserve gaps. Original admission coverage and historical frozen
+reviews remain intact, with a separate display-coverage marker. Backend-issued
+bounded page references preserve rendered source identity without re-reading the
+full Parquet on each pan. See [ADR 0034](adr/0034-displayed-period-evidence.md).
+
+Hidden/prefetched surfaces, dataset lists and saving a note do not create display
+evidence. Repeated callbacks deduplicate within a presentation. Synthetic sources
+remain isolated; passive and strategy report views retain separate labels.
+Reading continues on a tracking failure, with a latched incomplete warning and
+durable caveat. Freeze drains pending display writes and persists any frontend
+caveat first; a persistence failure keeps confirmation open with an error.
+
+The focused corrected backend pass passed 23 tests in 7.962s across displayed,
+admission and observation evidence. The initial pass found an old one-marker
+migration assertion and a test retaining a completed worker through its cleared
+active slot; both test contracts were corrected. The focused corrected UI pass
+passed 47 tests across six files in 7.28s. Its initial pass had one assertion that
+needed to await the new asynchronous freeze drain. Subsequent narrow modal/failure
+checks passed all 10 tests in 1.32s. TypeScript and production Vite build passed
+with the existing large-chunk advisory. Final source review found no remaining
+blocking issue. One additional IPC-only test passed in 0.014s: page fetch appends
+no view, failed caveat persistence returns an error, and a later zero-overlap
+review retains the caveat. The frontend caveat test also passed standalone after
+removing its dependence on earlier test state.
+
+Actual browser inspection caught a finer visibility boundary: an intersecting
+tall table cell could expose blank space while its numeric text remained below
+the viewport. Tracking now observes tight metric text/value elements and excludes
+N/A-only annualized cells and passive delta dashes. The corresponding simulated
+DOM regression checks blank cell intersection separately from numeric text.
+The corrected DisplayedEvidence/LibraryResearch/UserJourneys pass passed all
+38 tests in 6.82s, followed by a successful final TypeScript/production build.
+
+The production-browser walkthrough verified zero view events on Data, Lab and a
+selected comparison before numeric rows reached the viewport; actual local chart
+display, narrower zoom/pan ranges and a missing-hour split; and no extra chart
+events on a hidden route. Selected report metrics and close-labeled candles both
+recorded the exact half-open evaluation period. A never-run later period showed
+zero admissions, zero freezes and two manual displayed ranges. Confirmation saved
+a frozen candidate with that exact two-view prior review without starting a run.
+The fixture retained three runs, two batches, one observation/revision and zero
+links; all nine original immutable JSON hashes were unchanged and SQLite integrity
+was ok. After rebuilding and restarting, the exact numeric-boundary recheck
+recorded only Buy & Hold when its values were visible and only the DCA name/action
+was onscreen. Scrolling actual DCA/RSI values into view then produced their records;
+repeated up/down scrolling did not duplicate those three presentation records.
+The frozen candidate reopened with zero of three rows completed and its original
+zero-admission/zero-freeze/two-display prior review. All nine original immutable
+JSON hashes, three-run count and SQLite integrity remained unchanged.
+
+The fixture uses independent invented hourly candles, one three-row completed
+comparison, one never-run interval and a separate gapped source. Its manifest
+records initial counts and immutable JSON hashes. No fresh market source or
+profitability acceptance is claimed. Legacy/imported reports without original
+local admissions, replay/live, other display surfaces and external exposure remain
+incomplete; displayed does not mean read. No broad suite was repeated. Actual
+browser and Windows acceptance are separate; Windows remains deferred.
+
 ## Local manual-research observations — 2026-10-10
 
 Market now has a Saved history subview and Data cards can open a local snapshot

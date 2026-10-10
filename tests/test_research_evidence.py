@@ -117,5 +117,5 @@ class ResearchEvidenceTests(unittest.TestCase):
             store=RunStore(root)
             with store.connect() as db:
                 self.assertEqual(db.execute('SELECT value FROM legacy').fetchone()[0],'unchanged')
-                self.assertEqual([r[0] for r in db.execute('SELECT kind FROM research_evidence')],['coverage'])
+                self.assertEqual([tuple(r) for r in db.execute('SELECT event_id,kind FROM research_evidence ORDER BY event_id')],[('coverage-start','coverage'),('view-coverage-start','coverage')])
                 self.assertEqual(db.execute('PRAGMA integrity_check').fetchone()[0],'ok')

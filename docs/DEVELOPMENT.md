@@ -208,3 +208,33 @@ observation starting at the source's first hour must retain its dates and show
 insufficient preceding warmup. Review and Start are separate actions. After a
 successful linked test, edit the note, reopen the test and return to its original
 revision; restart and check persistence. Keep fixture and user data separate.
+
+## Displayed-period evidence fixture
+
+Create a new isolated root with `scripts/prepare_display_fixture.py` using the
+verified Python runtime. It reuses the independent observation candles, then
+completes one three-row synthetic comparison. It writes
+`synthetic-display-fixture.json` containing exact dataset/run/batch IDs, a
+never-run later interval, the separate gap source, initial counts and immutable
+JSON hashes. It refuses any existing root. Build and start the browser adapter
+with this root; never merge it into ordinary research data.
+
+Open the never-run interval in Saved history without testing it. A later-period
+overlap review must show manual displayed ranges and zero admissions in that
+interval. Panning records only actual visible candle labels; gaps remain absent.
+Selected comparison numeric cells and individual report metrics expose their
+full evaluation interval; individual charts record only the visible candle pane.
+Hidden/prefetched surfaces, dataset lists and saving notes create no view event.
+Repeated callbacks in one presentation deduplicate. Reopen/restart must preserve
+old events, source isolation, note revisions, frozen prior reviews and immutable
+JSON hashes. An injected display-write failure must leave reading available and
+show incomplete tracking, including in subsequent freeze reviews.
+
+This is partial in-app display evidence, not proof of human reading. Imported or
+legacy reports without original local admissions, replay/live, other surfaces
+and outside-app exposure remain incomplete. View coverage starts separately
+from original admission coverage. Backend-issued chart references retain up to
+32 verified pages in memory; expired references warn instead of guessing. The
+frontend allows 256 outstanding records and 4,096 distinct callbacks per
+presentation, warning explicitly if that bound is reached. Read-only use does
+not start a strategy, and no financial artifact is rewritten.

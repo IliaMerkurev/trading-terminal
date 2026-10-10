@@ -71,12 +71,17 @@ class AppService:
                           observation_get={'observation_id','revision'},
                           observation_save={'observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
             if command=='library_batch_start' and 'observation' in p:fields[command].add('observation')
+            fields['research_display_incomplete']=set()
+            fields['research_displayed']={'presentation_id','reference','viewport'}
             fields['research_evidence_preview']={'dataset_id','start','end'}
             fields.update(library_batch_metadata={'batch_id'},library_batch_save_metadata={'batch_id','name','notes','expected_revision'})
             if command=='library_batch_history' and 'query' in p:fields[command].add('query')
             if command=='library_copy' and 'profile' in p:fields['library_copy'].add('profile')
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
+            if command in ('library_validation_freeze','experiment_freeze'):
+                from terminal.displayed_evidence import persist_warning
+                persist_warning(self.store)
             if command=='platform_capabilities':
                 from terminal.process_lifecycle import platform_capabilities
                 result=platform_capabilities()
@@ -101,7 +106,9 @@ class AppService:
                 self.live.telegram.credentials.save(p['token'],p['chat_id']);result=self.live.telegram.status()
             elif command=='telegram_clear':
                 self.live.telegram.credentials.clear();result=self.live.telegram.status()
-            elif command=='local_history_window':result=self.observations.window(**p)
+            elif command=='local_history_window':
+                from terminal.displayed_evidence import chart_page
+                result=chart_page(self,'observation_chart',self.observations.window(**p),p['dataset_id'])
             elif command=='observation_history':result=self.observations.history(**p)
             elif command=='observation_get':result=self.observations.get(**p)
             elif command=='observation_save':result=self.observations.save(**p)
@@ -129,7 +136,9 @@ class AppService:
             elif command=="run_logs": result=self.jobs.logs(p["run_id"])
             elif command=="run_manifest": result=self.store.get(p["run_id"])["manifest"]
             elif command=="result_page": result=self.store.page(**p)
-            elif command=="chart_window": result=self.store.chart_window(**p)
+            elif command=="chart_window":
+                from terminal.displayed_evidence import chart_page
+                result=chart_page(self,'run_chart',self.store.chart_window(**p),p['run_id'])
             elif command=="start_run": result={"run_id":self.jobs.start(p["strategy"],p["profile"],p["dataset_id"])}
             elif command=="cancel_run": result=self.jobs.cancel(p["run_id"])
             elif command=="list_strategies": result=self.store.strategies()
@@ -163,6 +172,12 @@ class AppService:
             elif command=="archive_finish": result=self.archives.finish(**p)
             elif command=="archive_cancel": result=self.archives.cancel()
             elif command in ('experiment_fields','managed_experiment_fields'):result=self.experiments.fields(**p)
+            elif command=='research_display_incomplete':
+                from terminal.displayed_evidence import mark_incomplete,persist_warning
+                mark_incomplete(self.store);persist_warning(self.store);result={'recorded':True}
+            elif command=='research_displayed':
+                from terminal.displayed_evidence import record
+                result=record(self,**p)
             elif command=='research_evidence_preview':
                 from terminal.research_evidence import preview
                 result=preview(self.jobs,**p)

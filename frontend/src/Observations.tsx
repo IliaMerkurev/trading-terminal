@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {api} from './api';
 import {historyLabel,canonical} from './LibraryResearch';
+import {displayRecorder,DisplayTrackingNotice} from './DisplayedEvidence';
 import ObservationChart from './ObservationChart';
 
 export type ObservationContext={id:string;revision:number;source:any;start:number;end:number};
@@ -10,6 +11,8 @@ const seconds=(v:string)=>Date.parse(v+'Z')/1000;
 const context=(v:any):ObservationContext=>({id:v.id,revision:v.revision,source:v.source,start:v.start,end:v.end});
 
 export default function Observations({datasets,request,onTest,onBatch}:{datasets:any[];request?:{dataset?:string;id?:string;revision?:number;request:number};onTest:(value:ObservationContext)=>void;onBatch:(id:string)=>void}){
+ const display=useRef<ReturnType<typeof displayRecorder>|null>(null);
+ if(!display.current)display.current=displayRecorder();
  const [dataset,setDataset]=useState(''),[range,setRange]=useState(['','']),[pageStart,setPageStart]=useState<number|null>(null),[page,setPage]=useState<any>(null),[pageRequest,setPageRequest]=useState(0);
  const [record,setRecord]=useState<any>(null),[hypothesis,setHypothesis]=useState(''),[falsification,setFalsification]=useState('');
  const [rows,setRows]=useState<any[]>([]),[next,setNext]=useState<{id:string;created_at:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(false);
@@ -32,9 +35,9 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  {!datasets.length&&<p>No prepared local history. Open Data to prepare a snapshot first.</p>}
  {source&&<><p>{historyLabel(source)}<br/>Local snapshot · {page?.source.classification??source.classification??'Provenance shown after page verification'}</p>{(page?.source.classification??source.classification)==='synthetic'&&<p className="warning-text">Synthetic fixture. Useful for checking the workflow, not evidence of market profitability.</p>}{(page?.source.classification??source.classification)==='unknown'&&<p className="warning-text">Source provenance is uncertain.</p>}
  {record?.source_error&&<p role="alert">{record.source_error}. No replacement or network download is automatic.</p>}
- {loading&&<p role="status">Reading verified local history…</p>}{page&&<><ObservationChart candles={page.candles}/><p>{utc(page.start).replace('T',' ')} — {utc(page.end).replace('T',' ')} UTC · {page.candles.length} source candles · opening times</p>{page.missing.length>0&&<p role="alert">Missing local history: {page.missing.length} candle slots in this page. No candles are fabricated.</p>}<div className="run-actions"><button disabled={loading||page.start<=source.range[0]} onClick={()=>setPageStart(Math.max(source.range[0],page.start-500*step))}>Earlier candles</button><button disabled={loading||page.end>=source.range[1]} onClick={()=>setPageStart(page.end)}>Later candles</button></div></>}
- <p className="muted">Notes do not prove which candles were viewed. Chart/report viewing and outside-app exposure remain unrecorded.</p>
- <h2>{record?`Observation · revision ${record.revision}`:'New observation'}</h2>
+ {loading&&<p role="status">Reading verified local history…</p>}{page&&<><ObservationChart record={display.current} candles={page.candles} seconds={step} reference={page.display_reference}/><p>{utc(page.start).replace('T',' ')} — {utc(page.end).replace('T',' ')} UTC · {page.candles.length} source candles · opening times</p>{page.missing.length>0&&<p role="alert">Missing local history: {page.missing.length} candle slots in this page. No candles are fabricated.</p>}<div className="run-actions"><button disabled={loading||page.start<=source.range[0]} onClick={()=>setPageStart(Math.max(source.range[0],page.start-500*step))}>Earlier candles</button><button disabled={loading||page.end>=source.range[1]} onClick={()=>setPageStart(page.end)}>Later candles</button></div></>}
+ <p className="muted">Visible local candles are recorded as displayed in this app, not proof of reading. Notes do not create display evidence. Other views and outside-app exposure remain incomplete.</p>
+ <DisplayTrackingNotice/><h2>{record?`Observation · revision ${record.revision}`:'New observation'}</h2>
  {record&&record.revision!==record.latest_revision&&<p className="warning-text">Historical revision. Linked tests keep this exact note. Open the latest revision to edit.</p>}
  <div className="two-columns">{['Observation start (UTC)','Observation end, exclusive (UTC)'].map((label,i)=><label className="field" key={label}>{label}<input aria-label={label} type="datetime-local" disabled={busy||!!record} value={range[i]} onChange={e=>setRange(v=>v.map((x,j)=>i===j?e.target.value:x))}/></label>)}</div>
  <button disabled={!valid||loading||!!record?.source_error} onClick={()=>{setError('');setPageRequest(v=>v+1);setPageStart(seconds(range[0]));}}>Show observation start</button>

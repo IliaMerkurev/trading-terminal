@@ -9,7 +9,7 @@ it('reviews cross-route evidence before freeze, cancellation never freezes, doub
  render(<EvidenceFreeze label="Freeze candidate" disabled={false} request={{dataset_id:'data',start:60,end:120}} onFreeze={freeze}/>);
  fireEvent.click(screen.getByText('Freeze candidate'));await screen.findByText(summary.message);expect(freeze).not.toHaveBeenCalled();
  expect(screen.getByText(/custom · started · strategy · linear/)).toBeTruthy();fireEvent.click(screen.getByText('Cancel freeze'));expect(freeze).not.toHaveBeenCalled();
- fireEvent.click(screen.getByText('Freeze candidate'));const button=await screen.findByText('Confirm candidate freeze');fireEvent.click(button);fireEvent.click(button);expect(freeze).toHaveBeenCalledTimes(1);finish();await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+ fireEvent.click(screen.getByText('Freeze candidate'));const button=await screen.findByText('Confirm candidate freeze');fireEvent.click(button);fireEvent.click(button);await waitFor(()=>expect(freeze).toHaveBeenCalledTimes(1));finish();await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
 });
 it('failed preview cannot authorize freeze',async()=>{
  vi.mocked(api).mockRejectedValue(new Error('Storage unavailable'));const freeze=vi.fn();

@@ -4,7 +4,7 @@ import json
 
 from terminal.data import canonical, digest
 
-LIMITATION = ('Records begin at coverage start; legacy/imported attempts, chart/report views, replay/live activity and outside-app exposure are unrecorded. '
+LIMITATION = ('Records begin at coverage start; legacy/imported attempts, untracked views, replay/live activity and outside-app exposure are unrecorded. Displayed evidence means rendered in this app, not proof of reading; chart gaps are excluded, metrics expose the full evaluation range. '
               'No recorded overlap does not establish an unseen or independent holdout. Started means durable admission, not completed computation. '
               'Same-symbol spot/linear calendar exposure is not a comparable performance cohort. Evaluation overlap excludes warmup-only input. Synthetic evidence is isolated by declared source; unknown provenance remains uncertain.')
 
@@ -23,6 +23,8 @@ def initialize(db):
             BEGIN SELECT RAISE(ABORT,'Research evidence is append-only'); END;
     ''')
     db.execute("INSERT OR IGNORE INTO research_evidence(event_id,recorded_at,kind,route,owner_id,role,details) VALUES('coverage-start',?,'coverage','system','local','coverage','{}')",(datetime.now(timezone.utc).isoformat(),))
+
+    db.execute("INSERT OR IGNORE INTO research_evidence(event_id,recorded_at,kind,route,owner_id,role,details) VALUES('view-coverage-start',?,'coverage','system','local','view-coverage','{}')",(datetime.now(timezone.utc).isoformat(),))
 
 
 def provenance(dataset):
@@ -80,23 +82,30 @@ def overlaps(db,dataset,start,end,classification=None):
     # synthetic sources only compare within their declared fixture namespace.
     scope="namespace=?" if classification=='synthetic' else "provenance IN ('real','unknown')"
     params=[dataset['symbol'],end,start]+([namespace] if classification=='synthetic' else [])
-    where=f"kind IN ('started','frozen') AND symbol=? AND evaluation_start<? AND evaluation_end>? AND {scope}"
+    where=f"kind IN ('started','frozen','viewed') AND symbol=? AND evaluation_start<? AND evaluation_end>? AND {scope}"
     groups=[dict(r) for r in db.execute(f'''SELECT route,kind,role,source,provenance,market,
         json_extract(details,'$.cohort') AS cohort,
+        json_extract(details,'$.original_role') AS original_role,
         json_extract(details,'$.profile.primary_minutes') AS primary_minutes,
         coalesce(json_extract(details,'$.profile.execution_minutes'),1) AS execution_minutes,
         json_extract(details,'$.profile.version') AS model_version,count(*) AS count,
         min(evaluation_start) AS first_start,max(evaluation_end) AS last_end
-        FROM research_evidence WHERE {where} GROUP BY route,kind,role,source,provenance,market,cohort
+        FROM research_evidence WHERE {where} GROUP BY route,kind,role,source,provenance,market,cohort,original_role
         ORDER BY route,kind,role,source,provenance,market,cohort LIMIT 51''',params)]
     total=db.execute(f'SELECT count(*) FROM research_evidence WHERE {where}',params).fetchone()[0]
+    counts={r['kind']:r['n'] for r in db.execute(f'SELECT kind,count(*) AS n FROM research_evidence WHERE {where} GROUP BY kind',params)}
+    view_coverage=db.execute("SELECT recorded_at FROM research_evidence WHERE event_id='view-coverage-start'").fetchone()[0]
     coverage=db.execute("SELECT recorded_at FROM research_evidence WHERE event_id='coverage-start'").fetchone()[0]
-    return dict(coverage_start=coverage,source=source,provenance=classification,range=[start,end],symbol=dataset['symbol'],
+    display_warning=db.execute("SELECT recorded_at FROM research_evidence WHERE role='display-incomplete' ORDER BY recorded_at DESC LIMIT 1").fetchone()
+    warning='Display tracking incomplete: a displayed surface could not be fully recorded; overlap history may omit exposure.' if display_warning else None
+    return dict(display_warning=warning,coverage_start=coverage,view_coverage_start=view_coverage,counts=counts,source=source,provenance=classification,range=[start,end],symbol=dataset['symbol'],
         total=total,groups=groups[:50],groups_truncated=len(groups)>50,limitation=LIMITATION,
-        message=f'{total} recorded admission/freeze events overlap this evaluation period. Frozen candidates and passive controls are separate from strategy admissions.')
+        message=f"{total} recorded events overlap this evaluation period: {counts.get('started',0)} admissions, {counts.get('frozen',0)} freezes, {counts.get('viewed',0)} displayed ranges. Displayed ranges are not test attempts.")
 
 
 def preview(jobs,dataset_id,start,end):
+    from terminal.displayed_evidence import persist_warning
+    persist_warning(jobs.store)
     dataset=jobs.datasets.describe(dataset_id)
     with jobs.store.connect() as db:return overlaps(db,dataset,start,end)
 
