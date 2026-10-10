@@ -183,3 +183,28 @@ desktop exports retain their folder-opening action. Do not expose this server
 through a proxy, forwarding rule, public port or remote bind. Session tokens are
 per-launch memory-only material and must never be copied into URLs or logs.
 See [ADR 0030](adr/0030-local-browser-research.md) for the boundary and limitations.
+
+
+## Local observation fixture
+
+Create a new, isolated synthetic root (the command refuses any existing path):
+
+```sh
+.venv/bin/python scripts/prepare_observation_fixture.py /absolute/new/observation-fixture
+node scripts/frontend.mjs build
+.venv/bin/python scripts/browser.py --data-root /absolute/new/observation-fixture --port 8770
+```
+
+Use the corresponding `.venv/Scripts/python.exe` on Windows. Start in Data and
+choose Observe this history for the synthetic hourly-cycle snapshot. Expected:
+900 invented candles, pages of 500 and 400; the separate gap snapshot has 499
+candles in its first page and a missing 2024-01-02 00:00 UTC slot. Reopen the saved
+observation for 2024-01-26 00:00–2024-01-27 00:00 UTC; its first/last closes are
+100.5/123.5. No runs exist after fixture creation or observation opening.
+
+Test observation must open Lab with that exact period and no execution. Select
+RSI threshold, 1h and period 2 for a small compatible explicit test. A new
+observation starting at the source's first hour must retain its dates and show
+insufficient preceding warmup. Review and Start are separate actions. After a
+successful linked test, edit the note, reopen the test and return to its original
+revision; restart and check persistence. Keep fixture and user data separate.

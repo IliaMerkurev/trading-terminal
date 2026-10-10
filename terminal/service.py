@@ -19,6 +19,8 @@ class AppService:
         self.experiments=ExperimentManager(self.jobs)
         from terminal.library_batches import LibraryBatchManager
         self.library_batches=LibraryBatchManager(self.jobs)
+        from terminal.observations import Observations
+        self.observations=Observations(self.store,self.datasets)
         from terminal.live import LiveManager
         self.live=LiveManager(self.store)
 
@@ -65,6 +67,10 @@ class AppService:
                           library_batch_status={'batch_id'},library_batch_resume={'batch_id'},
                           library_batch_cancel={'active_id'},library_batches=set())
             fields.update(library_batch_equity={'batch_id','ordinal'},library_validation_freeze={'batch_id','ordinal','dataset_id','start','end','spot_dataset_id'},library_validation_start={'batch_id'})
+            fields.update(local_history_window={'dataset_id','start','end'}, observation_history={'before'},
+                          observation_get={'observation_id','revision'},
+                          observation_save={'observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
+            if command=='library_batch_start' and 'observation' in p:fields[command].add('observation')
             fields['research_evidence_preview']={'dataset_id','start','end'}
             fields.update(library_batch_metadata={'batch_id'},library_batch_save_metadata={'batch_id','name','notes','expected_revision'})
             if command=='library_batch_history' and 'query' in p:fields[command].add('query')
@@ -95,6 +101,10 @@ class AppService:
                 self.live.telegram.credentials.save(p['token'],p['chat_id']);result=self.live.telegram.status()
             elif command=='telegram_clear':
                 self.live.telegram.credentials.clear();result=self.live.telegram.status()
+            elif command=='local_history_window':result=self.observations.window(**p)
+            elif command=='observation_history':result=self.observations.history(**p)
+            elif command=='observation_get':result=self.observations.get(**p)
+            elif command=='observation_save':result=self.observations.save(**p)
             elif command=='library_catalog':
                 from terminal.library import catalog
                 result=catalog()

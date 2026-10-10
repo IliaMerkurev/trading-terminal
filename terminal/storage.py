@@ -41,6 +41,8 @@ class RunStore:
             """)
             from terminal.research_evidence import initialize
             initialize(db)
+            from terminal.observations import initialize as initialize_observations
+            initialize_observations(db)
             db.execute(f"CREATE INDEX IF NOT EXISTS series_time ON series(run_id,kind,({TIME_SQL}))")
             if 'profile' not in {row[1] for row in db.execute('PRAGMA table_info(strategies)')}:
                 db.execute('ALTER TABLE strategies ADD COLUMN profile TEXT')

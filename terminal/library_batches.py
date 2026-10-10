@@ -140,7 +140,7 @@ class LibraryBatchManager(ExperimentManager):
         return dict(contract_sha256=frozen['contract_sha256'],modeled_minutes=frozen['modeled_minutes'],
                     rows=[{k:r.get(k) for k in ('name','kind','error','contract')} for r in frozen['rows']])
 
-    def start(self, expected_contract, **params):
+    def start(self, expected_contract, observation=None, **params):
         frozen = self.prepare(**params)
         if frozen['contract_sha256'] != expected_contract:raise ValueError('Preview changed; review workload again')
         if not any(not r['error'] and r['kind']!='benchmark' for r in frozen['rows']):
@@ -148,17 +148,22 @@ class LibraryBatchManager(ExperimentManager):
         ident = uuid.uuid4().hex
         thread = self._reserve(ident,self._batch)
         try:
-            self._save(ident,frozen,'preparing')
+            self._save(ident,frozen,'preparing',observation=observation)
             thread.start()
-        except Exception:
+        except Exception as exc:
+            if isinstance(exc,(sqlite3.Error,OSError)):
+                self.jobs.latch_storage_failure(ident,'observation_batch_admission')
             with self.jobs.lock:self.active=None;self.jobs.reservation=None
             raise
         return {'batch_id':ident}
 
-    def _save(self, ident, frozen, status, evidence=None):
+    def _save(self, ident, frozen, status, evidence=None, observation=None):
         with self.store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if observation is not None:
+                from terminal.observations import attach_batch, source_identity
+                attach_batch(db,ident,observation,frozen,source_identity(self.jobs.datasets.describe(frozen['inputs']['dataset_id'])))
             if evidence is not None:
-                db.execute('BEGIN IMMEDIATE')
                 research_evidence.append(db,'frozen:library:'+ident,'frozen',evidence)
             db.execute('INSERT INTO library_batches VALUES(?,?,?,?,NULL)',
                        (ident,datetime.now(timezone.utc).isoformat(),status,canonical(frozen).decode()))
@@ -313,6 +318,9 @@ class LibraryBatchManager(ExperimentManager):
             result['rows'].append(row)
         with self.store.connect() as db:result['research_evidence']=research_evidence.frozen_review(db,'library',batch_id)
         result['active_id']=self.active['id'] if self.active else None
+        with self.store.connect() as db:
+            link=db.execute('SELECT observation_id AS id,revision FROM observation_batches WHERE batch_id=?',(batch_id,)).fetchone()
+        result['observation']=dict(link) if link else None
         result['storage_failure']=self.jobs.storage_diagnostic()
         return result
 

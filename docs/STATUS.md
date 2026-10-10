@@ -1,5 +1,93 @@
 # Implementation status
 
+## Local manual-research observations — 2026-10-10
+
+Market now has a Saved history subview and Data cards can open a local snapshot
+without visiting Live. Bounded prepared-candle pages show provenance, synthetic
+warnings and actual missing slots. Users enter a UTC observation range and short
+hypothesis, optionally add a falsification condition, then save/reopen that exact
+source. Note edits append revision-guarded history; source and dates remain fixed.
+
+Test observation opens the existing Lab setup without executing. Its atomic
+source/range/revision context survives async warmup and mismatched/restored
+settings. Dates cannot change until explicit detachment. A successfully admitted
+Library batch links transactionally to the exact note revision outside immutable
+results, with return navigation in both directions. Later note edits cannot become
+retroactive evidence. Admission storage failures roll back and prevent launch.
+Existing saved comparison metadata/search/filters remain in place.
+
+The initial backend focused pass had one incorrect mock target; the corrected
+observations/evidence/storage pass passed 24 tests in 5.674s. After reader caps,
+optional falsification and chronological paging, all 10 observation tests passed
+in 0.214s. The initial UI pass had 35 passes and one duplicate-alert selector
+failure; its corrected final Observations/UserJourneys pass passed 12 tests.
+The unchanged LibraryResearch/HistoryWorkspace tests passed in the initial pass.
+TypeScript and production Vite build passed with the existing large-chunk advisory.
+Independent source review found two contract gaps (full source identity during
+link admission, and restoration after mismatched Lab settings); both were fixed
+and re-reviewed with no remaining blocking data/storage issue.
+
+The new-only synthetic fixture script creates 900 independently invented hourly
+candles plus a separate one-gap snapshot, one observation and no runs. It uses
+invented instrument metadata and makes no market/profitability claim. Reader
+limits, exact source checks, note/link write failure, revision preservation,
+chronological pagination, warmup races and direct offline navigation are covered.
+See [ADR 0033](adr/0033-local-history-observations.md).
+
+Final focused validation passed all 11 observation/backend fixture tests in
+0.862s and all 37 tests across Observations, LibraryResearch, HistoryWorkspace
+and UserJourneys. Final TypeScript/production build passed. An actual synthetic
+manager run completed one linked batch with three completed rows/runs. Editing
+the note to revision 2 retained its batch link to revision 1; a service restart
+preserved the link, all nine immutable JSON hashes and SQLite integrity. The
+fixture's admitted-run count remained three after reopening.
+
+Initial production-browser acceptance confirmed 500/400-candle paging, the
+499-candle gap page, optional blank falsification, exact handoff dates and one
+admitted batch despite a double Start click. Returning to the same observation
+then exposed a reader-effect bug: clearing its page did not change any load
+dependency. The bounded correction adds an explicit reopen/retry generation and
+record identity, preserving stale-response cleanup and avoiding note-keystroke
+rereads. The provenance line now uses the verified page classification. Seven
+focused component tests passed, including same-record return followed by note
+save and rejection of a late older page. Independent review found no blocker.
+
+One combined cumulative Linux acceptance pass on the corrected code completed
+297 Python tests in 114.521s: 289 passed and eight Windows-only native/lifecycle
+checks were skipped, with no errors or failures. The prior thread-mock teardown
+errors did not recur. All 150 frontend tests across 30 files passed in 11.53s.
+Final TypeScript/production build passed with the existing large-chunk advisory.
+No full suite was repeated for this documentation-only evidence update.
+
+Subsequent actual browser checks verified that same-record return reloads its
+252-candle local page. A post-test note edit saved revision 2; its linked batch
+still returns historical revision 1. A separate first-day observation with an
+empty optional falsification field kept its exact dates and blocked RSI Review
+for insufficient preceding warmup, without adding a batch. The synthetic
+workspace then retained six runs, two batches, three observations, five note
+revisions and two links. The original nine immutable JSON hashes were unchanged
+and SQLite integrity remained ok.
+
+Ordinary wheel navigation then exposed a layout blocker at both 750px and
+1180px widths: the Saved history wrapper did not bound its inner content scroller.
+The minimal correction reuses the established workspace flex/min-height/hidden
+host contract. All eight focused UserJourneys tests and TypeScript/production
+build passed; no backend changes or repeated full-suite run were needed. The
+structural component check alone does not establish actual browser scrolling.
+After restarting the production browser host for the rebuilt static inventory,
+actual wheel checks passed at both 1180px and 750px widths: scrolling outside the
+chart reaches the note, controls, linked test and saved observations; scrolling
+up returns to the chart while the header stays fixed. At 750px the fields and
+buttons fit, lists stack, and no horizontal overflow was visible. Independent
+source review found no blocking layout/state concern.
+
+TT16 is a bounded manual-observation slice, not full research-journal acceptance.
+Chart/report view tracking remains explicitly incomplete. The recorded browser
+checks use the isolated synthetic local service, not native Windows or live
+market data. Windows-native and live-source acceptance remain deferred; the
+browser observations supplement, rather than replace, Linux and simulated-DOM
+regression evidence.
+
 ## Forward-only research admission evidence — 2026-10-10
 
 A new additive append-only registry records durable custom, Library and Experiment

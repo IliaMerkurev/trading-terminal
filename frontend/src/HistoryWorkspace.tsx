@@ -2,7 +2,7 @@ import {useState} from 'react';
 import type {Profile} from './model';
 import {dateOnly,dateTime,timeframe} from './research';
 
-export default function HistoryWorkspace({datasets,profile,status,onPrepare,onCancel,onUse,disabled,onBack,returnLabel}:{onBack?:()=>void;returnLabel?:string;datasets:any[];profile:Profile;status:any;onPrepare:(p:any)=>void;onCancel:()=>void;onUse:(d:any)=>void;disabled:boolean}){
+export default function HistoryWorkspace({datasets,profile,status,onPrepare,onCancel,onUse,disabled,onBack,returnLabel,onObserve}:{onObserve?:(d:any)=>void;onBack?:()=>void;returnLabel?:string;datasets:any[];profile:Profile;status:any;onPrepare:(p:any)=>void;onCancel:()=>void;onUse:(d:any)=>void;disabled:boolean}){
  const [market,setMarket]=useState(profile.market),[symbol,setSymbol]=useState(profile.symbol),[minutes,setMinutes]=useState(Number(profile.execution_minutes??60));
  const [start,setStart]=useState(dateOnly(Math.floor(Date.now()/86400000)*86400-2*365*86400)),[end,setEnd]=useState(dateOnly(Math.floor(Date.now()/86400000)*86400));
  const complete=(d:any)=>d.coverage.trade.complete&&(d.market==='spot'||d.coverage.mark?.complete&&d.coverage.funding?.complete_against_current_interval);
@@ -26,7 +26,7 @@ export default function HistoryWorkspace({datasets,profile,status,onPrepare,onCa
    {rows.map(d=>{const resolution=(d.interval_seconds??60)/60,until=Math.floor(Date.now()/1000/(resolution*60))*resolution*60,complete=d.coverage.trade.complete&&(d.market==='spot'||d.coverage.mark?.complete&&d.coverage.funding?.complete_against_current_interval);return <article className="dataset-card" key={d.id}>
     <div className="dataset-top"><strong>{d.symbol}</strong><span>{d.market} · {timeframe(resolution)}</span><span className={complete?'status-pill ready':'status-pill warning'}>{complete?'Complete coverage':'Incomplete coverage'}</span></div>
     <p>{dateTime(d.range[0]).replace('T',' ')} → {dateTime(d.range[1]).replace('T',' ')} UTC</p>
-    <div className="dataset-bottom"><span>{d.coverage.trade.count.toLocaleString()} candles · {d.source}</span><button disabled={disabled||active||until<=d.range[1]} onClick={()=>onPrepare({market:d.market,symbol:d.symbol,minutes:resolution,start:d.range[0],end:until})}>Update to latest</button><button disabled={!complete} onClick={()=>onUse(d)}>Use this history</button></div>
+    <div className="dataset-bottom"><span>{d.coverage.trade.count.toLocaleString()} candles · {d.source}</span><button disabled={disabled||active||until<=d.range[1]} onClick={()=>onPrepare({market:d.market,symbol:d.symbol,minutes:resolution,start:d.range[0],end:until})}>Update to latest</button>{onObserve&&<button disabled={disabled} onClick={()=>onObserve(d)}>Observe this history</button>}<button disabled={!complete} onClick={()=>onUse(d)}>Use this history</button></div>
     {!complete&&<p className="warning-text">Trade gaps: {d.coverage.trade.gaps?.length??0}. {d.market==='linear'&&`Mark: ${d.coverage.mark?.complete?'complete':'incomplete'}; funding: ${d.coverage.funding?.complete_against_current_interval?'complete against current schedule':'unverified'}.`} Extend or retry preparation; gaps are never filled with fabricated candles.</p>}
    </article>;})}
   </section></div>

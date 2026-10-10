@@ -36,3 +36,10 @@
  .market-header{flex-wrap:wrap}.market-header>strong:last-child{margin-left:0}
  .market-workspace-heading{flex-wrap:wrap}
 }
+.market-source-nav{display:flex;gap:8px;padding:12px 24px;border-bottom:1px solid var(--border,#283344)}
+.observation-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px}
+.observation-layout>section,.observation-layout>aside{min-width:0}
+.observation-item{display:block;text-align:left;width:100%;margin-bottom:10px;white-space:normal;overflow-wrap:anywhere}
+.observation-item strong,.observation-item small{display:block}
+.observations textarea{min-height:85px}
+@media(max-width:850px){.observation-layout{grid-template-columns:minmax(0,1fr)}}

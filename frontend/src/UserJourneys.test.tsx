@@ -4,6 +4,7 @@ import App from './App';
 import {api} from './api';
 import {defaultProfile,exampleGraph} from './model';
 
+vi.mock('./ObservationChart',()=>({default:()=> <div>Local observation chart</div>}));
 vi.mock('./GraphEditor',()=>({default:()=> <div>Graph workspace</div>}));
 vi.mock('./api',()=>({isDesktop:()=>true,transportCapabilities:()=>({mode:'desktop',localService:true,nativeWindow:true,openExportsFolder:true,downloadArchives:false,stopService:false}),productVersion:async()=>(await import('@tauri-apps/api/app')).getVersion(),downloadArchive:vi.fn(),api:vi.fn()}));
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}));
@@ -215,4 +216,28 @@ it('opens a comparison report before collapsed history and returns to the same f
  expect((screen.getByLabelText('Library filter Compatibility / result state') as HTMLSelectElement).value).toBe('completed');
  expect(screen.getByText('-12.0000 / -1.20%')).toBeTruthy();
  expect(vi.mocked(api).mock.calls.some(([c])=>/prepare|start|warmup|preview|resume/.test(c))).toBe(false);
+});
+
+
+it('opens local observation directly from Data without mounting live market or executing a strategy',async()=>{
+ vi.mocked(api).mockImplementation(async(command)=>{
+  if(command==='library_catalog')return [entry];
+  if(command==='list_datasets')return [data];
+  if(command==='library_batch_history'||command==='run_history'||command==='observation_history')return {rows:[],next:null};
+  if(command==='local_history_window')return {source:{...data,classification:'synthetic'},start:0,end:500*3600,candles:[],missing:[]};
+  if(command.startsWith('list_'))return [];
+  return {};
+ });
+ render(<App/>);
+ fireEvent.click(screen.getByRole('button',{name:'Data'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Observe this history'}));
+ const localChart=await screen.findByText('Local observation chart');
+ expect(localChart).toBeTruthy();
+ // The existing workspace host bounds .content's overflow scroller. A plain
+ // wrapper grows beyond the fixed-height app and makes the form unreachable.
+ const scrollSurface=localChart.closest('.content');
+ expect(scrollSurface?.parentElement?.classList.contains('experiment-host')).toBe(true);
+ expect(scrollSurface?.parentElement?.classList.contains('observation-host')).toBe(true);
+ expect(screen.getByRole('button',{name:'Saved history · local'}).getAttribute('aria-pressed')).toBe('true');
+ expect(vi.mocked(api).mock.calls.some(([c])=>['market_open','market_chart','live_status','start_run','library_batch_start','history_prepare'].includes(c))).toBe(false);
 });
