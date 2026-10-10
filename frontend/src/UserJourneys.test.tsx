@@ -60,7 +60,7 @@ it('guides first-time testing through history, exact timeframe review, navigatio
  fireEvent.click(screen.getByRole('button',{name:'Data'}));
  fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));
  fireEvent.click(await screen.findByRole('button',{name:'Cancel remaining tests'}));
- expect(await screen.findByText(/cancelled · 1\/5 completed/)).toBeTruthy();
+ expect(await screen.findByText(/Cancelled · 1 completed · 0 unavailable · 0 failed · 4 pending/)).toBeTruthy();
  expect(screen.getByRole('button',{name:'Open report'})).toBeTruthy();
  expect(api).not.toHaveBeenCalledWith('library_batch_resume',expect.anything());
  expect(vi.mocked(api).mock.calls.filter(([c])=>c==='history_prepare')).toHaveLength(1);

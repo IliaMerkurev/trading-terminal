@@ -8,6 +8,25 @@ const selections=[{entry_id:'rsi-threshold',version:1,minutes:1,parameters:{peri
 const datasets=[{id:'data',market:'spot',symbol:'BTCUSDT',source:'Synthetic',range:[0,3600]}];
 const inputs={selections,dataset_id:'data',profile:defaultProfile,start:600,end:3600,interval:'weekly',spot_dataset_id:null};
 
+it('shows completed and unavailable counts separately while keeping history labels conservative',async()=>{
+ const states=[...Array(14).fill('completed'),'incompatible','incompatible'];
+ const report={id:'matrix',status:'completed_with_errors',active_id:null,
+  snapshot:{inputs,rows:states.map((_,ordinal)=>({name:`Candidate ${ordinal}`,kind:'graph',profile:defaultProfile,dataset:{id:'data'}}))},
+  rows:states.map((status,ordinal)=>({ordinal,status,run_id:status==='completed'?`run-${ordinal}`:null,
+   metrics:status==='completed'?{net_pnl:'-2',period_return:'-.002'}:null,error:status==='incompatible'?'Native execution unavailable':null}))};
+ const original=JSON.stringify(report);
+ vi.mocked(api).mockImplementation(async command=>command==='library_batch_history'?{rows:[{id:'matrix',status:'completed_with_errors',created_at:'Saved matrix'}],next:null}:command==='library_batch_status'?report:{});
+ render(<LibraryResearch view="saved" selections={selections} datasets={datasets} profile={defaultProfile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ expect(await screen.findByRole('option',{name:'Saved matrix · Finished with unavailable or failed rows · selection'})).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'matrix'}});
+ expect(await screen.findByText(/^Completed · 14 completed · 2 unavailable · 0 failed ·/)).toBeTruthy();
+ expect(screen.getAllByText('Native execution unavailable')).toHaveLength(2);
+ expect(screen.getAllByText('-2.0000 / -0.20%')).toHaveLength(14);
+ expect(screen.getAllByRole('button',{name:'Open report'})).toHaveLength(14);
+ expect(screen.getAllByText('N/A / N/A').length).toBeGreaterThan(0);
+ expect(JSON.stringify(report)).toBe(original);
+});
+
 it('freezes preview, invalidates changed inputs and preserves an explicit saved result contract',async()=>{
  const onActive=vi.fn(),onReport=vi.fn(),onOpenRun=vi.fn();
  const report={id:'batch',status:'completed',active_id:null,snapshot:{inputs,rows:[{name:'RSI',kind:'graph',profile:defaultProfile,dataset:{id:'data'},selection:selections[0]}]},rows:[{ordinal:0,status:'completed',run_id:'saved',metrics:{net_pnl:'-2',period_return:'-.002',final_equity:'998',max_drawdown:'.01',completed_positions:0,win_rate:null,fees:'2',funding:'0',annualized_geometric_return:null}}]};
@@ -116,7 +135,7 @@ it('cancels active work and exposes pending-only resume without hiding failed ro
  fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
  fireEvent.click(await screen.findByRole('button',{name:'Resume pending rows with frozen inputs'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_resume',{batch_id:'batch'}));
- await screen.findByRole('option',{name:/2026-01-01 · cancelled/});
+ await screen.findByRole('option',{name:/2026-01-01 · Cancelled/});
 });
 
 

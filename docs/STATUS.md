@@ -1,5 +1,38 @@
 # Implementation status
 
+## Real-market matrix and status clarity — 2026-10-10
+
+A bounded, isolated integration matrix used real BTCUSDT spot history at its
+native 4h resolution. All 12 supported graph strategy/timeframe variants and
+both passive controls completed: 14 completed, two native rows explicitly
+unavailable, and zero supported-row failures. Full required warmup, retained
+costs, frozen source/result identity and saved-result reopening checks passed.
+No raw market data, private source files or financial results are published.
+This is technical integration evidence, not economic validation or evidence of
+profitable strategies. The source classification remains unknown; venue
+constraints remain manually specified assumptions. Windows acceptance is deferred.
+
+Saved comparison presentation now separates completed, unavailable and failed
+row counts. Incompatible native rows no longer make an otherwise completed
+comparison appear to have execution failures. History entries without detailed
+rows retain the conservative label “Finished with unavailable or failed rows.”
+Running, preparing, pending, frozen, cancelled, interrupted, failed and unknown
+states remain distinct; partial or missing row details cannot imply completion.
+Persisted machine statuses, immutable results, losses, N/A values, accounting,
+strategy execution and data adapters are unchanged.
+
+The focused status/LibraryResearch/UserJourneys pass passed all 40 tests across
+three files in 7.22s. The initial pass found two test expectations requiring the
+new capitalization and correct saved-versus-draft context; these were corrected.
+TypeScript and the production Vite build passed with the existing large-chunk
+advisory. No broad regression suite or Windows build was repeated for this
+presentation-only change. Simulated DOM coverage is separate from browser and
+native acceptance.
+
+The final production-browser check reopened the saved real-market matrix without
+recomputation: the picker showed “Finished with unavailable or failed rows” and
+the header showed “Completed · 14 completed · 2 unavailable · 0 failed.”
+
 ## MIT project license — 2026-10-10
 
 The owner authorized the standard [MIT License](../LICENSE) for Trading Terminal,
