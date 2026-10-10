@@ -40,3 +40,22 @@ it('downloads exported archives in browser mode and keeps native folder opening 
   expect(api).toHaveBeenCalledWith('archive_export',{strategy:{name:'Graph'},profile:{},run_ids:['saved-run']});
   expect(await screen.findByText(/research.zip · 2.0 KiB/)).toBeTruthy();
 });
+
+it.each(['desktop','browser'] as const)('shows partial import IDs and guidance in %s without reopening or retrying',async(mode)=>{
+  vi.mocked(api).mockClear();
+  vi.mocked(transportCapabilities).mockReturnValue({mode,localService:true,nativeWindow:mode==='desktop',openExportsFolder:mode==='desktop',downloadArchives:mode==='browser',stopService:mode==='browser'});
+  const imported=vi.fn(async()=>{});
+  const note='Archive import did not finish. Known local runs: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (completed), bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb (importing). Strategy save was not attempted. Do not retry blindly: another import creates new IDs and may duplicate saved work.';
+  vi.mocked(api).mockImplementation(async(command)=>{
+    if(command==='archive_begin')return {upload_id:'transfer',chunk_bytes:3};
+    if(command==='archive_finish')throw new Error(note);
+    return {};
+  });
+  render(<ProjectTransfer strategy={()=>({})} profile={{}} runIds={[]} onImported={imported}/>);
+  fireEvent.click(screen.getByText('Project archive'));
+  fireEvent.change(screen.getByLabelText('Import project archive'),{target:{files:[{size:1,slice:()=>({arrayBuffer:async()=>new Uint8Array([80]).buffer})}]}});
+  expect((await screen.findByRole('alert')).textContent).toBe(`Error: ${note}`);
+  await waitFor(()=>expect((screen.getByLabelText('Import project archive') as HTMLInputElement).disabled).toBe(false));
+  expect(screen.queryByRole('status')).toBeNull();expect(imported).not.toHaveBeenCalled();
+  expect(vi.mocked(api).mock.calls.map(([command])=>command)).toEqual(['archive_begin','archive_append','archive_finish','archive_cancel']);
+});

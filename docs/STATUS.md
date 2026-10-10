@@ -1,5 +1,30 @@
 # Implementation status
 
+## Archive partial-failure disclosure — 2026-10-10
+
+A two-run injected failure independently reproduced one completed report and one
+importing record behind a generic error. Archive persistence now reports known
+local IDs and re-read statuses, including created/importing/completed/unknown,
+without exposing storage exception details. Unknown create and strategy-save
+outcomes remain explicit. The UI clears stale transfer progress and displays
+no-blind-retry guidance through the existing error envelope. Blank strategy
+names and oversized documents are rejected before run writes, matching existing
+strategy-storage constraints. Successful import bytes, IDs, nonexecution/trust
+boundaries and immutable earlier records are preserved.
+
+Focused verification passed 16 archive/backend tests, including file-before-DB
+failure, post-commit failure, unreadable status, strategy-save uncertainty,
+prevalidation with no writes, preserved bytes and service error propagation.
+ProjectTransfer/API verification passed 14 tests across two files, covering
+both desktop and browser error presentation and existing no-retry behavior.
+TypeScript and the production Vite build passed with the existing large-chunk
+advisory. Independent source review found no blocker. No broad suite or Windows
+build was repeated; browser/manual acceptance remains separate.
+
+Imports remain sequential and non-atomic. Partial files/records are retained;
+there is no safe retry/resume, rollback or durable outcome receipt for a lost
+response or process exit. See [archive contract](adr/0008-archives-comparison.md).
+
 ## Real-market matrix and status clarity — 2026-10-10
 
 A bounded, isolated integration matrix used real BTCUSDT spot history at its

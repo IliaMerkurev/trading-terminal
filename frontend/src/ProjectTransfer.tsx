@@ -6,7 +6,7 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported}:{st
   const transport=transportCapabilities();
   async function exportProject(){setBusy(true);setError('');try{const result=await api<any>('archive_export',{strategy:strategy(),profile,run_ids:runIds});if(transport.downloadArchives)await downloadArchive(result.filename);setMessage(`${result.filename} · ${(result.bytes/1024).toFixed(1)} KiB. ${result.note}`);}catch(e){setError(String(e));}finally{setBusy(false);}}
   async function importProject(file:File){
-    setBusy(true);setError('');let active=false;
+    setBusy(true);setError('');setMessage('');let active=false;
     try{
       if(file.size>64*1024*1024)throw Error('Archive exceeds 64 MiB');
       const transfer=await api<any>('archive_begin',{size:file.size});active=true;
@@ -18,7 +18,7 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported}:{st
       }
       const result=await api<any>('archive_finish',{upload_id:transfer.upload_id});active=false;
       setMessage(result.note);await onImported(result);
-    }catch(e){setError(String(e));if(active)await api('archive_cancel').catch(()=>{});}finally{setBusy(false);}
+    }catch(e){setError(String(e));if(active){setMessage('');await api('archive_cancel').catch(()=>{});}}finally{setBusy(false);}
   }
   return <details className="project-transfer"><summary>Project archive</summary><p>Export the current strategy, simulation settings and {runIds.length} selected results. Raw market candles, worker logs and Python consent records are excluded. Native source is included; review it before sharing. Recognized credentials and personal paths block export.</p><button disabled={busy||!transport.localService} onClick={exportProject}>Export project archive</button>{transport.openExportsFolder&&<button onClick={()=>invoke('open_exports').catch(e=>setError(String(e)))}>Open local exports folder</button>}<label className="field"><span>Import a project archive (does not execute Python)</span><input aria-label="Import project archive" type="file" accept=".zip" disabled={busy||!transport.localService} onChange={e=>{const file=e.target.files?.[0];if(file)importProject(file);e.target.value='';}}/></label>{message&&<p role="status">{message}</p>}{error&&<p role="alert">{error}</p>}</details>;
 }

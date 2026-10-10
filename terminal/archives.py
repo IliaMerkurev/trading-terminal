@@ -24,8 +24,9 @@ CHUNK=256*1024
 
 
 def validate_strategy(strategy):
-    if not isinstance(strategy,dict) or set(strategy)!={'name','kind','document'} or not isinstance(strategy['name'],str) or not 1<=len(strategy['name'])<=120:
+    if not isinstance(strategy,dict) or set(strategy)!={'name','kind','document'} or not isinstance(strategy['name'],str) or not 1<=len(strategy['name'])<=120 or not strategy['name'].strip():
         raise ValueError('Invalid project strategy descriptor')
+    if len(canonical(strategy['document']))>1024*1024:raise ValueError('Strategy exceeds size budget')
     if strategy['kind']=='graph':
         if set(strategy['document'])!={'graph','layout'}:raise ValueError('Invalid graph document')
         validate_graph(strategy['document']['graph'])
@@ -215,21 +216,49 @@ class ArchiveManager:
         try:
             project,documents=read_archive(upload['file'].read_bytes())
             # Every entry is validated before any strategy or run is persisted.
-            new_runs=[]
-            for old_id in project['runs']:
-                snapshot=documents[f'runs/{old_id}/snapshot.json'];result=documents[f'runs/{old_id}/result.json']
-                new_id=self.store.create(snapshot)
-                self.store.status(new_id,'importing')
-                self.store.complete(new_id,result,origin='imported')
-                new_runs.append(new_id)
-            s=project['strategy'];strategy_id=self.store.save_strategy(s['name'],s['kind'],s['document'],profile=project['profile'])
-            available=[]
-            for old_id in project['runs']:
-                dataset=documents[f'runs/{old_id}/snapshot.json']['dataset']
-                try:
-                    actual=DatasetStore(self.store.root/'datasets').describe(dataset['id'])
-                    if actual['content_sha256']==dataset['content_sha256']:available.append(old_id)
-                except (ValueError,OSError):pass
-            return {'strategy_id':strategy_id,'profile':project['profile'],'run_ids':new_runs,'history_included':False,
-                    'datasets_found':len(available),'note':'Imported results are saved reports, not locally verified calculations. Python was not executed and no new trust was granted. Rerunning requires matching checked data, dependencies and separate source consent.'}
+            new_runs=[];strategy_id=None;stage='run creation'
+            try:
+                for old_id in project['runs']:
+                    snapshot=documents[f'runs/{old_id}/snapshot.json'];result=documents[f'runs/{old_id}/result.json']
+                    stage='run creation'
+                    new_id=self.store.create(snapshot)
+                    new_runs.append(new_id)
+                    stage='run persistence'
+                    self.store.status(new_id,'importing')
+                    self.store.complete(new_id,result,origin='imported')
+                stage='strategy save'
+                s=project['strategy'];strategy_id=self.store.save_strategy(s['name'],s['kind'],s['document'],profile=project['profile'])
+                stage='dataset lookup'
+                available=[]
+                for old_id in project['runs']:
+                    dataset=documents[f'runs/{old_id}/snapshot.json']['dataset']
+                    try:
+                        actual=DatasetStore(self.store.root/'datasets').describe(dataset['id'])
+                        if actual['content_sha256']==dataset['content_sha256']:available.append(old_id)
+                    except (ValueError,OSError):pass
+                return {'strategy_id':strategy_id,'profile':project['profile'],'run_ids':new_runs,'history_included':False,
+                        'datasets_found':len(available),'note':'Imported results are saved reports, not locally verified calculations. Python was not executed and no new trust was granted. Rerunning requires matching checked data, dependencies and separate source consent.'}
+            except Exception:
+                raise ValueError(self._failure_note(new_runs,strategy_id,stage)) from None
         finally:self.upload=None
+
+
+    def _failure_note(self,run_ids,strategy_id,stage):
+        # IDs are returned by local storage, never supplied by the archive. Do not
+        # echo storage exceptions (which can contain paths or document contents).
+        runs=[]
+        for run_id in run_ids:
+            try:
+                status=self.store.get(run_id)['status']
+                if status not in ('created','importing','completed','interrupted'):status='unknown'
+            except Exception:status='unknown'
+            runs.append(f'{run_id} ({status})')
+        known='Known local runs: '+', '.join(runs)+'.' if runs else 'No run IDs were confirmed.'
+        creation=' Run creation outcome is unknown; additional records or files may exist.' if stage=='run creation' else ''
+        strategy=(f'Strategy saved: {strategy_id}.' if strategy_id else
+                  'Strategy save outcome is unknown; a strategy may have been saved.' if stage=='strategy save' else
+                  'Strategy save was not attempted.')
+        return (f'Archive import did not finish. Import is not atomic. {known}{creation} {strategy} '
+                'Incomplete runs may retain files. Check Saved tests and the strategy list before any new import. '
+                'Do not retry blindly: another import creates new IDs and may duplicate saved work. '
+                'This transfer cannot be resumed; no rollback was performed.')
