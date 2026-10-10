@@ -64,7 +64,7 @@ The demo creates four labeled synthetic cases with independently checked expecte
 
 Application databases, downloaded data, WebView state, exports and worker artifacts are under ignored `.local-data/`. Environments and build caches are also ignored. Native source consent is local and is not exported. Back up local data with the application closed; never commit raw datasets, private instructions or credentials.
 
-Inspect exact staged files and diffs, scan all outgoing commits with the pinned established secret scanner, and review privacy/license obligations before publication. Ordinary deletion never removes content from previous commits. Do not assign a project license or distribute third-party binaries without the applicable license review.
+Inspect exact staged files and diffs, scan all outgoing commits with the pinned established secret scanner, and review privacy/license obligations before publication. Ordinary deletion never removes content from previous commits. The project uses the [MIT License](../LICENSE); changing it requires owner authorization. Do not distribute third-party binaries without the applicable license review.
 
 ## Live development and acceptance
 

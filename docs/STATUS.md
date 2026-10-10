@@ -1,5 +1,19 @@
 # Implementation status
 
+## MIT project license — 2026-10-10
+
+The owner authorized the standard [MIT License](../LICENSE) for Trading Terminal,
+with copyright (c) 2026 Ilia Merkurev. README, current specification, development
+guidance, third-party notice scope and npm/Cargo metadata now reflect MIT.
+Historical license-undecided and scope-exclusion records below describe their
+original milestones and are superseded only for this license decision.
+
+The license text was checked against the [OSI MIT text](https://opensource.org/license/mit);
+JSON/TOML metadata parsing and a bounded diff/privacy/license review passed.
+Third-party notices, dependency licenses and data-provider terms remain applicable.
+No dependencies, lockfiles, product version or runtime behavior changed; no
+application build or broad test suite was run for this documentation/metadata change.
+
 ## Bounded displayed-period evidence — 2026-10-10
 
 The append-only registry now separates displayed ranges from admissions and

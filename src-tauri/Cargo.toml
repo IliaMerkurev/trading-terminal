@@ -3,6 +3,7 @@ name = "trading-terminal"
 version = "0.6.0-dev"
 edition = "2021"
 publish = false
+license = "MIT"
 
 [build-dependencies]
 tauri-build = { version = "=2.6.3", features = [] }

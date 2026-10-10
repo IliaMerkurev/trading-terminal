@@ -83,4 +83,4 @@ Live trading, exchange credentials, optimization beyond bounded explicit grids, 
 
 ## License
 
-A project license has not been selected. Public availability does not grant an open-source license. See [third-party notices](THIRD_PARTY_NOTICES.md); no distributable installer or binary release is provided.
+Trading Terminal is licensed under the [MIT License](LICENSE), copyright (c) 2026 Ilia Merkurev. Third-party components and market data retain their own licenses and provider terms; see [third-party notices](THIRD_PARTY_NOTICES.md). No distributable installer or binary release is provided.

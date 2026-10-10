@@ -1,5 +1,13 @@
 # Trading Terminal product specification
 
+## Project license — 2026-10-10
+
+The owner selected the [MIT License](LICENSE) for Trading Terminal. This explicit
+authorization supersedes earlier project-license exclusions only for adopting MIT;
+all other scope and publication limits remain in force. Third-party components
+and market data retain their own licenses and provider terms. See
+[third-party notices](THIRD_PARTY_NOTICES.md).
+
 ## Current authorized research-workspace extension
 
 The owner authorized a simpler card-first Research workspace with a retained Pro
@@ -21,7 +29,7 @@ Current accepted product: 0.5 development build (`0.5-dev`). Sections 1–20 ret
 
 Build a local desktop application for historical strategy research. The complete workflow is: create or import a strategy, prepare historical data, run a backtest, inspect trades and metrics, change parameters, and compare saved runs. The application does not promise profitable strategies. Example indicator strategies are test scenarios, not recommendations.
 
-0.1 targets Windows 11 x64 with a 32 GB RAM reference configuration. Establish performance and memory budgets through measurements. Linux/macOS portability should remain feasible, but their releases and verification are outside 0.1. A documented development launch script with one-time setup is acceptable before a conventional installer. The project license remains undecided.
+0.1 targets Windows 11 x64 with a 32 GB RAM reference configuration. Establish performance and memory budgets through measurements. Linux/macOS portability should remain feasible, but their releases and verification are outside 0.1. A documented development launch script with one-time setup is acceptable before a conventional installer. The project is licensed under the [MIT License](LICENSE).
 
 ## 2. Markets and position semantics
 
