@@ -5,6 +5,54 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Compact Saved tests review — 2026-10-10
+
+Saved comparisons now keep the chooser, compact original market/capital/period,
+source resolution, exact declared costs, instrument assumptions, outcome counts,
+saved-versus-draft state, linked observation return and sorting ahead of results.
+Catalog search and detailed assumptions use native disclosures. Filter inputs
+are collapsed initially; their active count, Clear filters and invalid numeric
+warning remain visible when closed. Clear filters affects viewing filters only.
+Search still covers the complete catalog with server pagination and a retained
+selection outside the current search page. Help and later-period setup follow
+the table; later-period warnings and run controls remain outside disclosures.
+Saved notes now have an explicit disclosure beside the compact saved name and
+Edit details action; name/notes editing and dirty-state protection are unchanged.
+The redundant inner heading and outer subtitle are removed in Saved tests only.
+
+Focused verification passed **44 tests in five files**: LibraryResearch,
+SavedReview, SavedComparisonDetails, UserJourneys and DisplayedEvidence. The
+new coverage exercises disclosure state/focus, retained context/warnings,
+invalid thresholds, reset without changing sort/selection/draft source, linked
+return, and disclosure toggles versus actually displayed numeric-cell exposure.
+Existing cases cover search pagination/outside selection, saved report return,
+cohort ordering, passive/N/A context, losses and metadata protection. Command:
+`node node_modules/vitest/vitest.mjs run frontend/src/LibraryResearch.test.tsx frontend/src/SavedReview.test.tsx frontend/src/SavedComparisonDetails.test.tsx frontend/src/UserJourneys.test.tsx frontend/src/DisplayedEvidence.test.tsx`.
+`node scripts/frontend.mjs build` passed TypeScript and the production build,
+with the existing large-chunk advisory. No backend, schema, dependencies,
+accounting or immutable reports changed; broad regression was not repeated.
+
+The first production-browser inspection found results still below the initial
+1180×757 viewport. One bounded correction compacted headings and metadata,
+disclosed saved notes, and removed the old text-width cap on essential context.
+The affected four component files then passed **37 tests**, including the new
+saved-note disclosure case; TypeScript and production build passed again with
+the same chunk advisory. DisplayedEvidence's unchanged focused evidence was
+reused rather than repeating that file or a broad suite.
+
+Actual production-browser checks of the corrected build at **1180×757 and
+750px** found the **table header reaches the first viewport**, with usable narrow
+wrapping. The first full data row still requires a small scroll; this slice does
+not claim the original first-row-above-fold target. Saved identity, period,
+costs, instrument warning and outcome status remained visible. Enter toggled
+Filter results. An invalid minimum completed-position value of -1 retained
+“1 active”, the invalid-input indication and its visible error after collapse.
+Clear filters reset the count to zero and disabled itself without changing the
+selected comparison. No new run was started. This is a bounded improvement,
+not owner-led unaided usability or current Windows/native acceptance. Long
+warnings, running work and later-period safety context can still increase the
+pre-table height.
+
 ## Final bounded MVP verification — 2026-10-10
 
 The final tested code was local commit `1da24d8`, published as `bc10a4c` with

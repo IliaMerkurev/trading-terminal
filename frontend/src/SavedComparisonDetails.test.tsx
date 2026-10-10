@@ -37,3 +37,15 @@ it('reloads after a revision conflict and allows clearing metadata',async()=>{
  fireEvent.click(screen.getByText('Save details'));await screen.findByText('Comparison details saved.');
  expect(api).toHaveBeenLastCalledWith('library_batch_save_metadata',{batch_id:'b',name:'',notes:'',expected_revision:3});
 });
+it('keeps saved notes behind a focusable disclosure without editing or saving',()=>{
+ vi.mocked(api).mockClear();
+ render(<SavedComparisonDetails batchId="notes" initial={{name:'Named comparison',notes:'Complete saved note',revision:1}} onSaved={vi.fn()}/>);
+ expect(screen.getByRole('heading',{name:'Named comparison'})).toBeTruthy();
+ const summary=screen.getByText('Saved notes',{selector:'summary'});
+ expect(summary.closest('details')?.open).toBe(false);summary.focus();expect(document.activeElement).toBe(summary);
+ fireEvent.click(summary);expect(summary.closest('details')?.open).toBe(true);expect(screen.getByText('Complete saved note')).toBeTruthy();
+ fireEvent.click(summary);expect(summary.closest('details')?.open).toBe(false);
+ expect(screen.queryByLabelText('Research notes')).toBeNull();expect(api).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Edit details'}));
+ expect((screen.getByLabelText('Research notes') as HTMLTextAreaElement).value).toBe('Complete saved note');
+});

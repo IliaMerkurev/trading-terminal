@@ -227,3 +227,35 @@ nav .running-link{margin-left:auto;color:#a4efdb;font-size:12px;white-space:nowr
 .selected-report-heading p{margin:4px 0;overflow-wrap:anywhere}
 .results .saved-run-history .run-list{max-height:230px;overflow:auto}
 @media(max-width:760px){.saved-comparison-table th:first-child,.saved-comparison-table td:first-child{min-width:160px;width:160px;max-width:160px}.results .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Saved review prioritizes immutable context and results over optional inputs. */
+.compact-saved-review{padding:16px}
+.compact-saved-review .results-heading{gap:12px}
+.compact-saved-review .results-heading h3{margin:0;overflow-wrap:anywhere}
+.compact-saved-review .comparison-contract{padding:8px 12px;margin:8px 0}
+.compact-saved-review p{margin:6px 0;line-height:1.4}
+.compact-saved-review .saved-context{margin:8px 0}
+.compact-saved-review .saved-source-warning{color:#dcc69e;overflow-wrap:anywhere}
+.compact-saved-review>.field{margin:8px 0;max-width:none}
+.saved-history-search{margin:6px 0}
+.saved-history-search form{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.saved-history-search .field{flex:1;min-width:180px}
+.saved-sort-controls,.saved-filter-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.saved-sort-controls label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.saved-filters{flex:1;min-width:220px}
+.compact-saved-review .saved-filters .two-columns{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin:10px 0}
+.compact-saved-review summary{cursor:pointer}
+.compact-saved-review summary:focus-visible{outline:2px solid #90baff;outline-offset:3px}
+.compact-saved-review .comparison-scroll-help{margin:8px 0 4px}
+@media(max-width:760px){.compact-saved-review{padding:12px}.saved-sort-controls{align-items:start}.saved-sort-controls label{flex:1;min-width:180px}.saved-sort-controls select{max-width:100%}.compact-saved-review .results-heading{flex-wrap:wrap}}
+.compact-saved-review .saved-history-search,.compact-saved-review .saved-context details,.compact-saved-review .saved-filters{padding-top:5px;margin-top:5px}
+.saved-studio>.studio-heading{margin-bottom:12px;gap:12px}
+.saved-studio>.studio-heading h1{font-size:26px;margin:0}
+.compact-saved-review>.results-heading[hidden]{display:none}
+.compact-saved-review .saved-comparison-details{padding:6px 10px}
+.saved-metadata-actions{display:flex;align-items:start;gap:10px;flex-wrap:wrap}
+.compact-saved-review .saved-notes{border:0;padding:8px 0 0;margin:0}
+.saved-notes[open]{flex-basis:100%;order:1}
+.compact-saved-review .saved-notes p{white-space:pre-wrap;overflow-wrap:anywhere;max-width:60ch}
+@media(max-width:760px){.saved-studio>.studio-heading{margin-bottom:10px}.saved-studio>.studio-heading h1{font-size:23px}.saved-metadata-actions{max-width:100%}}
+.compact-saved-review>p,.compact-saved-review .saved-context>p{max-width:none}

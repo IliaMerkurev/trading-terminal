@@ -338,8 +338,9 @@ it('searches the complete catalog and pages within the submitted query while kee
  await screen.findByRole('option',{name:/Chosen/});fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'selected'}});
  fireEvent.click(await screen.findByRole('button',{name:'Edit details'}));
  await screen.findByLabelText('Comparison name');
+ fireEvent.click(screen.getByText(/^Search saved comparisons · /,{selector:'summary'}));
  fireEvent.change(screen.getByLabelText('Search all saved comparisons'),{target:{value:'needle%_'}});
- fireEvent.click(screen.getByText('Search saved comparisons'));
+ fireEvent.click(screen.getByRole('button',{name:'Search saved comparisons'}));
  await screen.findByRole('option',{name:/New match/});
  expect(screen.getByRole('option',{name:/selected outside search page/})).toBeTruthy();
  expect(screen.getByText('How filters and comparison groups work').closest('details')?.open).toBe(false);

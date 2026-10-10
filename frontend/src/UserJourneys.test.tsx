@@ -195,6 +195,7 @@ it('opens a comparison report before collapsed history and returns to the same f
  await screen.findByRole('option',{name:/Saved fixture/});
  fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'saved'}});
  await screen.findByText('-12.0000 / -1.20%');
+ fireEvent.click(screen.getByText('Filter results · 0 active',{selector:'summary'}));
  fireEvent.change(screen.getByLabelText('Library filter Compatibility / result state'),{target:{value:'completed'}});
  fireEvent.click(screen.getByRole('button',{name:'Open report'}));
  expect(await screen.findByRole('heading',{name:'Saved report · BTCUSDT'})).toBeTruthy();

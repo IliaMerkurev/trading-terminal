@@ -52,8 +52,19 @@ including reasons, before **Start N tests** starts only the ready rows.
 
 The whole comparison is saved automatically in the local database. Reopen it in
 **Saved tests**; **Saved comparison settings** shows its original contract.
-Choose **Sort comparable results**, **Highest first / Lowest first**, and the
-family/timeframe/state filters. Comparison groups preserve different execution
+Choose **Sort comparable results** and **Highest first / Lowest first** beside
+the retained original context. Open **Filter results** for category and numeric
+threshold inputs. The active count and **Clear filters** remain visible when
+closed; invalid numeric thresholds are explicitly not applied. Clearing affects
+only viewing filters, preserving the saved comparison, sorting and new-test
+source. Open **Search saved comparisons** to search names, notes, IDs and dates
+across the complete saved catalog; **Load older comparisons** continues that
+query. A selected comparison remains available outside its search page.
+**Saved notes** opens the selected comparison’s saved note without entering the
+editor; **Edit details** still edits its name and notes explicitly.
+**Detailed saved assumptions** expands secondary execution settings; instrument
+assumptions, costs, outcome counts and source resolution remain visible.
+Filter help and **Verify on a later period** follow the results table. Comparison groups preserve different execution
 models rather than mixing them into one ranking. Negative returns and unavailable
 metrics remain visible. A completed batch can include incompatible rows without
 claiming they executed. Native templates still need compatible markets/history
