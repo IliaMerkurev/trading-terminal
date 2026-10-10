@@ -31,7 +31,7 @@ class AppService:
                 raise ValueError("Invalid IPC identifier or parameters")
             if len(canonical(message))>1024*1024: raise ValueError("IPC request exceeds 1 MiB")
             p=message["params"]; command=message["command"]
-            fields={"platform_capabilities":set(),"list_runs":set(),"run_status":{"run_id"},"result_page":{"run_id","kind","offset","limit"},
+            fields={"scheduler_status":set(),"platform_capabilities":set(),"list_runs":set(),"run_status":{"run_id"},"result_page":{"run_id","kind","offset","limit"},
                 "start_run":{"strategy","profile","dataset_id"},"cancel_run":{"run_id"},
                 "list_strategies":set(),"save_graph":{"name","graph","layout","strategy_id","profile"},
                 "get_strategy":{"strategy_id"},"list_datasets":set(),"run_manifest":{"run_id"},
@@ -71,6 +71,7 @@ class AppService:
             if command=='platform_capabilities':
                 from terminal.process_lifecycle import platform_capabilities
                 result=platform_capabilities()
+            elif command=='scheduler_status':result=self.jobs.scheduler_status()
             elif command in ('live_start','live_start_terminal'):result=self.live.start(**p)
             elif command=='market_open':result=self.live.market_open(**p)
             elif command=='market_close':result=self.live.market_close()
@@ -173,8 +174,20 @@ class AppService:
             return {"version":1,"id":request_id,"type":"error","error":{"code":"REQUEST_FAILED","message":str(exc)[:2000]}}
 
     def close(self):
-        self.live.close()
-        self.library_batches.close()
-        self.experiments.close()
-        self.jobs.close()
-        self.downloads.close()
+        errors=[]
+        def attempt(action):
+            try:action()
+            except Exception as exc:errors.append(exc)
+        attempt(self.live.close)
+        attempt(self.library_batches.close)
+        attempt(self.experiments.close)
+        # The calculation process is only one workspace owner. Defer unlocking
+        # until live/history/download threads have also actually stopped.
+        attempt(lambda:self.jobs.close(release_workspace=False))
+        attempt(self.downloads.close)
+        threads=(self.live.thread,self.live.warmup_thread,self.live.hub.thread,self.live.chart_history.thread,
+                 self.live.delivery_thread,self.downloads.thread)
+        if self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
+            errors.append(RuntimeError('Service shutdown is incomplete; workspace ownership is retained'))
+        else:attempt(self.jobs.close)
+        if errors:raise ExceptionGroup('Service shutdown cleanup failed',errors)

@@ -10,6 +10,25 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from terminal.service import AppService
 
 
+def verify_results(store):
+    """Verify every completed artifact without collecting unbounded history."""
+    with store.connect() as db:
+        expected=db.execute("SELECT count(*) FROM runs WHERE status='completed'").fetchone()[0]
+    verified=0;cursor=None
+    while True:
+        page=store.history_page(before=cursor,limit=100)
+        for run in page['rows']:
+            if run['status']=='completed':
+                store.result(run['id']);verified+=1
+        following=page['next']
+        if following is None:break
+        if not page['rows'] or following==cursor:
+            raise RuntimeError('Result verification pagination did not advance')
+        cursor=following
+    if verified!=expected:raise RuntimeError('Completed result verification count mismatch')
+    return verified
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('backup',type=Path);parser.add_argument('destination',type=Path)
@@ -34,11 +53,10 @@ def main():
     try:
         after=rows(destination,list(before))
         if before!=after:raise RuntimeError('Migration changed existing records')
-        for run in service.store.recent():
-            if run['status']=='completed':service.store.result(run['id'])
+        verified=verify_results(service.store)
         with service.store.connect() as db:
             if db.execute('PRAGMA integrity_check').fetchone()[0]!='ok':raise RuntimeError('SQLite integrity check failed')
-        report={'result':'passed','runs_preserved':before['runs']['rows'],'strategies_preserved':before['strategies']['rows'],'trust_records_preserved':before['native_trust']['rows'],'existing_tables_preserved':before,'result_checksums':'verified','migration':'additive research/live/paper tables'}
+        report={'result':'passed','runs_preserved':before['runs']['rows'],'strategies_preserved':before['strategies']['rows'],'trust_records_preserved':before['native_trust']['rows'],'existing_tables_preserved':before,'result_checksums':'verified','completed_results_verified':verified,'migration':'additive research/live/paper tables'}
         (destination/'verification.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
         print(json.dumps(report))
     finally:service.close()

@@ -259,6 +259,7 @@ class LibraryBatchManager(ExperimentManager):
             self._unchanged(frozen);self._preflight_data(active,frozen)
             with self.store.connect() as db:db.execute("UPDATE library_batches SET status='running' WHERE id=?",(ident,))
             for row in report['rows']:
+                self.jobs.require_storage_ready()
                 if active['stop'].is_set():break
                 if row['status']!='pending':continue
                 ordinal=row['ordinal'];spec=frozen['rows'][ordinal]
@@ -286,8 +287,7 @@ class LibraryBatchManager(ExperimentManager):
             elif any(r['status']!='completed' for r in self.get(ident)['rows']):status='completed_with_errors'
         except Exception as exc:status='failed';error=str(exc)[:2000]
         finally:
-            with self.store.connect() as db:db.execute('UPDATE library_batches SET status=?,error=? WHERE id=?',(status,error,ident))
-            with self.jobs.lock:self.active=None;self.jobs.reservation=None
+            self._finalize(ident,'library_batch','library_batches',status,error)
 
     def get(self, batch_id):
         with self.store.connect() as db:
@@ -301,6 +301,7 @@ class LibraryBatchManager(ExperimentManager):
             row['progress']=self.jobs.status(row['run_id']).get('progress') if row['status']=='running' and row['run_id'] else None
             result['rows'].append(row)
         result['active_id']=self.active['id'] if self.active else None
+        result['storage_failure']=self.jobs.storage_diagnostic()
         return result
 
     def history_page(self, before=None):

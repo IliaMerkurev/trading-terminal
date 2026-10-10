@@ -35,18 +35,44 @@ class JobManager:
         self.lock=threading.RLock()
         self.active=None
         self.reservation=None
+        self.storage_failure=None
         self.store.recover()
         with self.store.connect() as db:
             db.execute('''CREATE TABLE IF NOT EXISTS replay_jobs(
                 id TEXT PRIMARY KEY,session_id TEXT NOT NULL,status TEXT NOT NULL,error TEXT,result TEXT)''')
             db.execute("UPDATE replay_jobs SET status='interrupted',error='Application exited before replay completion' WHERE status IN ('running','cancel_requested')")
 
+    def require_storage_ready(self):
+        with self.lock:
+            if self.storage_failure is not None:
+                raise ValueError(self.storage_failure['message'])
+
+    def latch_storage_failure(self,ident,kind):
+        # Never copy exception text (paths, payloads or secrets) into this overlay.
+        # The first failure owns the diagnostic until restart; no automatic retry.
+        with self.lock:
+            if self.storage_failure is None:
+                self.storage_failure={'id':ident,'kind':kind,'durable':False,
+                    'message':'Calculations blocked by storage finalization failure. The worker has stopped; saved status may be unfinished. Check available storage and restart the application. No automatic retry.'}
+
+    def storage_diagnostic(self):
+        with self.lock:
+            return dict(self.storage_failure) if self.storage_failure is not None else None
+
+    def scheduler_status(self):
+        with self.lock:
+            return {'storage_failure':self.storage_diagnostic(),
+                    'active':{'id':self.active['id'],'kind':self.active.get('kind','run')} if self.active else None,
+                    'reservation':self.reservation}
+
     def start_replay(self,session_id):
+        self.require_storage_ready()
         from terminal.live_store import LiveStore
         from terminal.data import runtime_snapshot
         journal=object.__new__(LiveStore);journal.store=self.store
         journal.get(session_id)  # Validate before creating a job; never restore/mutate the session.
         with self.lock:
+            self.require_storage_ready()
             if self.active or self.reservation:raise ValueError('One calculation or experiment is already active')
             replay_id=uuid.uuid4().hex
             directory=self.store.root/'replays'/replay_id;directory.mkdir(parents=True)
@@ -90,7 +116,8 @@ class JobManager:
             if replay_id is not None:raise ValueError('Unknown replay job')
             return None
         return {**dict(row),'result':json.loads(row['result']) if row['result'] else None,
-                'progress':self._progress(self.store.root/'replays'/row['id'])}
+                'progress':self._progress(self.store.root/'replays'/row['id']),'storage_failure':self.storage_diagnostic(),
+                'worker_active':self.scheduler_status()['active']=={'id':row['id'],'kind':'replay'}}
 
     def cancel_replay(self,replay_id):
         with self.lock:
@@ -98,8 +125,9 @@ class JobManager:
             if not active or active.get('kind')!='replay' or active['id']!=replay_id:
                 raise ValueError('That replay is not active')
             active['cancelled']=True
-            with self.store.connect() as db:db.execute("UPDATE replay_jobs SET status='cancel_requested' WHERE id=?",(replay_id,))
-            active['job'].terminate()
+            try:
+                with self.store.connect() as db:db.execute("UPDATE replay_jobs SET status='cancel_requested' WHERE id=?",(replay_id,))
+            finally:active['job'].terminate()
         return {'status':'cancel_requested'}
 
     def _monitor_replay(self,replay_id,session_id,process,job,reader,anchor):
@@ -123,11 +151,14 @@ class JobManager:
                 with self.store.connect() as db:
                     db.execute('UPDATE replay_jobs SET status=?,error=?,result=? WHERE id=?',
                                (status,error,canonical(result).decode() if status=='completed' else None,replay_id))
+            except Exception:
+                self.latch_storage_failure(replay_id,'replay')
             finally:
-                anchor.close()
-                self.active=None
+                try:anchor.close()
+                finally:self.active=None
 
     def start(self,strategy,profile,dataset_id,*,research=None,owner=None,expected_runtime=None):
+        self.require_storage_ready()
         native=isinstance(strategy,dict) and strategy.get("engine")=="nautilus_trader"
         benchmark=isinstance(strategy,dict) and 'benchmark' in strategy
         if native:
@@ -156,6 +187,7 @@ class JobManager:
             snapshot=json.loads(canonical(snapshot))
             snapshot['snapshot_sha256']=digest(snapshot)
         with self.lock:
+            self.require_storage_ready()
             if self.reservation is not None and self.reservation!=owner:raise ValueError('A parameter experiment owns the calculation slot')
             if self.active is not None: raise ValueError("One backtest is already active")
             run_id=self.store.create(snapshot)
@@ -213,8 +245,11 @@ class JobManager:
                     error_file=self.store.directory(run_id)/"worker-error.json"
                     message=json.loads(error_file.read_bytes())["message"] if error_file.exists() else f"Worker exited with code {code}"
                     self.store.status(run_id,"failed",message)
+            except (OSError,sqlite3.Error):
+                self.latch_storage_failure(run_id,'run')
             except Exception as exc:
-                self.store.status(run_id,"failed",str(exc)[:2000])
+                try:self.store.status(run_id,"failed",str(exc)[:2000])
+                except Exception:self.latch_storage_failure(run_id,'run')
             finally:
                 self.active=None
 
@@ -222,13 +257,13 @@ class JobManager:
         with self.lock:
             if self.active is None or self.active.get('kind')=='replay' or self.active["id"]!=run_id: raise ValueError("That run is not active")
             self.active["cancelled"]=True
-            self.store.status(run_id,"cancel_requested")
-            self.active["job"].terminate()
+            try:self.store.status(run_id,"cancel_requested")
+            finally:self.active["job"].terminate()
         return {"status":"cancel_requested"}
 
     def status(self,run_id):
         record=self.store.get(run_id)
-        return {"id":run_id,"status":record["status"],"error":record["error"],"progress":self._progress(self.store.directory(run_id)),"summary":record["summary"]}
+        return {"id":run_id,"status":record["status"],"error":record["error"],"progress":self._progress(self.store.directory(run_id)),"summary":record["summary"],"storage_failure":self.storage_diagnostic()}
 
     @staticmethod
     def _progress(directory):
@@ -253,18 +288,23 @@ class JobManager:
             stream.seek(max(0,size-16384))
             return {"text":stream.read(16384).decode("utf-8",errors="replace"),"truncated":size>16384}
 
-    def close(self):
+    def close(self,*,release_workspace=True):
+        errors=[]
         with self.lock:
             active=self.active
             if active:
-                if active.get('kind')=='replay':self.cancel_replay(active['id'])
-                else:self.cancel(active["id"])
+                try:
+                    if active.get('kind')=='replay':self.cancel_replay(active['id'])
+                    else:self.cancel(active["id"])
+                except Exception as exc:errors.append(exc)
                 monitor=active["monitor"]
         if active:
             monitor.join(timeout=10)
-            if monitor.is_alive():
-                raise RuntimeError("Worker shutdown has not completed; workspace ownership is retained")
-        if not self.instance_file.closed:
+            if monitor.is_alive() or active['process'].poll() is None:
+                errors.append(RuntimeError("Worker shutdown has not completed; workspace ownership is retained"))
+                raise ExceptionGroup('Worker shutdown failed',errors)
+        if release_workspace and not self.instance_file.closed:
             self.instance_file.seek(0)
             unlock_workspace(self.instance_file)
             self.instance_file.close()
+        if errors:raise ExceptionGroup('Worker shutdown cleanup failed',errors)

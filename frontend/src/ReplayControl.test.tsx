@@ -29,3 +29,10 @@ it('restores a persisted result and distinguishes a failed job',async()=>{
  await waitFor(()=>expect(screen.getByRole('alert').textContent).toBe('Synthetic replay error'),{timeout:2000});
  expect(screen.queryByText(/MATCH/)).toBeNull();
 });
+
+it('retains saved running status but removes cancellation for a released worker',async()=>{
+ vi.mocked(api).mockResolvedValue({id:'faulted',session_id:'s',status:'running',worker_active:false,storage_failure:{id:'faulted'}});
+ render(<ReplayControl sessionId="s" active={false}/>);
+ expect(await screen.findByText('Replay: running')).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'Cancel replay'})).toBeNull();
+});

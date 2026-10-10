@@ -41,7 +41,7 @@ class LiveManager:
         self.store=store
         self.journal=LiveStore(store)
         self.stream_factory,self.history_factory=stream_factory,history_factory
-        self.thread=None;self.stop=threading.Event();self.lock=threading.RLock()
+        self.thread=None;self.warmup_thread=None;self.stop=threading.Event();self.lock=threading.RLock()
         self.session_id=None;self.view={};self.log=deque(maxlen=200)
         self.market=MarketState();self.manual_pending=None
         self.hub=MarketHub(stream_factory)
@@ -315,6 +315,7 @@ class LiveManager:
                 finally:initialized.set()
             if self.hub.started is not None:
                 warmup_thread=threading.Thread(target=initialize,daemon=True,name='strategy-history-initialization')
+                self.warmup_thread=warmup_thread
                 warmup_thread.start()
             else:
                 initialize()
@@ -425,7 +426,20 @@ class LiveManager:
             if paper:paper.close()
 
     def close(self):
-        self.pause()
-        if self.thread:self.thread.join(timeout=4)
-        self.hub.close();self.chart_history.close()
-        self.delivery_stop.set();self.delivery_thread.join(timeout=1)
+        # Stop signals do not depend on journal availability. Preserve failures,
+        # but never let a failed PAUSED write skip the remaining owned cleanup.
+        errors=[]
+        self.stop.set();self.delivery_stop.set()
+        self.hub.stop.set();self.chart_history.stop.set()
+        def attempt(action):
+            try:action()
+            except Exception as exc:errors.append(exc)
+        attempt(self.pause)
+        if self.thread:attempt(lambda:self.thread.join(timeout=4))
+        attempt(self.hub.close)
+        attempt(self.chart_history.close)
+        attempt(lambda:self.delivery_thread.join(timeout=1))
+        if any(thread and thread.is_alive() for thread in
+               (self.thread,self.warmup_thread,self.hub.thread,self.chart_history.thread,self.delivery_thread)):
+            errors.append(RuntimeError('Live shutdown is incomplete; workspace ownership must be retained'))
+        if errors:raise ExceptionGroup('Live shutdown cleanup failed',errors)

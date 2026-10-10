@@ -2,11 +2,11 @@ import {useEffect,useState} from 'react';
 import {api} from './api';
 import {poll} from './poll';
 
-type Replay={id:string;session_id:string;status:string;error?:string;result?:{match:boolean;checked_events:number};progress?:{processed:number;total:number}};
+type Replay={id:string;session_id:string;status:string;worker_active?:boolean;error?:string;result?:{match:boolean;checked_events:number};progress?:{processed:number;total:number}};
 export default function ReplayControl({sessionId,active}:{sessionId?:string;active:boolean}){
  const [job,setJob]=useState<Replay|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>poll(()=>api<Replay|null>('replay_status',{replay_id:null}),setJob,()=>setError('Replay status unavailable; retrying.'),500),[]);
- const running=job&&['running','cancel_requested'].includes(job.status);
+ const running=job&&(job.worker_active??['running','cancel_requested'].includes(job.status));
  async function act(cancel=false){
   setBusy(true);setError('');
   try{

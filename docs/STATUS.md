@@ -1,5 +1,47 @@
 # Implementation status
 
+## Storage finalization and safe shutdown — 2026-10-10
+
+Failed final storage writes now release calculation/scheduler ownership and set
+one shared, non-durable diagnostic. Further run, replay, grid, Library and frozen
+validation starts are blocked in that application session. Saved statuses and
+completed metrics remain distinct from the diagnostic. A global notice reads
+memory-only scheduler state, including actual worker/reservation ownership;
+it is visible across connected transports even when SQLite cannot be opened.
+Native close and replay controls no longer confuse an unfinished saved status
+with a still-running worker. Independent active downloads retain their close
+confirmation and cancellation flow. Restart retains existing interruption
+recovery; it neither retries calculations nor proves that storage is repaired.
+
+Shutdown now attempts all owned resource cleanup despite failed live-journal or
+cancellation writes, preserves the original failure evidence, and retains the
+workspace lock while workers, scheduler threads, live warmup, market/chart,
+notification or download threads remain active. Cancellation still terminates
+the owned process when its status write fails. No completed result is fabricated.
+The existing native host's ten-second forced-backend fallback is unchanged;
+slow cleanup may still reach that fallback. Graceful Windows disk-failure
+shutdown is not established by Linux fault injection.
+
+Migration verification traverses bounded keyset history pages (at most 100 rows)
+and checks every completed report against an independent SQL count. The report
+includes the verified count; corruption in the oldest of 101 reports is rejected.
+
+Focused integrated Linux evidence: 13 backend fault tests and 11 selected UI
+close/notice tests passed. Separately, four existing calculation regressions and
+two nearest live/blocked-warmup regressions passed. Tests use injected SQLite/
+filesystem failures, isolated workspaces and independently specified outcomes;
+they do not fill or remount the host disk.
+
+The combined candidate pass ran 277 Python tests in 102.417s: 260 passed, eight
+Windows-only checks were skipped, and nine legacy manual-paper fixtures failed
+only during teardown because their mocked live thread stayed alive after join.
+Two fixture lifecycle mocks were corrected without changing production code or
+financial assertions. All nine affected tests plus four shutdown ownership guards
+then passed in a focused 13-test rerun (3.062s); the full suite was not repeated.
+The same candidate passed all 132 frontend tests in 27 files and production
+TypeScript/build. The existing large-JavaScript-chunk warning remains. Actual
+final-candidate browser acceptance and Windows acceptance remain separate.
+
 ## Card-to-saved-test journey — 2026-10-10
 
 Lab setup now retains its origin when preparing data. Custom-backtest history
