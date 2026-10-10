@@ -1,5 +1,71 @@
 # Implementation status
 
+## Saved research details and numeric thresholds — 2026-10-10
+
+Actual browser checks on the functional checkpoint verified reopening a legacy
+matrix, saving a name and Unicode notes, finding it with uppercase Cyrillic
+search, and locking comparison selection while details are unsaved. Thresholds
+of 0% drawdown and 1,000 positions retained passive references and N/A context;
+a negative minimum-position value displayed the validation warning.
+
+Final local-browser acceptance on production code `b859f5a` verified persistence
+after Stop local service and restarting the same launcher: the named legacy
+comparison and exact Unicode note reopened, and uppercase Cyrillic search found
+it. Edit details reopened the saved text; an unsaved change disabled comparison
+switching and Hide details; explicit discard restored the saved name. A subsequent
+rename and Save details collapsed the editor and updated the selector. Opening
+the RSI report and returning with Back retained search, selection and numeric
+filters on the feature checkpoints. The legacy matrix remained at 14 completed
+and two unavailable rows, with two total saved comparisons and no rerun. SQLite
+integrity_check returned ok; all 42 original report/snapshot files retained their
+hashes. These are synthetic local-browser workflow and preservation checks.
+Narrow-screen visual acceptance of this latest refinement remains pending.
+
+That walkthrough also identified excessive explanatory text above the results.
+The bounded presentation refinement moves detailed filter/cohort guidance into
+a disclosure while retaining a visible scope/baseline/context summary. Saved
+details initially show the name, a short note preview and Edit details; a
+successful save collapses the editor. Drafts, pending saves and errors cannot be
+hidden through that control. This presentation-only change passed all 23 tests
+in the two affected UI files, plus production TypeScript/build with the existing
+large-chunk advisory. Independent source review found no blocking issue.
+
+Saved Library comparisons now support editable names and research notes in a
+separate additive metadata table. Revision-checked transactional writes preserve
+immutable batch snapshots, run summaries and report files. Legacy comparisons
+remain readable with empty details. Failed writes retain editor text; polling
+cannot replace drafts, and switching comparisons requires save or discard.
+
+Literal, Unicode-case-insensitive search covers names, notes, IDs and creation
+dates across the full saved catalog before the existing bounded keyset paging.
+Search does not include strategy names or metrics. Selected reports remain
+available outside the current search page; reset requests invalidate pending
+older-page responses. Numeric drawdown, completed-position and period-return
+thresholds apply only to the selected comparison. Cohort sorting and holdout
+order are unchanged. Passive references bypass thresholds; N/A and unfinished
+rows are labeled context, never passing measurements. See
+[ADR 0031](adr/0031-saved-comparison-details.md).
+
+Focused backend verification passed 10 tests across `test_library_history`,
+`test_library_batches` and `test_library_validation`. After the final unknown-ID
+read guard and a new API/file-preservation fixture, four history tests passed;
+the new test initially expected the wrong IPC envelope key. Its corrected
+assertion passed in a one-test rerun. These are overlapping focused passes,
+not a combined full-suite count. Evidence includes 125-record pagination,
+old-record literal/Unicode search, restart, revision conflicts, rollback after
+an injected write failure and unchanged independently supplied report bytes.
+
+The focused UI rerun passed 29 tests in `LibraryResearch`,
+`SavedComparisonDetails` and `StrategyLibrary`; the first pass found a JSX
+syntax typo and passed the two independent metadata-editor tests before the
+correction. Production TypeScript/build passed with the existing large-chunk
+advisory. Independent source review caught and resolved a concurrent paging
+reset race and floating-point percentage-boundary comparison before this final
+pass. No dependency, accounting, network or security change was made. The
+browser/restart results above supplement these focused passes, not a new full
+regression suite. Windows-native and live-public-data gates remain uncompleted.
+Synthetic fixtures are not profitability evidence.
+
 ## Saved-result presentation refinement — 2026-10-10
 
 Saved comparisons now distinguish their immutable settings from the current

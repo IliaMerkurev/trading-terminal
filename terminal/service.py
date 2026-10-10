@@ -65,6 +65,8 @@ class AppService:
                           library_batch_status={'batch_id'},library_batch_resume={'batch_id'},
                           library_batch_cancel={'active_id'},library_batches=set())
             fields.update(library_batch_equity={'batch_id','ordinal'},library_validation_freeze={'batch_id','ordinal','dataset_id','start','end','spot_dataset_id'},library_validation_start={'batch_id'})
+            fields.update(library_batch_metadata={'batch_id'},library_batch_save_metadata={'batch_id','name','notes','expected_revision'})
+            if command=='library_batch_history' and 'query' in p:fields[command].add('query')
             if command=='library_copy' and 'profile' in p:fields['library_copy'].add('profile')
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
@@ -104,6 +106,8 @@ class AppService:
             elif command=='library_batch_resume':result=self.library_batches.resume(**p)
             elif command=='library_batch_cancel':result=self.library_batches.cancel(**p)
             elif command=='library_batches':result=self.library_batches.recent()
+            elif command=='library_batch_metadata':result=self.library_batches.metadata(**p)
+            elif command=='library_batch_save_metadata':result=self.library_batches.save_metadata(**p)
             elif command=='library_batch_history':result=self.library_batches.history_page(**p)
             elif command=='library_validation_freeze':result=self.library_batches.freeze_validation(**p)
             elif command=='library_validation_start':result=self.library_batches.start_validation(**p)

@@ -24,6 +24,7 @@ class LibraryBatchManager(ExperimentManager):
         with self.store.connect() as db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS library_batches(id TEXT PRIMARY KEY,created_at TEXT NOT NULL,status TEXT NOT NULL,snapshot TEXT NOT NULL,error TEXT);
+                CREATE TABLE IF NOT EXISTS library_batch_metadata(batch_id TEXT PRIMARY KEY,name TEXT NOT NULL,notes TEXT NOT NULL,revision INTEGER NOT NULL);
                 CREATE TABLE IF NOT EXISTS library_rows(batch_id TEXT NOT NULL,ordinal INTEGER NOT NULL,status TEXT NOT NULL,run_id TEXT,error TEXT,reused INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(batch_id,ordinal));
             ''')
             db.execute("UPDATE library_batches SET status='interrupted',error='Application stopped; explicit pending-row resume required' WHERE status IN ('running','preparing')")
@@ -294,7 +295,7 @@ class LibraryBatchManager(ExperimentManager):
             record=db.execute('SELECT * FROM library_batches WHERE id=?',(identifier(batch_id),)).fetchone()
             if record is None:raise ValueError('Unknown library batch')
             rows=db.execute('SELECT l.*,r.summary FROM library_rows l LEFT JOIN runs r ON r.id=l.run_id WHERE batch_id=? ORDER BY ordinal',(batch_id,)).fetchall()
-        result=dict(record);result['snapshot']=json.loads(result['snapshot']);result['rows']=[]
+        result=dict(record);result['metadata']=self.metadata(batch_id);result['snapshot']=json.loads(result['snapshot']);result['rows']=[]
         for saved in rows:
             row=dict(saved);summary=json.loads(row.pop('summary')) if saved['summary'] else None
             row['metrics']=benchmarks.metrics({'status':'completed',**summary},result['snapshot']['start'],result['snapshot']['end']) if row['status']=='completed' and summary else None
@@ -304,9 +305,44 @@ class LibraryBatchManager(ExperimentManager):
         result['storage_failure']=self.jobs.storage_diagnostic()
         return result
 
-    def history_page(self, before=None):
-        """Read-only 50-row keyset page, including comparisons older than recent()."""
-        params=[];where=''
+    def metadata(self, batch_id):
+        with self.store.connect() as db:
+            if db.execute('SELECT 1 FROM library_batches WHERE id=?',(identifier(batch_id),)).fetchone() is None:
+                raise ValueError('Unknown library batch')
+            row=db.execute('SELECT name,notes,revision FROM library_batch_metadata WHERE batch_id=?',(identifier(batch_id),)).fetchone()
+        return dict(row) if row else {'name':'','notes':'','revision':0}
+
+    def save_metadata(self, batch_id, name, notes, expected_revision):
+        """Mutable annotations only; optimistic concurrency protects other editors."""
+        identifier(batch_id)
+        if not isinstance(name,str) or len(name)>120 or '\x00' in name:
+            raise ValueError('Comparison name must be text of at most 120 characters')
+        if not isinstance(notes,str) or len(notes)>4000 or '\x00' in notes:
+            raise ValueError('Comparison notes must be text of at most 4000 characters')
+        if type(expected_revision) is not int or expected_revision<0:
+            raise ValueError('Invalid metadata revision')
+        name=name.strip()
+        with self.store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if db.execute('SELECT 1 FROM library_batches WHERE id=?',(batch_id,)).fetchone() is None:
+                raise ValueError('Unknown library batch')
+            row=db.execute('SELECT revision FROM library_batch_metadata WHERE batch_id=?',(batch_id,)).fetchone()
+            if (row['revision'] if row else 0)!=expected_revision:
+                raise ValueError('Comparison details changed in another editor. Reload saved details before saving again.')
+            revision=expected_revision+1
+            db.execute('INSERT INTO library_batch_metadata VALUES(?,?,?,?) ON CONFLICT(batch_id) DO UPDATE SET name=excluded.name,notes=excluded.notes,revision=excluded.revision',
+                       (batch_id,name,notes,revision))
+        return {'name':name,'notes':notes,'revision':revision}
+
+    def history_page(self, before=None, query=""):
+        """Search the full catalog before bounded keyset paging; literal Unicode casefold."""
+        if not isinstance(query,str) or len(query)>200 or '\x00' in query:
+            raise ValueError('Search must be text of at most 200 characters')
+        query=query.strip().casefold()
+        params=[];clauses=[]
+        if query:
+            clauses.append("(instr(casefold(coalesce(m.name,'')),?)>0 OR instr(casefold(coalesce(m.notes,'')),?)>0 OR instr(casefold(b.id),?)>0 OR instr(casefold(b.created_at),?)>0)")
+            params.extend([query]*4)
         if before is not None:
             if not isinstance(before,dict) or set(before)!={'created_at','id'}:
                 raise ValueError('Invalid comparison history cursor')
@@ -314,10 +350,12 @@ class LibraryBatchManager(ExperimentManager):
             if not isinstance(before['created_at'],str) or len(before['created_at'])>64:
                 raise ValueError('Invalid comparison history timestamp')
             datetime.fromisoformat(before['created_at'])
-            where='WHERE (created_at,id)<(?,?)'
-            params=[before['created_at'],before['id']]
+            clauses.append('(b.created_at,b.id)<(?,?)')
+            params.extend([before['created_at'],before['id']])
+        where='WHERE '+' AND '.join(clauses) if clauses else ''
         with self.store.connect() as db:
-            rows=db.execute(f"SELECT id,created_at,status,error,coalesce(json_extract(snapshot,'$.phase'),'selection') AS phase FROM library_batches {where} ORDER BY created_at DESC,id DESC LIMIT 51",params).fetchall()
+            db.create_function('casefold',1,lambda value:value.casefold())
+            rows=db.execute(f"SELECT b.id,b.created_at,b.status,b.error,coalesce(json_extract(b.snapshot,'$.phase'),'selection') AS phase,coalesce(m.name,'') AS name FROM library_batches b LEFT JOIN library_batch_metadata m ON m.batch_id=b.id {where} ORDER BY b.created_at DESC,b.id DESC LIMIT 51",params).fetchall()
         selected=[];size=0
         for row in rows[:50]:
             value=dict(row);size+=len(canonical(value))

@@ -289,3 +289,47 @@ it('shows exact small declared costs in review and saved settings without changi
  expect(reviewed.textContent).toContain('slippage 0.002% (fraction 0.00002)');
  expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({profile:expect.objectContaining({fee_rate:'0.00001',slippage:'0.00002'})}));
 });
+
+it('uses percentage boundaries, keeps context and baselines, and never mixes cohorts',()=>{
+ const specs=[defaultProfile,defaultProfile,defaultProfile,{...defaultProfile,version:3},defaultProfile].map((profile,i)=>({kind:i===4?'benchmark':'graph',profile,dataset:{id:'same'}}));
+ const rows=[{ordinal:0,status:'completed',metrics:{max_drawdown:'.10',completed_positions:5,period_return:'-.02'}},{ordinal:1,status:'completed',metrics:{max_drawdown:'.11',completed_positions:6,period_return:'.05'}},{ordinal:2,status:'failed',metrics:null},{ordinal:3,status:'completed',metrics:{max_drawdown:null,completed_positions:0,period_return:null}},{ordinal:4,status:'completed',metrics:{max_drawdown:'.8',completed_positions:1,period_return:'-.5'}}];
+ const report={snapshot:{rows:specs},rows};
+ expect(filterLibraryRows({...report,rows:[{...rows[0],metrics:{max_drawdown:'.07'}}]},[],{maxDrawdown:'7'})).toHaveLength(1);
+ expect(filterLibraryRows(report,[],{maxDrawdown:'10',minTrades:'5',minReturn:'-2'}).map(r=>r.ordinal)).toEqual([0,2,3,4]);
+ expect(filterLibraryRows(report,[],{maxDrawdown:'0'}).map(r=>r.ordinal)).toEqual([2,3,4]);
+ expect(filterLibraryRows(report,[],{maxDrawdown:''})).toHaveLength(5);
+ expect(filterLibraryRows(report,[],{minTrades:'1.2'})).toHaveLength(5);
+ expect(filterLibraryRows(report,[],{minReturn:'NaN'})).toHaveLength(5);
+ expect(sortedLibraryRows(report,'period_return').map(r=>r.ordinal)).toEqual([1,0,4,2,3]);
+ expect(sortedLibraryRows({...report,snapshot:{...report.snapshot,phase:'out_of_sample'}},'period_return')).toEqual(rows);
+});
+
+it('searches the complete catalog and pages within the submitted query while keeping an outside selection',async()=>{
+ const report={id:'selected',status:'completed',active_id:null,metadata:{name:'Chosen',notes:'',revision:1},snapshot:{inputs,rows:[]},rows:[]};
+ vi.mocked(api).mockImplementation(async(command,params:any)=>{
+  if(command==='library_batch_status')return report;
+  if(command==='library_batch_history')return params.query?{rows:[{id:params.before?'oldest':'match',name:params.before?'Old match':'New match',status:'completed',created_at:'2026-01-01'}],next:params.before?null:{id:'server-cursor',created_at:'2025-01-01'}}:{rows:[{id:'selected',name:'Chosen',status:'completed',created_at:'2026-01-02'}],next:null};
+  return {};
+ });
+ render(<LibraryResearch view="saved" selections={[]} datasets={[]} profile={defaultProfile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ await screen.findByRole('option',{name:/Chosen/});fireEvent.change(screen.getByLabelText('Saved library batches'),{target:{value:'selected'}});
+ fireEvent.click(await screen.findByRole('button',{name:'Edit details'}));
+ await screen.findByLabelText('Comparison name');
+ fireEvent.change(screen.getByLabelText('Search all saved comparisons'),{target:{value:'needle%_'}});
+ fireEvent.click(screen.getByText('Search saved comparisons'));
+ await screen.findByRole('option',{name:/New match/});
+ expect(screen.getByRole('option',{name:/selected outside search page/})).toBeTruthy();
+ expect(screen.getByText('How filters and comparison groups work').closest('details')?.open).toBe(false);
+ expect(screen.getByText('Thresholds: this comparison only. Baselines stay visible; N/A rows are context, not matches.')).toBeTruthy();
+ fireEvent.click(screen.getByText('Load older comparisons'));
+ await screen.findByRole('option',{name:/Old match/});
+ expect(api).toHaveBeenCalledWith('library_batch_history',{before:{id:'server-cursor',created_at:'2025-01-01'},query:'needle%_'});
+ expect((screen.getByLabelText('Comparison name') as HTMLInputElement).value).toBe('Chosen');
+});
+
+it('does not claim no search matches after a failed catalog request',async()=>{
+ vi.mocked(api).mockImplementation(async command=>{if(command==='library_batch_history')throw Error('Catalog unavailable');return {};});
+ render(<LibraryResearch view="saved" selections={[]} datasets={[]} profile={defaultProfile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
+ await screen.findByText(/Catalog unavailable/);
+ expect(screen.queryByText('No saved comparisons match this search.')).toBeNull();
+});
