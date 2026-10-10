@@ -1,5 +1,42 @@
 # Implementation status
 
+## Final bounded MVP verification — 2026-10-10
+
+The final tested code was local commit `1da24d8`, published as `bc10a4c` with
+identical tree `4bd2fae2aecd7c8e6a2bc95f7c5dde012a6db4ac`. The combined Linux
+verification passed runtime validation, dependency checks, 304 Python tests
+with eight Windows-only skips (312 total), all 170 frontend tests across 32
+files, TypeScript and the production build. There were no test failures or
+errors. Existing deprecation, simulated-DOM and large-chunk advisories remain.
+
+TT15 full offline restore passed using complete closed synthetic workspaces,
+including datasets, SQLite records, immutable reports, comparisons, saved
+metadata, observation revisions/links and research evidence. Source/copy hashes,
+integrity, foreign keys and reopened API values were checked across clean
+service lifetimes without network access or new backtests. Actual production
+browser reopening then verified local candles, latest-versus-linked historical
+observation revisions, completed comparison metadata, keyboard trade-to-chart
+navigation and name-to-notes focus at 750px width. Escape cancelled a later-period
+overlap review without admitting or freezing work. Post-close reconciliation
+preserved every non-database file and every non-evidence table; original research
+events were unchanged and exactly six expected viewed events were appended.
+
+TT13 actual browser upload into an isolated synthetic workspace reproduced a
+second-run storage failure. The UI showed the correct completed/importing IDs,
+strategy save not attempted and non-atomic/no-blind-retry/no-resume guidance,
+without stale transfer progress. After removing only the fixture fault trigger,
+an ordinary application restart retained exactly two records, recovered the
+unfinished record as interrupted and reopened the completed imported report.
+Missing-history and imported/untracked-evidence caveats remained visible. Final
+storage checks confirmed unchanged immutable JSON hashes, zero saved strategies
+or new trust, intact built-in triggers and valid SQLite integrity/foreign keys.
+
+These checks close the bounded offline restore and archive browser gates; they
+do not establish owner-led unaided usability, Windows/native or live-feed
+acceptance. Archive persistence remains non-atomic and displayed evidence remains
+incomplete. This final evidence update changes documentation only, so the build
+and broad suites were not repeated.
+
 ## Archive partial-failure disclosure — 2026-10-10
 
 A two-run injected failure independently reproduced one completed report and one
