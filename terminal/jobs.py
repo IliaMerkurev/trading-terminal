@@ -190,7 +190,12 @@ class JobManager:
             self.require_storage_ready()
             if self.reservation is not None and self.reservation!=owner:raise ValueError('A parameter experiment owns the calculation slot')
             if self.active is not None: raise ValueError("One backtest is already active")
-            run_id=self.store.create(snapshot)
+            from terminal.research_evidence import admission
+            try:
+                run_id=self.store.create(snapshot,evidence=admission(snapshot,manifest,owner))
+            except (OSError,sqlite3.Error):
+                self.latch_storage_failure(owner or 'admission','research_admission')
+                raise
             job=None;process=None
             try:
                 job=worker_job(self.instance_file)

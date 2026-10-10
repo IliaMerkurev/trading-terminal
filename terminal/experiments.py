@@ -1,4 +1,6 @@
 """Bounded sequential research, immutable selection and separate-period validation."""
+from terminal import research_evidence
+import sqlite3
 import copy
 from datetime import datetime,timezone
 from decimal import Decimal
@@ -235,6 +237,9 @@ class ExperimentManager:
             validations=db.execute('SELECT * FROM validations WHERE experiment_id=? ORDER BY created_at',(experiment_id,)).fetchall()
         result=dict(record);result['snapshot']=json.loads(result['snapshot']);result['rows']=[{**dict(r),'parameters':json.loads(r['parameters']),'summary':json.loads(r['summary']) if r['summary'] else None} for r in rows]
         result['validations']=[{**dict(r),'snapshot':json.loads(r['snapshot']),'storage_failure':self.jobs.storage_diagnostic(),'summary':self.store.get(r['run_id'])['summary'] if r['run_id'] else None} for r in validations]
+        with self.store.connect() as db:
+            for validation in result['validations']:
+                validation['research_evidence']=research_evidence.frozen_review(db,'experiment',validation['id'])
         result['finished']=sum(r['status'] in ('completed','failed','cancelled','interrupted') for r in rows)
         result['active_id']=self.active['id'] if self.active else None
         result['storage_failure']=self.jobs.storage_diagnostic()
@@ -257,7 +262,17 @@ class ExperimentManager:
         snapshot={**source,'graph':graph,'profile':profile,'candidate_ordinal':ordinal,'candidate_run_id':row['run_id'],'parameters':row['parameters']}
         snapshot['candidate_sha256']=digest({'graph':graph,'profile':profile,'dataset':source['dataset'],'runtime':source['runtime'],'oos_range':source['oos_range']})
         ident=uuid.uuid4().hex
-        with self.store.connect() as db:db.execute('INSERT INTO validations VALUES(?,?,?,?,?,NULL,NULL)',(ident,experiment_id,datetime.now(timezone.utc).isoformat(),'frozen',canonical(snapshot).decode()))
+        dataset=self.jobs.datasets.describe(source['dataset']['id'])
+        evidence=research_evidence.event(dataset,profile,*source['oos_range'],route='experiment',owner_id=ident,
+            identity={'experiment_id':experiment_id,'ordinal':ordinal,'candidate_sha256':snapshot['candidate_sha256']})
+        self.jobs.require_storage_ready()
+        try:
+            with self.store.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                research_evidence.append(db,'frozen:experiment:'+ident,'frozen',evidence)
+                db.execute('INSERT INTO validations VALUES(?,?,?,?,?,NULL,NULL)',(ident,experiment_id,datetime.now(timezone.utc).isoformat(),'frozen',canonical(snapshot).decode()))
+        except (OSError,sqlite3.Error):
+            self.jobs.latch_storage_failure(ident,'research_freeze');raise
         return {'validation_id':ident,'candidate_sha256':snapshot['candidate_sha256'],'warning':'Changing parameters requires a new frozen candidate. Reusing a holdout is another attempt, not an independent discovery.'}
 
     def validate(self,validation_id):

@@ -1,5 +1,71 @@
 # Implementation status
 
+## Forward-only research admission evidence — 2026-10-10
+
+A new additive append-only registry records durable custom, Library and Experiment
+run admissions, passive controls and actual frozen candidates. Admission commits
+with the run before worker creation; freeze and its prior-overlap review commit
+with the candidate. Failed persistence rolls back the database transaction and
+uses the existing storage quarantine. Records retain owner/contract/dataset,
+actual evaluation versus input/warmup ranges, and declared provenance/cohort.
+
+Both freeze actions now open a bounded review dialog before confirmation. It
+shows cross-route same-symbol calendar overlap, distinguishing spot/linear
+cohorts, frozen candidates and passive controls. Explicit synthetic evidence is
+isolated by declared source; unknown provenance remains visible and conservative.
+The recorded prior review excludes its own freeze and does not change on later
+admission or reopening. Old saved Library counters are labeled Library-only.
+
+TT11 remains partial: chart/report views, replay/live activity, old/imported
+attempts and external exposure are unrecorded. A durable coverage-start marker
+makes the boundary explicit; no zero-result warning claims untouched history.
+Snapshots, financial reports, accounting and product version are unchanged.
+See [ADR 0032](adr/0032-research-admission-evidence.md).
+
+Focused backend validation passed 15 tests across research evidence and storage
+resilience (4.953s), plus the existing Library later-period parity test in the
+initial pass. That initial command also named a nonexistent storage test module;
+the corrected command above passed. Evidence covers real tiny synthetic workers,
+cross-route freezes, no-worker admission failure, transactional freeze rollback,
+append-only/restart preservation, migration lock release, repeated admissions,
+unknown/real/synthetic classification, adjacent ranges and warmup exclusion.
+The independent preservation assertions retain original snapshot/report bytes.
+
+The first UI pass had 25 passes and one existing test missing the new confirmation
+click. Its corrected focused pass and the final modal refinement each passed all
+23 tests in LibraryResearch and EvidenceFreeze; the three unchanged Experiment
+tests passed initially. Actual browser inspection then found ambiguous same-day
+history choices. All Library history selectors now include declared source,
+short dataset ID and precise UTC range; the overlap review also shows its exact
+evaluation range. This refinement passed 24 focused UI tests and final
+TypeScript/production build, retaining the existing large-chunk advisory. A separate tiny authentic synthetic fixture
+completed custom, Library and Experiment runs and saved a never-started freeze.
+Independent initial and final source review found no blocking lifecycle,
+immutability or UI issue.
+
+Actual local-browser acceptance on production code `0855f39` verified that the
+source, short ID and full UTC labels distinguish three same-day datasets. Library
+review for 2024-01-01 00:24–00:48 UTC showed three recorded events: one custom
+admission, one Experiment admission and one Library freeze, with explicit partial
+coverage. Cancel created no freeze. A separately declared synthetic source showed
+zero overlap while retaining the warning that this does not establish unseen data.
+Confirm created exactly one new frozen batch and no runs/admissions; its saved
+prior review was three, while the original frozen candidate retained two.
+
+The Experiment freeze review for 00:36–00:48 UTC then showed three events: one
+custom admission and two Library freezes. Cancel changed nothing. After Stop
+local service and restarting the same launcher, all three batches persisted; the
+original candidate retained its prior count of two, frozen status, 0/3 completed
+rows and explicit Run action. SQLite integrity was ok. The five completed runs
+and admission counts stayed unchanged (three strategy, two passive); there were
+two strategy freezes. All 15 original immutable run JSON files retained their
+hashes. The final overlap dialog was visually checked at 1180px width.
+
+This is synthetic local-browser/restart acceptance supplementing focused Linux
+and simulated-DOM checks. Narrow-screen acceptance for this slice, full-suite,
+Windows-native and live-source checks remain uncompleted. View tracking remains
+partial, and synthetic fixtures provide no profitability evidence.
+
 ## Saved research details and numeric thresholds — 2026-10-10
 
 Actual browser checks on the functional checkpoint verified reopening a legacy

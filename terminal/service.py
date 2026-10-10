@@ -65,6 +65,7 @@ class AppService:
                           library_batch_status={'batch_id'},library_batch_resume={'batch_id'},
                           library_batch_cancel={'active_id'},library_batches=set())
             fields.update(library_batch_equity={'batch_id','ordinal'},library_validation_freeze={'batch_id','ordinal','dataset_id','start','end','spot_dataset_id'},library_validation_start={'batch_id'})
+            fields['research_evidence_preview']={'dataset_id','start','end'}
             fields.update(library_batch_metadata={'batch_id'},library_batch_save_metadata={'batch_id','name','notes','expected_revision'})
             if command=='library_batch_history' and 'query' in p:fields[command].add('query')
             if command=='library_copy' and 'profile' in p:fields['library_copy'].add('profile')
@@ -152,6 +153,9 @@ class AppService:
             elif command=="archive_finish": result=self.archives.finish(**p)
             elif command=="archive_cancel": result=self.archives.cancel()
             elif command in ('experiment_fields','managed_experiment_fields'):result=self.experiments.fields(**p)
+            elif command=='research_evidence_preview':
+                from terminal.research_evidence import preview
+                result=preview(self.jobs,**p)
             elif command=='experiment_preview':result=self.experiments.preview(**p)
             elif command=='experiment_start':result=self.experiments.start(**p)
             elif command=='list_experiments':result=self.experiments.recent()

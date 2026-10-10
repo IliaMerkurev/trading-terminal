@@ -1,6 +1,6 @@
 import {it,expect,vi} from 'vitest';
 import {render,screen,fireEvent,waitFor} from '@testing-library/react';
-import LibraryResearch,{sortedLibraryRows,canonical,filterLibraryRows,researchProfileSnapshot} from './LibraryResearch';
+import LibraryResearch,{sortedLibraryRows,canonical,filterLibraryRows,researchProfileSnapshot,historyLabel} from './LibraryResearch';
 import {defaultProfile} from './model';
 import {api} from './api';
 vi.mock('./api',()=>({api:vi.fn()}));
@@ -52,6 +52,7 @@ it('later-period setup uses independent dates and only freezes the saved candida
  vi.mocked(api).mockImplementation(async(command)=>{
   if(command==='library_batch_history')return {rows:[{id:'saved',status:'completed',created_at:'Saved'}],next:null};
   if(command==='library_batch_status')return report;
+  if(command==='research_evidence_preview')return {groups:[],message:'No recorded overlap',limitation:'History incomplete'};
   if(command==='library_validation_freeze')return {batch_id:'later'};
   return {};
  });
@@ -65,6 +66,7 @@ it('later-period setup uses independent dates and only freezes the saved candida
  fireEvent.change(screen.getByLabelText('Later-period history'),{target:{value:'later-data'}});
  fireEvent.change(screen.getByLabelText('Later evaluation start (UTC)'),{target:{value:'1970-01-01T02:00'}});
  fireEvent.click(screen.getByRole('button',{name:'Freeze later-period candidate'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Confirm candidate freeze'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_freeze',{batch_id:'saved',ordinal:0,dataset_id:'later-data',start:7200,end:10800,spot_dataset_id:null}));
  expect(api).not.toHaveBeenCalledWith('library_batch_start',expect.anything());
  expect(report.snapshot.rows[0].profile.capital).toBe(defaultProfile.capital);
@@ -125,6 +127,7 @@ it('freezes a saved candidate separately and never ranks or attaches holdout met
  vi.mocked(api).mockImplementation(async(command,params:any)=>{
   if(command==='library_batch_history')return {rows:[{id:'selection',status:'completed',created_at:'Selection'}],next:null};
   if(command==='library_batch_status')return params.batch_id==='holdout'?frozen:base;
+  if(command==='research_evidence_preview')return {groups:[],message:'No recorded overlap',limitation:'History incomplete'};
   if(command==='library_validation_freeze')return {batch_id:'holdout'};
   return {};
  });
@@ -136,6 +139,7 @@ it('freezes a saved candidate separately and never ranks or attaches holdout met
  fireEvent.change(screen.getByLabelText('Evaluation end, exclusive (UTC)'),{target:{value:'1970-01-01T03:00'}});
  fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
  fireEvent.click(await screen.findByRole('button',{name:'Freeze later-period candidate'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Confirm candidate freeze'}));
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_validation_freeze',{batch_id:'selection',ordinal:0,dataset_id:'data',start:7200,end:10800,spot_dataset_id:null}));
  expect(await screen.findByText(/Later-period verification — excluded/)).toBeTruthy();
  expect((screen.getByLabelText('Library sort') as HTMLSelectElement).disabled).toBe(true);
@@ -332,4 +336,12 @@ it('does not claim no search matches after a failed catalog request',async()=>{
  render(<LibraryResearch view="saved" selections={[]} datasets={[]} profile={defaultProfile} onActive={vi.fn()} onReport={vi.fn()} onOpenRun={vi.fn()}/>);
  await screen.findByText(/Catalog unavailable/);
  expect(screen.queryByText('No saved comparisons match this search.')).toBeNull();
+});
+
+it('labels same-day history choices with source, short identity and precise UTC range',()=>{
+ const a={id:'abcdef012345',symbol:'BTCUSDT',market:'spot',source:'Synthetic shared',range:[0,2880]};
+ const b={...a,id:'12345678abcd',source:'Unknown provenance'};
+ expect(historyLabel(a)).toContain('Synthetic shared · abcdef01');
+ expect(historyLabel(a)).toContain('1970-01-01T00:00 — 1970-01-01T00:48 UTC');
+ expect(historyLabel(a)).not.toBe(historyLabel(b));
 });

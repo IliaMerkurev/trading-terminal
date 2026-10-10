@@ -1,11 +1,12 @@
 """Frozen library rows using the existing sequential experiment/job ownership."""
 from datetime import datetime, timezone
 import json
+import sqlite3
 import uuid
 import math
 from importlib.metadata import PackageNotFoundError
 
-from terminal import benchmarks, library
+from terminal import benchmarks, library, research_evidence
 from terminal.data import canonical, digest, runtime_snapshot
 from terminal.experiments import ExperimentManager, MAX_MINUTE_RUNS, validate_range
 from terminal.native import preview as native_preview
@@ -154,8 +155,11 @@ class LibraryBatchManager(ExperimentManager):
             raise
         return {'batch_id':ident}
 
-    def _save(self, ident, frozen, status):
+    def _save(self, ident, frozen, status, evidence=None):
         with self.store.connect() as db:
+            if evidence is not None:
+                db.execute('BEGIN IMMEDIATE')
+                research_evidence.append(db,'frozen:library:'+ident,'frozen',evidence)
             db.execute('INSERT INTO library_batches VALUES(?,?,?,?,NULL)',
                        (ident,datetime.now(timezone.utc).isoformat(),status,canonical(frozen).decode()))
             for ordinal,row in enumerate(frozen['rows']):
@@ -192,7 +196,13 @@ class LibraryBatchManager(ExperimentManager):
             source_version_date=entry['source_version_date'],frozen_at=datetime.now(timezone.utc).isoformat(),
             warning='Repeated or changed selections reuse the holdout. This does not prove the external author never observed this period. Source versions may postdate the market history.')
         frozen['contract_sha256']=digest({k:v for k,v in frozen.items() if k!='contract_sha256'})
-        ident=uuid.uuid4().hex;self._save(ident,frozen,'frozen')
+        ident=uuid.uuid4().hex
+        evidence=research_evidence.event(later,spec['profile'],start,end,route='library',owner_id=ident,
+            identity={'selection_batch_id':batch_id,'ordinal':ordinal,'candidate_sha256':digest(spec)})
+        self.jobs.require_storage_ready()
+        try:self._save(ident,frozen,'frozen',evidence)
+        except (OSError,sqlite3.Error):
+            self.jobs.latch_storage_failure(ident,'research_freeze');raise
         return {'batch_id':ident,'contract_sha256':frozen['contract_sha256']}
 
     def start_validation(self, batch_id):
@@ -301,6 +311,7 @@ class LibraryBatchManager(ExperimentManager):
             row['metrics']=benchmarks.metrics({'status':'completed',**summary},result['snapshot']['start'],result['snapshot']['end']) if row['status']=='completed' and summary else None
             row['progress']=self.jobs.status(row['run_id']).get('progress') if row['status']=='running' and row['run_id'] else None
             result['rows'].append(row)
+        with self.store.connect() as db:result['research_evidence']=research_evidence.frozen_review(db,'library',batch_id)
         result['active_id']=self.active['id'] if self.active else None
         result['storage_failure']=self.jobs.storage_diagnostic()
         return result

@@ -39,6 +39,8 @@ class RunStore:
                     document TEXT NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS native_trust(identity TEXT PRIMARY KEY, granted_at TEXT NOT NULL);
             """)
+            from terminal.research_evidence import initialize
+            initialize(db)
             db.execute(f"CREATE INDEX IF NOT EXISTS series_time ON series(run_id,kind,({TIME_SQL}))")
             if 'profile' not in {row[1] for row in db.execute('PRAGMA table_info(strategies)')}:
                 db.execute('ALTER TABLE strategies ADD COLUMN profile TEXT')
@@ -56,12 +58,15 @@ class RunStore:
     def directory(self,run_id):
         return self.root/"runs"/identifier(run_id)
 
-    def create(self,manifest):
+    def create(self,manifest,*,evidence=None):
         run_id=uuid.uuid4().hex
         write_new(self.directory(run_id)/"snapshot.json",canonical(manifest))
         with self.connect() as db:
             db.execute("INSERT INTO runs(id,created_at,status,manifest) VALUES(?,?,?,?)",
                        (run_id,datetime.now(timezone.utc).isoformat(),"created",canonical(manifest).decode()))
+            if evidence is not None:
+                from terminal.research_evidence import append
+                append(db,'started:'+run_id,'started',evidence,run_id)
         return run_id
 
     def status(self,run_id,status,error=None):
