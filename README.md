@@ -47,6 +47,20 @@ With the documented toolchain and one-time project setup complete, run from the 
 
 The launcher builds this checkout's desktop assets and starts the application using the calling Python environment. Omit `--build` to reopen an existing build. To preserve an in-use older executable, add `--target-dir .local-tools/05-final-target`; both build and launch use that directory. For isolated acceptance, also supply an absolute `--data-root` as described in the demo guide. The launcher does not install tools or change PowerShell execution policies. For prerequisites, pinned setup and tests, read the [development guide](docs/DEVELOPMENT.md). An installer is deferred.
 
+## Linux adaptation preview
+
+This branch adds a Linux x86_64 source-checkout path while retaining Windows.
+See [Linux setup](docs/DEVELOPMENT.md#linux-source-checkout-research-preview) and
+[exact validation status](docs/STATUS.md). The original native build and IPC
+checks passed, but the actual native window was blocked by a missing system
+WebKitGTK helper. After VM replacement, the changes were reconstructed and must
+be validated independently; historical results do not prove recovered code.
+Windows regression also remains unrun on this adaptation.
+
+Linux native Python execution, Windows/sound notifications and protected
+Telegram storage are explicitly unavailable. No plaintext credential fallback,
+alternate web transport, installer or release is part of this bounded checkpoint.
+
 ## Scope and documentation
 
 Live trading, exchange credentials, optimization beyond bounded explicit grids, multiple simultaneous instruments, AI and background services remain deferred. Historical minute bars cannot reveal the true tick path; risk-tier history may be unavailable. Paper fills use observed prices and cannot guarantee exchange execution. Imported reports are viewable without their raw history but are not guaranteed rerunnable. Repeated holdout use weakens independence; the application does not recommend a profitable strategy.

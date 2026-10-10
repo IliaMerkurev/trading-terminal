@@ -31,10 +31,11 @@ def main():
         if not node or not cargo:parser.error('Node and Cargo must be available in this process PATH')
         subprocess.run([node,'scripts/frontend.mjs','build'],cwd=root,env=env,check=True)
         subprocess.run([cargo,'build','--offline','--locked','--features','custom-protocol','--manifest-path','src-tauri/Cargo.toml'],cwd=root,env=env,check=True)
-    executable=target/'debug/trading-terminal.exe'
+    executable=target/'debug'/('trading-terminal.exe' if sys.platform == 'win32' else 'trading-terminal')
     if not args.no_launch:
         if not executable.exists():parser.error('This checkout has not been built; use --build first')
-        subprocess.Popen([str(executable)],cwd=root,env=env,creationflags=subprocess.CREATE_NO_WINDOW)
+        options = {'creationflags': subprocess.CREATE_NO_WINDOW} if sys.platform == 'win32' else {}
+        subprocess.Popen([str(executable)],cwd=root,env=env,**options)
 
 
 if __name__=='__main__':main()

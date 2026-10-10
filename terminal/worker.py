@@ -6,7 +6,10 @@ import sys
 
 
 def main():
-    # Parent attaches the Windows Job Object before sending the bounded request.
+    if sys.platform == "linux" and os.environ.get("_TRADING_TERMINAL_SUPERVISOR") == "1":
+        from terminal.linux_worker import supervise
+        return supervise()
+    # Parent establishes platform lifetime control before sending the request.
     line=sys.stdin.buffer.readline(1024*1024+1)
     if len(line)>1024*1024: raise ValueError("Worker input exceeds budget")
     request=json.loads(line)
@@ -48,6 +51,8 @@ def main():
             validate_document(strategy,profile,dataset)
             result=run(bars,profile,strategy['start'],strategy['end'],strategy['interval'],progress)
         elif strategy.get("engine")=="nautilus_trader":
+            from terminal.process_lifecycle import require_native_execution
+            require_native_execution()
             from terminal.native import trust_identity,load_trusted
             if window:
                 from terminal.library import native_window_document
@@ -103,4 +108,4 @@ def replay(request):
 
 
 if __name__=="__main__":
-    main()
+    raise SystemExit(main())

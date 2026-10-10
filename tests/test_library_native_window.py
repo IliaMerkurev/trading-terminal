@@ -1,4 +1,5 @@
 from decimal import Decimal
+import os
 import tempfile
 import time
 import unittest
@@ -10,6 +11,7 @@ from terminal.series import Candle
 from terminal.service import AppService
 
 
+@unittest.skipUnless(os.name == "nt", "Native execution requires Windows Job Object containment")
 class LibraryNativeWindowTests(unittest.TestCase):
     def wait(self,service,ident):
         limit=time.monotonic()+25

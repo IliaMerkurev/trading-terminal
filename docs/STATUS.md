@@ -1,5 +1,46 @@
 # Implementation status
 
+## Recovered Linux adaptation — 2026-10-10
+
+The initial Linux checkpoint was lost with its validation VM. The original
+upstream baseline was restored and the bounded adaptation reconstructed. The
+backend patch and original Rust host patch match their pre-loss SHA-256 hashes
+exactly. Integration files were recreated from recorded edits; documentation now
+separates fresh verification from historical observations. This is a new source
+checkpoint, not a claim that the lost commit or environment still exists.
+
+Fresh checks on the recovered checkout:
+
+- Official hash-pinned Linux Python wheels installed; `pip check` and platform
+  runtime verification passed with Python 3.12.14/NautilusTrader 1.231.0.
+- Frozen pnpm 11.19.0 installation passed with install scripts disabled.
+- All 88 frontend tests in 21 files passed; TypeScript and production build
+  passed. The existing approximately 739 KiB JavaScript advisory remains.
+- Four standalone Rust 1.98.1 portability tests passed (platform Python path,
+  safe exports arguments, relative-path rejection, unavailable Windows toast).
+- Full Python regression: **243 tests in 98.175 seconds**, with **235 passed,
+  8 explicit Windows-only skips, no failures or errors**. The skips retain seven
+  native-execution acceptance cases and the Windows Job Object lifecycle test.
+  Pinned upstream Pandas Timestamp.utcnow deprecation warnings remain.
+
+Native Tauri compilation and the real Rust-to-Python host test passed in the
+original environment, but were **not rerun after recovery**. They are historical
+evidence only. The original supported-desktop launch failed before a native
+window appeared: `/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitNetworkProcess`
+was absent. A normal system WebKitGTK runtime installation remains necessary;
+project-local shared libraries alone do not supply its absolute helper paths.
+No sandbox-disabling flags, binary patching or system-security changes are used.
+
+Windows setup scripts, wheel hashes, Cargo.lock and Job Object implementation
+remain unchanged. Windows native regression has not been run on this adaptation.
+Native Python execution and Windows/sound/Telegram protected-storage integration
+are explicitly unavailable on Linux. The Linux supervisor handles service/host
+death while the supervisor stays alive; killing the supervisor or escaping its
+process group is outside the guarantee. This is not a security sandbox.
+
+Financial formulas, storage schemas and engine version remain unchanged.
+See [ADR 0029](adr/0029-linux-research-preview.md) and [Linux setup](DEVELOPMENT.md#linux-source-checkout-research-preview).
+
 ## Catalog-wide batch comparison — verified, owner review pending
 
 **Test all strategies** opens every catalog strategy at a common selected set of

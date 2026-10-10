@@ -31,7 +31,7 @@ class AppService:
                 raise ValueError("Invalid IPC identifier or parameters")
             if len(canonical(message))>1024*1024: raise ValueError("IPC request exceeds 1 MiB")
             p=message["params"]; command=message["command"]
-            fields={"list_runs":set(),"run_status":{"run_id"},"result_page":{"run_id","kind","offset","limit"},
+            fields={"platform_capabilities":set(),"list_runs":set(),"run_status":{"run_id"},"result_page":{"run_id","kind","offset","limit"},
                 "start_run":{"strategy","profile","dataset_id"},"cancel_run":{"run_id"},
                 "list_strategies":set(),"save_graph":{"name","graph","layout","strategy_id","profile"},
                 "get_strategy":{"strategy_id"},"list_datasets":set(),"run_manifest":{"run_id"},
@@ -67,7 +67,10 @@ class AppService:
             fields.update(library_batch_equity={'batch_id','ordinal'},library_validation_freeze={'batch_id','ordinal','dataset_id','start','end','spot_dataset_id'},library_validation_start={'batch_id'})
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
-            if command in ('live_start','live_start_terminal'):result=self.live.start(**p)
+            if command=='platform_capabilities':
+                from terminal.process_lifecycle import platform_capabilities
+                result=platform_capabilities()
+            elif command in ('live_start','live_start_terminal'):result=self.live.start(**p)
             elif command=='market_open':result=self.live.market_open(**p)
             elif command=='market_close':result=self.live.market_close()
             elif command=='market_chart':result=self.live.chart_history.request(**p)

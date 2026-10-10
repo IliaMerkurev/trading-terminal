@@ -53,6 +53,8 @@ def preview(document):
 
 def load_trusted(document,directory,instrument_id):
     """Call only after worker verifies recorded consent for this exact source hash."""
+    from terminal.process_lifecycle import require_native_execution
+    require_native_execution()
     report=preview(document)
     if report["dependency_problems"]:
         raise ValueError("Native dependencies are missing or incompatible; review and install them separately")

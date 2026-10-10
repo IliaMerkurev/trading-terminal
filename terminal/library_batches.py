@@ -9,6 +9,7 @@ from terminal import benchmarks, library
 from terminal.data import canonical, digest, runtime_snapshot
 from terminal.experiments import ExperimentManager, MAX_MINUTE_RUNS, validate_range
 from terminal.native import preview as native_preview
+from terminal.process_lifecycle import platform_capabilities
 from terminal.profile import Profile
 from terminal.series import PartialBars
 from terminal.storage import identifier
@@ -71,6 +72,8 @@ class LibraryBatchManager(ExperimentManager):
                 if profile.execution_minutes!=1:error = 'Native Python requires detailed M1 execution history'
                 elif not self.store.is_trusted(report['trust_sha256']):error = 'Explicit native trust required in the existing editor'
                 elif report['dependency_problems']:error = 'Reviewed native dependencies unavailable'
+                elif not platform_capabilities()['native_execution']['available']:
+                    error = platform_capabilities()['native_execution']['reason']
                 elif profile.position_management is not None or float(profile.stop_loss) or float(profile.take_profit):
                     error = 'Native strategies require their own protection semantics; graph position/stop/take policies are incompatible'
             required = prepared['contract']['warmup_bars'] * selection['minutes'] * 60

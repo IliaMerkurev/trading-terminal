@@ -180,3 +180,21 @@ it('suspends setup for the active-work exit prompt and restores inputs on return
  expect(vi.mocked(api).mock.calls.some(([command])=>/start|cancel|trust/.test(command))).toBe(false);
  expect(invoke).not.toHaveBeenCalled();
 });
+
+it('shows Linux capability limits and disables native execution without blocking graph editing',async()=>{
+ vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(command:string)=>{
+  if(command==='platform_capabilities')return {platform:'linux',native_execution:{available:false,reason:'Native execution is unavailable on Linux'}};
+  if(command==='run_history')return {rows:[],next:null};
+  if(command.startsWith('list_'))return [];
+  return {};
+ });
+ render(<App/>);
+ expect(await screen.findByText(/Linux research preview:/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
+ expect((screen.getByRole('button',{name:/Run backtest/}) as HTMLButtonElement).disabled).toBe(false);
+ fireEvent.click(screen.getByText('＋ Native Python'));
+ expect((screen.getByRole('button',{name:/Run backtest/}) as HTMLButtonElement).disabled).toBe(true);
+ expect(screen.getByLabelText('Python source preview')).toBeTruthy();
+ expect(vi.mocked(api).mock.calls.some(([command])=>command==='start_run')).toBe(false);
+});

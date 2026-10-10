@@ -1,19 +1,21 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 use serde_json::Value;
 use std::{io::{BufRead,BufReader,Write}, path::PathBuf, process::{Child,ChildStdin,Command,Stdio}, sync::{Arc,Mutex,mpsc}, time::Duration};
-use std::os::windows::process::CommandExt;
 use tauri::{WebviewUrl,WebviewWindowBuilder};
 mod notification;
+mod platform;
 
 struct Exchange { input: Option<ChildStdin>, responses: mpsc::Receiver<Result<Value,String>>, failed: bool }
 struct Backend { exchange: Mutex<Exchange>, process: Mutex<Child>, startup_error: Option<String> }
 impl Backend {
     fn start(root: &PathBuf) -> Result<Self,String> {
-        let python=std::env::var_os("TRADING_TERMINAL_PYTHON").map(PathBuf::from).unwrap_or_else(||root.join(".venv/Scripts/python.exe"));
-        let mut child=Command::new(python).args(["-m","terminal.bridge"]).arg("--data-root").arg(storage_root(root)?).current_dir(root)
+        let python=std::env::var_os("TRADING_TERMINAL_PYTHON").map(PathBuf::from).unwrap_or_else(||platform::default_python(root));
+        let mut command=Command::new(python);
+        command.args(["-m","terminal.bridge"]).arg("--data-root").arg(storage_root(root)?).current_dir(root)
             .env("TRADING_TERMINAL_HOST",std::env::current_exe().map_err(|_| "Cannot locate desktop host")?)
-            .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).creation_flags(0x08000000)
-            .spawn().map_err(|e|format!("Cannot start project Python service: {e}"))?;
+            .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
+        platform::hide_console(&mut command);
+        let mut child=command.spawn().map_err(|e|format!("Cannot start project Python service: {e}"))?;
         let input=child.stdin.take().ok_or("Python stdin unavailable")?;
         let output=child.stdout.take().ok_or("Python stdout unavailable")?;
         let (tx,rx)=mpsc::channel::<Result<Value,String>>();
@@ -82,7 +84,9 @@ fn open_exports()->Result<(),String>{
     let root=PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
     let folder=storage_root(&root)?.join("exports");
     std::fs::create_dir_all(&folder).map_err(|e|e.to_string())?;
-    Command::new("explorer.exe").arg(folder).spawn().map_err(|e|e.to_string())?;
+    let mut child=platform::exports_command(&folder)?.spawn().map_err(|e|format!("Cannot open exports folder: {e}"))?;
+    // Reap the launcher without blocking the UI or waiting for the file manager to close.
+    std::thread::spawn(move || { let _=child.wait(); });
     Ok(())
 }
 fn main(){
@@ -90,7 +94,7 @@ fn main(){
     if args.get(1).map(String::as_str)==Some("--notification") {
         match args.get(2).ok_or("Missing notification text".to_string()).and_then(|text|notification::show(text)) {
             Ok(())=>std::process::exit(0),
-            Err(_)=>std::process::exit(1),
+            Err(error)=>{eprintln!("{error}");std::process::exit(1);},
         }
     }
     let root=PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
@@ -105,4 +109,42 @@ fn main(){
             Ok(())
         }).build(tauri::generate_context!()).expect("Desktop host failed to build");
     application.run(move |_,event|{if matches!(event,tauri::RunEvent::Exit){exit_backend.shutdown();}});
+}
+
+#[cfg(test)]
+mod backend_tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "Requires the pinned Python environment; run explicitly after setup"]
+    fn prepared_python_service_roundtrip_and_shutdown() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let data = std::env::temp_dir().join(format!("terminal-host-ipc-{}-{stamp}", std::process::id()));
+        let previous = std::env::var_os("TRADING_TERMINAL_DATA_ROOT");
+        std::env::set_var("TRADING_TERMINAL_DATA_ROOT", &data);
+        let backend = Backend::start(&root).expect("Prepared Python service should start");
+        if let Some(value) = previous { std::env::set_var("TRADING_TERMINAL_DATA_ROOT", value); }
+        else { std::env::remove_var("TRADING_TERMINAL_DATA_ROOT"); }
+        let result = || {
+            assert!(backend.startup_error.is_none(), "{:?}", backend.startup_error);
+            let capabilities = backend.request(serde_json::json!({"version":1,"id":"capabilities","command":"platform_capabilities","params":{}})).unwrap();
+            assert_eq!(capabilities["type"], "result");
+            #[cfg(target_os = "linux")]
+            {
+                assert_eq!(capabilities["result"]["platform"], "linux");
+                assert_eq!(capabilities["result"]["native_execution"]["available"], false);
+            }
+            let history = backend.request(serde_json::json!({"version":1,"id":"history","command":"list_strategies","params":{}})).unwrap();
+            assert_eq!(history["result"], serde_json::json!([]));
+            let invalid = backend.request(serde_json::json!({"version":1,"id":"invalid","command":"not_a_command","params":{}})).unwrap();
+            assert_eq!(invalid["type"], "error");
+        };
+        // Even a failed assertion must close this test's service and isolated files.
+        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(result));
+        backend.shutdown();
+        assert!(backend.process.lock().unwrap().try_wait().unwrap().is_some());
+        std::fs::remove_dir_all(&data).unwrap();
+        if let Err(payload) = outcome { std::panic::resume_unwind(payload); }
+    }
 }

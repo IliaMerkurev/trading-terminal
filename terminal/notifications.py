@@ -7,6 +7,7 @@ import ctypes
 from ctypes import wintypes
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 from urllib import request
@@ -77,7 +78,13 @@ class Credential(ctypes.Structure):
 
 
 class WindowsCredentials:
+    available = os.name == 'nt'
+    unavailable_reason = 'Protected Telegram credential storage is unavailable on this platform; configuration and delivery are disabled'
+
     def __init__(self,root):
+        if not self.available:
+            return
+
         self.target='TradingTerminal/Telegram/'+hashlib.sha256(str(Path(root).resolve()).casefold().encode()).hexdigest()[:32]
         self.api=ctypes.WinDLL('Advapi32.dll',use_last_error=True)
         self.api.CredWriteW.argtypes=[ctypes.POINTER(Credential),wintypes.DWORD]
@@ -89,7 +96,12 @@ class WindowsCredentials:
         self.api.CredDeleteW.argtypes=[wintypes.LPCWSTR,wintypes.DWORD,wintypes.DWORD]
         self.api.CredDeleteW.restype=wintypes.BOOL
 
+    def require_available(self):
+        if not self.available:
+            raise NotificationError(self.unavailable_reason)
+
     def save(self,token,chat_id):
+        self.require_available()
         validate_credentials(token,chat_id)
         blob=json.dumps({'token':token,'chat_id':chat_id}).encode('utf-8')
         buffer=(ctypes.c_ubyte*len(blob)).from_buffer_copy(blob)
@@ -101,6 +113,7 @@ class WindowsCredentials:
             ctypes.memset(buffer,0,len(blob))
 
     def load(self):
+        self.require_available()
         pointer=ctypes.POINTER(Credential)()
         if not self.api.CredReadW(self.target,1,0,ctypes.byref(pointer)):
             if ctypes.get_last_error()==1168:
@@ -117,6 +130,7 @@ class WindowsCredentials:
             self.api.CredFree(pointer)
 
     def clear(self):
+        self.require_available()
         if not self.api.CredDeleteW(self.target,1,0) and ctypes.get_last_error()!=1168:
             raise NotificationError('Stored Telegram credential could not be cleared')
 
@@ -138,10 +152,18 @@ class Telegram:
         self.credentials=credentials
         self.opener=opener or request.build_opener(NoTelegramRedirect)
 
+    def require_available(self):
+        if getattr(self.credentials,'available',True) is False:
+            raise NotificationError(self.credentials.unavailable_reason)
+
     def status(self):
+        if getattr(self.credentials,'available',True) is False:
+            return {'configured':False,'storage':'Unavailable','available':False,
+                    'reason':self.credentials.unavailable_reason}
         return {'configured':self.credentials.load() is not None,'storage':'Windows Credential Manager'}
 
     def send(self,text):
+        self.require_available()
         if not isinstance(text,str) or not 1<=len(text)<=1000:
             raise NotificationError('Notification text exceeds the supported size')
         secret=self.credentials.load()
@@ -182,12 +204,15 @@ class Telegram:
 
 
 def play_sound():
+    if os.name != 'nt':
+        raise NotificationError('Sound notifications are unavailable on this platform')
     import winsound
     winsound.PlaySound('SystemNotification',winsound.SND_ALIAS|winsound.SND_ASYNC)
 
 
 def windows_notification(text):
-    import os
+    if os.name != 'nt':
+        raise NotificationError('Windows notifications are unavailable on this platform')
     import subprocess
     import winreg
     if not isinstance(text,str) or not 1<=len(text)<=1000:

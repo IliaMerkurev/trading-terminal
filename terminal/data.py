@@ -42,16 +42,27 @@ def write_new(path,data):
         if path.read_bytes()!=data: raise DataError("Immutable content already exists with different bytes")
         return
     temporary=path.with_name(path.name+"."+uuid.uuid4().hex+".partial")
-    with temporary.open("xb") as stream:
-        stream.write(data)
-        stream.flush()
-        os.fsync(stream.fileno())
+    created=False
     try:
-        # Windows rename is atomic and refuses to overwrite an existing file.
-        os.rename(temporary,path)
-    except FileExistsError:
-        if path.read_bytes()!=data: raise DataError("Immutable content already exists with different bytes")
-        temporary.unlink()  # Only this call's completed duplicate temporary file.
+        with temporary.open("xb") as stream:
+            created=True
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            if os.name == "nt":
+                # Windows rename is atomic and refuses an existing destination.
+                os.rename(temporary,path)
+            else:
+                # A hard link publishes complete bytes atomically with no replace.
+                # The temporary lives in the same directory/filesystem. Unsupported
+                # filesystems fail visibly; never fall back to overwriting rename.
+                os.link(temporary,path)
+        except FileExistsError:
+            if path.read_bytes()!=data:
+                raise DataError("Immutable content already exists with different bytes")
+    finally:
+        if created:temporary.unlink(missing_ok=True)  # Only this call's private temporary.
 
 
 class NoRedirect(request.HTTPRedirectHandler):

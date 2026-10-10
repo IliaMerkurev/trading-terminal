@@ -1,6 +1,5 @@
 """One active worker, immutable requests, bounded logs and explicit cancellation."""
 import json
-import msvcrt
 from pathlib import Path
 import subprocess
 import sqlite3
@@ -12,7 +11,7 @@ from terminal.data import DatasetStore,canonical,run_manifest
 from terminal.graph import validate_graph
 from terminal.profile import Profile
 from terminal.storage import RunStore
-from terminal.windows_job import WindowsJob
+from terminal.process_lifecycle import lock_workspace,unlock_workspace,worker_job,worker_options,require_native_execution
 
 
 class JobManager:
@@ -24,7 +23,7 @@ class JobManager:
         if self.instance_file.tell()==0:
             self.instance_file.write(b"0");self.instance_file.flush()
         self.instance_file.seek(0)
-        try: msvcrt.locking(self.instance_file.fileno(),msvcrt.LK_NBLCK,1)
+        try: lock_workspace(self.instance_file)
         except OSError:
             self.instance_file.close()
             raise ValueError("Another application instance already owns this local workspace")
@@ -60,9 +59,9 @@ class JobManager:
                 # the last connection can otherwise race WAL cleanup/reopening.
                 anchor=sqlite3.connect(self.store.database,timeout=15,check_same_thread=False)
                 anchor.execute('SELECT count(*) FROM sqlite_master').fetchone()
-                job=WindowsJob()
+                job=worker_job(self.instance_file)
                 process=subprocess.Popen([sys.executable,'-m','terminal.worker'],cwd=Path(__file__).resolve().parents[1],
-                    stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
+                    stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,**worker_options(job))
                 job.assign(process)
                 self.active={'id':replay_id,'kind':'replay','process':process,'job':job,'cancelled':False}
                 reader=threading.Thread(target=self._drain,args=(replay_id,process.stdout,directory),daemon=True);reader.start()
@@ -73,8 +72,9 @@ class JobManager:
             except Exception:
                 if job:job.close()
                 if process:
-                    if process.poll() is None:process.terminate()
+                    if sys.platform!='linux' and process.poll() is None:process.terminate()
                     process.wait(timeout=5)
+                    if process.stdin and not process.stdin.closed:process.stdin.close()
                 if anchor:anchor.close()
                 self.active=None
                 with self.store.connect() as db:db.execute("UPDATE replay_jobs SET status='failed',error='Replay worker could not start' WHERE id=?",(replay_id,))
@@ -135,6 +135,7 @@ class JobManager:
             report=preview(strategy)
             if not self.store.is_trusted(report["trust_sha256"]): raise ValueError("Explicit trust is required before loading this Python source")
             if report["dependency_problems"]: raise ValueError("Native dependencies are missing or incompatible; no automatic installation")
+            require_native_execution()
         elif not benchmark:
             validate_graph(strategy)
         if not isinstance(profile,Profile): profile=Profile(**profile)
@@ -158,11 +159,11 @@ class JobManager:
             if self.reservation is not None and self.reservation!=owner:raise ValueError('A parameter experiment owns the calculation slot')
             if self.active is not None: raise ValueError("One backtest is already active")
             run_id=self.store.create(snapshot)
-            job=WindowsJob()
-            process=None
+            job=None;process=None
             try:
+                job=worker_job(self.instance_file)
                 process=subprocess.Popen([sys.executable,"-m","terminal.worker"],cwd=Path(__file__).resolve().parents[1],
-                    stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
+                    stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,**worker_options(job))
                 job.assign(process)
                 self.active={"id":run_id,"process":process,"job":job,"cancelled":False}
                 self.store.status(run_id,"running")
@@ -176,10 +177,11 @@ class JobManager:
                 monitor.start()
                 return run_id
             except Exception:
-                job.close()
+                if job:job.close()
                 if process:
-                    if process.poll() is None: process.terminate()
+                    if sys.platform!='linux' and process.poll() is None: process.terminate()
                     process.wait(timeout=5)
+                    if process.stdin and not process.stdin.closed:process.stdin.close()
                 self.active=None
                 self.store.status(run_id,"failed","Worker could not be attached or started")
                 raise
@@ -264,5 +266,5 @@ class JobManager:
                 raise RuntimeError("Worker shutdown has not completed; workspace ownership is retained")
         if not self.instance_file.closed:
             self.instance_file.seek(0)
-            msvcrt.locking(self.instance_file.fileno(),msvcrt.LK_UNLCK,1)
+            unlock_workspace(self.instance_file)
             self.instance_file.close()

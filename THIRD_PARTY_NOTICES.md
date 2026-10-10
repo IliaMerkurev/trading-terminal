@@ -8,6 +8,7 @@ versions; dependency source is not vendored in this repository.
 | --- | --- | --- |
 | NautilusTrader | 1.231.0 | LGPL-3.0-or-later |
 | websockets | 15.0.1 | BSD-3-Clause |
+| uvloop (Linux runtime only) | 0.22.1 | MIT |
 | Tauri / Tauri build | 2.11.5 / 2.6.3 | MIT OR Apache-2.0 |
 | Tauri JavaScript API / CLI | 2.11.1 / 2.11.4 | MIT OR Apache-2.0 |
 | React / React DOM | 19.3.0 | MIT |
@@ -40,6 +41,11 @@ JavaScript packages), Unicode, BSD, ISC and other permissive notices. Before any
 binary distribution, collect the exact packaged dependency notices and fulfill
 source/relinking obligations where applicable. Local compilation is not a release
 or a claim that a distributable installer has passed license review.
+
+Linux development also uses separately installed GTK/WebKitGTK system libraries
+and their transitive dependencies. They are not vendored or redistributed by
+this source-checkout adaptation. Their LGPL/BSD and other package notices must
+be reviewed again for any future binary distribution.
 
 ## Strategy Library source references
 

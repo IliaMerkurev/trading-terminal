@@ -2,6 +2,7 @@
 from collections import deque
 from dataclasses import asdict
 import json
+import os
 import queue
 import threading
 import time
@@ -75,10 +76,18 @@ class LiveManager:
         if 'paper' in values and self.session_id:
             with self.store.connect() as db:db.execute('INSERT OR REPLACE INTO paper_terminal_summary VALUES(?,?)',(self.session_id,canonical(values['paper']).decode()))
 
+    def _check_channels(self,channels):
+        from terminal.notifications import NotificationError
+        for channel in channels:
+            if channel=='telegram':self.telegram.require_available()
+            elif os.name!='nt':
+                raise NotificationError(f'{channel.title()} notifications are unavailable on this platform')
+
     def start(self,strategy_id,profile,paper,channels,execution_source='strategy'):
         if self.thread and self.thread.is_alive():raise ValueError('Only one live session may run at a time')
         if type(paper) is not bool or not isinstance(channels,list) or len(set(channels))!=len(channels) or any(c not in ('windows','sound','telegram') for c in channels):
             raise ValueError('Invalid paper mode or notification channels')
+        self._check_channels(channels)
         strategy=self.store.strategy(strategy_id)
         if strategy['kind']!='graph':raise ValueError('Live currently requires a visual Strategy IR; native source is never converted or executed here')
         profile=Profile(**profile)
@@ -121,6 +130,9 @@ class LiveManager:
             if revalidate_paper:self.paper_revalidate.set()
             return {'session_id':session_id}
         snapshot=self.journal.get(session_id)['snapshot']
+        with self.store.connect() as db:
+            row=db.execute('SELECT options FROM live_options WHERE session_id=?',(session_id,)).fetchone()
+        self._check_channels(json.loads(row['options']).get('channels',[]) if row else [])
         self.hub.open(snapshot['profile']['market'],snapshot['profile']['symbol'])
         self.session_id=session_id;self.stop.clear();self.paper_revalidate.clear()
         if revalidate_paper:self.paper_revalidate.set()
@@ -236,6 +248,7 @@ class LiveManager:
 
     def test_notification(self,channel):
         if channel not in ('windows','sound','telegram'):raise ValueError('Unsupported notification channel')
+        self._check_channels([channel])
         self.delivery_queue.put_nowait((None,[channel],'Trading Terminal: notification test'))
         return {'queued':True}
 

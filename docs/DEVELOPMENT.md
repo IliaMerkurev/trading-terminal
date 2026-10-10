@@ -104,3 +104,53 @@ and a separate Cargo target/data root for verification. See [0.6 acceptance](DEM
 Use only the owner-created Library issues and budgeted validation; no optional
 strategy expansion before the approved core and budget gates. No automatic
 resume, main merge, release or next-version work is part of this candidate.
+
+## Linux source-checkout research preview
+
+The separate Linux adaptation retains the Windows setup, lockfile and Job Object
+implementation. It does not establish Windows regression acceptance or a
+packaged Linux release. Supported Linux runtime: x86_64, glibc 2.35 or newer,
+CPython 3.12, and the same NautilusTrader 1.231.0 engine. The Linux wheel lock has
+its own binary hashes and upstream's Linux-only uvloop dependency. Never install
+the Windows wheel lock on Linux or silently upgrade the engine.
+
+Install the [official Tauri Linux prerequisites](https://v2.tauri.app/start/prerequisites/)
+for your distribution first. On an authorized Debian machine with an administrator:
+
+```sh
+sudo apt-get update
+sudo apt-get install build-essential pkg-config libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev xdg-utils
+```
+
+Debian production WebKit uses absolute helper-process paths. Extracting libraries
+into a project folder alone does not provide a working renderer. Do not disable
+the sandbox or patch system paths to make a window appear. Node 24.19.0, pnpm
+11.19.0 and Rust/Cargo 1.98.1 must be available on PATH. Then:
+
+```sh
+python3.12 scripts/setup_linux.py
+.venv/bin/python scripts/desktop.py --build --data-root /absolute/path/to/separate-research-data
+```
+
+Setup manages project dependencies, never system packages/security/credentials.
+An existing mismatched environment is preserved and rejected. The launch command
+requires a desktop session and uses native Tauri IPC with the Python service.
+It does not provide a browser transport. Omit `--build` to reopen;
+`--no-launch` validates/builds without launching. Output is
+`src-tauri/target/debug/trading-terminal`, or the requested `--target-dir`.
+Moving the checkout requires rebuilding its embedded backend path.
+
+Use isolated data for validation. Native Python execution (including native
+library candidates), Windows notifications, sound and protected Telegram storage
+are explicitly unavailable on Linux. Static previews and saved reports remain
+available. No plaintext/in-memory credential fallback or real orders are added.
+
+Linux uses a pipe-controlled supervisor for application-owned graph/replay
+workers and inherited workspace locks. It handles service/host death while the
+supervisor remains alive; killing that supervisor can orphan workers. Process
+groups do not contain arbitrary escaped descendants and are not a security
+sandbox. Windows retains its original Job Object implementation.
+
+Linux snapshots record their own platform/runtime; do not represent them as
+Windows repeats. See [status](STATUS.md) for fresh versus historical evidence,
+GUI blockers and Windows acceptance still required before integration.
