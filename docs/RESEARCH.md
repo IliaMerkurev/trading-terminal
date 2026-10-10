@@ -11,6 +11,12 @@ experiments; live/paper/replay controls belong to Market. See the
 In Market, choose **Saved history · local**, or use **Observe this history**
 from Data. Open a prepared local chart, select a period and save a hypothesis
 with an optional falsification condition. Saving does not start a test.
+The saved-observation list distinguishes loading, read failure and confirmed
+empty history. **Retry saved observations** repeats only the failed list read;
+it preserves the selected source, exact period, note revision and unsaved text.
+Loaded notes remain visible after a failed older-page read. If a note saves but
+the list refresh fails, the message confirms the save; retrying does not save
+another revision or start a test.
 The date fields show the available UTC history range and its candle interval;
 the end is exclusive. Inline guidance explains missing, reversed, out-of-range
 or unaligned dates. Correct the marked fields to enable saving or showing the

@@ -7,6 +7,8 @@ import ObservationChart from './ObservationChart';
 
 export type ObservationContext={id:string;revision:number;source:any;start:number;end:number};
 export type HistoryRequest={id:string;request:number;target?:'later';observation?:ObservationContext};
+type HistoryCursor={id:string;created_at:string};
+type ListState={status:'loading'|'ready'}|{status:'error';message:string;before:HistoryCursor|null;afterSave:boolean};
 const utc=(v:number)=>new Date(v*1000).toISOString().slice(0,16);
 const seconds=(v:string)=>Date.parse(v+'Z')/1000;
 const context=(v:any):ObservationContext=>({id:v.id,revision:v.revision,source:v.source,start:v.start,end:v.end});
@@ -29,20 +31,33 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  if(!display.current)display.current=displayRecorder();
  const [dataset,setDataset]=useState(''),[range,setRange]=useState(['','']),[pageStart,setPageStart]=useState<number|null>(null),[page,setPage]=useState<any>(null),[pageRequest,setPageRequest]=useState(0);
  const [record,setRecord]=useState<any>(null),[hypothesis,setHypothesis]=useState(''),[falsification,setFalsification]=useState('');
- const [rows,setRows]=useState<any[]>([]),[next,setNext]=useState<{id:string;created_at:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(false);
+ const [rows,setRows]=useState<any[]>([]),[next,setNext]=useState<HistoryCursor|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[loading,setLoading]=useState(false);
+ const [listState,setListState]=useState<ListState>({status:'loading'});
+ const listPending=useRef(false),listEpoch=useRef(0);
  const actionEpoch=useRef(0),lock=useRef(false),handledRequest=useRef<number|null>(null);
  const source=record?.source??datasets.find(d=>d.id===dataset),step=source?.interval_seconds??60;
  const dirty=!!record&&(hypothesis!==record.hypothesis||falsification!==record.falsification);
  const draft=!!hypothesis||!!falsification;
  const blocked=busy||dirty||(!record&&draft);
  const issue=periodIssue(range,source,step),valid=!!source&&!issue;
- async function list(before:{id:string;created_at:string}|null=null){const v=await api<any>('observation_history',{before});setRows(old=>before?[...old,...v.rows]:v.rows);setNext(v.next);}
- useEffect(()=>{list().catch(e=>setError(String(e)));},[]);
+ async function list(before:HistoryCursor|null=null,{afterSave=false,replacePending=false}={}){
+  if(listPending.current&&!replacePending)return;
+  // Only a confirmed save replaces an in-flight read; its late response is stale.
+  const epoch=++listEpoch.current;listPending.current=true;setListState({status:'loading'});
+  try{
+   const v=await api<any>('observation_history',{before});
+   if(epoch!==listEpoch.current)return;
+   setRows(old=>{const unique=new Map((before?old:[]).map(r=>[r.id,r]));v.rows.forEach((r:any)=>unique.set(r.id,r));return [...unique.values()];});
+   setNext(v.next);setListState({status:'ready'});
+  }catch(e){if(epoch===listEpoch.current)setListState({status:'error',message:String(e instanceof Error?e.message:e),before,afterSave});}
+  finally{if(epoch===listEpoch.current)listPending.current=false;}
+ }
+ useEffect(()=>{void list();return()=>{listEpoch.current++;listPending.current=false;};},[]);
  function choose(id:string){actionEpoch.current++;setPageRequest(v=>v+1);const d=datasets.find(d=>d.id===id);setDataset(id);setRecord(null);setHypothesis('');setFalsification('');setError('');setPage(null);setPageStart(d?.range[0]??null);setRange(d?[utc(d.range[0]),utc(d.range[1])]:['','']);}
  async function open(id:string,revision:number|null=null){if(lock.current)return;lock.current=true;setBusy(true);setError('');const epoch=++actionEpoch.current;try{const v=await api<any>('observation_get',{observation_id:id,revision});if(epoch!==actionEpoch.current)return;setPageRequest(n=>n+1);setRecord(v);setDataset(v.source.id);setRange([utc(v.start),utc(v.end)]);setPageStart(v.start);setPage(null);setHypothesis(v.hypothesis);setFalsification(v.falsification);}catch(e){setError(String(e));}finally{lock.current=false;setBusy(false);}}
  useEffect(()=>{if(!request||handledRequest.current===request.request)return;if(blocked){setError('Save or discard note edits before opening the requested observation.');return;}handledRequest.current=request.request;if(request.id){void open(request.id,request.revision??null);}else if(request.dataset)choose(request.dataset);},[request?.request,blocked]);
  useEffect(()=>{let current=true;setPage(null);setLoading(false);if(!source||pageStart===null||record?.source_error)return;setLoading(true);api<any>('local_history_window',{dataset_id:dataset,start:pageStart,end:Math.min(source.range[1],pageStart+500*step)}).then(v=>{if(current){if(record&&canonical(v.source)!==canonical(record.source))throw Error('Exact saved source changed; reopen before continuing');setPage(v);}}).catch(e=>{if(current)setError(String(e));}).finally(()=>{if(current)setLoading(false);});return()=>{current=false;};},[dataset,pageStart,record?.id,record?.revision,pageRequest]);
- async function save(){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{const v=await api<any>('observation_save',{observation_id:record?.id??null,expected_revision:record?.revision??0,dataset_id:dataset,start:seconds(range[0]),end:seconds(range[1]),hypothesis,falsification});setRecord(v);setHypothesis(v.hypothesis);setFalsification(v.falsification);await list();}catch(e){setError(String(e));}finally{lock.current=false;setBusy(false);}}
+ async function save(){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{const v=await api<any>('observation_save',{observation_id:record?.id??null,expected_revision:record?.revision??0,dataset_id:dataset,start:seconds(range[0]),end:seconds(range[1]),hypothesis,falsification});setRecord(v);setHypothesis(v.hypothesis);setFalsification(v.falsification);await list(null,{afterSave:true,replacePending:true});}catch(e){setError(String(e));}finally{lock.current=false;setBusy(false);}}
  return <section className="content observations"><div className="studio-heading"><div><h1>Saved history</h1><p>Inspect prepared local candles, record an observation, then test it in Lab.</p></div></div>
  {error&&<p role="alert">{error}</p>}
  <div className="observation-layout"><section><label className="field">Local history<select aria-label="Observation history" disabled={blocked} value={dataset} onChange={e=>choose(e.target.value)}><option value="">Choose prepared local history</option>{record&&!datasets.some(d=>d.id===dataset)&&<option value={dataset}>Saved source · {dataset.slice(0,8)} · unavailable</option>}{datasets.map(d=><option key={d.id} value={d.id}>{historyLabel(d)}</option>)}</select></label>
@@ -66,6 +81,10 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  {record&&record.revision!==record.latest_revision&&<button disabled={busy} onClick={()=>open(record.id)}>Open latest revision</button>}</div>
  {record&&<><h3>Linked tests</h3>{record.links.length?record.links.map((l:any)=><p key={l.batch_id}><button disabled={blocked} onClick={()=>onBatch(l.batch_id)}>Open test {l.batch_id.slice(0,8)}</button> · revision {l.revision} · {l.status}</p>):<p>No admitted tests linked yet.</p>}{record.more_links&&<p>Showing the latest 100 links.</p>}</>}
  </>}
- </section><aside><h2>Saved observations</h2>{!rows.length&&<p>No saved observations yet.</p>}{rows.map(r=><button className="observation-item" disabled={blocked} key={r.id} onClick={()=>open(r.id)}><strong>{r.hypothesis}</strong><small>{r.source.symbol} · {r.source.source} · revision {r.revision}<br/>Saved {r.saved_at} · period {utc(r.start)} UTC</small></button>)}{next&&<button disabled={blocked} onClick={()=>list(next).catch(e=>setError(String(e)))}>Older observations</button>}</aside></div>
+ </section><aside aria-busy={listState.status==='loading'}><h2>Saved observations</h2>
+ {listState.status==='loading'&&<p role="status">Loading saved observations…</p>}
+ {listState.status==='error'&&<><p role="alert">{listState.afterSave?'Note saved. Could not refresh saved observations':'Could not load saved observations'}: {listState.message}</p><button disabled={busy} onClick={()=>list(listState.before,{afterSave:listState.afterSave})}>Retry saved observations</button></>}
+ {listState.status==='ready'&&!rows.length&&<p>No saved observations yet.</p>}
+ {rows.map(r=><button className="observation-item" disabled={blocked} key={r.id} onClick={()=>open(r.id)}><strong>{r.hypothesis}</strong><small>{r.source.symbol} · {r.source.source} · revision {r.revision}<br/>Saved {r.saved_at} · period {utc(r.start)} UTC</small></button>)}{next&&<button disabled={blocked||listState.status!=='ready'} onClick={()=>list(next)}>Older observations</button>}</aside></div>
  </section>;
 }

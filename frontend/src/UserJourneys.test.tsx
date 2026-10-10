@@ -288,3 +288,50 @@ it('keeps manual observation identity and selected tests through closed setup an
  expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).disabled).toBe(true);
  expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|resume|prepare|market_open/.test(c))).toBe(false);
 });
+
+it('recovers saved observations after tab changes without replacing the unsaved period, notes or Lab selection',async()=>{
+ let reads=0;
+ const observation={id:'recovered-note',revision:3,latest_revision:3,source:{...data,classification:'synthetic'},start:86400,end:172800,hypothesis:'Recovered saved hypothesis',falsification:'',source_error:null,links:[]};
+ vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async command=>{
+  if(command==='library_catalog')return [entry];
+  if(command==='list_datasets')return [data];
+  if(command==='library_batch_history'||command==='run_history')return {rows:[],next:null};
+  if(command==='observation_history'){if(++reads===1)throw Error('Temporary observation read failure');return {rows:[observation],next:null};}
+  if(command==='observation_get')return observation;
+  if(command==='local_history_window')return {source:observation.source,start:0,end:500*3600,candles:[],missing:[]};
+  if(command.startsWith('list_'))return [];
+  throw Error(`Unexpected command: ${command}`);
+ });
+ render(<App/>);
+ fireEvent.click(await screen.findByLabelText('Include Test trend'));
+ fireEvent.click(screen.getByRole('button',{name:'Data'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Observe this history'}));
+ await screen.findByText(/Could not load saved observations: Temporary observation read failure/);
+ fireEvent.change(screen.getByLabelText('Observation start (UTC)'),{target:{value:'1970-01-02T00:00'}});
+ fireEvent.change(screen.getByLabelText('Observation end, exclusive (UTC)'),{target:{value:'1970-01-03T00:00'}});
+ fireEvent.change(screen.getByLabelText('Observation hypothesis'),{target:{value:'Unsaved hypothesis'}});
+ fireEvent.change(screen.getByLabelText('Observation falsification'),{target:{value:'Unsaved falsification'}});
+ fireEvent.click(screen.getByRole('button',{name:'Lab'}));
+ expect((screen.getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Market'}));
+ expect(reads).toBe(1);
+ fireEvent.click(screen.getByRole('button',{name:'Retry saved observations'}));
+ const recovered=await screen.findByRole('button',{name:/Recovered saved hypothesis/});
+ expect((recovered as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByLabelText('Observation history') as HTMLSelectElement).value).toBe(data.id);
+ expect((screen.getByLabelText('Observation start (UTC)') as HTMLInputElement).value).toBe('1970-01-02T00:00');
+ expect((screen.getByLabelText('Observation end, exclusive (UTC)') as HTMLInputElement).value).toBe('1970-01-03T00:00');
+ expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).value).toBe('Unsaved hypothesis');
+ expect((screen.getByLabelText('Observation falsification') as HTMLTextAreaElement).value).toBe('Unsaved falsification');
+ expect(screen.getByRole('heading',{name:'New observation'})).toBeTruthy();
+ expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(1);
+ expect(vi.mocked(api).mock.calls.filter(([c])=>c==='observation_get')).toHaveLength(0);
+ fireEvent.click(screen.getByRole('button',{name:'Discard note edits'}));
+ fireEvent.click(recovered);
+ await screen.findByRole('heading',{name:'Observation · revision 3'});
+ fireEvent.click(screen.getByRole('button',{name:'Lab'}));
+ expect((screen.getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
+ expect(reads).toBe(2);
+ expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|resume|prepare|market_open/.test(c))).toBe(false);
+});

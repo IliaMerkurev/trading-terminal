@@ -28,20 +28,37 @@ routes, not a portable executable bundle: moving a desktop checkout requires a
 rebuild. Back up the complete data root after shutdown; never substitute a
 synthetic fixture database for ordinary research data.
 
-## Functional evidence baseline
+## Current UX-series evidence
 
-The final tested code is `bc10a4cef57530fb843437678bd852c7e04aa7d1`, tree
-`4bd2fae2aecd7c8e6a2bc95f7c5dde012a6db4ac`. The equivalent local recovery commit
-and actual combined counts are recorded in [final bounded MVP verification](STATUS.md#final-bounded-mvp-verification--2026-10-10).
-`66329507260e295d42d5aee47b6657cf40f3e5d0` subsequently recorded the final
-acceptance evidence with documentation-only changes. This checkpoint also changes
-only documentation; it does not claim a new build or another regression run.
+The current UX-series code is `fba0e5c4c3e0f316c55209738c255976c11e5501`, tree
+`06f96249c960b000a60c439e6858e7da25058ce7`. One complete frontend pass on that
+code passed **197 tests across 34 files**. The latest slice already passed
+TypeScript and the production build; this documentation checkpoint does not
+repeat that build. See [combined UX-series verification](STATUS.md#combined-ux-series-verification--2026-10-10)
+for current evidence and its browser-versus-component limits.
 
-The combined Linux/backend/frontend pass, complete offline restore and actual
-production-browser partial-import/restart checks are already recorded. Do not
-reopen those gates merely because older milestone entries say they were pending.
-Reuse valid evidence for unchanged behavior; functional changes need focused new
-evidence and a later combined candidate check under the budgeted validation rules.
+This series delivered compact Saved tests review, a visible attached-observation
+cue in Lab, compact pre-review test selection, exact observation-date guidance,
+and explicit read-only recovery of the saved-observation list. Source/range,
+saved revision, test selection, warnings and explicit Review/Start boundaries
+remain intact. The slice entries record bounded production-browser checks at
+ordinary and narrow widths; owner-led unaided usability is still pending.
+
+## Historical functional baseline
+
+The preceding bounded MVP baseline was `bc10a4cef57530fb843437678bd852c7e04aa7d1`,
+tree `4bd2fae2aecd7c8e6a2bc95f7c5dde012a6db4ac`; it is not the current UI code.
+Its equivalent local recovery commit and historical combined counts are recorded
+in [historical bounded MVP verification](STATUS.md#historical-bounded-mvp-verification--2026-10-10).
+`66329507260e295d42d5aee47b6657cf40f3e5d0` subsequently recorded those acceptance
+results with documentation-only changes.
+
+Reuse its unchanged backend evidence: **304 passed, eight Windows-only skips**,
+complete offline restore and actual production-browser partial-import/restart
+checks. This UI-only series did not change backend, accounting, schemas,
+dependencies or product version, and did not rerun those backend checks.
+Do not reopen established gates merely because older entries say they were
+pending; verify changed behavior under the budgeted-validation rules.
 
 ## Two primary journeys
 
@@ -70,9 +87,10 @@ before changing a surface; do not move financial calculations into the UI.
 
 ## Prioritized continuation
 
-1. Inspect both connected journeys in the built browser at ordinary and narrow
+1. Continue from the verified UX series rather than rebuilding its controls.
+   Inspect both connected journeys in the built browser at ordinary and narrow
    widths, using existing synthetic work where possible. Identify a concrete
-   usability gap before editing; do not restart a general redesign.
+   remaining usability gap before editing; do not restart a general redesign.
 2. Address one evidenced friction point per small slice: clear next action,
    retained source/selection/return context, result readability, scrolling,
    keyboard focus and dialog dismissal. Verify the changed surface and nearest

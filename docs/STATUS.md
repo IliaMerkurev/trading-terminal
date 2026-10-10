@@ -5,6 +5,82 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Combined UX-series verification — 2026-10-10
+
+The current UI code is `fba0e5c4c3e0f316c55209738c255976c11e5501`, tree
+`06f96249c960b000a60c439e6858e7da25058ce7`. One complete frontend pass using
+`node node_modules/vitest/vitest.mjs run` passed **197 tests across 34 files**
+in **9.67 seconds**, with no failures. This aggregate covers the combined compact
+Saved tests review, attached Lab observation context, compact pre-review test
+selection, observation-date validation and saved-observation read recovery.
+It is the current full frontend total, not a sum of overlapping focused passes.
+
+The latest read-recovery slice already passed `node scripts/frontend.mjs build`
+(TypeScript and production Vite build), with the existing large-chunk advisory.
+No runtime files changed during this verification/documentation checkpoint, and
+that build was not repeated. The suite's jsdom environment performance advisory
+is not a failure; component/App integration checks still use a simulated DOM and
+mocked IPC. Failed reads, retry/cursor retention, post-save refresh failure and
+stale-response exclusion are covered there, not by browser fault injection.
+
+Actual production-browser normal-list smoke on the same code passed at
+**1180×757** in a restored synthetic workspace. **Data → Observe this history**
+loaded three saved observations without a false empty state. Opening the latest
+note showed revision 2 and **2024-01-26 → 2024-01-27 UTC** (end exclusive).
+Its linked test reopened the completed three-row comparison with its original
+revision-1 observation context. **Return to linked observation** restored exactly
+revision 1, the locked dates, historical-revision notice and disabled Save
+action. No save, preview or start was initiated. This checks the ordinary
+production-browser read/navigation path; it does not claim a browser-injected
+read failure or retry test. Earlier slice entries retain their separate narrow-
+and ordinary-width layout/keyboard evidence.
+
+The unchanged backend evidence remains **304 Python tests passed and eight
+Windows-only skips** from the preceding bounded MVP baseline. It was not rerun
+for this UI-only series. No backend, accounting, immutable reports, schema,
+dependency or product-version changes are included. Prior offline restore and
+partial-import/restart acceptance remain evidence for those unchanged surfaces.
+Current Windows/native, live-feed and owner-led unaided usability acceptance
+remain separate gates.
+
+## Saved-observation read recovery — 2026-10-10
+
+Saved observations now distinguish loading, failed reads, confirmed empty
+history and loaded records. A failed initial read no longer claims that no
+notes exist. The scoped error survives choosing local history, and **Retry
+saved observations** repeats only the failed list/cursor read. Already loaded
+notes remain visible on pagination or refresh failure; repeated clicks are
+guarded and overlapping IDs are deduplicated. Retry leaves source, exact dates,
+current revision, unsaved text and Lab selection unchanged.
+
+A confirmed note save followed by a failed list refresh explicitly says the
+note was saved. Retry cannot repeat that write. The saved revision stays
+selected; an older in-flight read cannot replace the refreshed list or report
+a stale failure. Empty history is shown only after a successful empty response.
+Date validation, saved-note guards, exact-revision links and the separate local
+candle reader are unchanged. No backend, schema, dependency, product version
+or financial artifact changed.
+
+A pre-fix component test reproduced the initial false empty state. The focused
+verification passed **37 tests in three files**:
+`node node_modules/vitest/vitest.mjs run frontend/src/ObservationsHistory.test.tsx frontend/src/Observations.test.tsx frontend/src/UserJourneys.test.tsx`.
+Coverage includes initial read failure and explicit recovery/open, empty-only
+success, pagination and repeated-retry failure retention, exact cursor reuse,
+duplicate clicks/IDs, dirty current-revision preservation, post-save refresh
+failure without another write, stale success/failure exclusion, and an App
+journey preserving an unsaved period/text and selected Lab strategy across tab
+changes. Existing date, warmup, historical-lock and explicit-start guards pass.
+The repeated-retry assertion was added after the initial pass; the affected
+six-test file then passed again. These failure paths use deterministic mocked
+IPC in component/App integration tests, not browser network fault injection.
+
+`node scripts/frontend.mjs build` passed TypeScript and the production build
+with the existing large-chunk advisory. The slice did not repeat the broad suite
+or unchanged backend checks; the later combined frontend result is recorded
+above, together with actual production-browser normal-list and revision-return
+inspection. Error/retry cases remain component/App integration evidence only;
+owner-led unaided usability and current Windows/native acceptance remain separate.
+
 ## Observation date guidance — 2026-10-10
 
 Observation dates now show an inline reason for missing/invalid values,
@@ -180,11 +256,13 @@ not owner-led unaided usability or current Windows/native acceptance. Long
 warnings, running work and later-period safety context can still increase the
 pre-table height.
 
-## Final bounded MVP verification — 2026-10-10
+## Historical bounded MVP verification — 2026-10-10
 
-The final tested code was local commit `1da24d8`, published as `bc10a4c` with
-identical tree `4bd2fae2aecd7c8e6a2bc95f7c5dde012a6db4ac`. The combined Linux
-verification passed runtime validation, dependency checks, 304 Python tests
+Before the subsequent UX series, the bounded MVP baseline was local commit
+`1da24d8`, published as `bc10a4c` with identical tree
+`4bd2fae2aecd7c8e6a2bc95f7c5dde012a6db4ac`. This is historical UI evidence, not
+the current source checkpoint. Its combined Linux verification passed runtime
+validation, dependency checks, 304 Python tests
 with eight Windows-only skips (312 total), all 170 frontend tests across 32
 files, TypeScript and the production build. There were no test failures or
 errors. Existing deprecation, simulated-DOM and large-chunk advisories remain.
