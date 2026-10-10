@@ -83,6 +83,16 @@ not a claim of verified current live-feed behavior.
 
 ## Catalog testing, filtering and comparison
 
+Lab uses one main scrolling surface for its controls, current test context and
+cards. Scroll past the controls to bring card actions and expanded **Parameters
+& source review** into the working area; the desktop catalog no longer has a
+separate fixed-height card well. Narrow screens retain their single-column flow.
+Lab and Saved tests keep independent scroll positions while the workspace stays
+open, including returns through another route; these positions are not saved
+across an application reload.
+Opening setup still uses the explicit dialog, and Escape or **Back to strategies**
+returns keyboard focus to its trigger.
+
 **Order cards** starts with Name A–Z. Choose a saved selection comparison through
 **Choose saved comparison**, then return to Lab to order by saved period return,
 maximum drawdown or completed positions in either direction. The comparison name

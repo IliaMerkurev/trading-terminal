@@ -28,7 +28,10 @@
 .lab-observation-context span{font-size:10px;color:#9aacbd;overflow-wrap:anywhere}
 .lab-studio.saved-studio .studio-body{display:block}
 @media(min-width:761px){
- .lab-studio.research-studio:not(.saved-studio) .studio-body{grid-template-rows:auto minmax(0,1fr)}
+ /* One Lab scroll surface lets controls yield space to complete cards. */
+ .lab-studio.research-studio:not(.saved-studio){display:block;overflow:auto}
+ .lab-studio.research-studio:not(.saved-studio) .studio-body{grid-template-rows:auto auto;overflow:visible}
+ .lab-studio.research-studio:not(.saved-studio) .strategy-grid{height:auto;overflow:visible;scrollbar-gutter:auto}
  .lab-studio.research-studio:not(.saved-studio) .research-setup-host{height:auto;min-height:0}
 }
 @media(max-width:1020px){.lab-studio .strategy-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

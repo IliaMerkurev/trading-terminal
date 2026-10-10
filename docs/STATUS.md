@@ -5,6 +5,79 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Natural Lab catalog scrolling — 2026-10-10
+
+Desktop Lab now uses the existing outer content region as one scroll surface.
+Heading, search, ordering and current test context can scroll out of view so
+complete card actions and expanded parameters can occupy the working area.
+Three Lab-only desktop overrides remove the inherited hidden outer/body overflow
+and full-height inner grid scroller. The card grid keeps its focus-outline
+padding and natural row height. Narrow single-column rules and Saved tests
+layout are unchanged. The two mounted views retain independent in-memory scroll
+offsets; restoring a view does not move keyboard focus or recreate cards. Hidden
+route scroll events cannot replace those offsets. This is session-local view
+state, with no storage, API call or persistence promise after reload.
+
+The pre-change production-browser baseline at **1180×757**, without a selected
+comparison, measured a 551-pixel outer content region with hidden overflow,
+a 239-pixel clipped body and a **161-pixel card scroller** containing 1,452 pixels
+of content. At **750×757**, the existing outer scroller measured 550 client /
+3,522 scroll pixels; body and grid used visible overflow, the grid was 2,988
+pixels high, and no horizontal overflow was observed. These are direct browser
+measurements, rather than the earlier approximately 180-pixel comparison view.
+
+The initial focused pass passed **33 tests across four files**:
+`CardOrdering`, `StrategyLibrary`, `UserJourneys` and `DisplayedEvidence`.
+Existing checks cover retained card identity, parameter/timeframe drafts,
+inclusion, saved ordering, catalog-order Test all requests, explicit setup and
+dialog focus return, plus finite visible metric recording and hidden/offscreen/
+modal exclusions. `node scripts/frontend.mjs build` passed TypeScript and the
+production build with the existing large-chunk advisory. These checks use
+simulated DOM/mocked IPC and do not establish browser geometry.
+
+The first production-browser check confirmed the desktop change: the outer
+region remained 551 pixels high with 1,843 scroll pixels and automatic overflow;
+the body and grid used visible overflow with natural heights of 1,530 and 1,452
+pixels. Wheel scrolling exposed expanded EMA parameters; editing fast from 15
+to 16 and including the card retained the draft. It also reproduced a route
+regression: the shared outer element returned from Saved tests at zero instead
+of the prior 465-pixel Lab offset. The bounded correction adds only independent
+catalog/saved offsets and restore-on-reappearance handling. Its focused
+`StrategyLibrary` / `UserJourneys` pass passed **19 tests**, including the new
+offset/hidden-route/card-retention regression. TypeScript and production build
+passed again with the same advisory.
+
+Final production-browser checks passed at **1180×757** and **750×757**. The
+wide outer/grid measurements remained 551 / 1,843 and 1,452 pixels. After editing
+EMA fast to 16 and including it, Saved tests-to-Lab returned to the exact prior
+465-pixel offset with both changes retained. Market-to-Lab retained the later
+246-pixel offset. Escape from setup returned focus to the actual card trigger.
+A saved comparison's return ordering applied its unique 1h / Group 2 context
+while preserving the edited draft and inclusion. With an EMA search showing
+only two cards, Test all still showed **14 tests / 7 strategies / 2 timeframes**;
+Escape returned focus to Test all. No Review or Start was initiated.
+
+At 750 pixels, the content's client and scroll widths were both 735 pixels,
+with no horizontal overflow. The expanded EMA parameter view returned from
+Saved tests at its exact 679-pixel offset. Tab moved from fast to slow and
+Shift+Tab returned to fast; Escape from narrow setup returned to the EMA trigger.
+Independent source review found no additional layout, lifecycle, state or
+display-observer blocker. Browser layout/navigation checks did not recount
+persisted display events; existing component coverage remains that evidence.
+
+After the browser correction and acceptance, one combined final frontend pass
+(`node node_modules/vitest/vitest.mjs run`) passed **285 tests across 38 files**
+in 11.31 seconds. It includes the prior chart/display, ordering, saved-review
+and observation slices plus this scroll-retention regression. The final code's
+TypeScript/production build had already passed; only documentation changed
+after that build and the browser check. This is frontend regression evidence,
+not a new backend or Windows/native acceptance total.
+
+No backend, schema, accounting, immutable results, data, strategies, API,
+dependencies or product version changed. Unchanged backend evidence was reused.
+Current Windows/native and owner-led unaided usability acceptance remain
+separate.
+
 ## Saved-history display intervals — 2026-10-10
 
 Saved history now defaults to exact native Source candles and supports compatible

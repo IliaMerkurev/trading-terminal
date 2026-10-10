@@ -30,7 +30,18 @@ synthetic fixture database for ordinary research data.
 
 ## Current UX-series evidence
 
-The newest slice adds bounded Source/1h/4h/1d display projections to Saved
+The newest slice gives desktop Lab one natural outer scroll surface instead of
+a fixed inner card well. Lab and Saved tests retain independent session-local
+offsets without remounting cards or moving focus. Corrected production-browser
+checks passed at 1180×757 and 750×757: expanded parameters and actions remain
+reachable, exact route-return positions survive, dialog focus returns correctly,
+and filtered Test all retains all seven strategies. One combined final frontend
+pass passed **285 tests across 38 files**, including the preceding chart/display
+and ordering slices; TypeScript/production build also passed. See
+[natural Lab scrolling](STATUS.md#natural-lab-catalog-scrolling--2026-10-10)
+for the exact geometry, validation and remaining acceptance limits.
+
+The preceding slice adds bounded Source/1h/4h/1d display projections to Saved
 history. Only complete UTC buckets render; missing and outside-page coverage
 stay distinct, with exact contributing-source display evidence. The original
 500-source-slot page budget, source-aligned observations and Lab inputs stay

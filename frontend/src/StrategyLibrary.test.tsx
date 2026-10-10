@@ -7,6 +7,31 @@ import {defaultProfile,type Profile} from './model';
 vi.mock('./api',()=>({api:vi.fn()}));
 const entry={id:'rsi-threshold',version:1,name:'RSI threshold reversion',family:'mean_reversion',kind:'Adapted',source_url:'https://example.org/source',license:'Apache-2.0',markets:['spot'],directions:['long'],source_default_minutes:1440,author_recommended_minutes:null,local_default_minutes:1440,timeframes:[1,60,1440],timeframe_evidence:'Daily is a source default.',adaptation:'Long only.',review:'Static review.',compatibility:'Closed bars.',verification:'Integration pending.',parameters:{period:{type:'integer',default:14,min:2,max:1000}}};
 
+it('keeps independent Lab and Saved tests scroll offsets across visible and hidden route returns',async()=>{
+ vi.mocked(api).mockClear().mockImplementation(async command=>command==='library_catalog'?[entry]:command==='library_batch_history'?{rows:[],next:null}:{});
+ const props={onCopy:vi.fn(),profile:defaultProfile};
+ const surface=(view:'catalog'|'saved',hidden=false)=><div hidden={hidden}><StrategyLibrary {...props} view={view} suspendSetup={hidden}/></div>;
+ const {container,rerender}=render(surface('catalog'));
+ const card=await screen.findByRole('article',{name:entry.name});
+ const host=container.querySelector<HTMLElement>('.lab-studio')!;
+ const input=within(card).getByLabelText(`${entry.name} period`);
+ fireEvent.change(input,{target:{value:'7'}});fireEvent.click(within(card).getByLabelText(`Include ${entry.name}`));
+ host.scrollTop=465;fireEvent.scroll(host);
+ rerender(surface('saved'));expect(host.scrollTop).toBe(0);
+ host.scrollTop=120;fireEvent.scroll(host);
+ rerender(surface('catalog'));expect(host.scrollTop).toBe(465);
+ expect(screen.getByRole('article',{name:entry.name})).toBe(card);
+ expect((input as HTMLInputElement).value).toBe('7');
+ expect((within(card).getByLabelText(`Include ${entry.name}`) as HTMLInputElement).checked).toBe(true);
+ rerender(surface('saved'));expect(host.scrollTop).toBe(120);
+ // App keeps the library mounted but switches its view to catalog off-route.
+ rerender(surface('catalog',true));host.scrollTop=0;fireEvent.scroll(host);
+ rerender(surface('catalog'));expect(host.scrollTop).toBe(465);
+ input.focus();host.scrollTop=530;fireEvent.scroll(host);
+ rerender(surface('catalog'));expect(host.scrollTop).toBe(530);expect(document.activeElement).toBe(input);
+ expect(vi.mocked(api).mock.calls.some(([command])=>/preview|start|trust|library_copy/.test(command))).toBe(false);
+});
+
 it('opens a visible setup on every card click and returns keyboard focus without starting work',async()=>{
  vi.mocked(api).mockImplementation(async(command)=>command==='library_catalog'?[entry]:command==='library_batch_history'?{rows:[],next:null}:{});
  render(<StrategyLibrary onCopy={vi.fn()} profile={defaultProfile}/>);
