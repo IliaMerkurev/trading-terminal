@@ -22,8 +22,8 @@ at 1180px and 750px verified pinned row identity, horizontal scrolling, collapse
 history and report-first layout. Those checks found that the run-status response
 may omit its creation date. The heading now falls back to a valid timestamp from
 the matching history row, or explicitly says the date is unavailable. Two focused
-regressions and production TypeScript/build passed for this correction; its
-actual browser recheck remains pending.
+regressions and production TypeScript/build passed for this correction. Its
+actual browser recheck passed as recorded below.
 
 At the preceding functional checkpoint, actual local-browser checks verified
 that a double Start produced one three-row batch with all rows completed, copy
@@ -31,6 +31,28 @@ cancellation created no strategy, both copy-setting choices retained their
 selected capital, and a saved report reopened after restart. All 42 immutable
 original report files retained identical hashes, and SQLite integrity was ok.
 This is synthetic browser acceptance, separate from Windows-native acceptance.
+
+## Final local-browser acceptance — 2026-10-10
+
+Actual browser checks on the final source checkpoint passed at 1180×757 and
+750×757: the selected report remains primary, the 17-row run history starts
+collapsed and remains accessible, and narrow-screen metrics use two columns.
+The strategy identity and Open report action remain visible when the comparison
+table is scrolled fully right. Saved-versus-draft wording does not require a
+rerun to view results. Opening a report from its saved batch displays the real
+10 October creation timestamp through the history fallback, never Invalid Date.
+
+The earlier actual functional checks remain applicable: preparing Data returned
+to the preserved test setup; a double Start created exactly one batch with three
+completed rows; copy cancellation and both explicit settings choices behaved as
+selected; and saved results reopened after restart. Final integrity checks found
+two saved batches, unchanged hashes for all 42 original immutable report files,
+and SQLite integrity ok. This documentation-only checkpoint changes no source,
+data or dependencies and requires no repeated test/build pass.
+
+These are synthetic local-browser workflow and preservation checks, not evidence
+of real-market profitability. Windows-native acceptance, native display scaling,
+and live public-feed acceptance remain separate, uncompleted gates.
 
 ## Storage finalization and safe shutdown — 2026-10-10
 
