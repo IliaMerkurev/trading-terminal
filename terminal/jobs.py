@@ -39,6 +39,8 @@ class JobManager:
         self.store.recover()
         from terminal.archive_receipts import ArchiveReceipts
         ArchiveReceipts(self.store).reconcile()
+        from terminal.archive_execution import reconcile
+        reconcile(self.store)
         with self.store.connect() as db:
             db.execute('''CREATE TABLE IF NOT EXISTS replay_jobs(
                 id TEXT PRIMARY KEY,session_id TEXT NOT NULL,status TEXT NOT NULL,error TEXT,result TEXT)''')

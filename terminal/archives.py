@@ -165,6 +165,8 @@ class ArchiveManager:
         from terminal.archive_receipts import ArchiveReceipts
         self.store=store;self.jobs=jobs;self.upload=None;self.blocked=False
         self.receipts=ArchiveReceipts(store)
+        from terminal.archive_execution import ImportWorker
+        self.worker=ImportWorker(self)
 
     def _ready(self):
         if self.jobs is not None:self.jobs.require_storage_ready()
@@ -243,21 +245,72 @@ class ArchiveManager:
         try:
             with upload['file'].open('ab') as stream:stream.write(raw)
         except OSError:
-            self._storage_failure(upload_id);self.upload=None
+            self._storage_failure(upload.get('operation_id',upload_id));self.upload=None
             raise ValueError(self._failure_note(upload_id)) from None
         upload['offset']+=len(raw)
         return {'offset':upload['offset']}
 
-    def cancel(self,operation_id=None):
+    def cancel(self,operation_id=None,attempt_key=None):
         # Legacy cancellation is restricted to the current receiving transfer.
         ident=operation_id if operation_id is not None else (self.upload['id'] if self.upload else None)
         if ident is None:return {'status':'no_active_transfer'}
-        try:result=self.receipts.cancel(ident)
+        try:
+            result=self.worker.cancel(ident,attempt_key) if operation_id is not None else None
+            if result is None:result=self.receipts.cancel(ident)
         except Exception:raise ValueError(f'Cancellation outcome unavailable for operation {identifier(ident)}; inspect before another action.') from None
         if result['status']=='cancelled' and self.upload and self.upload['id']==ident:self.upload=None
         return result  # Retained upload bytes are never parsed or resumed at startup.
 
+    def recovery_begin(self,operation_id,size):
+        self._ready();identifier(operation_id)
+        receipt=self.status(operation_id)
+        if receipt['phase']!='terminal' or receipt['outcome'] not in ('partial','interrupted','failed','cancelled') or receipt['content_identity']!='bound':raise ValueError('Recovery upload requires a checksum-bound incomplete import')
+        if type(size) is not int or size!=receipt['expected_bytes']:raise ValueError('Recovery upload size differs from the original archive')
+        if self.upload:raise ValueError('An archive transfer is already active')
+        if (self.store.root/'imports'/f'{operation_id}.partial').exists():raise ValueError('Original upload is present; recovery never replaces it')
+        ident=uuid.uuid4().hex;file=self.store.root/'imports'/f'{ident}.recovery'
+        file.parent.mkdir(exist_ok=True);file.touch(exist_ok=False)
+        self.upload={'id':ident,'operation_id':operation_id,'size':size,'offset':0,'file':file}
+        return {'upload_id':ident,'operation_id':operation_id,'chunk_bytes':CHUNK}
+
+    def recovery_cancel(self,upload_id):
+        identifier(upload_id)
+        if self.upload and self.upload['id']==upload_id and 'operation_id' in self.upload:
+            self.upload=None
+            return {'status':'cancelled','upload_id':upload_id}
+        return {'status':'not_active','upload_id':upload_id}
+
+    def recovery_finish(self,upload_id):
+        upload=self.upload
+        if not upload or upload['id']!=identifier(upload_id) or 'operation_id' not in upload or upload['offset']!=upload['size']:raise ValueError('Recovery upload is incomplete')
+        with self.store.connect() as db:
+            db.execute('INSERT INTO archive_recovery_sources VALUES(?,?) ON CONFLICT(operation_id) DO UPDATE SET upload_id=excluded.upload_id',(upload['operation_id'],upload_id))
+        self.upload=None
+        return {'operation_id':upload['operation_id'],'status':'retained_for_verification'}
+
+    def start(self,operation_id):
+        return self.worker.start(operation_id)
+
+    def resume(self,operation_id,expected_revision,attempt_key):
+        return self.worker.start(operation_id,expected_revision,attempt_key)
+
+    def close(self):
+        self.worker.close()
+
     def finish(self,upload_id):
+        owner="archive_legacy:"+identifier(upload_id)
+        if self.jobs is not None:
+            with self.jobs.lock:
+                self._ready()
+                if self.jobs.active or self.jobs.reservation:raise ValueError("One calculation, batch or archive import is already active")
+                self.jobs.reservation=owner
+        try:return self._finish_legacy(upload_id)
+        finally:
+            if self.jobs is not None:
+                with self.jobs.lock:
+                    if self.jobs.reservation==owner:self.jobs.reservation=None
+
+    def _finish_legacy(self,upload_id):
         identifier(upload_id)
         self._ready()
         upload=self.upload

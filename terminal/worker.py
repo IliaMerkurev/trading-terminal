@@ -13,7 +13,11 @@ def main():
     line=sys.stdin.buffer.readline(1024*1024+1)
     if len(line)>1024*1024: raise ValueError("Worker input exceeds budget")
     request=json.loads(line)
-    if request.get("version")!=1 or request.get("command") not in ('run','replay'): raise ValueError("Invalid worker command")
+    if request.get("version")!=1 or request.get("command") not in ('run','replay','archive_import'): raise ValueError("Invalid worker command")
+    if request['command']=='archive_import':
+        from terminal.archive_execution import execute
+        execute(request)
+        return
     if request['command']=='replay':
         replay(request)
         return

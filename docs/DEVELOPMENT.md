@@ -507,3 +507,27 @@ The original linear source intentionally lacks mark/funding for the saved
 proxy/assumed-zero comparison; selecting it with historical policies must fail
 visibly beside Review. Choose the complete source to retry without weakening
 coverage checks. No source or prior result is overwritten by this addition.
+
+
+## Recoverable background import (TT13 import slice)
+
+Use the production Project archive UI: upload, background start, inspect progress,
+and cancel the current attempt when needed. Cancellation retains published reports;
+wait for terminal acknowledgement before treating the worker as stopped. Recent
+imports is read-only. Continue this import is an explicit checksum/content-verified
+attempt using the same destination IDs. If retained source bytes are missing,
+provide the exact original ZIP through the separate replacement input, then
+continue explicitly. Neither inspection nor continuation executes imported Python
+or grants trust. See [ADR 0035](adr/0035-asynchronous-recoverable-import.md).
+
+Focused checks are `tests.test_archive_async`, existing archive/receipt/transport/
+backup tests and storage/lifecycle tests. `scripts/prepare_archive_load_fixture.py`
+creates four independently invented, streamed semantic fixtures in a new external
+directory: near compressed, expanded, single-entry and individual-row limits.
+`scripts/measure_archive_import.py FIXTURES NEW_DESTINATION` makes one bounded
+Linux/HTTP pass with exact hashes/counts, durable progress, foreground writes,
+cancellation/resume, transaction timing, process-tree RSS and integrity checks.
+The scripts refuse existing output roots. Their results are engineering evidence,
+not market history, financial research or a Windows performance promise. Preserve
+existing supported limits if measurements fail; report the measured blocker.
+Export/download, chart reads and local result-finalization work remain unfinished.

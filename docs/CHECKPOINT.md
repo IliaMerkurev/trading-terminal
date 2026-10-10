@@ -5,6 +5,33 @@ Updated 2026-10-10. Working branch: `codex/terminal-mvp`; product remains
 release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
 product specification; [STATUS.md](STATUS.md) owns detailed test evidence.
 
+## Current TT13 import checkpoint
+
+The latest source implements the managed asynchronous import and explicit
+checksum-bound same-operation continuation in [ADR 0035](adr/0035-asynchronous-recoverable-import.md).
+Production UI uses background start/status/cancel, retains published IDs and
+separates cancellation request from reaped terminal state. Additive attempt
+history, exact missing-source replacement, startup reconciliation and hidden
+staging preserve old receipt/archive contracts and completed content. No source
+trust, financial execution or automatic retries were added.
+
+See the newest STATUS entry for 71-test combined focused acceptance plus narrow
+correction checks, component/build evidence and four supported-limit dimensions.
+The largest normalized row remained admitted and measured below the declared
+local request targets; peak combined sampled memory was about 1.46 GB. This is
+Linux engineering evidence, not Windows/native or owner acceptance. Parent-led
+production-browser import acceptance passed on corrected build `54152e8`, including
+immediate continuation notice/history updates, same-ID completion and normal
+shutdown. Query-only post-close reconciliation preserved exact source/reservation
+identity, artifacts, normalized values and both attempt outcomes with zero trust.
+Publication remains the next handoff; see STATUS.md for the bounded GUI evidence.
+
+TT13 export/download, chart-integrity reads and local result finalization remain
+unfinished, as do the separate remaining bounded research requirements. Keep the
+accepted independent baseline and do not reopen TT10 accounting/contracts merely
+because this import slice changes storage/lifecycle code. Product stays
+`0.6.0-dev`; no whole-plan completion is claimed.
+
 ## Renewed original-plan continuation: TT10 / A4 and A2
 
 The original remaining engineering/research plan is reopened after the bounded

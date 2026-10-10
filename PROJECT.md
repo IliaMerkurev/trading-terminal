@@ -423,3 +423,20 @@ current metadata never retroactively changes a frozen result. Manual historical
 modeling requires explicit review and a note. Preserve separate risk cohorts and
 all TT10/A4 modeled-work/source-loading guards. TT13 and remaining research are
 outside this bounded implementation; Windows/native/live acceptance stays separate.
+
+
+### Original-plan TT13: recoverable background import slice
+
+The production archive importer uses a managed background process and durable
+start/status/attempt-targeted cancellation. Explicit checksum-bound continuation
+retains original reserved IDs, verifies completed artifacts and normalized rows,
+and inserts only missing verified content. Staged rows remain unavailable as
+successful results until per-run atomic visibility. Startup never promotes,
+retries or grants source trust. Legacy synchronous finish remains compatibility
+only; archive and receipt schema 1 remain readable through additive controls.
+See [ADR 0035](docs/adr/0035-asynchronous-recoverable-import.md).
+
+This import slice does not close TT13: export/download, chart-integrity reads and
+local result finalization retain their separately recorded remaining work. TT10
+modeled/source budgets and independent spot contracts are unchanged. Windows,
+native, new exchange/live and remaining bounded research acceptance stay separate.

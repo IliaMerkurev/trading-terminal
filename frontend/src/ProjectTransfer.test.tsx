@@ -8,7 +8,7 @@ it('transfers selected file bytes in exact bounded order and opens only the vali
   const imported=vi.fn(async()=>{});
   vi.mocked(api).mockImplementation(async(command)=>{
     if(command==='archive_begin')return {upload_id:'transfer',chunk_bytes:3};
-    if(command==='archive_finish')return {strategy_id:'validated',note:'Imported report; no Python executed'};
+    if(command==='archive_import_start'||command==='archive_import_status')return {operation_id:'transfer',phase:'terminal',outcome:'completed',inspection_state:'available',execution:{state:'terminal'},items:[{kind:'strategy',destination_id:'validated'}]};
     return {offset:3};
   });
   render(<ProjectTransfer strategy={()=>({})} profile={{}} runIds={[]} onImported={imported}/>);
@@ -18,7 +18,8 @@ it('transfers selected file bytes in exact bounded order and opens only the vali
   fireEvent.change(screen.getByLabelText('Import project archive'),{target:{files:[selectedFile]}});
   await waitFor(()=>expect(imported).toHaveBeenCalledWith(expect.objectContaining({strategy_id:'validated'}),expect.any(Function)));
   const calls=vi.mocked(api).mock.calls;
-  expect(calls.map(([command])=>command)).toEqual(['archive_begin','archive_append','archive_append','archive_append','archive_finish']);
+  expect(calls.filter(([c])=>c!=='archive_import_status').map(([command])=>command)).toEqual(['archive_begin','archive_append','archive_append','archive_append','archive_import_start']);
+  expect(calls.some(([c])=>c==='archive_import_status')).toBe(true);
   const chunks=calls.filter(([c])=>c==='archive_append').map(([,p])=>p!);
   expect(chunks.map(p=>p.offset)).toEqual([0,3,6]);
   expect(chunks.map(p=>atob(p.data as string)).join('')).toBe(String.fromCharCode(...bytes));
@@ -48,7 +49,8 @@ it.each(['desktop','browser'] as const)('shows partial import IDs and guidance i
   const note='Archive import did not finish. Known local runs: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (completed), bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb (importing). Strategy save was not attempted. Do not retry blindly: another import creates new IDs and may duplicate saved work.';
   vi.mocked(api).mockImplementation(async(command)=>{
     if(command==='archive_begin')return {upload_id:'transfer',chunk_bytes:3};
-    if(command==='archive_finish')throw new Error(note);
+    if(command==='archive_import_start')throw new Error(note);
+    if(command==='archive_import_status')return {phase:'validating',inspection_state:'available',items:[]};
     return {};
   });
   render(<ProjectTransfer strategy={()=>({})} profile={{}} runIds={[]} onImported={imported}/>);
@@ -57,6 +59,6 @@ it.each(['desktop','browser'] as const)('shows partial import IDs and guidance i
   expect((await screen.findByRole('alert')).textContent).toBe(`Error: ${note}`);
   await waitFor(()=>expect((screen.getByLabelText('Import project archive') as HTMLInputElement).disabled).toBe(false));
   expect(screen.getByRole('status').textContent).not.toContain('Reading archive');expect(imported).not.toHaveBeenCalled();
-  expect(screen.getByRole('button',{name:'Inspect this import'})).toBeTruthy();
-  expect(vi.mocked(api).mock.calls.map(([command])=>command)).toEqual(['archive_begin','archive_append','archive_finish']);
+  expect(screen.getByRole('button',{name:/this import/})).toBeTruthy();
+  expect(vi.mocked(api).mock.calls.filter(([c])=>c!=='archive_import_status').map(([command])=>command)).toEqual(['archive_begin','archive_append','archive_import_start']);
 });

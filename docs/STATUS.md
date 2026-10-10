@@ -6,6 +6,141 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Original-plan TT13: asynchronous recoverable import slice — 2026-10-10
+
+Source: implementation commit `fbecf0017c7d26dffb9c9ce37fd9f7196e0e98bf` on
+`codex/terminal-mvp`, based on `331fe47e1d60a923a45c0f6ca2c6a5fec3b677e0`.
+Product stays `0.6.0-dev`. The managed import process, durable start/status/
+attempt-targeted cancellation, hidden normalized staging and explicit same-ID
+checksum-bound continuation are implemented. Additive execution/attempt/recovery
+metadata preserves schema-1 receipts and archives. Legacy synchronous finish is
+retained solely for compatibility. See [ADR 0035](adr/0035-asynchronous-recoverable-import.md).
+
+Completed runs remain immutable. Continuation verifies every prior artifact,
+summary, reservation and normalized value before new publication; missing source
+bytes require a separate exact-original recovery upload. Unknown/mismatching
+content is refused rather than overwritten. Attempt keys and revision claims
+prevent lost-reply/concurrent continuation from executing twice. Cancellation is
+requested first and acknowledged only after reaping; final strategy publication
+and completion have an atomic cutoff. Storage faults retain quarantine, including
+cancellation races and rolled-back claims. Startup never resumes or promotes.
+
+Verification on Linux with the existing pinned runtime:
+
+- Combined focused command: `.venv/bin/python -m unittest tests.test_archive_async
+  tests.test_archive_receipts tests.test_archive_receipt_backup
+  tests.test_archive_receipt_transport tests.test_archives
+  tests.test_storage_resilience tests.test_linux_lifecycle -q` passed **71 tests**.
+  This includes legacy compatibility, staged invisibility, immutable same-ID
+  recovery, concurrent claims, missing-source replacement, migration/closed-copy
+  preservation, process ownership and the real serialized HTTP boundary.
+- Subsequent narrow correction/boundary checks passed **10 test executions**:
+  failed resume claim preserving its prior attempt, bootstrap reaping ownership,
+  storage-failure/cancellation quarantine, invalid-source rejection, full copied
+  workspace hashes/rows, every before/after run publication boundary, actual
+  service kill/restart with inherited ownership, before/after final strategy
+  commit, and pre-strategy cancellation retaining all completed reports. Some
+  executions deliberately repeat corrected cases; this is not 81 unique tests.
+- The real HTTP barrier test was extended with a deterministic 250-ms external
+  SQLite write hold and passed. Status, cancellation acknowledgement and an
+  ordinary foreground write all returned before the paused worker was released,
+  below the predeclared two-second target. Worker quiescence after release met
+  five seconds. The old synchronous blocking transport test remains explicitly
+  legacy coverage, not the new production responsiveness assertion.
+- Component acceptance passed **43 tests across six files**: ProjectTransfer,
+  ImportRecovery, BrowserServiceControls, AppImportRecovery, App and
+  AppStorageSafety. Two additional narrow tests passed for recovery-upload
+  cancellation/busy-state release and attempt-targeted desktop close ordering.
+  Generation/unmount behavior, strict refresh separation, stale replies, explicit
+  continuation and browser leave warnings are covered. Mocked DOM/IPC tests do
+  not establish native or owner GUI acceptance.
+- TypeScript checking and the production Vite build passed. The existing large
+  bundle warning remains. `git diff --check` and Python compilation passed.
+- Independent read-only review found prebootstrap ownership, historic settlement,
+  storage-fault attribution and receiving/recovery UI state defects; corrections
+  received the targeted tests above. Review is not a substitute for tests.
+
+Parent-led production-browser inspection subsequently found two stale UI status
+presentations: a prior partial-outcome notice remained after continuation, and an
+already open Recent imports row retained its prior outcome after completion.
+The UI-only correction replaces the historical notice when continuation is
+requested and merges each accepted receipt into its matching history row only,
+preserving other rows and pagination without extra list fetches. Focused import
+component verification passed 20 tests, including pre-acknowledgement notice
+changes and poll-driven history updates. Backend behavior and supported-load
+evidence are unchanged. The bounded corrected import GUI check passed as recorded
+below; broader remaining TT13 and owner acceptance are still open.
+
+The corrected production browser build at
+`54152e8251c34822fe81f153f0cd31eb7572f0da` passed the parent-led composed import
+check on 2026-10-10, 23:21–23:22 UTC. From a separately seeded partial fixture,
+Continue immediately replaced the historical notice and changed the already open
+matching Recent imports row to publishing. Releasing the explicitly artificial
+supervisor bootstrap barrier produced completed in both the receipt heading and
+matching history row without manual refresh. Both original report IDs and the
+reserved strategy ID were retained; progress reached 8/8. Publication completion
+was briefly visible while the separate execution control still reported
+running/staging cleanup, followed by terminal/terminal on inspection. That
+transient does not claim reaping or confirmed cancellation before it occurs.
+Normal service shutdown visibly completed at 23:22:40 UTC. The screenshot remains
+outside the repository; the barrier is private acceptance scaffolding, not a
+production hook or an organic slow-disk measurement.
+
+After shutdown, query-only SQLite/file reconciliation of that fixture confirmed
+completed/finished receipt and execution, revision 2, both preserved attempt
+outcomes (partial/process_restart then completed/finished), unchanged original
+ZIP/content identity and all reserved IDs/hashes/counts. Both imported reports
+were completed with matching snapshot/result bytes, exact normalized values and
+counts, and imported origin. The reserved strategy existed once. Totals were
+three runs and two strategies including the original fixture sentinels, zero
+native trust, integrity `ok` and no foreign-key violations. No application startup,
+retry, financial calculation, backend test rerun or rebuild was used for this
+documentation-only reconciliation. This closes the bounded corrected-browser
+import check; Windows/native and the remaining TT13 paths stay open.
+
+### Supported archive dimensions and measured responsiveness
+
+The fixture generator streams independently invented numeric normalized series;
+these are not padding-only files, market history or executed research. Current
+64-MiB ZIP, 128-MiB expanded, 64-MiB entry and eight-run limits were preserved.
+The valid eight-run shape uses 17 entries; the nominal 25-entry ceiling does not
+require an invalid archive shape.
+
+| Separate dimension | ZIP bytes | Expanded bytes | Largest entry bytes | Normalized rows | Maximum write transaction | Peak parent + descendants RSS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Near ZIP limit, eight runs | 66,026,635 | 66,023,697 | 8,251,011 | 61,448 | 0.00475 s | 968,687,616 bytes |
+| Near expanded limit, eight runs | 28,753,771 | 133,129,105 | 16,639,186 | 123,896 | 0.01252 s | 1,089,069,056 bytes |
+| Near single-entry limit | 14,455,343 | 67,039,506 | 67,036,481 | 62,344 | 0.00484 s | 1,020,862,464 bytes |
+| Near individual-row limit | 16,782,347 | 67,039,011 | 67,035,994 | 3 | 0.53013 s | 1,454,608,384 bytes |
+
+The final case contains a 67,034,894-byte normalized indicator row of numeric
+values. Across this pass, maximum start was **0.00383 s**, status **0.01049 s**,
+cancellation acknowledgement **0.00453 s**, and ordinary foreground SQLite write
+**0.53141 s**. Expanded-import cancellation reached actual worker quiescence in
+**0.02470 s**, then explicit continuation completed with the identical reserved
+IDs. Upload chunks, scheduler/status/list navigation, progress and all source/
+published hashes were recorded. Every case completed with exact expected row
+counts, integrity `ok`, no foreign-key violations, zero source trust and no
+worker left owning its workspace. Total case durations were 10.76, 29.77, 10.51
+and 11.51 seconds respectively, including upload and inspection.
+
+One initial measurement pass detected an instrumentation defect: this procfs
+omits task/children, causing missing RSS samples. Those zero samples are invalid
+memory evidence. A bounded corrective pass derived owned descendants from PPid;
+the table above is that complete corrected pass. Later narrow control/UI fixes do
+not alter the measured bulk parser, staging shape or supported limits. No load
+limit or timeout was raised to manufacture a pass. Numerical targets are local
+development goals, not cross-platform or all-disk guarantees.
+
+Remaining original TT13 obligations: asynchronous export including download,
+shared-history chart integrity/read responsiveness, and local calculation-result
+finalization with the combined near-limit M1 gate. No new financial calculations,
+exchange acquisition or live/data release were performed. The bounded parent-led production-browser import check passed as recorded above.
+Broader acceptance of the remaining TT13 paths, Windows/native and remaining
+original research/owner tasks stays open. This entry does **not** mark all TT13
+or the original plan done.
+
+
 ## Original-plan TT10 / A2: independent spot passive contracts — 2026-10-10
 
 Implemented the bounded independent profile/assumption contract for linear-origin

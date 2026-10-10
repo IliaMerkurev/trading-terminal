@@ -66,7 +66,7 @@ class ArchiveReceipts:
         with self.store.connect() as db:
             self._changed(db.execute("UPDATE archive_imports SET phase='validating',updated_at=? WHERE operation_id=? AND phase='receiving'",(now(),identifier(operation_id))))
 
-    def reserve(self, operation_id, raw, project, documents):
+    def reserve(self, operation_id, raw, project, documents, attempt_key=None):
         """Reserve every output together, before any output directory is created."""
         operation_id = identifier(operation_id)
         run_ids = [uuid.uuid4().hex for _ in project['runs']]
@@ -74,9 +74,18 @@ class ArchiveReceipts:
         if len(set([*run_ids,strategy_id])) != len(run_ids)+1:
             raise ValueError('Generated import identifiers collide')
         content_hash = digest({'version':1,'entries':[[name,digest(documents[name])] for name in sorted(documents)]})
+        prepared=[]
+        for source in project['runs']:
+            snapshot=documents[f'runs/{source}/snapshot.json'];result=documents[f'runs/{source}/result.json']
+            prepared.append((canonical(snapshot).decode(),digest(snapshot),digest(result),canonical({kind:len(result[kind]) for kind in SERIES}).decode()))
+        envelope={**project['strategy'],'profile':project['profile']}
+        strategy_hash=digest(envelope);raw_hash=hashlib.sha256(raw).hexdigest()
         stamp = now()
         with self.store.connect() as db:
             db.execute('BEGIN IMMEDIATE')
+            if attempt_key is not None:
+                from terminal.archive_execution import guard
+                guard(db,operation_id,attempt_key)
             operation = db.execute('SELECT * FROM archive_imports WHERE operation_id=?',(operation_id,)).fetchone()
             if not operation or operation['phase'] != 'validating' or operation['archive_sha256'] is not None or operation['expected_bytes'] != len(raw):
                 raise ValueError('Import cannot reserve output identities')
@@ -87,17 +96,17 @@ class ArchiveReceipts:
             for ordinal,(source,ident) in enumerate(zip(project['runs'],run_ids)):
                 snapshot = documents[f'runs/{source}/snapshot.json']
                 result = documents[f'runs/{source}/result.json']
-                db.execute('INSERT INTO runs(id,created_at,status,manifest) VALUES(?,?,\'importing\',?)',(ident,stamp,canonical(snapshot).decode()))
+                db.execute('INSERT INTO runs(id,created_at,status,manifest) VALUES(?,?,\'importing\',?)',(ident,stamp,prepared[ordinal][0]))
                 db.execute('''INSERT INTO archive_import_items(operation_id,kind,ordinal,destination_id,source_run_id,
                     expected_snapshot_sha256,expected_result_sha256,expected_series_counts,publication_state,reserved_at)
                     VALUES(?,'run',?,?,?,?,?,?,'reserved',?)''',
-                    (operation_id,ordinal,ident,source,digest(snapshot),digest(result),canonical({kind:len(result[kind]) for kind in SERIES}).decode(),stamp))
+                    (operation_id,ordinal,ident,source,*prepared[ordinal][1:],stamp))
             envelope = {**project['strategy'],'profile':project['profile']}
             db.execute('''INSERT INTO archive_import_items(operation_id,kind,ordinal,destination_id,expected_strategy_sha256,publication_state,reserved_at)
-                VALUES(?,'strategy',0,?,?,'reserved',?)''',(operation_id,strategy_id,digest(envelope),stamp))
+                VALUES(?,'strategy',0,?,?,'reserved',?)''',(operation_id,strategy_id,strategy_hash,stamp))
             self._changed(db.execute('''UPDATE archive_imports SET archive_sha256=?,validated_content_sha256=?,expected_run_count=?,
                 expected_strategy_count=1,phase='publishing',updated_at=? WHERE operation_id=? AND phase='validating' ''',
-                (hashlib.sha256(raw).hexdigest(),content_hash,len(run_ids),stamp,operation_id)))
+                (raw_hash,content_hash,len(run_ids),stamp,operation_id)))
 
     def publish_run(self, operation_id, ordinal, snapshot, result):
         operation_id = identifier(operation_id)
@@ -190,7 +199,7 @@ class ArchiveReceipts:
         for ident in ids:
             self.stop(ident,'process_restart')
 
-    def _inconsistent(self, db, operation, items):
+    def _inconsistent(self, db, operation, items, metadata_only=False):
         phase=operation['phase'];outcome=operation['outcome']
         if operation['expected_run_count'] is None:
             return bool(items) or any(operation[key] is not None for key in ('archive_sha256','validated_content_sha256','expected_strategy_count')) or phase=='publishing' or outcome in ('completed','partial')
@@ -206,14 +215,14 @@ class ArchiveReceipts:
             return True
         if outcome in ('failed','interrupted','rejected','cancelled') and published:
             return True
-        if outcome in ('rejected','cancelled'):
+        if outcome in ('rejected','cancelled') and not (outcome=='cancelled' and db.execute('SELECT 1 FROM archive_execution WHERE operation_id=?',(operation['operation_id'],)).fetchone()):
             return True  # Neither outcome is permitted after output reservation.
         for item in runs:
-            run=db.execute('SELECT status,result_hash,manifest FROM runs WHERE id=?',(item['destination_id'],)).fetchone()
+            run=db.execute('SELECT status,result_hash'+('' if metadata_only else ',manifest')+' FROM runs WHERE id=?',(item['destination_id'],)).fetchone()
             if not run:
                 return True
             try:
-                if digest(json.loads(run['manifest']))!=item['expected_snapshot_sha256']:return True
+                if not metadata_only and digest(json.loads(run['manifest']))!=item['expected_snapshot_sha256']:return True
             except (ValueError,TypeError,OverflowError):
                 return True
             if (item['publication_state']=='published')!=(run['status']=='completed') or (item['publication_state']=='published' and run['result_hash']!=item['expected_result_sha256']):
@@ -228,7 +237,11 @@ class ArchiveReceipts:
                 raise ValueError('Import receipt does not exist')
             operation = dict(row)
             items = [dict(row) for row in db.execute('SELECT * FROM archive_import_items WHERE operation_id=? ORDER BY kind,ordinal',(operation_id,))]
-            operation['inspection_state'] = 'unknown' if self._inconsistent(db,operation,items) else 'available'
+            execution=db.execute('SELECT * FROM archive_execution WHERE operation_id=?',(operation_id,)).fetchone()
+            operation['execution']=dict(execution) if execution else None
+            operation['revision']=execution['revision'] if execution else 0
+            operation['attempts']=[dict(value) for value in db.execute('SELECT attempt_key,revision,started_at,terminal_at,outcome,reason FROM archive_attempts WHERE operation_id=? ORDER BY revision DESC LIMIT 10',(operation_id,))]
+            operation['inspection_state'] = 'unknown' if self._inconsistent(db,operation,items,metadata_only=execution is not None) else 'available'
             for item in items:
                 if item['expected_series_counts']:
                     item['expected_series_counts'] = json.loads(item['expected_series_counts'])
@@ -236,9 +249,9 @@ class ArchiveReceipts:
                     current = db.execute('SELECT status FROM runs WHERE id=?',(item['destination_id'],)).fetchone()
                     item['current_status'] = current[0] if current else 'missing'
                 else:
-                    current = db.execute('SELECT name,kind,document,profile FROM strategies WHERE id=?',(item['destination_id'],)).fetchone()
+                    current = db.execute(('SELECT id FROM strategies WHERE id=?' if execution is not None else 'SELECT name,kind,document,profile FROM strategies WHERE id=?'),(item['destination_id'],)).fetchone()
                     item['current_status'] = 'available' if current else 'missing'
-                    item['modified_since_import'] = (digest({'name':current['name'],'kind':current['kind'],'document':json.loads(current['document']),'profile':json.loads(current['profile']) if current['profile'] else None}) != item['expected_strategy_sha256']) if current and item['publication_state']=='published' else None
+                    item['modified_since_import'] = (digest({'name':current['name'],'kind':current['kind'],'document':json.loads(current['document']),'profile':json.loads(current['profile']) if current['profile'] else None}) != item['expected_strategy_sha256']) if current and item['publication_state']=='published' and execution is None else None
             operation['items'] = items
             operation['artifact_verification'] = 'not_checked'
             operation['content_identity'] = 'bound' if operation['archive_sha256'] else 'not_bound'

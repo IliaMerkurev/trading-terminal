@@ -45,6 +45,8 @@ class AppService:
                 "compare_runs":{"run_ids"},"archive_export":{"strategy","profile","run_ids"},"archive_begin":{"size"},
                 "archive_import_status":{"operation_id"},"archive_import_list":{"before","limit"},"archive_import_cancel":{"operation_id"},
                 "archive_append":{"upload_id","offset","data"},"archive_finish":{"upload_id"},"archive_cancel":set()}
+            fields.update(archive_recovery_begin={'operation_id','size'},archive_recovery_finish={'upload_id'},archive_recovery_cancel={'upload_id'})
+            fields.update(archive_import_start={'operation_id'},archive_import_resume={'operation_id','expected_revision','attempt_key'})
             experiment_fields={'strategy_id','dataset_id','profile','is_range','oos_range','axes'}
             fields.update(experiment_fields={'strategy_id'},experiment_preview=experiment_fields,experiment_start=experiment_fields,
                 list_experiments=set(),experiment_status={'experiment_id'},experiment_cancel={'active_id'},
@@ -72,6 +74,7 @@ class AppService:
             fields.update(local_history_window={'dataset_id','start','end'}, observation_history={'before'},
                           observation_get={'observation_id','revision'},
                           observation_save={'observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
+            if command=='archive_import_cancel' and 'attempt_key' in p:fields[command].add('attempt_key')
             if command in ('library_batch_preview','library_batch_start') and 'spot_benchmark' in p:fields[command]=fields[command]|{'spot_benchmark'}
             if command=='library_batch_start' and 'observation' in p:fields[command].add('observation')
             fields['research_display_incomplete']=set()
@@ -172,9 +175,14 @@ class AppService:
             elif command=="archive_export": result=self.archives.export(**p)
             elif command=="archive_begin": result=self.archives.begin(**p)
             elif command=="archive_append": result=self.archives.append(**p)
+            elif command=='archive_recovery_begin':result=self.archives.recovery_begin(**p)
+            elif command=='archive_recovery_cancel':result=self.archives.recovery_cancel(**p)
+            elif command=='archive_recovery_finish':result=self.archives.recovery_finish(**p)
+            elif command=='archive_import_start':result=self.archives.start(**p)
+            elif command=='archive_import_resume':result=self.archives.resume(**p)
             elif command=="archive_finish": result=self.archives.finish(**p)
             elif command=="archive_cancel": result=self.archives.cancel()
-            elif command=="archive_import_cancel": result=self.archives.cancel(identifier(p["operation_id"]))
+            elif command=="archive_import_cancel": result=self.archives.cancel(identifier(p["operation_id"]),p.get("attempt_key"))
             elif command=="archive_import_status": result=self.archives.status(**p)
             elif command=="archive_import_list": result=self.archives.recent(**p)
             elif command in ('experiment_fields','managed_experiment_fields'):result=self.experiments.fields(**p)
@@ -222,11 +230,12 @@ class AppService:
         attempt(self.experiments.close)
         # The calculation process is only one workspace owner. Defer unlocking
         # until live/history/download threads have also actually stopped.
+        attempt(self.archives.close)
         attempt(lambda:self.jobs.close(release_workspace=False))
         attempt(self.downloads.close)
         threads=(self.live.thread,self.live.warmup_thread,self.live.hub.thread,self.live.chart_history.thread,
                  self.live.delivery_thread,self.downloads.thread)
-        if self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
+        if self.archives.worker.active or self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
             errors.append(RuntimeError('Service shutdown is incomplete; workspace ownership is retained'))
         else:attempt(self.jobs.close)
         if errors:raise ExceptionGroup('Service shutdown cleanup failed',errors)

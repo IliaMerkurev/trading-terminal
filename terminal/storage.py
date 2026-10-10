@@ -41,6 +41,8 @@ class RunStore:
             """)
             from terminal.archive_receipts import initialize as initialize_archive_receipts
             initialize_archive_receipts(db)
+            from terminal.archive_execution import initialize as initialize_archive_execution
+            initialize_archive_execution(db)
             from terminal.research_evidence import initialize
             initialize(db)
             from terminal.observations import initialize as initialize_observations

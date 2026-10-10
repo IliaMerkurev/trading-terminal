@@ -1,5 +1,5 @@
 export type ImportItem={kind:'run'|'strategy';ordinal:number;destination_id:string;source_run_id:string|null;publication_state:string;current_status:string;modified_since_import?:boolean|null};
-export type ImportReceipt={operation_id:string;phase:string;outcome:string|null;termination_reason:string|null;content_identity:string;artifact_verification:'not_checked';inspection_state:'available'|'unknown';items:ImportItem[]};
+export type ImportReceipt={revision?:number;execution?:{state:string;phase:string;staged_rows:number;total_rows:number|null;attempt_key:string;termination_reason:string|null}|null;operation_id:string;phase:string;outcome:string|null;termination_reason:string|null;content_identity:string;artifact_verification:'not_checked';inspection_state:'available'|'unknown';items:ImportItem[]};
 export type ImportSummary={operation_id:string;created_at:string;phase:string;outcome:string|null;archive_sha256:string|null};
 export type ImportCursor={created_at:string;operation_id:string};
 export type ImportPage={rows:ImportSummary[];next:ImportCursor|null};
@@ -9,6 +9,7 @@ export function ImportReceiptDetails({receipt,onOpenReport,onOpenStrategy,openin
   return <section className="import-receipt" aria-label="Import receipt">
     <h3>Import {receipt.outcome??receipt.phase}</h3>
     <p className="import-identity">Operation {receipt.operation_id}</p>
+    {receipt.execution&&<p>Attempt {receipt.execution.attempt_key} · {receipt.execution.state} · {receipt.execution.phase} · {receipt.execution.staged_rows}/{receipt.execution.total_rows??'?'} rows staged. {receipt.execution.state==='cancel_requested'?'Cancellation is requested, not yet confirmed.':''}</p>}
     {receipt.termination_reason&&<p>Reason: {receipt.termination_reason.replaceAll('_',' ')}</p>}
     {!available&&<p role="alert">Receipt metadata is inconsistent. Publication outcome is unknown. Do not start another import to repair it.</p>}
     {receipt.content_identity==='not_bound'&&<p>Archive content identity is not bound. A receiving receipt cannot identify a file by its name or size.</p>}

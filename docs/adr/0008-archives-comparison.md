@@ -1,5 +1,7 @@
 # ADR 0008: comparison and nonexecuting project archives
 
+The asynchronous/recoverable production import path is defined by [ADR 0035](0035-asynchronous-recoverable-import.md). The status-only and synchronous finish descriptions below remain historical/legacy compatibility contracts.
+
 ## Contract
 
 Compare two to eight completed run records, including strategy hashes, complete
