@@ -5,6 +5,39 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Visible Lab observation context — 2026-10-10
+
+When an observation is attached, the compact Lab strip now retains a labeled
+**Attached to draft test** row even after setup closes: short observation ID,
+exact revision, fixed UTC range with exclusive end, and **Return to observation**.
+The return reuses the existing exact-ID/revision callback and busy/active guards.
+No hypothesis is duplicated in the strip. Unattached Lab drafts gain no extra
+controls; saved comparisons keep their separate immutable observation context.
+The existing setup, explicit detach action, date locks and warmup guards remain
+unchanged. No new persistence, backend, dependency or version change is involved.
+
+One focused pass passed **18 tests in two files**:
+`node node_modules/vitest/vitest.mjs run frontend/src/Observations.test.tsx frontend/src/UserJourneys.test.tsx`.
+New cases cover closed-setup draft identity/range, historical-revision return,
+absence of attachment controls for ordinary drafts, preserved strategy selection
+through Data/Lab/observation navigation, unchanged source/dates and no implicit
+save, execution, preview or detach. Existing cases retain explicit-start linkage,
+admission failure, late warmup, unavailable-source and observation edit coverage.
+`node scripts/frontend.mjs build` passed TypeScript and production build with the
+existing large-chunk advisory. No full regression suite or unchanged backend
+checks were repeated.
+
+Actual production-browser checks on `3748c13` passed at **750×757 and 1180×757**:
+the attached-context row remained readable without clipping. Opening **Test
+observation in Lab** for a saved synthetic observation at revision 2 retained
+its fixed **2024-01-26 → 2024-01-27 UTC** period (end exclusive). Escape closed
+setup while the cue remained visible. After selecting one Donchian test,
+**Return to observation** reopened exactly revision 2 with the expected
+hypothesis and locked dates. Navigating back to Lab preserved that selected
+test and the attached period. No save, preview or execution was initiated.
+This establishes the bounded browser flow and layout; owner-led unaided
+usability and current Windows/native acceptance remain separate.
+
 ## Compact Saved tests review — 2026-10-10
 
 Saved comparisons now keep the chooser, compact original market/capital/period,

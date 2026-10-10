@@ -23,6 +23,9 @@
 .lab-context-history>span{font-size:10px;color:#9aacbd}
 .lab-context button{font-size:12px;min-height:34px;white-space:nowrap}
 .lab-running{font-size:12px;color:#83dfc6}
+.lab-observation-context{flex-basis:100%;display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;border-top:1px solid #32443f;padding-top:10px}
+.lab-observation-context>div{display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
+.lab-observation-context span{font-size:10px;color:#9aacbd;overflow-wrap:anywhere}
 .lab-studio.saved-studio .studio-body{display:block}
 @media(min-width:761px){
  .lab-studio.research-studio:not(.saved-studio) .studio-body{grid-template-rows:auto minmax(0,1fr)}

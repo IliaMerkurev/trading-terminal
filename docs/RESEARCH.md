@@ -12,8 +12,15 @@ In Market, choose **Saved history · local**, or use **Observe this history**
 from Data. Open a prepared local chart, select a period and save a hypothesis
 with an optional falsification condition. Saving does not start a test.
 **Test observation** opens Lab setup with the exact source, period and note
-revision. Select compatible strategies and settings, then explicitly Review and
-Start. Insufficient preceding warmup blocks Review rather than moving the dates.
+revision. Closing setup keeps a compact **Attached to draft test** row visible
+in Lab, with the observation identity, revision and fixed UTC period (end
+exclusive). **Return to observation** opens that exact revision without saving,
+starting a test or detaching it. This is the current draft attachment; saved
+comparisons retain their own immutable observation links. Ordinary navigation
+keeps selected strategies and the attachment. Source/date changes still require
+explicit detachment in setup.
+Select compatible strategies and settings, then explicitly Review and Start.
+Insufficient preceding warmup blocks Review rather than moving the dates.
 Reopen a linked saved test and return to its original observation revision; later
 note edits do not rewrite that link or the result. This route uses local candles,
 not a claim of verified current live-feed behavior.

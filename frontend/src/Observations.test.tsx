@@ -1,5 +1,5 @@
 import {it,expect,vi} from 'vitest';
-import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {render,screen,fireEvent,waitFor,within} from '@testing-library/react';
 import Observations from './Observations';
 import LibraryResearch from './LibraryResearch';
 import {defaultProfile} from './model';
@@ -117,4 +117,40 @@ it('shows verified page provenance for a dataset-list source without a classific
  expect(await screen.findByText('Chart: 1 candles')).toBeTruthy();
  expect(screen.getByText(/Local snapshot · synthetic/)).toBeTruthy();
  expect(screen.queryByText(/Provenance shown after page verification/)).toBeNull();
+});
+
+
+it('keeps the draft attachment visible with setup closed and returns to its exact historical revision without mutation',async()=>{
+ mock();vi.mocked(api).mockClear();const onObservation=vi.fn();
+ const historical={...record,id:'original-note-123',revision:2,latest_revision:4};
+ const props={selections,datasets:[source],profile:defaultProfile,onActive:vi.fn(),onOpenRun:vi.fn(),onReport:vi.fn(),onObservation,preferredDataset:{id:'source',request:1,observation:historical}};
+ const view=render(<LibraryResearch {...props} view="catalog"/>);
+ await screen.findByRole('dialog');
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
+ expect(screen.queryByRole('dialog')).toBeNull();
+ const attachment=screen.getByRole('region',{name:'Attached observation for draft test'});
+ expect(within(attachment).getByText('Attached to draft test')).toBeTruthy();
+ expect(within(attachment).getByText('Observation original · revision 2')).toBeTruthy();
+ expect(within(attachment).getByText('1970-01-01 00:10 — 1970-01-01 00:20 UTC · fixed period (end exclusive)')).toBeTruthy();
+ expect(within(attachment).queryByText(record.hypothesis)).toBeNull();
+ fireEvent.click(within(attachment).getByRole('button',{name:'Return to observation'}));
+ expect(onObservation).toHaveBeenCalledExactlyOnceWith('original-note-123',2);
+ // Ordinary route suspension and Saved tests do not replace the draft attachment.
+ view.rerender(<LibraryResearch {...props} view="saved" suspendSetup/>);
+ expect(screen.queryByRole('region',{name:'Attached observation for draft test'})).toBeNull();
+ view.rerender(<LibraryResearch {...props} view="catalog"/>);
+ expect(screen.getByRole('region',{name:'Attached observation for draft test'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+ expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).value).toBe('1970-01-01T00:10');
+ expect((screen.getByLabelText('Evaluation end, exclusive (UTC)') as HTMLInputElement).value).toBe('1970-01-01T00:20');
+ expect((screen.getByLabelText('Batch dataset') as HTMLSelectElement).value).toBe('source');
+ expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).disabled).toBe(true);
+ expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|resume|prepare/.test(c))).toBe(false);
+});
+
+it('adds no observation controls to an unattached Lab draft',async()=>{
+ mock();render(<LibraryResearch selections={selections} datasets={[source]} profile={defaultProfile} onActive={()=>{}} onOpenRun={()=>{}} onReport={()=>{}} view="catalog"/>);
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_history',{before:null}));
+ expect(screen.queryByRole('region',{name:'Attached observation for draft test'})).toBeNull();
+ expect(screen.queryByRole('button',{name:'Return to observation'})).toBeNull();
 });
