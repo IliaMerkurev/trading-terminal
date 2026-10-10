@@ -5,6 +5,55 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Compact test-selection setup — 2026-10-10
+
+The existing single-card and all-catalog setup now collapses only the pre-review
+selected-test list. Its native disclosure shows computed test, distinct-strategy
+and timeframe counts. Expanding retains the ordered names/timeframes and exposes
+their already-selected IDs, versions and parameter values in the existing
+bounded scroll area, which now accepts keyboard focus. Closing setup resets only
+the disclosure presentation; the test draft remains intact. Batch timeframe
+controls, observation context, setup errors and compatibility warnings remain
+outside it. The pre-Start reviewed contract, ready/unavailable counts and every
+unavailable-row reason remain expanded as before. Test all selection semantics,
+review/start payloads and backend/trust/accounting behavior are unchanged.
+
+Focused verification passed **39 tests in three files**: StrategyLibrary,
+LibraryResearch and UserJourneys. The new assertions cover single/all entry,
+14/7/2 and 21/7/3 selection counts, ordered identities and current parameters,
+native disclosure state/focus, cancel-event/Back focus restoration, retained
+history/dates/capital/costs, visible reviewed warnings and unchanged explicit
+preview/Start requests. Command:
+`node node_modules/vitest/vitest.mjs run frontend/src/StrategyLibrary.test.tsx frontend/src/LibraryResearch.test.tsx frontend/src/UserJourneys.test.tsx`.
+The first pass found two test-harness assertions assuming jsdom hides closed
+native-details descendants. Those assertions were corrected to check the closed
+disclosure boundary; the affected StrategyLibrary file then passed all seven
+tests. The other 32 passing tests were not repeated. Native visibility, keyboard
+activation and layout require actual browser verification separately.
+
+`node scripts/frontend.mjs build` passed TypeScript and the production build,
+with the existing large-chunk advisory. No dependencies, schema, product version,
+backend or immutable results changed; the broad suite was not repeated.
+
+Actual production-browser checks on `719ca19` passed at **1180×757 and 750×757**.
+The collapsed selection put market, capital and simulation inputs in the first
+viewport. Enter expanded the 14-test/7-strategy/2-timeframe disclosure; Tab
+focused its scroll region and End reached the final RSI rows. Space collapsed
+it, after which Tab skipped the hidden list and reached Market. Adding 1h
+updated the summary to 21/7/3. Escape returned focus to **Test all strategies**
+while preserving all 21 selections; **Edit test setup** reopened the collapsed
+21-test summary.
+
+With complete synthetic 1h history and an explicit UTC evaluation period,
+insufficient preceding warmup for the daily tests remained visible and kept
+Review disabled. Removing 1d with Space restored a 14/7/2 selection and enabled
+Review. An explicit Review displayed the full reviewed contract outside the
+selection disclosure, 14 ready and two native-unavailable rows across the
+strategy/passive-comparison review, and **Start 14 tests**. Start was not clicked.
+These checks establish the bounded browser layout, keyboard and review flow;
+current Windows/native and owner-led unaided usability remain separate. This
+evidence update changes documentation only, so no build or tests were repeated.
+
 ## Visible Lab observation context — 2026-10-10
 
 When an observation is attached, the compact Lab strip now retains a labeled

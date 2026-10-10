@@ -32,7 +32,7 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  const report={id:'batch',status:'completed',active_id:null,snapshot:{inputs,rows:[{name:'RSI',kind:'graph',profile:defaultProfile,dataset:{id:'data'},selection:selections[0]}]},rows:[{ordinal:0,status:'completed',run_id:'saved',metrics:{net_pnl:'-2',period_return:'-.002',final_equity:'998',max_drawdown:'.01',completed_positions:0,win_rate:null,fees:'2',funding:'0',annualized_geometric_return:null}}]};
  vi.mocked(api).mockImplementation(async(command)=>{
   if(command==='library_batch_history')return {rows:[{id:'batch',status:'completed',created_at:'2026-01-01'}],next:null};
-  if(command==='library_batch_preview')return {contract_sha256:'frozen',modeled_minutes:100,rows:[{name:'RSI',kind:'graph',error:null}]};
+  if(command==='library_batch_preview')return {contract_sha256:'frozen',modeled_minutes:100,rows:[{name:'RSI',kind:'graph',error:null},{name:'Unavailable passive comparison',kind:'benchmark',error:'Independent spot contract unavailable'}]};
   if(command==='library_batch_start')return {batch_id:'batch'};
   if(command==='library_batch_status')return report;
   return {};
@@ -44,7 +44,15 @@ it('freezes preview, invalidates changed inputs and preserves an explicit saved 
  fireEvent.change(screen.getByLabelText('Evaluation start (UTC)'),{target:{value:'1970-01-01T00:10'}});
  await waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Review test'}));
- const startButton=await screen.findByRole('button',{name:/Start \d+ tests/});fireEvent.click(startButton);fireEvent.click(startButton);
+ const startButton=await screen.findByRole('button',{name:/Start \d+ tests/});
+ const selectionSummary=screen.getByText('1 selected test · 1 strategy · 1 timeframe',{selector:'summary'});
+ expect(selectionSummary.closest('details')?.open).toBe(false);
+ for(const element of [screen.getByRole('region',{name:'Reviewed test settings'}),screen.getByText('Independent spot contract unavailable'),startButton])expect(element.closest('details')).toBeNull();
+ expect(screen.getByText(/1 ready · 1 unavailable/)).toBeTruthy();
+ fireEvent.click(selectionSummary);fireEvent.click(selectionSummary);
+ expect(api).toHaveBeenCalledWith('library_batch_preview',inputs);
+ expect(vi.mocked(api).mock.calls.filter(([command])=>command==='library_batch_preview')).toHaveLength(1);
+ fireEvent.click(startButton);fireEvent.click(startButton);
  await waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_start',{...inputs,expected_contract:'frozen'}));
  expect(vi.mocked(api).mock.calls.filter(([command])=>command==='library_batch_start')).toHaveLength(1);
  expect(await screen.findByText(/Matches current inputs/)).toBeTruthy();

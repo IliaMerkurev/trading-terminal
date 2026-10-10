@@ -200,6 +200,9 @@ nav .running-link{margin-left:auto;color:#a4efdb;font-size:12px;white-space:nowr
 .test-dialog .research-setup{position:static;max-height:none;height:auto;overflow:visible;border:0;padding:22px}
 .test-dialog .primary{background:#83dfc6;border-color:#92e9d2;color:#0e3028}
 .test-dialog .selected-tests{max-height:160px;overflow:auto}
+.research-setup .test-selection-disclosure{margin:10px 0 15px;padding:10px 0;border-bottom:1px solid #32444e}
+.test-selection-disclosure .selected-tests{margin:10px 0 0;padding:0;border:0}
+.test-selection-disclosure .selected-tests small{display:block;overflow-wrap:anywhere}
 .test-next-step{padding:10px 12px;border:1px solid #456354;border-radius:6px;background:#1b322b;color:#c3ead8}
 .test-dialog .batch-preview{scroll-margin:70px}
 

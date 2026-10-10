@@ -30,11 +30,15 @@ not a claim of verified current live-feed behavior.
 1. On a card, choose its timeframe and any **Compare also** timeframes. Click
    **Test this strategy** to open its backtest setup dialog. Changing a timeframe
    alone does not start execution. **Add to comparison** includes other cards
-   in the side setup. Testing does not require copying or editing a strategy.
-2. In **Your test**, review the selected names, timeframes and initial capital.
-   Choose saved history. If none matches, **Prepare market data** opens history
-   preparation while preserving your selection. Using history returns to the
-   dialog. Escape or **Back to strategies** closes it and keeps your settings.
+   in the same setup. Testing does not require copying or editing a strategy.
+2. In **Your test**, the collapsed selection summary counts selected tests,
+   distinct strategies and timeframes. Expand it to inspect every selected name,
+   version, timeframe and current parameter value; the list can be scrolled with
+   keyboard focus. Initial capital, saved history and the other setup controls
+   remain outside this disclosure. If no history matches, **Prepare market data**
+   opens history preparation while preserving your selection. Using history
+   returns to the dialog. Escape or **Back to strategies** closes it and keeps
+   your settings.
 3. Prepare history once, then **Continue with this history** or **Use this
    history**. For longer-horizon spot tests, 4h history supports 4h and daily
    strategies; 1h history supports comparing 1h, 4h and daily together. Complete
