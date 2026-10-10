@@ -222,6 +222,26 @@ and evaluation dates are shared; current card indicator parameters stay fixed
 across each strategy's timeframes. Review lists ready and unavailable rows,
 including reasons, before **Start N tests** starts only the ready rows.
 
+**Compare equity** opens a named inspector and brings it into keyboard focus.
+Its heading identifies the saved strategy/timeframe and comparison group, with
+the original period, capital and source resolution. Expand **Saved variant and
+identifiers** for frozen parameters, catalog version and exact comparison/run
+IDs. Parameter values come from the frozen resolved contract, including defaults
+omitted from the original selection overrides. If that contract is unavailable,
+the disclosure explicitly labels saved overrides only; current catalog defaults
+are not substituted. This remains the saved variant even when the current Lab
+draft differs.
+The chart compares that one strategy with the existing passive alternatives;
+its sampling and risk-equivalence limits remain visible.
+
+Each explicit choice clears the previous curve while its read loads. A failed
+read shows **Retry equity read** for that same saved row; it does not repeat a
+test or refresh the saved comparison list. **Back to result** closes the inspector
+and returns focus to its row action, or the results table if filtering removed
+that row. Switching comparison or leaving the route dismisses inspection; return
+does not automatically reread it. Reading the chart introduces no new display-
+evidence category; the existing partial evidence limits still apply.
+
 The whole comparison is saved automatically in the local database. Reopen it in
 **Saved tests**; **Saved comparison settings** shows its original contract.
 Choose **Sort comparable results** and **Highest first / Lowest first** beside

@@ -28,6 +28,22 @@ routes, not a portable executable bundle: moving a desktop checkout requires a
 rebuild. Back up the complete data root after shutdown; never substitute a
 synthetic fixture database for ordinary research data.
 
+## Current saved-equity slice
+
+Compare equity opens a reachable, focused inspector with frozen row identity,
+timeframe, original context and expandable saved parameters/IDs. Its independent
+read/loading/error/retry state preserves the surrounding comparison and Lab
+draft. Back to result restores the action or a visible table fallback; late
+responses cannot revive inspection after close, navigation or a batch change.
+No new calculations or display-evidence category is added. The final combined
+frontend pass before the frozen-default display correction passed **399 tests
+across 44 files**; the correction and added regressions then passed **10 focused
+equity tests**. Final TypeScript/production build passed. Production-browser inspection passed at ordinary and 750px widths for
+focus/return, distinct variants, route dismissal, repeat activation and frozen
+resolved defaults. Transport races/failures remain component evidence. See
+[saved-equity inspection](STATUS.md#explicit-saved-equity-inspection--2026-10-10)
+for verification scope and platform limits.
+
 ## Current chart-to-observation slice
 
 The newest bounded frontend slice adds explicit start/end capture from a pinned

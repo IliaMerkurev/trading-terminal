@@ -262,3 +262,13 @@ nav .running-link{margin-left:auto;color:#a4efdb;font-size:12px;white-space:nowr
 .compact-saved-review .saved-notes p{white-space:pre-wrap;overflow-wrap:anywhere;max-width:60ch}
 @media(max-width:760px){.saved-studio>.studio-heading{margin-bottom:10px}.saved-studio>.studio-heading h1{font-size:23px}.saved-metadata-actions{max-width:100%}}
 .compact-saved-review>p,.compact-saved-review .saved-context>p{max-width:none}
+
+/* An explicit saved-row read owns its own reachable comparison surface. */
+.equity-inspector{margin:16px 0;padding:14px;border:1px solid #48647b;border-radius:8px;background:#152330;scroll-margin-top:12px;overflow-wrap:anywhere}
+.equity-inspector-heading{display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap}
+.equity-inspector-heading h3{margin:0;scroll-margin-top:14px}
+.equity-inspector-heading h3:focus-visible{outline:2px solid #90baff;outline-offset:4px}
+.equity-inspector figure{margin:12px 0 0}
+.equity-inspector dl{display:flex;gap:8px 24px;flex-wrap:wrap}
+.equity-inspector dl>div{display:flex;gap:8px}
+.equity-inspector dd{margin:0;font-variant-numeric:tabular-nums}

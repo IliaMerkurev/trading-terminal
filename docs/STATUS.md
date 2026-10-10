@@ -6,6 +6,55 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Explicit saved-equity inspection — 2026-10-10
+
+Compare equity now opens and focuses a named inline inspector for the exact
+saved comparison row. It retains the strategy name, timeframe, comparison group,
+original period/capital/source resolution and an expandable saved parameter,
+catalog-version and run-identity disclosure. Resolved parameters come from the
+frozen row contract, including defaults omitted from selection overrides. Older
+rows without that contract explicitly label their saved overrides as incomplete;
+current catalog defaults are never substituted. Current Lab edits do not replace
+that captured identity. Back to result closes inspection and returns keyboard
+focus to its original action, or the results table if filters removed that row.
+
+Equity reads have independent loading/error/explicit-retry state. They do not
+invoke the shared execution action or refresh comparison history. A new chosen
+row clears the previous curve immediately; request cleanup rejects late success
+and failure after row changes, close/reopen, batch switches, route suspension or
+unmount. Retry keeps keyboard focus in the inspector. Returning to a route does
+not reopen or reread a dismissed inspection. Existing sampled curves, saved
+metrics, passive N/A states and risk/sampling caveats remain unchanged. No new
+display-evidence surface, backend/schema, accounting or dependency is added.
+
+The initial focused pass passed 46 adjacent tests and seven of eight new equity
+tests; the remaining test used an unavailable matcher rather than exposing a
+product defect. After the assertion correction and two independent review
+improvements, all eight equity tests passed. The complete frontend pass before the browser-discovered parameter-display
+correction passed **399 tests across 44 files in 12.51s** with
+`node node_modules/vitest/vitest.mjs run`. Final TypeScript/production build
+passed with `node scripts/frontend.mjs build`; the existing large-chunk advisory
+remains non-failing. Browser inspection then identified a real empty-override
+fixture whose resolved defaults were available only in the frozen contract. The
+corrected display and two added regressions passed **10 focused equity tests**;
+the preceding aggregate remains evidence for unchanged adjacent behavior.
+The corrected final TypeScript/production build also passed. Independent
+read-only review found no remaining blocker, including the parameter correction.
+Unchanged backend evidence is retained rather than rerun. Current Windows,
+live-feed, owner-led usability and remote CI acceptance remain separate.
+Production-browser inspection passed at ordinary and **750px** widths. Explicit
+Compare equity scrolled/focused the named panel; Back returned to the exact
+originating action, including keyboard Enter. Distinct 4h/1d variants retained
+their identity, Lab/Saved tests navigation dismissed inspection, and repeated
+activation showed one current panel. The final build displayed actual frozen
+resolved defaults rather than an empty override list. At 750px, viewport and
+document width were both 750px; the graph, legend and caveat stayed reachable.
+The host was stopped normally afterward. These checks did not start a test,
+freeze a candidate or prepare new data. Slow/error/retry/stale-response races and
+filtered-trigger fallback remain component evidence, not actual browser fault
+injection. Existing display-evidence limits and native acceptance remain separate.
+
+
 ## Explicit chart-to-observation period capture — 2026-10-10
 
 Saved history adds explicit Set observation start/end actions for unsaved notes.

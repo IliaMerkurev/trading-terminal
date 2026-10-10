@@ -332,3 +332,26 @@ not a live-workspace copier. Its caller closes the source, backs up SQLite and
 copies every other directory into a new destination. Existing
 `scripts/verify_migration.py` still copies only SQLite/runs; its success alone is
 not a complete receipt/workspace restore check.
+
+
+## Saved-equity inspector checks
+
+Reuse an existing isolated saved comparison with at least two variants of one
+strategy and passive references. No new backtest, download or observation is
+required. Compare each row's equity at ordinary and narrow widths, check the
+frozen timeframe/parameters/run ID, keyboard focus, Back to result, and filtered-
+row fallback. Switching Lab or comparison dismisses the inspector. Only an
+explicit new choice or retry reads equity; returning does not reopen it.
+
+The focused suite exercises late responses, errors, retry, close/reopen, route
+suspension and unmount, plus existing saved-review/navigation/display behavior:
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/EquityComparison.test.tsx frontend/src/LibraryResearch.test.tsx frontend/src/SavedReview.test.tsx frontend/src/DisplayedEvidence.test.tsx frontend/src/UserJourneys.test.tsx
+node scripts/frontend.mjs build
+```
+
+Stop the host before building and restart afterward. Browser checks establish
+rendered interaction separately from component-injected transport races. Do not
+claim new exposure coverage, financial validation or native acceptance from this
+frontend-only slice. See STATUS.md for the final combined frontend evidence.
