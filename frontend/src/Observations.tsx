@@ -3,7 +3,7 @@ import {api} from './api';
 import {historyLabel,canonical} from './LibraryResearch';
 import {timeframe} from './research';
 import {displayRecorder,DisplayTrackingNotice} from './DisplayedEvidence';
-import ObservationChart from './ObservationChart';
+import ObservationChart,{type ObservationBoundary} from './ObservationChart';
 import {displayUnavailable,observationDisplayWidths,observationInterval} from './observationChartData';
 import {HISTORY_PAGE_SLOTS,SOURCE_NAVIGATION_UNAVAILABLE,navigationBounds,navigationDraft,navigationUTC,navigationWindow} from './observationNavigation';
 
@@ -60,6 +60,16 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  const issue=navigationBounds(source)?periodIssue(range,source,step):null,valid=!!navigationBounds(source)&&!issue;
  const browseDraft=navigationDraft(browseInput,bounds);
  const navigationDisabled=busy||loading||sourceChanged||!!sourceUnavailable||!bounds;
+ const boundaryIdentity=page?canonical([verifiedSource,pageState.status==='ready'?pageState.request.epoch:null,displayWidth||verifiedStep]):'';
+ const boundaryGate=useRef({identity:'',epoch:0,page:null as any,record:null as any,disabled:true,step:0});
+ boundaryGate.current={identity:boundaryIdentity,epoch:pageState.status==='ready'?pageState.request.epoch:0,page,record,disabled:busy||sourceChanged||!!sourceUnavailable,step:verifiedStep};
+ function useChartBoundary(value:ObservationBoundary){
+  const gate=boundaryGate.current;
+  if(lock.current||pagePending.current||gate.disabled||gate.record||!gate.page||gate.epoch!==pageEpoch.current||value.identity!==gate.identity)return;
+  if(!['start','end'].includes(value.edge)||!Number.isSafeInteger(value.opening)||!Number.isSafeInteger(value.closing)||value.opening>=value.closing||value.opening<gate.page.start||value.closing>gate.page.end||value.opening%gate.step||value.closing%gate.step)return;
+  const endpoint=utc(value.edge==='start'?value.opening:value.closing);
+  setRange(current=>current.map((old,index)=>index===(value.edge==='start'?0:1)?endpoint:old));
+ }
  function invalidatePage(){pageEpoch.current++;pagePending.current=false;setPageState({status:'idle'});}
  function submitPage(target:number,options:{source?:any;declaration?:string;expectedSource?:string|null;synchronize?:boolean;replace?:boolean;retry?:PageRequest}={}){
   if(!options.replace&&(lock.current||pagePending.current||sourceChanged||sourceUnavailable))return;
@@ -162,7 +172,7 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  </section>
  {page&&<><div className="observation-display-controls"><label>Display interval<select aria-label="Saved-history display interval" value={displayWidth} onChange={event=>setDisplayChoice({source:verifiedSource,width:Number(event.target.value)})}><option value={0}>Source · {observationInterval(verifiedStep)}</option>{observationDisplayWidths.filter(width=>width!==verifiedStep).map(width=>{const reason=displayUnavailable(verifiedStep,width);return <option key={width} value={width} disabled={!!reason}>{observationInterval(width)}{reason?' · unavailable':''}</option>;})}</select></label><span>Local display only · observation dates and test settings stay unchanged</span></div>
  {observationDisplayWidths.filter(width=>width!==verifiedStep).map(width=>{const reason=displayUnavailable(verifiedStep,width);return reason?<p className="muted observation-display-limit" key={width}>{observationInterval(width)} unavailable: {reason}</p>:null;})}
- <ObservationChart record={display.current} candles={page.candles} missing={page.missing} seconds={verifiedStep} displaySeconds={displayWidth||verifiedStep} start={page.start} end={page.end} reference={page.display_reference}/><p>Loaded page: {utc(page.start).replace('T',' ')} — {utc(page.end).replace('T',' ')} UTC (end exclusive) · {page.candles.length} source candles · opening times</p>{page.missing.includes(page.start)&&<p className="warning-text">No recorded candle exists at the requested opening. The missing slot stays blank; no later candle is selected automatically.</p>}{page.missing.length>0&&<p role="alert">Missing local history: {page.missing.length} candle slots in this page. No candles are fabricated.</p>}</>}
+ <ObservationChart boundaryIdentity={boundaryIdentity} boundaryDisabledReason={record?'Saved observation dates are fixed. Choose New observation to use another period.':busy?'Wait for the current note action to finish.':undefined} onUseBoundary={useChartBoundary} record={display.current} candles={page.candles} missing={page.missing} seconds={verifiedStep} displaySeconds={displayWidth||verifiedStep} start={page.start} end={page.end} reference={page.display_reference}/><p>Loaded page: {utc(page.start).replace('T',' ')} — {utc(page.end).replace('T',' ')} UTC (end exclusive) · {page.candles.length} source candles · opening times</p>{page.missing.includes(page.start)&&<p className="warning-text">No recorded candle exists at the requested opening. The missing slot stays blank; no later candle is selected automatically.</p>}{page.missing.length>0&&<p role="alert">Missing local history: {page.missing.length} candle slots in this page. No candles are fabricated.</p>}</>}
  <p className="muted">Visible local candles are recorded as displayed in this app, not proof of reading. Notes do not create display evidence. Other views and outside-app exposure remain incomplete.</p>
  <DisplayTrackingNotice/><h2>{record?`Observation · revision ${record.revision}`:'New observation'}</h2>
  {record&&record.revision!==record.latest_revision&&<p className="warning-text">Historical revision. Linked tests keep this exact note. Open the latest revision to edit.</p>}

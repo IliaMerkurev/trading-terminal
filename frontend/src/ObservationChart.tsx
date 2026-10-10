@@ -4,9 +4,10 @@ import {createChart,CandlestickSeries,HistogramSeries,ColorType,CrosshairMode,cr
 import type {LiveCandle} from './liveChartData';
 import {finite,observationInterval as interval,projectObservation,observationSourceRanges,renderedSlot,validPrice,type ObservationSlot} from './observationChartData';
 
-type Props={candles:LiveCandle[];missing:number[];reference:any;seconds:number;displaySeconds:number;start:number;end:number;record:ReturnType<typeof displayRecorder>};
+export type ObservationBoundary={edge:'start'|'end';opening:number;closing:number;identity:string};
+type Props={boundaryIdentity?:string;boundaryDisabledReason?:string;onUseBoundary?:(value:ObservationBoundary)=>void;candles:LiveCandle[];missing:number[];reference:any;seconds:number;displaySeconds:number;start:number;end:number;record:ReturnType<typeof displayRecorder>};
 type Direction='previous'|'next'|'first'|'last';
-type Inspection={rows:ObservationSlot[];time:number}|null;
+type Inspection={rows:ObservationSlot[];time:number;pinned:boolean}|null;
 type GapBands={rows:ObservationSlot[];width:number;bottom:number;bands:{time:number;left:number;width:number}[]}|null;
 const valueText=(value:unknown)=>finite(value)?String(value):'N/A';
 const utc=(time:number)=>new Date(time*1000).toISOString().replace('T',' ').replace('.000Z',' UTC');
@@ -16,7 +17,9 @@ export default function ObservationChart(props:Props){
  return <ObservationChartPage key={JSON.stringify([props.reference,props.seconds,props.displaySeconds,props.start,props.end])} {...props}/>;
 }
 
-function ObservationChartPage({candles,missing,reference,seconds,displaySeconds,start,end,record}:Props){
+function ObservationChartPage({candles,missing,reference,seconds,displaySeconds,start,end,record,boundaryIdentity,boundaryDisabledReason,onUseBoundary}:Props){
+ const boundary=useRef({identity:boundaryIdentity,disabled:boundaryDisabledReason,apply:onUseBoundary});boundary.current={identity:boundaryIdentity,disabled:boundaryDisabledReason,apply:onUseBoundary};
+ const useBoundary=useRef<(edge:'start'|'end')=>void>(()=>{}),clearSelection=useRef(()=>{});
  const projection=useMemo(()=>projectObservation({candles,missing,seconds,width:displaySeconds,start,end}),[candles,missing,seconds,displaySeconds,start,end]);
  const displaySlots=projection.slots,aggregate=displaySeconds!==seconds,rendered=displaySlots.filter(renderedSlot);
  const host=useRef<HTMLDivElement>(null),navigate=useRef<(direction:Direction)=>void>(()=>{}),fit=useRef(()=>{}),helpId=useId();
@@ -37,11 +40,11 @@ function ObservationChartPage({candles,missing,reference,seconds,displaySeconds,
   volume.setData(slots.map(t=>{const c=byTime.get(t),time=t as UTCTimestamp;return c&&finite(c.volume)?{time,value:c.volume,color:!validPrice(c)?'#a1aec299':c.close>=c.open?'#42cda899':'#ed7e8699'}:{time};}));
   chart.panes()[0].setStretchFactor(3);chart.panes()[1].setStretchFactor(1);
   const marker=createSeriesMarkers(price,[]),scale=chart.timeScale();
-  let current:number|null=null,pending:number|null=null,frame=0,disposed=false,keyboardSelected=false;
+  let current:number|null=null,pending:number|null=null,frame=0,disposed=false,pinnedSelection=false;
   const inView=(time:number)=>{const range=scale.getVisibleRange();return !!range&&typeof range.from==='number'&&typeof range.to==='number'&&time>=range.from&&time<=range.to;};
-  const select=(time:number|null,keyboard=false)=>{
-   if(time===current&&keyboardSelected===(keyboard&&time!==null))return;
-   keyboardSelected=keyboard&&time!==null;current=time;setInspection(time===null?null:{rows:displaySlots,time});
+  const select=(time:number|null,pinned=false)=>{
+   if(time===current&&pinnedSelection===(pinned&&time!==null))return;
+   pinnedSelection=pinned&&time!==null;current=time;setInspection(time===null?null:{rows:displaySlots,time,pinned:pinnedSelection});
    const c=time===null?undefined:byTime.get(time);
    marker.setMarkers(c&&validPrice(c)?[{time:c.time as UTCTimestamp,position:'aboveBar',shape:'circle',color:'#e0b95e',size:1}]:[]);
   };
@@ -62,12 +65,22 @@ function ObservationChartPage({candles,missing,reference,seconds,displaySeconds,
    setGaps({rows:displaySlots,width,bottom:scale.height(),bands});
   };
   const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(refresh);};
-  const pointer=(event:MouseEventParams)=>{
-   // Marker/viewport redraws can replay the old crosshair without a pointer event.
-   if(disposed||(!event.sourceEvent&&(keyboardSelected||pending!==null)))return;
+  const pointer=(event:MouseEventParams,clicked=false)=>{
+   // Hover/redraw must not replace a candle explicitly selected for an action.
+   if(disposed||!clicked&&(pinnedSelection||pending!==null))return;
    pending=null;
    const time=event.point&&typeof event.time==='number'?event.time:null;
-   select(time!==null&&(byTime.has(time)||missingTimes.has(time))&&inView(time)?time:null);
+   const target=time!==null&&(byTime.has(time)||missingTimes.has(time))&&inView(time)?time:null;
+   const candle=target===null?undefined:byTime.get(target);
+   select(target,clicked&&!!candle&&validPrice(candle));
+  };
+  const hover=(event:MouseEventParams)=>pointer(event),click=(event:MouseEventParams)=>pointer(event,true);
+  clearSelection.current=()=>{if(!disposed){pending=null;select(null);}};
+  const identity=boundaryIdentity;
+  useBoundary.current=edge=>{
+   const action=boundary.current,slot=displaySlots.find(s=>s.time===current);
+   if(disposed||!pinnedSelection||current===null||!inView(current)||!slot?.candle||!validPrice(slot.candle)||slot.missing||slot.outside||!identity||action.identity!==identity||action.disabled)return;
+   action.apply?.({edge,opening:slot.time,closing:slot.end,identity});
   };
   navigate.current=direction=>{
    if(!navigable.length)return;
@@ -89,7 +102,7 @@ function ObservationChartPage({candles,missing,reference,seconds,displaySeconds,
    scale.setVisibleLogicalRange({from,to:from+span});schedule();
   };
   fit.current=()=>{pending=null;scale.fitContent();schedule();};
-  chart.subscribeCrosshairMove(pointer);chart.subscribeClick(pointer);
+  chart.subscribeCrosshairMove(hover);chart.subscribeClick(click);
   scale.subscribeVisibleLogicalRangeChange(schedule);scale.subscribeSizeChange(schedule);
   scale.fitContent();schedule();
   // One actual-visibility observer for both panes. Every displayed aggregate
@@ -100,8 +113,8 @@ function ObservationChartPage({candles,missing,reference,seconds,displaySeconds,
   });
   scale.subscribeVisibleTimeRangeChange(observer.schedule);
   const stop=()=>{scale.unsubscribeVisibleTimeRangeChange(observer.schedule);observer.dispose();};
-  return()=>{disposed=true;cancelAnimationFrame(frame);navigate.current=()=>{};fit.current=()=>{};stop();scale.unsubscribeVisibleLogicalRangeChange(schedule);scale.unsubscribeSizeChange(schedule);chart.unsubscribeCrosshairMove(pointer);chart.unsubscribeClick(pointer);marker.detach();chart.remove();};
- },[displaySlots,seconds,displaySeconds,record]);
+  return()=>{disposed=true;cancelAnimationFrame(frame);navigate.current=()=>{};fit.current=()=>{};stop();scale.unsubscribeVisibleLogicalRangeChange(schedule);scale.unsubscribeSizeChange(schedule);chart.unsubscribeCrosshairMove(hover);chart.unsubscribeClick(click);useBoundary.current=()=>{};clearSelection.current=()=>{};marker.detach();chart.remove();};
+ },[displaySlots,seconds,displaySeconds,record,boundaryIdentity]);
  const canPrevious=rendered.some(s=>s.candle&&validPrice(s.candle)&&(selected===null||s.time<selected)),canNext=rendered.some(s=>s.candle&&validPrice(s.candle)&&(selected===null||s.time>selected));
  return <section className="observation-chart" aria-label="Saved-history candle analysis">
   <div className="observation-chart-toolbar"><strong>Price &amp; recorded volume</strong><span>{aggregate?`${interval(displaySeconds)} display · ${interval(seconds)} source`:`${interval(seconds)} source candles`}</span><button disabled={!canPrevious} onClick={()=>navigate.current('previous')}>Previous candle</button><button disabled={!canNext} onClick={()=>navigate.current('next')}>Next candle</button><button onClick={()=>fit.current()}>Fit page</button></div>
@@ -116,7 +129,8 @@ function ObservationChartPage({candles,missing,reference,seconds,displaySeconds,
    {aggregate&&selectedSlot?.candle&&<p>Contributing source opens: {utc(selectedSlot.sourceTimes[0])} to {utc(selectedSlot.sourceTimes.at(-1)!)}.</p>}
    {gap?(aggregate?<p>Incomplete UTC bucket: {selectedSlot!.missing} missing source slots in the loaded page; {selectedSlot!.outside} source slots outside the loaded page. No partial price or volume is shown.</p>:<p>Missing source slot. No recorded candle, price or volume.</p>):<dl>{(['open','high','low','close','volume'] as const).map(key=><div key={key}><dt>{key==='volume'?'Recorded volume':key[0].toUpperCase()+key.slice(1)}</dt><dd>{valueText(candle?.[key])}</dd></div>)}</dl>}
   </div>
-  <p id={helpId} className="observation-chart-help">Hover or click either pane to inspect. Focus the chart and use ← / → for previous / next recorded candle, Home / End for page boundaries. Selection stays within the visible chart; navigation skips incomplete or unavailable candles.</p>
+  {onUseBoundary&&<div className="observation-boundary-actions"><div className="run-actions"><button disabled={!!boundaryDisabledReason||!inspection?.pinned||!candle||!validPrice(candle)} onClick={()=>useBoundary.current('start')}>Set observation start</button><button disabled={!!boundaryDisabledReason||!inspection?.pinned||!candle||!validPrice(candle)} onClick={()=>useBoundary.current('end')}>Set observation end</button><button disabled={!inspection?.pinned} onClick={()=>clearSelection.current()}>Clear candle selection</button></div><p className="muted">{boundaryDisabledReason??(inspection?.pinned?'Selected candle is pinned. Start uses its opening; end uses its exclusive close. Only the chosen unsaved date changes.':'Click a recorded candle or use keyboard navigation to select it before setting an observation date.')}</p></div>}
+  <p id={helpId} className="observation-chart-help">Hover either pane to inspect. Click a recorded candle to pin it; another click changes the selection. Focus the chart and use ← / → for previous / next recorded candle, Home / End for page boundaries. Selection stays within the visible chart; navigation skips incomplete or unavailable candles.</p>
   <p className="observation-chart-help">Volume is in recorded source units; unit unspecified. 0 is recorded zero; N/A is unavailable. {aggregate?'Recorded volumes are summed. Complete UTC buckets only; incomplete buckets are blank in both panes with striped bands. Page-edge buckets are not joined across pages. No additional history is read.':`${displaySlots.reduce((count,slot)=>count+slot.missing,0)} missing source slots are blank in both panes and marked with striped bands. No resampling.`}</p>
  </section>;
 }

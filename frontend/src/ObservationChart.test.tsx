@@ -87,14 +87,14 @@ describe('bounded saved-history OHLCV chart',()=>{
   expect(screen.getByText('No candle selected')).toBeTruthy();
  });
 
- it('inspects either pane in UTC, distinguishes zero and clears stale OHLCV on a gap or pointer exit',()=>{
+ it('inspects either pane in UTC, distinguishes zero and clears a clicked gap or unpinned pointer exit',()=>{
   render(<ObservationChart {...props()}/>);
   act(()=>chart().pointer(1704070800));
   expect(screen.getByText('2024-01-01 01:00:00 UTC')).toBeTruthy();
   expect(field('Open')).toBe('101.25');expect(field('High')).toBe('104.5');expect(field('Low')).toBe('100.75');expect(field('Close')).toBe('102');expect(field('Recorded volume')).toBe('0');
   act(()=>chart().pointer(1704078000,1,true));
   expect(screen.getByText('2024-01-01 03:00:00 UTC')).toBeTruthy();expect(field('Recorded volume')).toBe('11.75');
-  act(()=>chart().pointer(1704074400,1));
+  act(()=>chart().pointer(1704074400,1,true));
   expect(screen.getByText('2024-01-01 02:00:00 UTC')).toBeTruthy();expect(screen.getByText('Missing source slot. No recorded candle, price or volume.')).toBeTruthy();
   expect(within(screen.getByRole('status')).queryByText('11.75')).toBeNull();
   expect(chart().series[0].marker.setMarkers).toHaveBeenLastCalledWith([]);
@@ -151,10 +151,10 @@ describe('bounded saved-history OHLCV chart',()=>{
  it('steps from a missing slot to adjacent actual candles without inventing a record',()=>{
   render(<ObservationChart {...props()}/>);act(()=>chart().pointer(1704074400));
   fireEvent.click(screen.getByRole('button',{name:'Previous candle'}));expect(field('Open')).toBe('101.25');
-  act(()=>chart().pointer(1704074400));fireEvent.click(screen.getByRole('button',{name:'Next candle'}));expect(field('Open')).toBe('104');
+  act(()=>chart().pointer(1704074400,0,true));fireEvent.click(screen.getByRole('button',{name:'Next candle'}));expect(field('Open')).toBe('104');
  });
 
- it('preserves keyboard selection and pending reveal across synthetic redraw callbacks but honors real pointer/gap changes',()=>{
+ it('preserves pinned keyboard selection and pending reveal across hover/redraw but honors explicit gap clicks',()=>{
   render(<ObservationChart {...props()}/>);const c=chart();
   act(()=>c.pointer(1704078000));fireEvent.keyDown(surface(),{key:'Home'});expect(field('Open')).toBe('101.25');
   const redraw=()=>c.moveCallbacks.forEach((fn:any)=>fn({time:1704078000,point:{x:200,y:50},seriesData:new Map()}));
@@ -163,7 +163,7 @@ describe('bounded saved-history OHLCV chart',()=>{
   act(()=>{c.show(1704078000,1704081600);flush();c.pointer(1704078000);});
   fireEvent.keyDown(surface(),{key:'Home'});expect(screen.getByText('No candle selected')).toBeTruthy();
   act(()=>{redraw();flush();});expect(field('Open')).toBe('101.25');
-  act(()=>c.pointer(1704074400));expect(screen.getByText('Missing source slot. No recorded candle, price or volume.')).toBeTruthy();
+  act(()=>c.pointer(1704074400,0,true));expect(screen.getByText('Missing source slot. No recorded candle, price or volume.')).toBeTruthy();
  });
 
  it('uses integer coordinate centers for gap bands while following fractional scrolling with unchanged timestamp boundaries',()=>{
@@ -355,4 +355,69 @@ it('records only the genuinely visible replacement page after exact navigation a
  expect((screen.getByLabelText('Go to UTC date') as HTMLInputElement).value).toBe('invalid pending text');
  act(()=>chart().pointer(0));expect(screen.getByText(/0 missing source slots in the loaded page; 1 source slots outside/)).toBeTruthy();
  view.unmount();act(flush);await finishDisplayWrites();expect(vi.mocked(api).mock.calls.filter(([c])=>c==='research_displayed')).toHaveLength(1);
+});
+
+
+describe('explicit chart-to-observation boundaries',()=>{
+ const button=(name:string)=>screen.getByRole('button',{name}) as HTMLButtonElement;
+ const actions=()=>({boundaryIdentity:'exact-page-source-display',onUseBoundary:vi.fn()});
+ it('requires explicit selection, pins both-pane clicks through hover and pointer exit, and applies exact half-open boundaries only on a button',()=>{
+  const a=actions();render(<ObservationChart {...props()} {...a}/>);
+  act(()=>chart().pointer(1704070800));expect(button('Set observation start').disabled).toBe(true);expect(a.onUseBoundary).not.toHaveBeenCalled();
+  act(()=>chart().pointer(1704070800,1,true));
+  act(()=>{chart().pointer(1704081600);chart().pointer();});expect(field('Open')).toBe('101.25');
+  expect(button('Set observation start').disabled).toBe(false);expect(a.onUseBoundary).not.toHaveBeenCalled();
+  fireEvent.click(button('Set observation start'));fireEvent.click(button('Set observation end'));
+  expect(a.onUseBoundary.mock.calls.map(([value])=>value)).toEqual([
+   {edge:'start',opening:1704070800,closing:1704074400,identity:a.boundaryIdentity},
+   {edge:'end',opening:1704070800,closing:1704074400,identity:a.boundaryIdentity},
+  ]);
+  fireEvent.click(button('Clear candle selection'));expect(button('Set observation start').disabled).toBe(true);
+  act(()=>chart().pointer(1704081600));expect(field('Close')).toBe('106');act(()=>chart().pointer());expect(screen.getByText('No candle selected')).toBeTruthy();
+ });
+ it('supports keyboard selection and button focus without auto-applying, and invalidates pinned actions immediately when panned out of range',()=>{
+  const a=actions();render(<ObservationChart {...props()} {...a}/>);
+  surface().focus();fireEvent.keyDown(surface(),{key:'ArrowRight'});expect(a.onUseBoundary).not.toHaveBeenCalled();
+  const apply=button('Set observation end');apply.focus();expect(document.activeElement).toBe(apply);fireEvent.click(apply);
+  expect(a.onUseBoundary).toHaveBeenLastCalledWith({edge:'end',opening:1704070800,closing:1704074400,identity:a.boundaryIdentity});
+  act(()=>chart().show(1704078000,1704081600));fireEvent.click(apply);expect(a.onUseBoundary).toHaveBeenCalledOnce();
+  act(flush);expect(button('Set observation end').disabled).toBe(true);
+ });
+ it('uses a complete aggregate exclusive end and rejects clicked gaps and outside-page buckets',()=>{
+  const a=actions(),p=aggregateProps(),view=render(<ObservationChart {...p} {...a}/>);
+  act(()=>chart().pointer(0,1,true));fireEvent.click(button('Set observation end'));
+  expect(a.onUseBoundary).toHaveBeenLastCalledWith({edge:'end',opening:0,closing:4*h,identity:a.boundaryIdentity});
+  act(()=>chart().pointer(4*h,0,true));expect(button('Set observation end').disabled).toBe(true);expect(screen.getByText(/Incomplete UTC bucket: 1 missing/)).toBeTruthy();
+  view.rerender(<ObservationChart {...p} {...a} start={h} end={3*h} candles={aggregateRows.slice(1,3)} missing={[]}/>);
+  act(()=>chart().pointer(0,0,true));expect(button('Set observation start').disabled).toBe(true);expect(a.onUseBoundary).toHaveBeenCalledOnce();
+ });
+ it('allows valid price with unavailable volume but never pins invalid price',()=>{
+  const a=actions(),p=props();render(<ObservationChart {...p} {...a} candles={[{...rows[0],volume:NaN},{...rows[1],open:NaN}]} missing={[]}/>);
+  act(()=>chart().pointer(rows[0].time,1,true));expect(button('Set observation start').disabled).toBe(false);expect(field('Recorded volume')).toBe('N/A');
+  fireEvent.click(button('Set observation start'));expect(a.onUseBoundary).toHaveBeenCalledOnce();
+  act(()=>chart().pointer(rows[1].time,1,true));expect(button('Set observation start').disabled).toBe(true);
+ });
+ it('resets action selection on display/source/payload replacement and ignores disposed click callbacks',()=>{
+  const a=actions(),p=aggregateProps(),view=render(<ObservationChart {...p} {...a}/>);
+  act(()=>chart().pointer(0,0,true));const stale=[...chart().clickCallbacks][0] as any;
+  view.rerender(<ObservationChart {...p} {...a} displaySeconds={h}/>);
+  act(()=>stale({time:0,point:{x:1,y:1},sourceEvent:{}}));expect(button('Set observation start').disabled).toBe(true);
+  act(()=>chart().pointer(0,0,true));view.rerender(<ObservationChart {...p} {...a} displaySeconds={h} boundaryIdentity="new-source"/>);
+  expect(button('Set observation start').disabled).toBe(true);expect(a.onUseBoundary).not.toHaveBeenCalled();
+  act(()=>chart().pointer(0,0,true));view.rerender(<ObservationChart {...p} {...a} displaySeconds={h} boundaryIdentity="new-source" candles={[...aggregateRows]}/>);
+  expect(button('Set observation start').disabled).toBe(true);
+ });
+ it('disables use for saved notes and during actions without recreating the chart or losing inspection',()=>{
+  const a=actions(),p=props(),view=render(<ObservationChart {...p} {...a}/>);const first=chart();act(()=>first.pointer(rows[0].time,0,true));
+  view.rerender(<ObservationChart {...p} {...a} boundaryDisabledReason="Saved dates are fixed"/>);
+  expect(chart()).toBe(first);expect(button('Set observation start').disabled).toBe(true);expect(screen.getByText('Saved dates are fixed')).toBeTruthy();
+  fireEvent.click(button('Set observation start'));expect(a.onUseBoundary).not.toHaveBeenCalled();
+  view.rerender(<ObservationChart {...p} {...a}/>);expect(button('Set observation start').disabled).toBe(false);
+ });
+ it('does not create display evidence merely from pinning, setting either endpoint or clearing',async()=>{
+  const a=actions();render(<ObservationChart {...props()} {...a} record={displayRecorder()}/>);
+  act(()=>{intersect(surface());flush();});await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(2);
+  act(()=>chart().pointer(rows[0].time,0,true));fireEvent.click(button('Set observation start'));fireEvent.click(button('Set observation end'));fireEvent.click(button('Clear candle selection'));
+  act(flush);await finishDisplayWrites();expect(api).toHaveBeenCalledTimes(2);expect(a.onUseBoundary).toHaveBeenCalledTimes(2);
+ });
 });

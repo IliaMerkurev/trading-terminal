@@ -140,3 +140,27 @@ rejected. No dependency, new dashboard framework, rich text, chart drawings,
 strategy, accounting model or product-version change is introduced. Indexed
 history and deeper evidence-journal features remain separate work; bounded
 actual-display evidence is described in ADR 0034. Browser/component evidence does not establish Windows acceptance.
+
+
+## Explicit chart-to-observation boundary capture
+
+An explicit click on a valid-price source or complete display candle, or existing
+keyboard navigation, pins that candle while the pointer moves to action controls.
+Transient hover does not replace the pin or edit a note. Clicking a gap removes
+actionability; clear, page/source/display replacement and out-of-view navigation
+remove the selection. Missing volume alone does not prevent using verified price
+candle times; invalid price and incomplete source coverage do.
+
+The start action copies the selected slot opening, and the end action copies its
+exclusive close. Aggregates retain their complete UTC bucket boundaries. Only
+one endpoint of an unsaved observation is updated functionally; an invalid pair
+is retained with ordinary range validation rather than silently repaired. Saved
+ranges and revisions remain immutable, including while a save is pending.
+
+At activation the chart rechecks its current pin, valid price, complete coverage,
+current visible time range and presentation identity. The observation owner
+checks the live page epoch, exact verified source/display identity, page bounds,
+native alignment, current record and action locks. Old chart callbacks cannot
+change a replacement page or an already saved observation. The actions perform
+no read, save, Lab admission or display-evidence write; existing actual-visibility
+recording remains the only chart exposure path.

@@ -21,14 +21,36 @@ display intervals does not read more history, change observation dates or test
 settings, save notes or start a strategy. The choice survives same-source page
 and Market/Lab navigation; another exact source resets it to Source.
 
-Hover or click either pane to inspect OHLCV, separate display/source intervals,
-opening and exclusive closing times, and underlying source coverage. **Previous
+Hover either pane to inspect OHLCV, separate display/source intervals,
+opening and exclusive closing times, and underlying source coverage. Click a
+recorded price candle in either pane to pin its inspection; hovering elsewhere
+or leaving the plot then keeps that selection. Another explicit click changes
+it; clicking a gap clears actionable selection. **Previous
 candle** / **Next candle** also work without a pointer. Focus the chart to use
 Left/Right; Home/End select the first/last rendered price candle in the page.
 Navigation reveals an offscreen target before showing its values and skips
 incomplete or unavailable candles. Panning the selection out of view clears it;
 changing source, page or display interval resets it. **Fit page** returns to the
 loaded page.
+
+For a **New observation**, explicitly choose **Set observation start** or
+**Set observation end** beside the inspector. Keyboard candle navigation also
+pins a selection, so the buttons can be reached and activated without a pointer.
+Start copies the selected opening; end copies its exclusive close. A complete
+aggregate supplies the whole displayed UTC bucket; choose Source for finer
+endpoints. **Clear candle selection** returns to transient hover inspection.
+Missing slots, incomplete buckets and unavailable prices cannot supply dates;
+a valid price candle remains usable when its volume is unavailable.
+
+Only the requested unsaved endpoint changes. The other endpoint, note text,
+browse date/page and Lab settings remain intact. A reversed or empty period
+stays visible with the existing validation and cannot be saved until corrected;
+neither endpoint is rounded or moved automatically. Hovering, selecting and
+copying dates never save a note or start a test. Saved latest and historical
+revisions retain fixed dates; explicitly choose **New observation** before
+capturing another period. Saving and **Test observation in Lab** remain separate
+explicit actions.
+
 
 **Go to UTC date** browses independently of the observation period. Enter
 `YYYY-MM-DDTHH:mm` (optionally `:ss`) and choose **Go** or press Enter. The literal

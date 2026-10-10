@@ -6,6 +6,55 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Explicit chart-to-observation period capture — 2026-10-10
+
+Saved history adds explicit Set observation start/end actions for unsaved notes.
+Clicking a valid-price candle in either pane or using keyboard candle navigation
+pins its inspection while moving to the buttons. Hover remains transient when
+unpinned; gap clicks and Clear candle selection remove actionability. A start
+uses the exact opening and an end the exclusive close; complete aggregates use
+the whole UTC display bucket. Invalid-price or incomplete slots cannot supply
+dates; unavailable volume does not invalidate an otherwise valid price candle.
+
+Only the chosen endpoint changes. Reversed/empty periods remain visible with
+existing validation and cannot save until corrected. Saved latest/historical
+revision dates stay immutable and require explicit New observation. Note text,
+browse page/date and Lab settings remain separate. Activation checks current
+visibility before scheduled offscreen clearing, then live page/source/display
+identity, epoch and note/action locks. Pinning and boundary actions add no
+read, automatic save, execution or display-evidence write.
+
+The focused pass passed **113 tests across six files**: ObservationChart,
+ObservationBoundaries, Observations, ObservationsNavigation, DisplayedEvidence
+and UserJourneys. The command was
+`node node_modules/vitest/vitest.mjs run frontend/src/ObservationChart.test.tsx frontend/src/ObservationBoundaries.test.tsx frontend/src/Observations.test.tsx frontend/src/ObservationsNavigation.test.tsx frontend/src/DisplayedEvidence.test.tsx frontend/src/UserJourneys.test.tsx`.
+TypeScript and production build passed with `node scripts/frontend.mjs build`;
+the existing large-chunk advisory remains non-failing. This is focused frontend
+evidence, not a new full regression claim. Backend, storage, accounting and
+native trust were unchanged; the preceding integrated evidence remains applicable.
+
+Production-browser checks passed at **1180×757 and 750×757** using isolated
+synthetic history. A real 4h price-pane click retained its pin after pointer exit
+and scrolling; Set start copied January 6 at 20:00 UTC without moving the opposite
+endpoint. A volume-pane click at January 13 00:00 followed by Set end copied
+04:00, the exclusive close. An empty 04:00–04:00 period retained both inputs,
+showed inline validation and blocked Save. Home followed by Tab navigation and
+Enter activated the start action. Display changes cleared eligibility without
+changing dates/text, and Lab/Market return retained the draft.
+
+One new synthetic observation was explicitly saved for January 5 00:00 through
+January 13 04:00 UTC; its Lab attachment retained exact source, revision and dates
+without Review/Start. Saved date actions were disabled. New observation followed
+by a daily gap click cleared eligibility and showed 23/24 coverage; a complete
+January 3 daily candle supplied January 4 00:00 as its exclusive end. Clearing
+selection retained the date inputs. Existing fixture observations were not edited.
+Stale-callback/failure races and exposure-write counts remain component evidence;
+the browser checks do not independently establish those counts. Current Windows,
+live-feed and owner-led unaided usability acceptance remain separate. See
+[ADR 0033](adr/0033-local-history-observations.md) and the
+[research workflow](RESEARCH.md) for the explicit interaction and safety limits.
+
+
 ## Durable archive import inspection — 2026-10-10
 
 Archive imports now have a durable local operation identity before upload-file

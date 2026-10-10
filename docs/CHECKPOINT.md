@@ -28,6 +28,21 @@ routes, not a portable executable bundle: moving a desktop checkout requires a
 rebuild. Back up the complete data root after shutdown; never substitute a
 synthetic fixture database for ordinary research data.
 
+## Current chart-to-observation slice
+
+The newest bounded frontend slice adds explicit start/end capture from a pinned
+Saved history candle into an unsaved observation. Open/exclusive-close UTC
+boundaries, complete aggregate coverage, immutable saved dates and separate
+Save/Test actions remain explicit. Live page/source/display and action guards
+reject stale selections; activation rechecks visibility before deferred clearing.
+The focused pass passed **113 tests across six files**, and TypeScript/production
+build passed. Production-browser checks passed at 1180×757 and 750×757 for
+price/volume click pinning, exact start/exclusive end, keyboard use, gap/reset
+behavior, invalid periods, draft return and an explicitly saved revision-bound
+Lab attachment. No calculation was started; current Windows/live and owner-led
+unaided acceptance remain separate. See
+[chart-to-observation period capture](STATUS.md#explicit-chart-to-observation-period-capture--2026-10-10).
+
 ## Current storage/recovery slice
 
 The newest bounded slice adds durable status-only archive-import receipts, all-ID
