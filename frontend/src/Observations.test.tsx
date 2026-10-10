@@ -154,3 +154,102 @@ it('adds no observation controls to an unattached Lab draft',async()=>{
  expect(screen.queryByRole('region',{name:'Attached observation for draft test'})).toBeNull();
  expect(screen.queryByRole('button',{name:'Return to observation'})).toBeNull();
 });
+
+const hourlySource={...source,range:[1704067200,1704240000],interval_seconds:3600}; // Jan 1–3, 2024 UTC, end exclusive.
+const periodLabels=['Observation start (UTC)','Observation end, exclusive (UTC)'];
+function mockPeriod(d=hourlySource){
+ mock();vi.mocked(api).mockClear();
+ const previous=vi.mocked(api).getMockImplementation()!;
+ vi.mocked(api).mockImplementation(async(c,p:any)=>{
+  if(c==='local_history_window')return {...page,source:d,start:d.range[0],end:d.range[1]};
+  if(c==='observation_save')return {...record,source:d,start:p.start,end:p.end,hypothesis:p.hypothesis,falsification:p.falsification};
+  return previous(c,p);
+ });
+}
+
+it.each([
+ ['missing start',3600,'','2024-01-03T00:00','Enter a valid start and end time (UTC).',[true,false]],
+ ['missing end',3600,'2024-01-01T00:00','','Enter a valid start and end time (UTC).',[false,true]],
+ ['reversed dates',3600,'2024-01-02T00:00','2024-01-01T00:00','The observation end must be after its start. The end is exclusive.',[true,true]],
+ ['equal dates',3600,'2024-01-02T00:00','2024-01-02T00:00','The observation end must be after its start. The end is exclusive.',[true,true]],
+ ['start before history',3600,'2023-12-31T23:00','2024-01-03T00:00','Keep both dates within the available saved history below.',[true,false]],
+ ['end after history',3600,'2024-01-01T00:00','2024-01-03T01:00','Keep both dates within the available saved history below.',[false,true]],
+ ['half-hour start',3600,'2024-01-01T00:30','2024-01-03T00:00','Use 1h UTC candle boundaries for the start.',[true,false]],
+ ['half-hour end',3600,'2024-01-01T00:00','2024-01-02T23:30','Use 1h UTC candle boundaries for the end.',[false,true]],
+ ['both off 4h boundaries',14400,'2024-01-01T01:00','2024-01-02T06:00','Use 4h UTC candle boundaries for both dates.',[true,true]],
+ ['partial minute',60,'2024-01-01T00:00:30.000','2024-01-03T00:00','Use 1m UTC candle boundaries for the start.',[true,false]],
+] as const)('explains %s, preserves exact input and clears the error only after correction',async(_name,step,start,end,message,invalid)=>{
+ const d={...hourlySource,interval_seconds:step};mockPeriod(d);const onTest=vi.fn();
+ render(<Observations datasets={[d]} request={{dataset:d.id,request:1}} onTest={onTest} onBatch={vi.fn()}/>);
+ await screen.findByText('Chart: 1 candles');
+ fireEvent.change(screen.getByLabelText('Observation hypothesis'),{target:{value:'Synthetic draft, no implicit save'}});
+ fireEvent.change(screen.getByLabelText('Observation falsification'),{target:{value:'Keep this draft too'}});
+ fireEvent.change(screen.getByLabelText(periodLabels[0]),{target:{value:start}});
+ fireEvent.change(screen.getByLabelText(periodLabels[1]),{target:{value:end}});
+ const error=screen.getByText(message),live=error.parentElement!;
+ expect(live.getAttribute('aria-live')).toBe('polite');
+ expect(live.getAttribute('aria-atomic')).toBe('true');
+ const help=screen.getByText(/Available saved history: 2024-01-01 00:00 to 2024-01-03 00:00 UTC \(end exclusive\)/);
+ const inputs=periodLabels.map(label=>screen.getByLabelText(label) as HTMLInputElement);
+ inputs.forEach((input,i)=>{
+  expect(input.value).toBe(i===0?start:end);
+  expect(input.getAttribute('aria-invalid')).toBe(String(invalid[i]));
+  expect(input.getAttribute('aria-describedby')?.split(' ')).toEqual(invalid[i]?[help.id,live.id]:[help.id]);
+ });
+ for(const name of ['Show observation start','Save observation','Test observation in Lab']){
+  const button=screen.getByRole('button',{name}) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);fireEvent.click(button);
+ }
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+ expect(onTest).not.toHaveBeenCalled();
+ fireEvent.change(inputs[0],{target:{value:'2024-01-01T00:00'}});
+ fireEvent.change(inputs[1],{target:{value:'2024-01-03T00:00'}});
+ expect(screen.queryByText(message)).toBeNull();
+ inputs.forEach(input=>{expect(input.getAttribute('aria-invalid')).toBe('false');expect(input.getAttribute('aria-describedby')).toBe(help.id);});
+ expect((screen.getByRole('button',{name:'Show observation start'}) as HTMLButtonElement).disabled).toBe(false);
+ expect((screen.getByRole('button',{name:'Save observation'}) as HTMLButtonElement).disabled).toBe(false);
+ // A valid period is not a saved note: Lab still requires an explicit save.
+ expect((screen.getByRole('button',{name:'Test observation in Lab'}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).value).toBe('Synthetic draft, no implicit save');
+ expect((screen.getByLabelText('Observation falsification') as HTMLTextAreaElement).value).toBe('Keep this draft too');
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+});
+
+it('accepts the last full source candle and preserves the exclusive endpoint through explicit save and Lab handoff',async()=>{
+ const d={...hourlySource,interval_seconds:14400};mockPeriod(d);const onTest=vi.fn();
+ render(<Observations datasets={[d]} request={{dataset:d.id,request:1}} onTest={onTest} onBatch={vi.fn()}/>);
+ await screen.findByText('Chart: 1 candles');
+ fireEvent.change(screen.getByLabelText(periodLabels[0]),{target:{value:'2024-01-02T20:00'}});
+ expect(screen.getByLabelText(periodLabels[1]).getAttribute('aria-invalid')).toBe('false');
+ expect((screen.getByRole('button',{name:'Show observation start'}) as HTMLButtonElement).disabled).toBe(false);
+ expect((screen.getByRole('button',{name:'Save observation'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.change(screen.getByLabelText('Observation hypothesis'),{target:{value:'One final 4h candle'}});
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+ fireEvent.click(screen.getByRole('button',{name:'Show observation start'}));
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:d.id,start:1704225600,end:1704240000}));
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Save observation'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Save observation'}));
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Test observation in Lab'}) as HTMLButtonElement).disabled).toBe(false));
+ expect(vi.mocked(api).mock.calls.filter(([c])=>c==='observation_save')).toEqual([['observation_save',{observation_id:null,expected_revision:0,dataset_id:d.id,start:1704225600,end:1704240000,hypothesis:'One final 4h candle',falsification:''}]]);
+ expect(onTest).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Test observation in Lab'}));
+ expect(onTest).toHaveBeenCalledExactlyOnceWith({id:'note',revision:1,source:d,start:1704225600,end:1704240000});
+ expect(vi.mocked(api).mock.calls.some(([c])=>/start|preview|prepare|resume/.test(c))).toBe(false);
+});
+
+it('keeps historical observation dates and notes locked while allowing an explicit exact-revision Lab handoff',async()=>{
+ mockPeriod();const onTest=vi.fn(),historical={...record,latest_revision:2};
+ const previous=vi.mocked(api).getMockImplementation()!;
+ vi.mocked(api).mockImplementation(async(c,p)=>c==='observation_get'?historical:c==='local_history_window'?page:previous(c,p));
+ render(<Observations datasets={[source]} request={{id:'note',revision:1,request:1}} onTest={onTest} onBatch={vi.fn()}/>);
+ await screen.findByText('Chart: 1 candles');
+ expect(screen.getByText(/Historical revision. Linked tests keep this exact note/)).toBeTruthy();
+ periodLabels.forEach(label=>{const input=screen.getByLabelText(label) as HTMLInputElement;expect(input.disabled).toBe(true);expect(input.getAttribute('aria-invalid')).toBe('false');});
+ expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).disabled).toBe(true);
+ expect((screen.getByLabelText('Observation falsification') as HTMLTextAreaElement).disabled).toBe(true);
+ expect((screen.getByRole('button',{name:'Save note revision'}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByRole('button',{name:'Test observation in Lab'}) as HTMLButtonElement).disabled).toBe(false);
+ fireEvent.click(screen.getByRole('button',{name:'Test observation in Lab'}));
+ expect(onTest).toHaveBeenCalledExactlyOnceWith({id:'note',revision:1,source,start:600,end:1200});
+ expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|prepare|resume/.test(c))).toBe(false);
+});

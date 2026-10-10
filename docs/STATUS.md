@@ -5,6 +5,51 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Observation date guidance — 2026-10-10
+
+Observation dates now show an inline reason for missing/invalid values,
+non-increasing periods, dates outside the saved source, and boundaries that do
+not align with its candle interval. The affected fields expose `aria-invalid`
+and reference the explanation and exact available UTC range; updates use a
+polite live region. Guidance labels the exclusive end and gives a source-candle
+boundary example. Inputs keep their exact times: no snapping, page request,
+save, preview or execution is triggered by editing or correcting dates.
+
+The same validity result gates chart navigation and saving, and is included in
+the existing saved/clean-note Lab gate. A valid unsaved note still cannot open
+Lab; historical notes retain locked dates/text and exact-revision handoff.
+Backend validation, note revision rules, source verification, immutable reports,
+schema, dependencies and product version are unchanged. This slice does not
+change saved-observation list loading/recovery or disabled-button styling.
+
+Focused verification passed **30 tests across two files**. The initial command
+was `node node_modules/vitest/vitest.mjs run frontend/src/Observations.test.tsx frontend/src/UserJourneys.test.tsx`.
+One new test initially expected a seconds string without jsdom's normalized
+`.000` suffix. Correcting that fixture retained the identical timestamp; rerun
+of `frontend/src/Observations.test.tsx` passed all 21 tests, and the nine passing
+UserJourneys tests were not repeated. Coverage checks field-specific accessible
+errors, invalid-to-corrected ranges, 1m/1h/4h alignment, both source bounds, an
+exact final candle with the source's exclusive end, draft retention, no implicit
+actions, explicit save/handoff payloads, historical locks and existing dirty-note
+and warmup guards.
+
+`node scripts/frontend.mjs build` passed TypeScript and the production build
+with the existing large-chunk advisory. Unchanged backend checks and the broad
+suite were not repeated.
+
+Actual production-browser checks on `82a5d6b` passed at **750×757 and 1180×757**.
+With the synthetic 1h history, a new observation starting at **2024-01-01 00:30
+UTC** showed the precise start-alignment reason and available UTC bounds with
+the exclusive end, retaining the typed value while Show and Save stayed disabled.
+Moving the start before history to **2023-12-31 23:00 UTC** showed the source-range
+reason; setting it equal to the end at **2024-02-07 12:00 UTC** showed the
+non-increasing-period reason. Correcting it to **2024-01-01 00:00 UTC** cleared
+the error and enabled Show and Save, preserving the synthetic draft text.
+The unsaved note's Lab button remained disabled. No Show, Save, Lab, preview or
+run action was initiated. This documentation-only evidence update did not
+repeat the build or tests. Owner-led unaided usability and current Windows/native
+acceptance remain separate checks.
+
 ## Compact test-selection setup — 2026-10-10
 
 The existing single-card and all-catalog setup now collapses only the pre-review

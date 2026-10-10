@@ -1,6 +1,7 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useId,useRef,useState} from 'react';
 import {api} from './api';
 import {historyLabel,canonical} from './LibraryResearch';
+import {timeframe} from './research';
 import {displayRecorder,DisplayTrackingNotice} from './DisplayedEvidence';
 import ObservationChart from './ObservationChart';
 
@@ -10,7 +11,20 @@ const utc=(v:number)=>new Date(v*1000).toISOString().slice(0,16);
 const seconds=(v:string)=>Date.parse(v+'Z')/1000;
 const context=(v:any):ObservationContext=>({id:v.id,revision:v.revision,source:v.source,start:v.start,end:v.end});
 
+function periodIssue(range:string[],source:any,step:number){
+ if(!source)return null;
+ const values=range.map(seconds),missing=values.map(v=>!Number.isSafeInteger(v));
+ if(missing.some(Boolean))return {fields:missing,message:'Enter a valid start and end time (UTC).'};
+ if(values[0]>=values[1])return {fields:[true,true],message:'The observation end must be after its start. The end is exclusive.'};
+ const outside=values.map(v=>v<source.range[0]||v>source.range[1]);
+ if(outside.some(Boolean))return {fields:outside,message:'Keep both dates within the available saved history below.'};
+ const unaligned=values.map(v=>v%step!==0);
+ if(unaligned.some(Boolean))return {fields:unaligned,message:`Use ${timeframe(step/60)} UTC candle boundaries for ${unaligned.every(Boolean)?'both dates':unaligned[0]?'the start':'the end'}.`};
+ return null;
+}
+
 export default function Observations({datasets,request,onTest,onBatch}:{datasets:any[];request?:{dataset?:string;id?:string;revision?:number;request:number};onTest:(value:ObservationContext)=>void;onBatch:(id:string)=>void}){
+ const periodHelpId=useId(),periodErrorId=useId();
  const display=useRef<ReturnType<typeof displayRecorder>|null>(null);
  if(!display.current)display.current=displayRecorder();
  const [dataset,setDataset]=useState(''),[range,setRange]=useState(['','']),[pageStart,setPageStart]=useState<number|null>(null),[page,setPage]=useState<any>(null),[pageRequest,setPageRequest]=useState(0);
@@ -21,7 +35,7 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  const dirty=!!record&&(hypothesis!==record.hypothesis||falsification!==record.falsification);
  const draft=!!hypothesis||!!falsification;
  const blocked=busy||dirty||(!record&&draft);
- const valid=source&&Number.isSafeInteger(seconds(range[0]))&&Number.isSafeInteger(seconds(range[1]))&&seconds(range[0])<seconds(range[1])&&seconds(range[0])>=source.range[0]&&seconds(range[1])<=source.range[1]&&seconds(range[0])%step===0&&seconds(range[1])%step===0;
+ const issue=periodIssue(range,source,step),valid=!!source&&!issue;
  async function list(before:{id:string;created_at:string}|null=null){const v=await api<any>('observation_history',{before});setRows(old=>before?[...old,...v.rows]:v.rows);setNext(v.next);}
  useEffect(()=>{list().catch(e=>setError(String(e)));},[]);
  function choose(id:string){actionEpoch.current++;setPageRequest(v=>v+1);const d=datasets.find(d=>d.id===id);setDataset(id);setRecord(null);setHypothesis('');setFalsification('');setError('');setPage(null);setPageStart(d?.range[0]??null);setRange(d?[utc(d.range[0]),utc(d.range[1])]:['','']);}
@@ -39,12 +53,14 @@ export default function Observations({datasets,request,onTest,onBatch}:{datasets
  <p className="muted">Visible local candles are recorded as displayed in this app, not proof of reading. Notes do not create display evidence. Other views and outside-app exposure remain incomplete.</p>
  <DisplayTrackingNotice/><h2>{record?`Observation · revision ${record.revision}`:'New observation'}</h2>
  {record&&record.revision!==record.latest_revision&&<p className="warning-text">Historical revision. Linked tests keep this exact note. Open the latest revision to edit.</p>}
- <div className="two-columns">{['Observation start (UTC)','Observation end, exclusive (UTC)'].map((label,i)=><label className="field" key={label}>{label}<input aria-label={label} type="datetime-local" disabled={busy||!!record} value={range[i]} onChange={e=>setRange(v=>v.map((x,j)=>i===j?e.target.value:x))}/></label>)}</div>
+ <div className="two-columns">{['Observation start (UTC)','Observation end, exclusive (UTC)'].map((label,i)=><label className="field" key={label}>{label}<input aria-label={label} aria-invalid={issue?.fields[i]??false} aria-describedby={`${periodHelpId}${issue?.fields[i]?` ${periodErrorId}`:''}`} type="datetime-local" disabled={busy||!!record} value={range[i]} onChange={e=>setRange(v=>v.map((x,j)=>i===j?e.target.value:x))}/></label>)}</div>
+ <div id={periodErrorId} aria-live="polite" aria-atomic="true">{issue&&<p className="warning-text">{issue.message}</p>}</div>
+ <p id={periodHelpId} className="muted">Available saved history: {utc(source.range[0]).replace('T',' ')} to {utc(source.range[1]).replace('T',' ')} UTC (end exclusive). Use {timeframe(step/60)} candle boundaries, for example {utc(source.range[0]).replace('T',' ')} UTC.</p>
  <button disabled={!valid||loading||!!record?.source_error} onClick={()=>{setError('');setPageRequest(v=>v+1);setPageStart(seconds(range[0]));}}>Show observation start</button>
  <label className="field">Hypothesis<textarea aria-label="Observation hypothesis" maxLength={2000} disabled={busy||!!record&&record.revision!==record.latest_revision} value={hypothesis} onChange={e=>setHypothesis(e.target.value)}/></label>
  <label className="field">What would disprove it? (optional)<textarea aria-label="Observation falsification" maxLength={2000} disabled={busy||!!record&&record.revision!==record.latest_revision} value={falsification} onChange={e=>setFalsification(e.target.value)}/></label>
  <div className="run-actions"><button disabled={busy||!page||!!record?.source_error||!valid||!hypothesis.trim()||!!record&&(!dirty||record.revision!==record.latest_revision)} onClick={save}>{record?'Save note revision':'Save observation'}</button>
- <button className="primary" disabled={busy||!record||dirty||!page||!!record.source_error} onClick={()=>onTest(context(record))}>Test observation in Lab</button>
+ <button className="primary" disabled={busy||!record||dirty||!page||!valid||!!record.source_error} onClick={()=>onTest(context(record))}>Test observation in Lab</button>
  {(dirty||!record&&draft)&&<button disabled={busy} onClick={()=>{setHypothesis(record?.hypothesis??'');setFalsification(record?.falsification??'');}}>Discard note edits</button>}
  {record&&<button disabled={busy||dirty} onClick={()=>{setRecord(null);setHypothesis('');setFalsification('');}}>New observation</button>}
  {record&&record.revision!==record.latest_revision&&<button disabled={busy} onClick={()=>open(record.id)}>Open latest revision</button>}</div>

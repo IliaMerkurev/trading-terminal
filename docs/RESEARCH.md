@@ -11,6 +11,11 @@ experiments; live/paper/replay controls belong to Market. See the
 In Market, choose **Saved history · local**, or use **Observe this history**
 from Data. Open a prepared local chart, select a period and save a hypothesis
 with an optional falsification condition. Saving does not start a test.
+The date fields show the available UTC history range and its candle interval;
+the end is exclusive. Inline guidance explains missing, reversed, out-of-range
+or unaligned dates. Correct the marked fields to enable saving or showing the
+observation start; your dates and draft text are never adjusted automatically.
+Lab requires an explicitly saved observation with no unsaved note edits.
 **Test observation** opens Lab setup with the exact source, period and note
 revision. Closing setup keeps a compact **Attached to draft test** row visible
 in Lab, with the observation identity, revision and fixed UTC period (end
