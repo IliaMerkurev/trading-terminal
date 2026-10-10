@@ -5,7 +5,7 @@ import {api} from './api';
 import {defaultProfile,exampleGraph} from './model';
 
 vi.mock('./GraphEditor',()=>({default:()=> <div>Graph workspace</div>}));
-vi.mock('./api',()=>({isDesktop:()=>true,api:vi.fn()}));
+vi.mock('./api',()=>({isDesktop:()=>true,transportCapabilities:()=>({mode:'desktop',localService:true,nativeWindow:true,openExportsFolder:true,downloadArchives:false,stopService:false}),productVersion:async()=>(await import('@tauri-apps/api/app')).getVersion(),downloadArchive:vi.fn(),api:vi.fn()}));
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async()=>()=>{}})}));
 vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn()}));
 vi.mock('@tauri-apps/api/app',()=>({getVersion:async()=> '0.6.0-dev'}));

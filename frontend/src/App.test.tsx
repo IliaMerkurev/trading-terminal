@@ -5,7 +5,7 @@ import { api } from './api';
 import {invoke} from '@tauri-apps/api/core';
 const windowMock=vi.hoisted(()=>({close:null as null|((event:{preventDefault:()=>void})=>void)}));
 vi.mock('./GraphEditor',()=>({default:()=> <div>Graph workspace</div>}));
-vi.mock('./api',()=>({isDesktop:()=>true,api:vi.fn(async(command:string)=>command==='run_history'?{rows:[],next:null}:command.startsWith('list_')?[]:{strategy_id:'saved'})}));
+vi.mock('./api',()=>({isDesktop:()=>true,transportCapabilities:()=>({mode:'desktop',localService:true,nativeWindow:true,openExportsFolder:true,downloadArchives:false,stopService:false}),productVersion:async()=>(await import('@tauri-apps/api/app')).getVersion(),downloadArchive:vi.fn(),api:vi.fn(async(command:string)=>command==='run_history'?{rows:[],next:null}:command.startsWith('list_')?[]:{strategy_id:'saved'})}));
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async(fn:any)=>{windowMock.close=fn;return ()=>{windowMock.close=null;};}})}));
 vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn(async()=>{})}));
 vi.mock('@tauri-apps/api/app',()=>({getVersion:vi.fn(async()=>'0.3.0-dev')}));

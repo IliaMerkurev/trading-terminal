@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {api,isDesktop} from './api';
+import {api,transportCapabilities} from './api';
 import {poll} from './poll';
 import type {Profile} from './model';
 const utc=(value:number)=>new Date(value*1000).toISOString().slice(0,16);
@@ -13,7 +13,7 @@ export default function Experiments({strategies,datasets,profile,onActive,onOpen
  const compatible=datasets.filter(d=>d.market===profile.market&&d.symbol===profile.symbol);
  async function refresh(){setList(await api<any[]>('list_experiments'));}
  async function action(work:()=>Promise<void>){setError('');setBusy(true);try{await work();await refresh();}catch(e){setError(String(e instanceof Error?e.message:e));}finally{setBusy(false);}}
- useEffect(()=>{if(isDesktop())refresh().catch(e=>setError(String(e)));},[]);
+ useEffect(()=>{if(transportCapabilities().localService)refresh().catch(e=>setError(String(e)));},[]);
  useEffect(()=>{setPreview(null);setAxes([]);if(strategy)api<any[]>(profile.position_management?'managed_experiment_fields':'experiment_fields',profile.position_management?{strategy_id:strategy,profile}:{strategy_id:strategy}).then(setFields).catch(e=>setError(String(e)));else setFields([]);},[strategy,profile.position_management]);
  useEffect(()=>{setPreview(null);},[axes,ranges,dataset,profile]);
  useEffect(()=>{if(!selected)return;return poll(()=>api<any>('experiment_status',{experiment_id:selected}),r=>{setReport(r);setActive(r.active_id);onActive(r.active_id);},e=>setError(String(e)),600);},[selected]);

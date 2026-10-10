@@ -154,3 +154,32 @@ sandbox. Windows retains its original Job Object implementation.
 Linux snapshots record their own platform/runtime; do not represent them as
 Windows repeats. See [status](STATUS.md) for fresh versus historical evidence,
 GUI blockers and Windows acceptance still required before integration.
+
+## Local browser research mode
+
+After the matching platform setup and production frontend build, use the same
+verified Python environment to run the browser adapter:
+
+```sh
+node scripts/frontend.mjs build
+.venv/bin/python scripts/browser.py --data-root /absolute/path/to/browser-research-data --port 8765
+```
+
+On Windows use `.venv/Scripts/python.exe` instead. Open the exact numeric
+loopback URL printed by the launcher (normally `http://127.0.0.1:8765`). This
+uses the built frontend, not the Vite layout preview. Stop and restart the host
+after rebuilding frontend assets; its allowed static-file inventory is fixed at
+startup. No system WebKit runtime
+is required for browser mode; a current local browser is required. The original
+Windows/Tauri launch commands remain available without conversion or migration.
+The workspace lock prevents concurrent desktop/browser ownership of one data
+root. Use separate synthetic roots for verification and never copy them into
+ordinary user data.
+
+The host stays running after tabs close or reload. Use the UI's confirmed Stop
+local service action or Ctrl+C in its terminal to stop managed work and release
+the workspace. Browser exports download through the authenticated local session;
+desktop exports retain their folder-opening action. Do not expose this server
+through a proxy, forwarding rule, public port or remote bind. Session tokens are
+per-launch memory-only material and must never be copied into URLs or logs.
+See [ADR 0030](adr/0030-local-browser-research.md) for the boundary and limitations.

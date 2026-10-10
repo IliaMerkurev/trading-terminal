@@ -1,9 +1,10 @@
 import {useState} from 'react';
 import {invoke} from '@tauri-apps/api/core';
-import {api,isDesktop} from './api';
+import {api,transportCapabilities,downloadArchive} from './api';
 export default function ProjectTransfer({strategy,profile,runIds,onImported}:{strategy:()=>any;profile:any;runIds:string[];onImported:(result:any)=>Promise<void>}){
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
-  async function exportProject(){setBusy(true);setError('');try{const result=await api<any>('archive_export',{strategy:strategy(),profile,run_ids:runIds});setMessage(`${result.filename} · ${(result.bytes/1024).toFixed(1)} KiB. ${result.note}`);}catch(e){setError(String(e));}finally{setBusy(false);}}
+  const transport=transportCapabilities();
+  async function exportProject(){setBusy(true);setError('');try{const result=await api<any>('archive_export',{strategy:strategy(),profile,run_ids:runIds});if(transport.downloadArchives)await downloadArchive(result.filename);setMessage(`${result.filename} · ${(result.bytes/1024).toFixed(1)} KiB. ${result.note}`);}catch(e){setError(String(e));}finally{setBusy(false);}}
   async function importProject(file:File){
     setBusy(true);setError('');let active=false;
     try{
@@ -19,5 +20,5 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported}:{st
       setMessage(result.note);await onImported(result);
     }catch(e){setError(String(e));if(active)await api('archive_cancel').catch(()=>{});}finally{setBusy(false);}
   }
-  return <details className="project-transfer"><summary>Project archive</summary><p>Export the current strategy, simulation settings and {runIds.length} selected results. Raw market candles, worker logs and Python consent records are excluded. Native source is included; review it before sharing. Recognized credentials and personal paths block export.</p><button disabled={busy||!isDesktop()} onClick={exportProject}>Export project archive</button><button onClick={()=>invoke('open_exports').catch(e=>setError(String(e)))} disabled={!isDesktop()}>Open local exports folder</button><label className="field"><span>Import a project archive (does not execute Python)</span><input aria-label="Import project archive" type="file" accept=".zip" disabled={busy||!isDesktop()} onChange={e=>{const file=e.target.files?.[0];if(file)importProject(file);e.target.value='';}}/></label>{message&&<p role="status">{message}</p>}{error&&<p role="alert">{error}</p>}</details>;
+  return <details className="project-transfer"><summary>Project archive</summary><p>Export the current strategy, simulation settings and {runIds.length} selected results. Raw market candles, worker logs and Python consent records are excluded. Native source is included; review it before sharing. Recognized credentials and personal paths block export.</p><button disabled={busy||!transport.localService} onClick={exportProject}>Export project archive</button>{transport.openExportsFolder&&<button onClick={()=>invoke('open_exports').catch(e=>setError(String(e)))}>Open local exports folder</button>}<label className="field"><span>Import a project archive (does not execute Python)</span><input aria-label="Import project archive" type="file" accept=".zip" disabled={busy||!transport.localService} onChange={e=>{const file=e.target.files?.[0];if(file)importProject(file);e.target.value='';}}/></label>{message&&<p role="status">{message}</p>}{error&&<p role="alert">{error}</p>}</details>;
 }

@@ -42,3 +42,5 @@
 @media(max-width:1100px){.terminal-market{grid-template-columns:minmax(0,1fr) 210px}.market-header{gap:10px}.market-header>div:nth-child(n+6){display:none}}
 @media(max-height:800px){.terminal-bottom{height:180px}.market-header{padding:6px 12px}.terminal-controls{padding:5px 12px}}
 .position-settings fieldset{border:0;padding:8px 0;min-width:0}.position-settings small{display:block;color:#91a4bd;line-height:1.5;margin:8px 0}.position-settings details{margin:12px 0;border-top:1px solid #303848;padding-top:8px}.position-step{margin:12px 0;padding:10px;border:1px solid #303848;border-radius:6px}.position-step input{max-width:100%}.position-step label{display:block;margin:6px 0}.position-lifecycle{border-top:1px solid #303848;margin:20px 0;padding-top:12px}.position-lifecycle p{font-size:12px;color:#91a4bd}
+
+.browser-service{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.browser-service>span{flex:1;min-width:220px}.browser-service>p{flex-basis:100%;margin:0}

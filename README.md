@@ -59,7 +59,17 @@ Windows regression also remains unrun on this adaptation.
 
 Linux native Python execution, Windows/sound notifications and protected
 Telegram storage are explicitly unavailable. No plaintext credential fallback,
-alternate web transport, installer or release is part of this bounded checkpoint.
+installer or release is part of this bounded checkpoint.
+
+## Local browser research mode
+
+An owner-authorized loopback browser adapter uses the same local service and
+managed workers without requiring the missing native WebKitGTK helper. Build the
+frontend and run `scripts/browser.py` with the verified Python environment and
+an explicit isolated data root. See [browser launch instructions](docs/DEVELOPMENT.md#local-browser-research-mode),
+[security boundary](docs/adr/0030-local-browser-research.md) and
+[current verification](docs/STATUS.md). Closing a tab leaves the local service
+running; stop it explicitly in the UI or with Ctrl+C.
 
 ## Scope and documentation
 

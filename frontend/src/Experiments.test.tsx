@@ -4,7 +4,7 @@ import Experiments,{rankedRows} from './Experiments';
 import {fillGroups} from './RunChart';
 import {defaultProfile} from './model';
 import {api} from './api';
-vi.mock('./api',()=>({isDesktop:()=>true,api:vi.fn()}));
+vi.mock('./api',()=>({isDesktop:()=>true,transportCapabilities:()=>({mode:'desktop',localService:true,nativeWindow:true,openExportsFolder:true,downloadArchives:false,stopService:false}),productVersion:async()=>(await import('@tauri-apps/api/app')).getVersion(),downloadArchive:vi.fn(),api:vi.fn()}));
 it('ranks only completed IS rows, keeps undefined win rate last and honors filters',()=>{
  const rows=[{ordinal:0,status:'completed',summary:{metrics:{net_pnl:'2',max_drawdown:'.1',trade_count:2,win_rate:.5}}},{ordinal:1,status:'completed',summary:{metrics:{net_pnl:'0',max_drawdown:'0',trade_count:0,win_rate:null}}},{ordinal:2,status:'failed',summary:{metrics:{net_pnl:999}}}];
  expect(rankedRows(rows,'net_pnl','','0').map(r=>r.ordinal)).toEqual([0,1]);expect(rankedRows(rows,'win_rate','','0').map(r=>r.ordinal)).toEqual([0,1]);expect(rankedRows(rows,'net_pnl','5','1')).toEqual([]);

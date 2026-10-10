@@ -1,5 +1,110 @@
 # Implementation status
 
+## Recovered local browser mode — 2026-10-10
+
+The browser transport has been reintegrated on the independently verified Linux
+checkpoint. The six frontend production files match their original Git blob
+hashes; the host and tests were reconstructed from retained source. One fresh
+review fix keeps the service reference available if cleanup raises, allowing a
+later close attempt to finish. Historical graphical acceptance below remains
+separate from current evidence.
+
+Fresh focused verification on this recovered source:
+
+- **6 browser-host tests passed in 2.907 seconds**. Coverage includes exact
+  Host/Origin/fetch metadata, authenticated bootstrap and bounded commands,
+  static traversal/symlinks, archive export/download/import, exclusive workspace
+  ownership, real worker cancellation and active shutdown with SQLite integrity.
+  Same-port POSIX restart now sends an old token over HTTP and verifies rejection,
+  then verifies a new bootstrap token works. A failed cleanup retains its service
+  reference and a later close releases the workspace.
+- **36 frontend tests across 7 files passed in 4.41 seconds**, covering desktop
+  transport preservation, browser bootstrap/capabilities, run/download recovery,
+  leave warnings, confirmed shutdown, archive transfer and whole-response
+  timeout/unknown-outcome behavior without automatic POST retries.
+- TypeScript and production build passed. The existing bundle-size advisory
+  remains (approximately 744 KiB JavaScript).
+- The real `scripts/browser.py` launcher passed runtime verification, readiness,
+  serving built HTML, SIGTERM exit code 0, workspace reopening and SQLite
+  integrity. The smoke harness was corrected to skip the expected runtime-check
+  banner before looking for readiness; this was a harness parsing correction.
+
+Fresh graphical browser acceptance is still pending. These focused checks are
+not another full Python regression, Windows native pass, merge, or release.
+Windows/Tauri launch and IPC, engine version, calculations and storage schemas
+remain unchanged. Linux native execution and protected secret integrations
+retain their fail-closed restrictions. See
+[ADR 0030](adr/0030-local-browser-research.md) and
+[browser launch instructions](DEVELOPMENT.md#local-browser-research-mode).
+
+## Historical browser adapter acceptance — before source recovery
+
+All results in this section were observed before the validation VM was lost.
+They are preserved as historical evidence, not fresh verification of the
+recovered source or environment. Fresh recovery checks are recorded separately.
+
+The owner-authorized browser transport uses the existing AppService and managed
+workers behind a numeric loopback-only HTTP host. Windows/Tauri launch and
+IPC remain available. There is no storage migration, product/engine version
+change, financial formula change, new dependency or public deployment.
+See [ADR 0030](adr/0030-local-browser-research.md).
+
+- Five focused backend tests passed, covering strict Host/Origin/fetch metadata,
+  bootstrap/session authentication, missing and duplicate security headers,
+  unsupported CORS, bounded JSON, unknown commands and static traversal/symlink
+  rejection. An independent nine-case hostile-boundary probe also passed.
+- Authenticated archive export/download/import, repeat session bootstrap, saved
+  strategy recovery and changed-export rejection passed against real AppService.
+- Real managed-worker cancellation and shutdown with active work passed;
+  subsequent reopening recovered cancelled statuses, exclusive ownership was
+  released and SQLite integrity was `ok`. Desktop/browser concurrent workspace
+  ownership is rejected by the existing shared lock.
+- Closing/reloading browser tabs deliberately keeps the host and workers alive.
+  Service shutdown is explicit; interrupted writes are never automatically
+  retried. Linux native execution and protected secret integrations retain their
+  fail-closed limitations.
+
+Frontend focused verification passed **34 tests across 7 files**. A subsequent
+whole-response timeout correction passed **13 targeted tests across 2 files**,
+including stalled/truncated response bodies and the no-retry contract; these
+counts overlap and must not be added. TypeScript and the production build passed
+in both the isolated frontend worktree and integrated checkout. The existing
+bundle advisory remains (about 744 KiB JavaScript). Independent safety review
+reported no remaining blocking issue after the correction. The actual launcher
+passed runtime verification, readiness, SIGTERM exit and workspace reopening.
+
+Actual Chromium acceptance on the separate Linux validation workspace passed
+launch, catalog loading, four saved reports, reopening the losing forming-H1
+report (entry 130, exit 90, quantity 0.769, net PnL -30.76), visible charts/fills,
+and reload/reconnection. A new run was started using the visible route
+**Synthetic: spot fees golden case → More tools → Custom backtest → Prepared
+dataset (three-minute spot fixture) → Run immutable snapshot**. Worker preparation
+was displayed, then a new completed report persisted with one trade, entry 100,
+exit 110, quantity 1, fees 0.2100 and net PnL 9.79. Existing reports remained
+unchanged. The first graphical shutdown succeeded, but immediate restart
+revealed a same-port TIME_WAIT bind failure. The host now enables POSIX address
+reuse without port sharing; Windows retains its non-reuse setting. The added
+same-port restart test verifies a fresh token, workspace reopening, active
+listener rejection and no creation of a conflicting workspace. The corrected
+five-test host pass succeeded. Independent review additionally verified an old
+session token is rejected after restart and the new token works. The corrected
+Chromium cycle then passed UI stop, same-port launcher restart after 12 seconds,
+reconnection, all five saved reports and reopening the new 9.79 / 0.21-fee report
+with the same chart and trade. The host and browser were left open after this
+verification.
+
+The legacy tiny synthetic fixtures have no exchange instrument metadata.
+Market data's **Use this history** routes to the Library research selection,
+not the independent custom editor dataset. Library's existing automatic
+metadata request exposes an `instrument` error for these fixtures; this is a
+retained fixture/UX limitation, not evidence of a successful Library workflow.
+The custom backtest path above remains valid. Origin-aware selection and clearer
+metadata errors belong to the subsequent workspace UX slice.
+
+These focused adapter checks reuse the prior verified backend/Windows dispatch
+implementation; they are not a new full regression or Windows native pass.
+
+
 ## Recovered Linux adaptation — 2026-10-10
 
 The initial Linux checkpoint was lost with its validation VM. The original
