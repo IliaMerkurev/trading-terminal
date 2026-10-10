@@ -5,7 +5,7 @@ import LibraryResearch from './LibraryResearch';
 import {defaultProfile} from './model';
 import {api} from './api';
 vi.mock('./api',()=>({api:vi.fn()}));
-vi.mock('./ObservationChart',()=>({default:({candles}:any)=><div>Chart: {candles.length} candles</div>}));
+vi.mock('./ObservationChart',()=>({default:({candles,missing,seconds,reference}:any)=><div data-testid="observation-chart" data-chart-page={JSON.stringify({candles,missing,seconds,reference})}>Chart: {candles.length} candles</div>}));
 const source={id:'source',source:'Synthetic workflow',market:'spot',symbol:'BTCUSDT',range:[0,3600],interval_seconds:60,classification:'synthetic'};
 const record={id:'note',revision:1,latest_revision:1,source,start:600,end:1200,hypothesis:'Rising prices',falsification:'Lower close',source_error:null,links:[]};
 const selections=[{entry_id:'rsi-threshold',version:1,minutes:1,parameters:{period:2}}];
@@ -252,4 +252,15 @@ it('keeps historical observation dates and notes locked while allowing an explic
  fireEvent.click(screen.getByRole('button',{name:'Test observation in Lab'}));
  expect(onTest).toHaveBeenCalledExactlyOnceWith({id:'note',revision:1,source,start:600,end:1200});
  expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|prepare|resume/.test(c))).toBe(false);
+});
+
+
+it('passes exact verified OHLCV, source interval, missing slots and evidence reference into the chart without extra reads',async()=>{
+ mock();vi.mocked(api).mockClear();const previous=vi.mocked(api).getMockImplementation()!;
+ const verified={...page,start:0,end:180,candles:[{time:60,open:100,high:103,low:99,close:102,volume:0}],missing:[0,120],display_reference:{surface:'observation_chart',page_id:'verified-page'}};
+ vi.mocked(api).mockImplementation(async(c,p)=>c==='local_history_window'?verified:previous(c,p));
+ render(<Observations datasets={[source]} request={{dataset:source.id,request:1}} onTest={vi.fn()} onBatch={vi.fn()}/>);
+ await screen.findByText('Chart: 1 candles');
+ expect(JSON.parse(screen.getByTestId('observation-chart').getAttribute('data-chart-page')!)).toEqual({candles:[{time:60,open:100,high:103,low:99,close:102,volume:0}],missing:[0,120],seconds:60,reference:{surface:'observation_chart',page_id:'verified-page'}});
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
 });

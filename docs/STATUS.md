@@ -5,15 +5,95 @@ continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
+## Saved-history OHLCV inspection — 2026-10-10
+
+Saved history now presents price and recorded volume in two synchronized panes
+on one original UTC opening-time scale. The inspector shows the exact source
+interval, opening timestamp and recorded OHLCV values. Volume units are explicitly
+unspecified: the UI does not infer base/quote currency or contracts. Recorded zero
+remains `0`; unavailable/non-finite inspector values are `N/A`, and missing volume
+is not drawn as zero. The existing verified reader normally rejects malformed
+OHLCV before it reaches the UI; the component also handles unavailable values
+defensively.
+
+Backend-supplied missing slots occupy whitespace in both panes, including page
+edges, with visible striped bands. Hovering a gap replaces earlier candle values
+with an explicit missing-slot explanation. Previous/Next and focused-chart
+Left/Right navigation step through actual candles; Home/End select page boundaries.
+An offscreen keyboard target is brought into the chart window before its inspector
+appears. A marker identifies the selected candle, panning it out of view clears
+selection, and replacing the source/page clears old values and chart listeners.
+Keyboard selection survives unrelated pointer movement outside the chart.
+
+Both panes retain one display-evidence observer and recorder, with only original
+actual candles as evidence inputs. Whitespace contributes no exposure; volume
+adds no second record. Hidden tabs/ancestors and open-modal suppression are
+unchanged. Selection neither saves an observation nor starts a strategy. The
+500-source-slot page bound, hash-verified reader, immutable observation revisions,
+source/date forms and explicit Lab Review/Start route remain unchanged. There is
+no resampling, display-timeframe expansion, live/network/backend/schema,
+dependency, accounting or product-version change.
+
+Focused automated verification covered **64 distinct tests across six files**:
+`ObservationChart`, `Observations`, `ObservationsHistory`, `DisplayedEvidence`,
+`UserJourneys` and `chartWindow`. The first pass had 61 passes and one hidden-DOM
+test-query error; after correcting that query, the dedicated chart file passed
+all 13 then-existing tests. Production-browser inspection then found that a
+chart redraw could replay the old hover and replace a keyboard selection. A
+bounded lifecycle correction ignores synthetic redraw callbacks while keyboard
+selection/reveal is active but still accepts genuine pointer and gap clicks.
+Gap bands also follow fractional logical-range changes. The expanded chart file
+passed **15 tests**, including these two regressions; the other five files' 49
+passing tests were not rerun.
+The chart tests independently specify exact OHLCV/zero/unavailable data, shared
+unshifted timestamps, UTC labels, edge/internal gaps, pointer and keyboard
+selection, viewport reveal, page replacement, cleanup and original-candle
+visibility evidence. The observation integration test verifies the exact verified
+payload and reference reach the chart without extra reads.
+
+Reproduce the focused scope with:
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/ObservationChart.test.tsx frontend/src/Observations.test.tsx frontend/src/ObservationsHistory.test.tsx frontend/src/DisplayedEvidence.test.tsx frontend/src/UserJourneys.test.tsx frontend/src/chartWindow.test.ts
+node scripts/frontend.mjs build
+```
+
+TypeScript and the corrected production Vite build passed, with the existing
+large-chunk advisory. Component checks use jsdom, mocked chart APIs and mocked
+IPC; actual production-browser reinspection separately passed at **1180×757**
+and **750×757** using the existing isolated synthetic hourly gap fixture:
+
+- Home selected 2024-01-01 00:00 UTC with independently known O100/H102/L99/C100.5
+  and recorded volume 10. After a price-pane click selected January 11 03:00,
+  Home correctly returned to January 1 and disabled Previous. End selected
+  January 21 19:00 and disabled Next; Right advanced one source hour.
+- Zooming to the missing January 2 00:00 slot and clicking its whitespace showed
+  the missing-slot explanation with no earlier OHLCV values or invented zero
+  bar. End from the zoomed window revealed the last actual candle while price
+  and volume remained synchronized.
+- Loading the later page reset the inspector to No candle selected / N/A.
+  The narrow layout remained readable; clicking the volume pane selected
+  January 29 22:00 and Right advanced to January 29 23:00.
+- Opening the saved observation cleared selection. Test observation opened Lab;
+  Escape and Return to observation reopened exact revision 2 and its locked
+  January 26–27 period. No note save, review or run was initiated.
+
+The browser pass did not independently count database exposure writes or inspect
+a zero-volume fixture candle; those checks are component evidence only. The
+unchanged backend and complete frontend suite were not repeated; the preceding
+full frontend result is recorded below. Owner-led unaided usability and current
+Windows/native acceptance remain separate.
+
 ## Combined UX-series verification — 2026-10-10
 
-The current UI code is `fba0e5c4c3e0f316c55209738c255976c11e5501`, tree
+The preceding UX-series UI code is `fba0e5c4c3e0f316c55209738c255976c11e5501`, tree
 `06f96249c960b000a60c439e6858e7da25058ce7`. One complete frontend pass using
 `node node_modules/vitest/vitest.mjs run` passed **197 tests across 34 files**
 in **9.67 seconds**, with no failures. This aggregate covers the combined compact
 Saved tests review, attached Lab observation context, compact pre-review test
 selection, observation-date validation and saved-observation read recovery.
-It is the current full frontend total, not a sum of overlapping focused passes.
+It is the latest complete frontend pass before the OHLCV inspection slice, not
+a sum of overlapping focused passes.
 
 The latest read-recovery slice already passed `node scripts/frontend.mjs build`
 (TypeScript and production Vite build), with the existing large-chunk advisory.

@@ -11,6 +11,27 @@ experiments; live/paper/replay controls belong to Market. See the
 In Market, choose **Saved history · local**, or use **Observe this history**
 from Data. Open a prepared local chart, select a period and save a hypothesis
 with an optional falsification condition. Saving does not start a test.
+
+The chart shows price and recorded source volume in synchronized panes with the
+same UTC candle-opening timestamps. Hover or click either pane to inspect the
+source interval, opening time and OHLCV values. **Previous candle** / **Next
+candle** also work without a pointer. Focus the chart to use Left/Right; Home/End
+select the first/last actual candle in the loaded page. Navigation reveals an
+offscreen target before showing its values and skips missing slots. Panning the
+selected candle out of view clears it; choosing another source/page resets it.
+**Fit page** returns to the complete loaded page, which remains bounded to 500
+source slots. Earlier/Later candles load another page; they do not resample it.
+
+Striped bands and blank slots in both panes mark missing source history, including
+missing page edges. Hovering a gap explicitly shows that no candle, price or
+volume was recorded. No price or zero-volume candle fills a gap. Volume is shown
+in recorded source units; its currency/contract unit is unspecified. `0` is a
+recorded zero and `N/A` is unavailable, not interchangeable values. The chart does
+not compute indicators, aggregate candles or fetch live data. Reading or selecting
+a candle does not save notes or start a test. Only actual visible source candles
+participate in the existing partial displayed-period evidence; the volume pane
+does not create a second exposure record.
+
 The saved-observation list distinguishes loading, read failure and confirmed
 empty history. **Retry saved observations** repeats only the failed list read;
 it preserves the selected source, exact period, note revision and unsaved text.

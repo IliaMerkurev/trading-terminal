@@ -30,12 +30,22 @@ synthetic fixture database for ordinary research data.
 
 ## Current UX-series evidence
 
-The current UX-series code is `fba0e5c4c3e0f316c55209738c255976c11e5501`, tree
+The newest slice adds synchronized source-volume inspection, exact UTC OHLCV,
+keyboard candle navigation and explicit gap whitespace/bands to Saved history.
+Its focused scope has 64 passing tests across six files, including regressions
+for a browser-discovered synthetic crosshair callback issue; TypeScript and the
+production build pass. Corrected production-browser inspection passed at
+1180×757 and 750×757, including gap selection, keyboard reveal, page reset and
+exact-revision Lab return. Browser checks did not recount display-evidence
+database writes; component tests cover that boundary. See
+[saved-history OHLCV inspection](STATUS.md#saved-history-ohlcv-inspection--2026-10-10)
+for exact automated evidence, retained bounds and platform limits.
+
+The preceding UX-series code is `fba0e5c4c3e0f316c55209738c255976c11e5501`, tree
 `06f96249c960b000a60c439e6858e7da25058ce7`. One complete frontend pass on that
-code passed **197 tests across 34 files**. The latest slice already passed
-TypeScript and the production build; this documentation checkpoint does not
-repeat that build. See [combined UX-series verification](STATUS.md#combined-ux-series-verification--2026-10-10)
-for current evidence and its browser-versus-component limits.
+code passed **197 tests across 34 files**. Its final read-recovery slice also
+passed TypeScript and the production build. See [combined UX-series verification](STATUS.md#combined-ux-series-verification--2026-10-10)
+for that checkpoint's evidence and browser-versus-component limits.
 
 This series delivered compact Saved tests review, a visible attached-observation
 cue in Lab, compact pre-review test selection, exact observation-date guidance,
