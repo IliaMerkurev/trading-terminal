@@ -247,7 +247,12 @@ The whole comparison is saved automatically in the local database. Reopen it in
 Choose **Sort comparable results** and **Highest first / Lowest first** beside
 the retained original context. Open **Filter results** for category and numeric
 threshold inputs. The active count and **Clear filters** remain visible when
-closed; invalid numeric thresholds are explicitly not applied. Clearing affects
+closed; invalid numeric thresholds are explicitly not applied. A live summary
+above the table counts strategy rows matching valid numeric thresholds separately
+from retained context-only rows and passive references, and explicitly explains
+zero matches. With blank or invalid thresholds it counts rows shown without
+claiming numeric matches. Counts reflect the current category filters and count
+variants as separate rows. Clearing affects
 only viewing filters, preserving the saved comparison, sorting and new-test
 source. Open **Search saved comparisons** to search names, notes, IDs and dates
 across the complete saved catalog; **Load older comparisons** continues that

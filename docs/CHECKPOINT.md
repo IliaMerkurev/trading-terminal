@@ -28,6 +28,43 @@ routes, not a portable executable bundle: moving a desktop checkout requires a
 rebuild. Back up the complete data root after shutdown; never substitute a
 synthetic fixture database for ordinary research data.
 
+## Final bounded candidate gate
+
+Corrected source is `cfe60f62ff9ba6f866219c80cc2fafbccea0b426`, tree
+`3c5e8fda136e0e9a2f2f6217f5fde4d53724519a`; subsequent changes are documentation
+only. Composed production-browser journeys passed through exact observation/Lab
+return, saved comparison/equity, later-period data preparation and review/cancel,
+without new runs or freezes. Corrected Cancel and physical Escape both restored
+the exact originating Freeze button with no open dialogs.
+
+Pre-focus-correction source `ace120c3b14e6a77bec2fb5f738fcc191d8e67c1`, tree
+`ce8aea0dfcd0d2c9a0b4bbac308cb111c5f364bc`, passed one combined closure run:
+**413 frontend tests across 45 files**, followed by TypeScript/production build.
+This includes the frozen-equity-default correction and saved-filter summary.
+Composed browser inspection then found lost origin focus after asynchronous
+freeze review. The narrow explicit-origin correction has **48 distinct focused
+tests** plus a final TypeScript/build pass; the 413-test aggregate is retained as
+pre-correction evidence; corrected browser confirmation passed.
+Backend bytes are unchanged; retain **327 passed / eight Windows-only skips**
+without a redundant backend rerun.
+See [final bounded UX candidate verification](STATUS.md#final-bounded-ux-candidate-verification--2026-10-10).
+No further feature slice is implied; current Windows/native, live-feed and
+owner-led unaided acceptance remain separate.
+
+
+## Current saved-filter clarity slice
+
+The Saved tests table distinguishes numeric strategy matches, retained context-only
+rows and passive references using its actual filtered rows. Zero matches are
+explicit; blank/invalid thresholds neutrally count rows shown. Existing filters,
+sort/holdout order, evidence recording and run actions are unchanged. The focused
+pass passed **57 tests across five files**; final TypeScript/production build
+passed after a test-only type annotation correction. Production-browser checks
+passed at 750px for zero matches, retained context/baselines, combined category
+filters, invalid input and Clear; independent review found no blocker. See [saved-test filter outcome clarity](STATUS.md#saved-test-filter-outcome-clarity--2026-10-10)
+for exact evidence and retained platform/acceptance limits.
+
+
 ## Current saved-equity slice
 
 Compare equity opens a reachable, focused inspector with frozen row identity,

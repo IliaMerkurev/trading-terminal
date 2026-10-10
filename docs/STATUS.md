@@ -6,6 +6,104 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Final bounded UX candidate verification — 2026-10-10
+
+Final corrected source is `cfe60f62ff9ba6f866219c80cc2fafbccea0b426`, tree
+`3c5e8fda136e0e9a2f2f6217f5fde4d53724519a`; the subsequent checkpoint update
+changes documentation only. The pre-focus-correction code checkpoint is `ace120c3b14e6a77bec2fb5f738fcc191d8e67c1`, tree
+`ce8aea0dfcd0d2c9a0b4bbac308cb111c5f364bc`. One closure aggregate passed
+**413 frontend tests across 45 files in 12.87s** with
+`node node_modules/vitest/vitest.mjs run`. Final TypeScript and production build
+passed with `node scripts/frontend.mjs build`; the existing large-chunk advisory
+remains non-failing. This aggregate includes the final frozen-default equity
+correction and the saved-filter clarity slice. It supersedes the earlier
+399-test/44-file frontend aggregate for unchanged surfaces without erasing the
+slice-level correction chronology. The subsequent composed browser inspection
+found an asynchronous freeze-review focus defect: disabling the origin while
+reading overlap caused Cancel to return to the document body. EvidenceFreeze
+now captures that exact origin before the read and passes it explicitly to the
+existing dialog surface. Ordinary dialogs retain their default active-element
+capture; disconnected/hidden origins are skipped, and another open dialog keeps
+its focus. Preview, freeze and execution semantics remain unchanged.
+
+Post-correction focused evidence covers **48 distinct tests across four files**:
+EvidenceFreeze, LibraryResearch, DisplayedEvidence and UserJourneys. The first
+pass had two harness failures because jsdom would not blur a disabled element;
+the fixture now explicitly models lost body focus. The next pass passed 47 tests
+with one harness failure because Testing Library has no `fireEvent.cancel`
+helper. The supported cancel Event correction then passed the single Escape
+regression (one passed, four intentionally skipped), with assertions and product
+code unchanged. No additional full aggregate was run. Final TypeScript/production build
+passed on the corrected source. These targeted passes preserve the earlier
+413-test aggregate as pre-focus-fix evidence rather than claiming a repeated full
+suite.
+
+Only frontend and documentation files changed after the preceding checkpoint.
+Backend, accounting, persistence, schema and dependencies remain unchanged;
+retain the verified **327 backend passes and eight Windows-only skips** rather
+than claiming another backend or storage crash-suite run. Composed browser checks
+before the focus correction confirmed exact observation revision 1 and its
+January 5–January 13 04:00 UTC period through Lab and Return; Lab search and saved
+return ordering retained the 1h/group-2 comparison; Compare equity and Back
+retained the chosen row. Later-period setup → prepare history → Data → Use this
+history preserved source and January 27–February 7 12:00 UTC dates. Overlap review
+showed the recorded warnings; neither Confirm candidate freeze nor Start was
+activated. Corrected production-browser inspection then passed both Cancel
+freeze and physical Escape: each returned focus to the exact originating Freeze
+later-period candidate button with zero dialogs left open. The existing RSI
+report reopened with 44.16 net PnL, 1.85% maximum drawdown and one trade. The
+composed Market observation → exact Lab source/revision → Saved tests → equity →
+later-period data preparation → review/cancel journey completed without new
+runs or freezes. These are actual browser interactions on the corrected build;
+component-injected transport failures and races remain separate evidence. Current Windows/native, live-feed, remote CI and owner-led
+unaided acceptance remain separate; this is a development candidate, not a
+release or merge approval. No further feature work is included in this gate.
+
+
+## Saved-test filter outcome clarity — 2026-10-10
+
+The Saved tests table now has a concise, polite live summary derived from the
+same filtered rows that render in the table. Valid numeric thresholds distinguish
+matching strategy rows, context-only strategy rows and passive reference rows.
+Zero numeric matches are explicit even when context and baselines remain visible.
+Counts describe rows/variants, not distinct strategies or profitability. Blank or
+invalid thresholds say only how many strategy rows are shown; unavailable or
+failed rows are never described as numeric passes in that state. The existing
+invalid-input error and all-or-nothing numeric-filter fallback remain unchanged.
+
+Family, timeframe, result-state and review filters still narrow strategy rows;
+baselines stay visible regardless. Context with missing required metrics or an
+unfinished result remains separate from matches. The summary stays outside the
+collapsed controls and labels the keyboard-focusable results region. Filtering,
+cohort sorting, frozen holdout order, metrics, equity inspection, run actions and
+display-evidence recording are unchanged. No backend, schema, dependency or
+product-version changes were made.
+
+The focused pass passed **57 tests across five files** with:
+`node node_modules/vitest/vitest.mjs run frontend/src/SavedFilterSummary.test.tsx frontend/src/LibraryResearch.test.tsx frontend/src/SavedReview.test.tsx frontend/src/DisplayedEvidence.test.tsx frontend/src/EquityComparison.test.tsx`.
+Coverage includes zero/negative finite boundaries, all strategies excluded,
+retained passive references, missing/nonfinite metrics, combined category filters,
+invalid/blank numeric inputs, holdout order, accessibility wiring and explicit
+clear without execution or data writes. The initial build exposed a test-only
+TypeScript inferred-union mismatch; an explicit filter-record type corrected it.
+Final TypeScript/production build passed with `node scripts/frontend.mjs build`,
+retaining the existing non-failing large-chunk advisory. This focused pass does
+not replace the preceding 399-test/44-file aggregate or claim a backend rerun.
+Independent read-only review found no blocker. Production-browser inspection
+passed at **750px** width using an existing saved comparison: blank filters showed
+14 strategy rows and two passive references; an extreme minimum return showed
+zero matches, two context-only rows and two passive references. Adding the
+mean-reversion family showed zero matches/context with both references retained,
+and the explanation wrapped readably above the table. With the return blank,
+an invalid negative minimum-position threshold retained the existing error and
+neutrally counted four category-filtered strategy rows and two references.
+Combined family/1d/incompatible-state filters showed the category-empty explanation
+and both passive references. Clear restored all 14 strategy rows and two references.
+No new runs or data were created; the host was stopped normally. Ordinary-width
+inspection was not repeated for this slice. Current Windows/native and owner-led
+unaided acceptance remain separate.
+
+
 ## Explicit saved-equity inspection — 2026-10-10
 
 Compare equity now opens and focuses a named inline inspector for the exact
