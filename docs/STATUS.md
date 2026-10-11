@@ -7,6 +7,56 @@ gates, not unrelated platform or owner acceptance.
 
 
 
+## Explicit indicator seeds and custom Fib candidate — 2026-10-11
+
+ADR 0043 adds separate native-timeframe ATR (Wilder, SMA seed), Stochastic K/D
+and zero-origin OBV, with source-native quantities and normal auxiliary panes.
+The six previous formulas and graph ATR are unchanged; the UI explicitly
+identifies the display/graph seed difference. Additive optional Fib ratios and
+drawing names preserve legacy documents and transactional source/revision saves.
+Ratio labels use price-space interpolation before log projection; nonpositive
+prices are omitted with visible help. Independent name/ratio drafts survive
+unrelated successful property saves.
+
+Focused evidence covers **25 distinct Python tests** and **34 frontend tests
+across four files**; TypeScript/production build passed. The final extension
+initially exposed two test-harness issues: exact floating equality on subnormal
+inputs and editing before the mocked save response reached the UI. One corrective
+pass used an explicit 10-decimal tolerance and waited for the actual UI save
+boundary; all affected **7 Python / 11 frontend tests** passed. Earlier unaffected
+focused passes remain valid. The subsequent complete frozen-source gate passed at
+`227c02544de567739620f40e745c81024f268ccc`: **491 backend tests in 194.067 seconds
+(483 passed, eight expected Windows-only skips)** and **520 frontend tests across
+57 files in 18.00 seconds**, followed by TypeScript/Vite production build.
+The worktree was clean with identical SHA before/after; no runtime source changed
+during either aggregate. Gitleaks 8.30.1 staged/outgoing scans found no secrets.
+The existing bundle-size advisory is non-failing.
+
+Parent-led browser acceptance passed on production source `227c025` in a separate
+offline saved-H4 harness. ATR14, Stochastic14/3/3 and OBV were added beside default
+Volume while primary price was logarithmic; auxiliary panes stayed normal and
+negative OBV remained visible. Readouts matched an independent oracle across all
+300 fixture candles. Edited ATR10/Stochastic9/3/3 readouts matched a separate
+calculation: ATR 814.0064687229425, K 70.35340495821912, D 64.62526489177631.
+
+A Fib created under log price accepted ratios [-0.272,0,0.5,0.618,1,1.618]. Renaming
+it to `BTC research` preserved the unapplied levels draft. Duplicate [0,0,1]
+input disabled Apply; Reset restored defaults, Undo restored custom levels, and
+Lock disabled name/level editing. Reload restored all four indicators and the
+custom Fib levels/name. Visible details disclosed ATR's different graph seed,
+native units, origin and reset rules. This is fixed-H4 offline browser evidence,
+not live-provider acquisition, current native/Windows acceptance or proof of
+unperformed cross-timeframe/older-page interactions. No publication is implied.
+
+Tests cover independent handwritten expectations, graph-seed preservation,
+future perturbation, native confirmation/gaps, maximum Stochastic warmup,
+origin/pre-origin/reopen/source isolation, OBV missing-versus-zero volume,
+auxiliary log safety, legacy optional fields, strict Fib bounds, ratio/name
+persistence, reset/undo and nonlinear reversed-anchor projection. Two independent
+reviews supplied the arithmetic-order and cross-field draft-retention refinements.
+No live-provider, Windows/native, owner acceptance or publication is implied.
+
+
 ## Research-chart workspace candidate — 2026-10-11
 
 Implemented the bounded ADR 0042 slice: native volume defaults to an independent

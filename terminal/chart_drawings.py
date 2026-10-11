@@ -16,13 +16,21 @@ def validate_drawings(items):
         raise ValueError('Use at most 100 drawings')
     seen = set()
     for item in items:
-        if not isinstance(item, dict) or set(item) != {'id', 'kind', 'anchors', 'color', 'width', 'style', 'text', 'visible', 'locked'}:
+        if not isinstance(item, dict) or set(item) - {'levels', 'name'} != {'id', 'kind', 'anchors', 'color', 'width', 'style', 'text', 'visible', 'locked'}:
             raise ValueError('Invalid drawing fields')
         if not isinstance(item['id'], str) or not re.fullmatch('[a-zA-Z][a-zA-Z0-9_-]{0,63}', item['id']) or item['id'] in seen:
             raise ValueError('Drawing IDs must be unique')
         seen.add(item['id'])
         if not isinstance(item['kind'], str) or item['kind'] not in KINDS:
             raise ValueError('Invalid drawing kind')
+        if 'name' in item and (not isinstance(item['name'], str) or len(item['name']) > 80 or any(ord(c) < 32 or ord(c) == 127 for c in item['name'])):
+            raise ValueError('Use up to 80 printable characters for drawing name')
+        if 'levels' in item:
+            levels = item['levels']
+            if item['kind'] != 'fib' or not isinstance(levels, list) or not 1 <= len(levels) <= 20:
+                raise ValueError('Use 1 to 20 Fibonacci levels')
+            if any(type(level) not in (int, float) or not math.isfinite(level) or not -5 <= level <= 5 for level in levels) or len(set(levels)) != len(levels):
+                raise ValueError('Fibonacci levels must be unique finite numbers from -5 to 5')
         count = 1 if item['kind'] in ('horizontal', 'vertical', 'text') else 2
         if not isinstance(item['anchors'], list) or len(item['anchors']) != count:
             raise ValueError('Invalid drawing anchors')

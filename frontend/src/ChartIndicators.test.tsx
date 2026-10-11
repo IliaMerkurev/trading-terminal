@@ -224,3 +224,27 @@ it('keeps logarithmic/manual price choices out of newly created auxiliary scales
  expect(scales.every(scale=>scale.options.mode===0&&scale.options.autoScale===true)).toBe(true);
  expect(primary.options().mode).toBe(1);expect(primary.options().autoScale).toBe(false);
 });
+
+it('adds ATR, Stochastic and OBV with bounded parameters and preserves old instances',()=>{
+ const apply=vi.fn();render(<ChartIndicators settings={{...emptySettings,instances:[item('ema')]}} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (1)'}));
+ for(const kind of ['atr','stochastic','obv']){fireEvent.change(screen.getByLabelText('Add indicator type'),{target:{value:kind}});fireEvent.click(screen.getByRole('button',{name:'Add indicator'}));}
+ fireEvent.change(screen.getByLabelText('3 STOCHASTIC smooth'),{target:{value:'0'}});
+ expect((screen.getByRole('button',{name:'Apply indicators'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.change(screen.getByLabelText('3 STOCHASTIC smooth'),{target:{value:'2'}});fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
+ expect(apply.mock.calls[0][0].map((i:ChartIndicator)=>i.type)).toEqual(['ema','atr','stochastic','obv']);
+ expect(apply.mock.calls[0][0][0]).toEqual(item('ema'));expect(indicatorName(item('atr'))).toContain('Wilder, SMA seed');
+});
+
+it('keeps ATR, Stochastic and negative OBV in normal auxiliary panes under log price',()=>{
+ const added:any[]=[];const primary={options:()=>({mode:1,autoScale:false,scaleMargins:{top:.2,bottom:.1}}),applyOptions:vi.fn()};
+ const chart={priceScale:()=>primary,addSeries:vi.fn((kind,options,pane)=>{const scale={applyOptions:vi.fn()};const s={options,pane,setData:vi.fn(),createPriceLine:vi.fn(),priceScale:()=>scale};added.push(s);return s;}),panes:()=>[]};
+ const owned=installIndicatorSeries(chart,null,[item('atr'),item('stochastic'),item('obv')],false);
+ expect(added.map(s=>s.pane)).toEqual([1,2,2,3]);expect(owned.map(s=>s.port)).toEqual(['value','k','d','value']);
+ expect(added.every(s=>s.priceScale().applyOptions.mock.calls[0][0].mode===0)).toBe(true);
+ expect(added[1].options.autoscaleInfoProvider().priceRange).toEqual({minValue:0,maxValue:100});
+ expect(added[1].createPriceLine.mock.calls.map((c:any[])=>c[0].price)).toEqual([20,80]);
+ updateIndicatorSeries(owned,{times:[60,120],columns:{obv:{value:[0,-20]}},directions:[1,-1]});
+ expect(added[3].setData).toHaveBeenCalledWith([{time:60,value:0},{time:120,value:-20}]);
+ expect(primary.applyOptions.mock.calls.at(-1)?.[0].mode).toBe(1);
+});

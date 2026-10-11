@@ -50,3 +50,20 @@ class ChartDrawingTests(unittest.TestCase):
             with store.connect() as db:db.execute('INSERT INTO chart_drawings_v1 VALUES(?,?,?)',('spot','BTCUSDT','{"version":99}'))
             with self.assertRaises(ValueError):manager.settings('spot','BTCUSDT')
             with self.assertRaises(ValueError):manager.save('spot','BTCUSDT',[],0)
+
+    def test_optional_fib_levels_and_names_preserve_legacy_and_atomic_revisions(self):
+        legacy=drawing('fib');custom={**legacy,'levels':[0,.25,.5,1,1.5,-.5],'name':'Range study'}
+        self.assertEqual(validate_drawings([legacy]),[legacy])
+        self.assertEqual(validate_drawings([custom]),[custom])
+        for levels in ([],[0]*2,[True],[float('nan')],[float('inf')],[-5.01],[5.01],list(range(21)),'0,1'):
+            with self.subTest(levels=levels),self.assertRaises(ValueError):validate_drawings([{**custom,'levels':levels}])
+        with self.assertRaises(ValueError):validate_drawings([{**drawing('trend'),'levels':[0,1]}])
+        for name in ('x'*81,'bad\nname',42):
+            with self.assertRaises(ValueError):validate_drawings([{**custom,'name':name}])
+        with tempfile.TemporaryDirectory() as root:
+            manager=ChartDrawings(RunStore(Path(root)))
+            before=manager.save('spot','BTCUSDT',[legacy],0)
+            self.assertEqual(manager.settings('spot','BTCUSDT'),before)
+            after=manager.save('spot','BTCUSDT',[custom],1)
+            with self.assertRaises(ValueError):manager.save('spot','BTCUSDT',[{**custom,'levels':[6]}],2)
+            self.assertEqual(ChartDrawings(manager.store).settings('spot','BTCUSDT'),after)

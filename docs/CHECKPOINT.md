@@ -7,6 +7,23 @@ chart display tools. This is a development source checkpoint, not a packaged
 release, main merge or final owner acceptance. [PROJECT.md](../PROJECT.md) remains
 the specification; [STATUS.md](STATUS.md) records exact-source evidence.
 
+## Current indicator and drawing additions
+
+ADR 0043 adds ATR (explicit Wilder/SMA seed), Stochastic and OBV display tools,
+plus custom Fib ratios/reset and optional names in the saved-object selector.
+Graph/recorded IR, six previous display formulas and immutable runs are unchanged.
+Legacy drawing documents retain their fields on read. All three additions stay
+unavailable before the saved origin; OBV retains native source units. Focused
+coverage: 25 distinct Python / 34 frontend tests, TypeScript/build. Frozen clean
+source `227c025`: backend 491 total (483 passed / eight expected platform skips)
+in 194.067s; frontend 520/520 across 57 files in 18.00s; TypeScript/Vite passed.
+Source SHA/worktree remained unchanged throughout. Parent-led fixed-H4 offline
+browser acceptance passed on `227c025`: independent indicator readouts and edited
+parameters, normal auxiliary panes under log price, custom Fib levels/name,
+validation, reset/undo, lock and reload. See STATUS for exact evidence and the
+remaining live-provider/native/Windows and unperformed navigation limits.
+No dependency, provider fetch, version bump or main integration.
+
 ## Current chart-workspace candidate
 
 ADR 0042 implements independent default volume overlays and optional separate

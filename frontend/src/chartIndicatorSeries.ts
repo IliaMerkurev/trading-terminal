@@ -15,11 +15,11 @@ export function installIndicatorSeries(
   for (const [index, item] of instances.entries()) {
     if (!item.visible) continue;
     const volumeOverlay = item.type === 'volume' && item.placement !== 'pane';
-    const group = ['rsi', 'macd', 'volume'].includes(item.type) && !volumeOverlay ? item.type : 'price';
+    const group = ['rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv'].includes(item.type) && !volumeOverlay ? item.type : 'price';
     if (group !== 'price' && !panes.has(group)) panes.set(group, next++);
     const pane = panes.get(group) ?? 0;
     const ports = item.type === 'bb' ? ['upper', 'middle', 'lower']
-      : item.type === 'macd' ? ['macd', 'signal', 'histogram'] : ['value'];
+      : item.type === 'macd' ? ['macd', 'signal', 'histogram'] : item.type === 'stochastic' ? ['k', 'd'] : ['value'];
     for (const port of ports) {
       const histogram = item.type === 'volume' || port === 'histogram';
       const options: any = {
@@ -30,10 +30,11 @@ export function installIndicatorSeries(
         lastValueVisible: true,
         crosshairMarkerVisible: !histogram,
       };
-      if (['signal', 'upper', 'lower'].includes(port)) options.lineStyle = 2;
-      if (item.type === 'rsi') {
+      if (['signal', 'upper', 'lower', 'd'].includes(port)) options.lineStyle = 2;
+      if (item.type === 'rsi' || item.type === 'stochastic') {
         options.autoscaleInfoProvider = () => ({priceRange: {minValue: 0, maxValue: 100}});
       }
+      if (item.type === 'obv') options.priceFormat = {type: 'volume'};
       if (item.type === 'volume') {
         options.priceFormat = {type: 'volume'};
         if (volumeOverlay) {options.priceScaleId = `volume-${item.id}`; options.lastValueVisible = false;}
@@ -47,11 +48,11 @@ export function installIndicatorSeries(
         const original = primaryScale.options();
         const margins = {...original.scaleMargins};
         series.priceScale().applyOptions({mode: 0, autoScale: true,
-          scaleMargins: item.type === 'rsi' ? {top: 0, bottom: 0} : {top: 0.2, bottom: 0.1}});
+          scaleMargins: ['rsi', 'stochastic'].includes(item.type) ? {top: 0, bottom: 0} : {top: 0.2, bottom: 0.1}});
         primaryScale.applyOptions({mode: original.mode ?? 0, autoScale: original.autoScale ?? true, scaleMargins: margins});
       }
-      if (item.type === 'rsi') {
-        for (const price of [30, 70]) {
+      if (item.type === 'rsi' || item.type === 'stochastic') {
+        for (const price of (item.type === 'rsi' ? [30, 70] : port === 'k' ? [20, 80] : [])) {
           series.createPriceLine({price, color: '#879bb5', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: String(price)});
         }
       }

@@ -1,7 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {api} from './api';
 import type {LiveCandle} from './liveChartData';
-import {drawingTools,isTypingTarget,logicalToTime,moveDrawing,sanitizeAnnotation,timeToLogical,validAnchors,type Anchor,type Drawing,type DrawingDocument,type DrawingKind} from './chartDrawings';
+import {defaultFibLevels,parseFibLevels,drawingTools,isTypingTarget,logicalToTime,moveDrawing,sanitizeAnnotation,timeToLogical,validAnchors,type Anchor,type Drawing,type DrawingDocument,type DrawingKind} from './chartDrawings';
 
 type Props={children:React.ReactNode;chart:React.MutableRefObject<any>;series:React.MutableRefObject<any>;rows:LiveCandle[];minutes:number;source:string;market:string;symbol:string;active:boolean};
 type Gesture={id:string;endpoint:number|null;start:Anchor;original:Drawing;creating:boolean};
@@ -11,6 +11,7 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
  const [tool,setTool]=useState<DrawingKind|'pointer'|'ruler'>('pointer'),[selected,setSelected]=useState<string|null>(null),[preview,setPreview]=useState<Drawing|null>(null),[magnet,setMagnet]=useState(false),[hide,setHide]=useState(false);
  const [ruler,setRuler]=useState(false);
  const [color,setColor]=useState('#e0b95e'),[width,setWidth]=useState(2),[style,setStyle]=useState<Drawing['style']>('solid'),[text,setText]=useState('Note');
+ const [levelsText,setLevelsText]=useState(defaultFibLevels.join(', ')),[name,setName]=useState('');
  const [history,setHistory]=useState<{past:Drawing[][];future:Drawing[][]}>({past:[],future:[]});
  const [geometry,setGeometry]=useState({width:0,height:0,points:{} as Record<string,number[][]>});
  const epoch=useRef(0),docRef=useRef(doc),gesture=useRef<Gesture|null>(null),svg=useRef<SVGSVGElement>(null),pending=useRef<null|{next:Drawing[];history:typeof history}>(null);
@@ -41,6 +42,9 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
  const undo=()=>{if(gesture.current){cancel();return;}if(history.past.length&&!saving&&!pending.current){const previous=history.past.at(-1)!;void save(previous,{past:history.past.slice(0,-1),future:[doc.drawings,...history.future].slice(0,50)});setSelected(null);}};
  const redo=()=>{if(gesture.current){cancel();return;}if(history.future.length&&!saving&&!pending.current){void save(history.future[0],{past:[...history.past,doc.drawings].slice(-50),future:history.future.slice(1)});setSelected(null);}};
  const current=doc.drawings.find(d=>d.id===selected);
+ useEffect(()=>{setLevelsText((current?.levels??defaultFibLevels).join(', '));},[selected,JSON.stringify(current?.levels)]);
+ useEffect(()=>{setName(current?.name??'');},[selected,current?.name]);
+ const parsedLevels=parseFibLevels(levelsText);
  const edit=(change:Partial<Drawing>)=>{if(current&&!saving&&!pending.current)commit(doc.drawings.map(d=>d.id===selected?{...d,...change}:d));};
  const remove=()=>{if(gesture.current){cancel();return;}if(current&&!current.locked&&!saving&&!pending.current){commit(doc.drawings.filter(d=>d.id!==selected));setSelected(null);}};
  const drawings=useMemo(()=>preview?[...doc.drawings.filter(d=>d.id!==preview.id),preview]:doc.drawings,[preview,doc.drawings]);
@@ -122,8 +126,8 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
   else if(drawing.kind==='ray'){
    const dx=endX-x,dy=endY-y;const factor=Math.abs(dx)>0.001?(dx>0?(geometry.width-x)/dx:-x/dx):Math.abs(dy)>0.001?(dy>0?(geometry.height-y)/dy:-y/dy):1;
    elements=line(x,y,x+dx*Math.max(1,factor),y+dy*Math.max(1,factor));
-  }else if(drawing.kind==='fib')elements=[0,0.236,0.382,0.5,0.618,0.786,1].map(level=>{
-   const price=drawing.anchors[0].price+(drawing.anchors[1].price-drawing.anchors[0].price)*level,coordinate=series.current?.priceToCoordinate(price);if(coordinate==null)return null;
+  }else if(drawing.kind==='fib')elements=(drawing.levels??defaultFibLevels).map(level=>{
+   const price=drawing.anchors[0].price+(drawing.anchors[1].price-drawing.anchors[0].price)*level,coordinate=series.current?.priceToCoordinate(price);if(price<=0||coordinate==null||!Number.isFinite(coordinate))return null;
    return <g key={level}>{line(x,coordinate,endX,coordinate)}<text x={Math.min(x,endX)+4} y={coordinate-4} stroke="none" fill={drawing.color} fontSize={11}>{level} · {price.toLocaleString(undefined,{maximumSignificantDigits:8})}</text></g>;
   });else elements=line(x,y,endX,endY);
   return <g key={drawing.id} {...stroke} style={{pointerEvents:tool==='pointer'&&!(ruler&&drawing.id===preview?.id)?'visiblePainted':'none',cursor:drawing.locked?'default':'move'}} onPointerDown={event=>begin(event,drawing)}>
@@ -147,8 +151,10 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
    <label>Width<select aria-label="Drawing width" value={current?.width??width} disabled={disabled||current?.locked} onChange={event=>{setWidth(Number(event.target.value));if(current)edit({width:Number(event.target.value)});}}>{[1,2,3,4].map(value=><option key={value}>{value}</option>)}</select></label>
    <label>Style<select aria-label="Drawing style" value={current?.style??style} disabled={disabled||current?.locked} onChange={event=>{const value=event.target.value as Drawing['style'];setStyle(value);if(current)edit({style:value});}}>{['solid','dashed','dotted'].map(value=><option key={value}>{value}</option>)}</select></label>
    {(tool==='text'||current?.kind==='text')&&<label>Text<input aria-label="Annotation text" maxLength={200} value={text} onChange={event=>setText(sanitizeAnnotation(event.target.value))}/>{current&&<button disabled={disabled||current.locked} onClick={()=>edit({text})}>Apply text</button>}</label>}
+   {current&&<label>Name<input aria-label="Drawing name" maxLength={80} value={name} disabled={disabled||current.locked} onChange={event=>setName(sanitizeAnnotation(event.target.value).slice(0,80))}/><button disabled={disabled||current.locked||name===(current.name??'')} onClick={()=>edit({name})}>Rename drawing</button></label>}
+   {current?.kind==='fib'&&<div><label>Levels<input aria-label="Fibonacci levels" value={levelsText} disabled={disabled||current.locked} onChange={event=>setLevelsText(event.target.value)}/></label><small>Comma-separated ratios, 1–20 unique values from -5 to 5. Labels show ratio and price; nonpositive derived prices are omitted.</small>{!parsedLevels&&<span role="alert">Enter unique finite Fibonacci levels from -5 to 5.</span>}<button disabled={disabled||current.locked||!parsedLevels} onClick={()=>{if(parsedLevels)edit({levels:parsedLevels});}}>Apply levels</button><button disabled={disabled||current.locked} onClick={()=>{setLevelsText(defaultFibLevels.join(', '));edit({levels:[...defaultFibLevels]});}}>Reset levels</button></div>}
    {current&&<><button aria-pressed={current.locked} disabled={disabled} onClick={()=>edit({locked:!current.locked})}>{current.locked?'Unlock':'Lock'} drawing</button><button disabled={disabled||current.locked} onClick={()=>edit({visible:!current.visible})}>{current.visible?'Hide':'Show'} selected</button><button disabled={disabled||current.locked} onClick={remove}>Delete drawing</button></>}
-   <select aria-label="Select saved drawing" value={selected??''} onChange={event=>{setSelected(event.target.value||null);const item=doc.drawings.find(d=>d.id===event.target.value);if(item)setText(item.text);}}><option value="">Select drawing ({doc.drawings.length}/100)</option>{doc.drawings.map((drawing,index)=><option key={drawing.id} value={drawing.id}>{index+1}. {drawing.kind}{drawing.locked?' · locked':''}{drawing.visible?'':' · hidden'}</option>)}</select>
+   <select aria-label="Select saved drawing" value={selected??''} onChange={event=>{setSelected(event.target.value||null);const item=doc.drawings.find(d=>d.id===event.target.value);if(item)setText(item.text);}}><option value="">Select drawing ({doc.drawings.length}/100)</option>{doc.drawings.map((drawing,index)=><option key={drawing.id} value={drawing.id}>{index+1}. {drawing.name||drawing.kind}{drawing.locked?' · locked':''}{drawing.visible?'':' · hidden'}</option>)}</select>
    <span role="status">{saving?'Saving drawing…':error?'Changes need attention':loaded?'Drawings saved locally':'Loading drawings…'}</span>
    {preview&&!gesture.current&&<button onClick={cancel}>Clear ruler</button>}
    {error&&<span role="alert">{error}{pending.current&&<><button disabled={saving} onClick={()=>{const retry=pending.current;if(retry)void save(retry.next,retry.history);}}>Retry saving</button><button disabled={saving} onClick={()=>{pending.current=null;setError('');setPreview(null);}}>Discard unsaved change</button></>}</span>}

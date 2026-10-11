@@ -685,3 +685,23 @@ Focused verification: Python `tests.test_chart_drawings` and
 Run final aggregates only after source is genuinely frozen: immutable runtime
 hashes are part of backtest/research contracts. Browser interaction and native
 Windows acceptance remain distinct from these mocked component checks.
+
+## Additional display indicators and Fib editor (ADR 0043)
+
+ATR display uses Wilder smoothing after an SMA seed; graph ATR retains its
+existing engine seed. Stochastic's complete K/D warmup can reach 2998 bars;
+all three new kinds remain unavailable before the persisted origin. OBV uses
+native volume without conversion and resets only its own state on invalid
+volume. Keep these distinctions in the chart's calculation details and retain
+normal auxiliary scales under primary log/manual price mode.
+
+Fib `levels` and drawing `name` are optional additive version-1 fields. Do not
+normalize or rewrite old drawings on read. Preserve exact source namespaces,
+transactional revisions, explicit save/retry and undo history. Validate ratio
+count/uniqueness/finite bounds in both input and backend. Rendering interpolates
+prices before projection and omits nonpositive derived prices under any scale.
+
+Focused checks: `python -m unittest tests.test_display_indicator_additions
+ tests.test_display_indicators tests.test_chart_drawings -q` and the existing
+four chart component/unit files documented above. Final aggregate checks run
+only against frozen, committed source, followed by a separate browser review.

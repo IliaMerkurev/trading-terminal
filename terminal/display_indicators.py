@@ -1,9 +1,10 @@
 """Bounded cache-only chart presentation; never evaluates a strategy or orders.
 
-Engine indicator primitives are shared with Strategy IR. Origins and settings
+The original engine primitives are shared with Strategy IR; additive kinds
+have explicit display-only seeds. Origins and settings
 belong to the workspace SQLite database, not a browser's shared localStorage.
 """
-from collections import OrderedDict
+from collections import OrderedDict, deque
 import copy
 import json
 import math
@@ -16,7 +17,7 @@ from terminal.market_sources import cache_market
 CONTRACT = 'native-close-engine-seeds-v1'
 MAX_BARS = 10000
 MAX_INSTANCES = 8
-FIELDS = {'sma': ('period',), 'ema': ('period',), 'bb': ('period', 'deviations'), 'rsi': ('period',), 'macd': ('fast', 'slow', 'signal'), 'volume': ()}
+FIELDS = {'sma': ('period',), 'ema': ('period',), 'bb': ('period', 'deviations'), 'rsi': ('period',), 'macd': ('fast', 'slow', 'signal'), 'volume': (), 'atr': ('period',), 'stochastic': ('period', 'smooth', 'signal'), 'obv': ()}
 
 def validate_instances(instances):
     if not isinstance(instances, list) or len(instances) > MAX_INSTANCES:
@@ -51,6 +52,52 @@ def validate_instances(instances):
             item.setdefault('placement', 'overlay')
     return valid
 
+class NativeDisplayState:
+    """Independent display-only additions; existing engine seeds are untouched."""
+    def __init__(self, item):
+        self.kind, self.params = item['type'], item['params']
+        self.previous = None
+        self.value = None
+        self.samples = deque(maxlen=self.params.get('period', 1))
+        self.raw = deque(maxlen=self.params.get('smooth', 1))
+        self.k = deque(maxlen=self.params.get('signal', 1))
+
+    def update(self, row):
+        close, high, low = row['close'], row['high'], row['low']
+        if self.kind == 'atr':
+            tr = high - low if self.previous is None else max(high-low, abs(high-self.previous), abs(low-self.previous))
+            self.samples.append(tr)
+            n = self.params['period']
+            if self.value is not None:
+                self.value = ((n-1)*self.value + tr)/n
+            elif len(self.samples) == n:
+                self.value = sum(self.samples)/n
+            result = {'value': self.value}
+        elif self.kind == 'obv':
+            volume = row.get('volume')
+            if type(volume) not in (int, float) or not math.isfinite(volume) or volume < 0:
+                self.previous = self.value = None
+                return {'value': None}
+            self.value = 0.0 if self.previous is None else self.value + (volume if close > self.previous else -volume if close < self.previous else 0)
+            result = {'value': self.value}
+        else:
+            result = {'k': None, 'd': None}
+            self.samples.append((high, low))
+            if len(self.samples) == self.params['period']:
+                highest = max(h for h, _ in self.samples)
+                lowest = min(l for _, l in self.samples)
+                # Explicit flat-window policy: zero; never infer missing data.
+                self.raw.append((close-lowest)/(highest-lowest)*100 if highest != lowest else 0.0)
+                if len(self.raw) == self.params['smooth']:
+                    value = sum(self.raw)/len(self.raw)
+                    self.k.append(value)
+                    result['k'] = value
+                    if len(self.k) == self.params['signal']:
+                        result['d'] = sum(self.k)/len(self.k)
+        self.previous = close
+        return result
+
+
 def calculate(candles, instances, minutes, start, end, cancel=None):
     """One streaming replay; viewport is an output filter, never the seed."""
     width = minutes * 60
@@ -61,7 +108,9 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
     unknown = 0
     columns = {i['id']: {p: [] for p in ('upper', 'middle', 'lower') if i['type'] == 'bb'} for i in instances}
     for i in instances:
-        if i['type'] == 'macd':
+        if i['type'] == 'stochastic':
+            columns[i['id']] = {'k': [], 'd': []}
+        elif i['type'] == 'macd':
             columns[i['id']] = {p: [] for p in ('macd', 'signal', 'histogram')}
         elif i['type'] != 'bb':
             columns[i['id']] = {'value': []}
@@ -70,7 +119,7 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
     confirmed = 0
 
     def reset():
-        return {i['id']: indicator_for(i) for i in instances if i['type'] != 'volume'}
+        return {i['id']: NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i) for i in instances if i['type'] != 'volume'}
     states = reset()
     for index, row in enumerate(candles):
         if index % 32 == 0 and cancel and cancel.is_set():
@@ -114,7 +163,9 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
             elif closed:
                 state = states[ident]
                 source = row['close']
-                if kind == 'macd':
+                if kind in ('atr', 'stochastic', 'obv'):
+                    values = state.update(row)
+                elif kind == 'macd':
                     line, signal = state
                     line.update_raw(source)
                     if line.initialized:

@@ -1,7 +1,7 @@
 import type {LiveCandle} from './liveChartData';
 export type Anchor = {time:number; price:number};
 export type DrawingKind = 'horizontal'|'vertical'|'trend'|'ray'|'rectangle'|'fib'|'text';
-export type Drawing = {id:string;kind:DrawingKind;anchors:Anchor[];color:string;width:number;style:'solid'|'dashed'|'dotted';text:string;visible:boolean;locked:boolean};
+export type Drawing = {id:string;kind:DrawingKind;anchors:Anchor[];color:string;width:number;style:'solid'|'dashed'|'dotted';text:string;visible:boolean;locked:boolean;levels?:number[];name?:string};
 export type DrawingDocument = {version:1;revision:number;drawings:Drawing[]};
 export const drawingTools: {kind:DrawingKind|'pointer'|'ruler';label:string;icon:string}[] = [
  {kind:'pointer',label:'Select / pan',icon:'↖'},{kind:'horizontal',label:'Horizontal line',icon:'━'},
@@ -33,3 +33,11 @@ export function moveDrawing(drawing:Drawing, from:Anchor, to:Anchor):Drawing {
  return {...drawing,anchors:drawing.anchors.map(anchor=>({time:anchor.time+to.time-from.time,price:anchor.price+to.price-from.price}))};
 }
 export function validAnchors(anchors:Anchor[]){return anchors.every(a=>Number.isFinite(a.time)&&a.time>0&&a.time<=253402300799&&Number.isFinite(a.price)&&a.price>0&&a.price<=1e15);}
+
+export const defaultFibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+export function parseFibLevels(text:string):number[]|null {
+ const tokens=text.split(',').map(value=>value.trim());
+ if(tokens.length<1||tokens.length>20||tokens.some(value=>!value||!/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?$/i.test(value)))return null;
+ const levels=tokens.map(Number);
+ return levels.every(value=>Number.isFinite(value)&&value>=-5&&value<=5)&&new Set(levels).size===levels.length?levels:null;
+}

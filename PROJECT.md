@@ -504,3 +504,16 @@ there is no execution/trading meaning or new data acquisition. Optional new
 indicator formulas are deferred in this first slice. See ADR 0042 for rendering,
 acceptance boundaries and implementation limits. No release, main merge,
 version bump, subscription, proprietary chart product or dependency installation.
+
+### Later authorized chart indicator and drawing extension — 2026-10-11
+
+Add native-timeframe cache-only display ATR (Wilder with explicit SMA seed),
+Stochastic (rolling high/low, SMA K/D) and zero-origin OBV. Preserve the previous
+six formulas, source confirmations/origins, bounded replay and native volume
+units. Disclose that display ATR initialization differs from graph/recorded IR;
+no Pine equality or new strategy/execution support is implied. Add optional
+validated custom Fibonacci ratios with labels/reset and optional drawing names
+in the existing selector. Legacy version-1 drawings remain readable without
+read-time rewrites. See [ADR 0043](docs/adr/0043-chart-indicator-drawing-additions.md)
+for formulas, warmup, limits and acceptance boundaries. No new dependency,
+provider acquisition, release, main merge or version bump.

@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 
-export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume';
+export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume' | 'atr' | 'stochastic' | 'obv';
 export type ChartIndicator = {
   id: string;
   type: IndicatorKind;
@@ -24,6 +24,9 @@ export const defaults: Record<IndicatorKind, Record<string, number>> = {
   rsi: {period: 14},
   macd: {fast: 12, slow: 26, signal: 9},
   volume: {},
+  atr: {period: 14},
+  stochastic: {period: 14, smooth: 3, signal: 3},
+  obv: {},
 };
 
 export function validateIndicators(items: ChartIndicator[]): string {
@@ -53,10 +56,13 @@ export const parameterOrder: Record<IndicatorKind, string[]> = {
   rsi: ['period'],
   macd: ['fast', 'slow', 'signal'],
   volume: [],
+  atr: ['period'],
+  stochastic: ['period', 'smooth', 'signal'],
+  obv: [],
 };
 
 export function indicatorName(item: ChartIndicator) {
-  const label = item.type === 'bb' ? 'Bollinger Bands' : item.type.toUpperCase();
+  const label = item.type === 'bb' ? 'Bollinger Bands' : item.type === 'atr' ? 'ATR · Wilder, SMA seed' : item.type.toUpperCase();
   const parameters = parameterOrder[item.type].map(key => item.params[key]);
   return label + (parameters.length ? ' (' + parameters.join(', ') + ')' : '');
 }
@@ -74,7 +80,7 @@ export default function ChartIndicators({settings, onApply, busy, error}: Props)
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<IndicatorKind>('ema');
   useEffect(() => { setDraft(settings.instances); }, [settings]);
-  const matches = (Object.keys(defaults) as IndicatorKind[]).filter(type => (type + ' ' + ({sma:'Simple moving average',ema:'Exponential moving average',bb:'Bollinger Bands',rsi:'Relative strength index',macd:'Moving average convergence divergence',volume:'Volume'}[type])).toLowerCase().includes(search.toLowerCase()));
+  const matches = (Object.keys(defaults) as IndicatorKind[]).filter(type => (type + ' ' + ({sma:'Simple moving average',ema:'Exponential moving average',bb:'Bollinger Bands',rsi:'Relative strength index',macd:'Moving average convergence divergence',volume:'Volume',atr:'Average true range',stochastic:'Stochastic oscillator',obv:'On balance volume'}[type])).toLowerCase().includes(search.toLowerCase()));
   const selectedKind = matches.includes(kind) ? kind : matches[0];
   const invalid = validateIndicators(draft);
   const edit = (id: string, change: Partial<ChartIndicator>) => {
@@ -96,12 +102,12 @@ export default function ChartIndicators({settings, onApply, busy, error}: Props)
   return <>
     <button aria-expanded={open} onClick={() => setOpen(value => !value)}>Indicators ({settings.instances.length})</button>
     {open && <div className="chart-indicator-controls" aria-label="Chart indicator settings">
-      <p>Display only · selected native chart timeframe · confirmed closes. Recorded IR and trading settings are separate.</p>
+      <p>Display only · selected native chart timeframe · confirmed closes. Recorded IR and trading settings are separate. ATR uses price units; Stochastic uses percent; OBV uses the disclosed source-native volume units and starts at zero at the saved origin or segment reset.</p>
       <div className="chart-indicator-add">
         <label>Search indicators<input aria-label="Search indicators" value={search} onChange={event => setSearch(event.target.value)} placeholder="EMA, volume…"/></label>
         <label>Indicator type
           <select aria-label="Add indicator type" value={selectedKind ?? ''} onChange={event => setKind(event.target.value as IndicatorKind)}>
-            {matches.map(type => <option key={type} value={type}>{type === 'bb' ? 'Bollinger Bands' : type.toUpperCase()}</option>)}
+            {matches.map(type => <option key={type} value={type}>{type === 'bb' ? 'Bollinger Bands' : type === 'atr' ? 'ATR · Wilder, SMA seed' : type.toUpperCase()}</option>)}
           </select>
         </label>
         <button disabled={draft.length >= 8 || busy || !selectedKind} onClick={add}>Add indicator</button>
