@@ -25,6 +25,15 @@ export const indicatorCatalog: {kind: IndicatorKind; name: string; category: Ind
   {kind:'mfi', name:'Money flow index', category:'Volume', description:'HLC3 changes weighted by source-native volume · percent'},
   {kind:'cmf', name:'Chaikin money flow', category:'Volume', description:'Rolling volume-weighted flow · dimensionless'},
   {kind:'stddev', name:'Standard deviation', category:'Volatility', description:'Population deviation of closes · price units'},
+  {kind:'dmi', name:'Directional movement index / ADX', category:'Trend', description:'Wilder +DI / −DI and ADX · percent'},
+  {kind:'supertrend', name:'Supertrend', category:'Trend', description:'ATR median bands · split up / down lines · signed direction readout'},
+  {kind:'stochrsi', name:'Stochastic RSI', category:'Momentum', description:'Rolling RSI range · SMA K / D · percent'},
+  {kind:'hma', name:'Hull moving average', category:'Trend', description:'Nested WMA · floor half and square-root windows'},
+  {kind:'bbpercentb', name:'Bollinger %B', category:'Volatility', description:'Fraction within bands · unbounded dimensionless ratio'},
+  {kind:'bbwidth', name:'Bollinger bandwidth', category:'Volatility', description:'Band width / middle · percent'},
+  {kind:'vwap', name:'Volume weighted average price', category:'Volume', description:'HLC3 · exact UTC-day or fixed-anchor coverage'},
+  {kind:'sar', name:'Parabolic SAR', category:'Trend', description:'Local causal SAR contract · dots · no platform parity claim'},
+  {kind:'ichimoku', name:'Ichimoku cloud', category:'Trend', description:'Tenkan / Kijun · causal raw-bar shifted cloud and later-known Chikou'},
 ];
 export const favoritesKey = 'trading-terminal.indicator-favorites.v1';
 export function parseIndicatorFavorites(raw: string | null): IndicatorKind[] {

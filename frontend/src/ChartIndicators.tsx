@@ -2,7 +2,7 @@ import {useEffect, useId, useRef, useState} from 'react';
 import {isTypingTarget} from './chartDrawings';
 import {indicatorCatalog, indicatorCategories, favoritesKey, parseIndicatorFavorites} from './indicatorCatalog';
 
-export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume' | 'atr' | 'stochastic' | 'obv' | 'wma' | 'rma' | 'vwma' | 'donchian' | 'keltner' | 'roc' | 'momentum' | 'cci' | 'williamsr' | 'mfi' | 'cmf' | 'stddev';
+export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume' | 'atr' | 'stochastic' | 'obv' | 'wma' | 'rma' | 'vwma' | 'donchian' | 'keltner' | 'roc' | 'momentum' | 'cci' | 'williamsr' | 'mfi' | 'cmf' | 'stddev' | 'dmi' | 'supertrend' | 'stochrsi' | 'hma' | 'bbpercentb' | 'bbwidth' | 'vwap' | 'sar' | 'ichimoku';
 export type ChartIndicator = {
   id: string;
   type: IndicatorKind;
@@ -41,22 +41,43 @@ export const defaults: Record<IndicatorKind, Record<string, number>> = {
   mfi: {period: 14},
   cmf: {period: 14},
   stddev: {period: 20},
+  dmi: {period: 14, adx_period: 14},
+  supertrend: {period: 10, multiplier: 3},
+  stochrsi: {period: 14, stochastic_period: 14, smooth: 3, signal: 3},
+  hma: {period: 20},
+  bbpercentb: {period: 20, deviations: 2},
+  bbwidth: {period: 20, deviations: 2},
+  vwap: {mode: 0, anchor: 0},
+  sar: {step: 0.02, max: 0.2},
+  ichimoku: {conversion: 9, base: 26, span_b: 52, displacement: 26},
 
 };
 
-export function validateIndicators(items: ChartIndicator[]): string {
+export function validateIndicators(items: ChartIndicator[], minutes = 1): string {
   if (items.length > 8) return 'Use at most 8 indicators.';
   for (const item of items) {
     if (!/^#[0-9a-fA-F]{6}$/.test(item.color)) return 'Choose a valid color.';
+    if (item.type === 'vwap') {
+      const {mode, anchor} = item.params;
+      if (![0, 1].includes(mode) || !Number.isInteger(anchor) || anchor < 0 || anchor > 253402300799 || (mode === 0 && anchor !== 0)) return 'Choose a valid VWAP mode and UTC anchor.';
+      if (anchor % (minutes * 60)) return `VWAP anchor must align exactly with the native ${minutes}-minute candle open.`;
+      continue;
+    }
+    if (item.type === 'sar') {
+      const {step, max} = item.params;
+      if (!Number.isFinite(step) || !Number.isFinite(max) || !(0 < step && step <= max && max <= 1)) return 'SAR requires 0 < step ≤ max ≤ 1.';
+      continue;
+    }
     for (const [key, value] of Object.entries(item.params)) {
       if ((key === 'deviations' || key === 'multiplier')) {
         if (!Number.isFinite(value) || value <= 0 || value > 10) {
-          return `${key === 'multiplier' ? 'Keltner multiplier' : 'BB deviations'} must be greater than 0 and at most 10.`;
+          return `${key === 'multiplier' ? (item.type === 'keltner' ? 'Keltner multiplier' : 'Supertrend multiplier') : 'BB deviations'} must be greater than 0 and at most 10.`;
         }
       } else if (!Number.isInteger(value) || value < 1 || value > 1000) {
         return 'Periods must be whole numbers from 1 to 1000.';
       }
     }
+    if (item.type === 'ichimoku' && item.params.displacement > 100) return 'Ichimoku displacement must be a whole number from 1 to 100.';
     if (item.type === 'macd' && item.params.fast >= item.params.slow) {
       return 'MACD fast must be less than slow.';
     }
@@ -86,10 +107,45 @@ export const parameterOrder: Record<IndicatorKind, string[]> = {
   mfi: ['period'],
   cmf: ['period'],
   stddev: ['period'],
+  dmi: ['period', 'adx_period'],
+  supertrend: ['period', 'multiplier'],
+  stochrsi: ['period', 'stochastic_period', 'smooth', 'signal'],
+  hma: ['period'],
+  bbpercentb: ['period', 'deviations'],
+  bbwidth: ['period', 'deviations'],
+  vwap: ['mode', 'anchor'],
+  sar: ['step', 'max'],
+  ichimoku: ['conversion', 'base', 'span_b', 'displacement'],
 
 };
 
+export function utcAnchorInput(anchor: number) {
+  return Number.isFinite(anchor) && anchor >= 0 && anchor <= 253402300799 ? new Date(anchor * 1000).toISOString().slice(0, 19) : '';
+}
+export function UtcAnchorPicker({value, label, onChange}: {value:number; label:string; onChange:(value:number)=>void}) {
+  // Keep the browser's segmented editing state independent of numeric params.
+  // Writing a controlled empty value during an incomplete year wipes that state.
+  const initial = useRef(utcAnchorInput(value));
+  const lastInput = useRef<string | null>(null);
+  const [text, setText] = useState(initial.current);
+  const input = (event: React.FormEvent<HTMLInputElement>) => {
+    const next = event.currentTarget.value;
+    if (lastInput.current === next) return;
+    lastInput.current = next;
+    setText(next);
+    const complete = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(next);
+    onChange(complete ? Date.parse(next + 'Z') / 1000 : NaN);
+  };
+  return <input aria-label={label} aria-invalid={!text} type="datetime-local" step={1}
+    min="1970-01-01T00:00:00" max="9999-12-31T23:59:59" defaultValue={initial.current}
+    onInput={input} onChange={input}/>;
+}
+export function indicatorParameters(item: ChartIndicator) {
+  if (item.type === 'vwap') return item.params.mode === 0 ? 'UTC day · midnight reset' : `Fixed anchor · ${utcAnchorInput(item.params.anchor).replace('T', ' ') || 'Choose timestamp'} UTC`;
+  return parameterOrder[item.type].map(key => `${key} ${item.params[key]}`).join(' · ');
+}
 export function indicatorName(item: ChartIndicator) {
+  if (item.type === 'vwap') return `VWAP (${indicatorParameters(item)})`;
   const label = item.type === 'bb' ? 'Bollinger Bands' : item.type === 'atr' ? 'ATR · Wilder, SMA seed' : item.type.toUpperCase();
   const parameters = parameterOrder[item.type].map(key => item.params[key]);
   return label + (parameters.length ? ' (' + parameters.join(', ') + ')' : '');
@@ -104,9 +160,10 @@ type Props = {
   busy: boolean;
   error: string;
   volumeUnit?: string;
+  minutes?: number;
 };
 
-export default function ChartIndicators({settings, onApply, busy, error, volumeUnit, toolbar, toolbarActions}: Props) {
+export default function ChartIndicators({settings, onApply, busy, error, volumeUnit, toolbar, toolbarActions, minutes = 1}: Props) {
   const [open, setOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(true);
   const panelId = useId();
@@ -139,7 +196,7 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
     `${entry.kind} ${entry.name} ${entry.description}`.toLowerCase().includes(search.trim().toLowerCase()));
   const lastPage = Math.max(0, Math.ceil(matches.length / pageSize) - 1);
   const currentPage = Math.min(page, lastPage);
-  const invalid = validateIndicators(draft);
+  const invalid = validateIndicators(draft, minutes);
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.instances);
   const edit = (id: string, change: Partial<ChartIndicator>) => {
     setDraft(rows => rows.map(row => row.id === id ? {...row, ...change} : row));
@@ -182,7 +239,7 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
       {settings.instances.map((item, index) => <li key={item.id} className={item.visible ? '' : 'indicator-hidden'}>
         <span className="indicator-swatch" style={{backgroundColor: item.color}} aria-hidden="true"/>
         <button disabled={busy} className="indicator-settings-link" aria-label={`Settings for ${index + 1} ${item.type.toUpperCase()}`} title={indicatorName(item)} onClick={event => {initiator.current=event.currentTarget; setSelected(item.id); setCatalogOpen(false); setOpen(true); setTarget('editor');}}>
-          <strong>{index + 1}. {item.type.toUpperCase()}</strong><span>{parameterOrder[item.type].map(key => `${key} ${item.params[key]}`).join(' · ') || (item.type === 'volume' ? item.placement === 'pane' ? 'separate pane' : 'price overlay' : 'zero origin')}</span>
+          <strong>{index + 1}. {item.type.toUpperCase()}</strong><span>{indicatorParameters(item) || (item.type === 'volume' ? item.placement === 'pane' ? 'separate pane' : 'price overlay' : 'zero origin')}</span>
         </button>
         <button disabled={busy || open || dirty} aria-label={`${item.visible ? 'Hide' : 'Show'} ${index + 1} ${item.type.toUpperCase()}`} aria-pressed={item.visible} title={open || dirty ? 'Apply or cancel edits before changing visibility here' : 'Save visibility immediately'} onClick={() => onApply(settings.instances.map(row => row.id === item.id ? {...row, visible: !row.visible} : row))}>{item.visible ? 'Hide' : 'Show'}</button>
       </li>)}
@@ -220,13 +277,13 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
       {draft.map((item, index) => item.id === selectedItem?.id && <fieldset disabled={busy} key={item.id} tabIndex={-1} ref={editor}>
         <legend>{index + 1}. {item.type === 'bb' ? 'Bollinger Bands' : item.type.toUpperCase()}</legend>
         <div className="chart-indicator-fields">
-          {parameterOrder[item.type].map(key => [key, item.params[key]] as const).map(([key, value]) => <label key={key}>{key}
+          {parameterOrder[item.type].filter(() => item.type !== 'vwap').map(key => [key, item.params[key]] as const).map(([key, value]) => <label key={key}>{key}
             <input
               aria-label={`${index + 1} ${item.type.toUpperCase()} ${key}`}
               type="number"
-              min={(key === 'deviations' || key === 'multiplier') ? 0.01 : 1}
-              max={(key === 'deviations' || key === 'multiplier') ? 10 : 1000}
-              step={(key === 'deviations' || key === 'multiplier') ? 'any' : 1}
+              min={item.type === 'sar' ? 0.001 : (key === 'deviations' || key === 'multiplier') ? 0.01 : 1}
+              max={key === 'displacement' ? 100 : item.type === 'sar' ? 1 : (key === 'deviations' || key === 'multiplier') ? 10 : 1000}
+              step={item.type === 'sar' ? 'any' : (key === 'deviations' || key === 'multiplier') ? 'any' : 1}
               value={Number.isNaN(value) ? '' : value}
               onChange={event => edit(item.id, {params: {
                 ...item.params,
@@ -234,6 +291,11 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
               }})}
             />
           </label>)}
+          {item.type === 'vwap' && <>
+            <label>Session<select aria-label={`${index + 1} VWAP session`} value={item.params.mode} onChange={event => edit(item.id, {params: {mode: Number(event.target.value), anchor: 0}})}><option value={0}>UTC day (midnight reset)</option><option value={1}>Fixed UTC anchor</option></select></label>
+            {item.params.mode === 1 && <label>Anchor candle open (UTC)<UtcAnchorPicker label={`${index + 1} VWAP anchor UTC`} value={item.params.anchor} onChange={anchor => edit(item.id, {params: {...item.params, anchor}})}/></label>}
+            <small>UTC candle-open time, not your local timezone. Requires the exact boundary and every confirmed native {minutes}-minute candle since it. Missing coverage is unavailable; no automatic backfill.</small>
+          </>}
           {item.type === 'volume' && <label>Placement<select aria-label={`${index + 1} VOLUME placement`} value={item.placement ?? 'overlay'} onChange={event => edit(item.id, {placement: event.target.value as 'overlay' | 'pane'})}><option value="overlay">Price overlay</option><option value="pane">Separate pane</option></select></label>}
           <label>Color
             <input aria-label={`${index + 1} ${item.type.toUpperCase()} color`} type="color" value={item.color}

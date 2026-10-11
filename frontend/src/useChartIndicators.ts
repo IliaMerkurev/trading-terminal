@@ -25,6 +25,7 @@ export function useChartIndicators(
   const calculationEpoch = useRef(0);
   const resultWindow = useRef(windowEpoch);
   const resultKey = useRef('');
+  const resultRows = useRef('');
   const requestKey = JSON.stringify([source, market, symbol, minutes, priceStyle]);
   settingsRef.current = settings;
 
@@ -74,6 +75,7 @@ export function useChartIndicators(
     }, reply => {
       if (!reply || stopped) return;
       if (reply.key !== JSON.stringify(rows.current) || reply.epoch !== calculationEpoch.current) return;
+      resultRows.current = reply.key;
       resultWindow.current = windowEpoch;
       resultKey.current = requestKey;
       setResult(reply.value);
@@ -118,5 +120,5 @@ export function useChartIndicators(
     anchor.current = true;
     setResult(null);
   };
-  return {settings, result: resultWindow.current === windowEpoch && resultKey.current === requestKey ? result : null, error, saving, loaded, apply, reanchor};
+  return {settings, projectionCurrent: resultRows.current === JSON.stringify(rows.current), result: resultWindow.current === windowEpoch && resultKey.current === requestKey ? result : null, error, saving, loaded, apply, reanchor};
 }

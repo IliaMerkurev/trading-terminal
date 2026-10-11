@@ -577,10 +577,14 @@ compatible display catalog. HA must use a stable cache-derived origin, explicit
 synthetic-price labeling and independent seed/gap/paging tests; raw prices,
 indicator inputs and all trading/recorded IR stay unchanged. Formula additions
 need bounded contracts, independent fixtures, causality, persistence and series
-integration before catalog exposure. The current integrated candidate exposes 21 implemented types with bounded
-catalog pagination and Candles/Heikin Ashi/raw-close Line. The final nine
-advanced types and owner acceptance remain pending; bounded synthetic
-actual-App browser acceptance passed on corrected source `7086f36`. Price style
+integration before catalog exposure. The current integrated candidate exposes all 30 implemented types with bounded
+catalog pagination and Candles/Heikin Ashi/raw-close Line. Advanced integration
+adds explicit UTC VWAP coverage, local SAR dots and causal Ichimoku primitive
+projections; see ADRs 0049 and 0050. The bounded 30-type implementation and
+actual-App browser milestone passed through corrected source `e4d35a0`; this is
+not whole-product, platform-parity, live-provider, Windows/native or owner-led
+unaided acceptance. Earlier bounded synthetic actual-App acceptance for
+price styles and the 21-type catalog passed on corrected source `7086f36`. Price style
 is transient and resets to Candles on reload; indicator/drawing persistence
 remains unchanged. See the
 [expansion plan](docs/CHART_EXPANSION_PLAN.md) and [ADR 0047](docs/adr/0047-market-indicator-catalog.md).

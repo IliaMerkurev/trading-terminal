@@ -321,7 +321,7 @@ it('offers only implemented kinds with search, categories and persistent type-on
  expect(JSON.parse(localStorage.getItem(favoritesKey)!)).toEqual(['bb']);expect(apply).not.toHaveBeenCalled();
  fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:''}});
  fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Momentum'}});
- expect(screen.getAllByRole('button',{name:/^Add /}).map(button=>button.getAttribute('aria-label'))).toEqual(['Add RSI','Add MACD','Add STOCHASTIC','Add ROC','Add MOMENTUM','Add CCI','Add WILLIAMSR']);
+ expect(screen.getAllByRole('button',{name:/^Add /}).map(button=>button.getAttribute('aria-label'))).toEqual(['Add RSI','Add MACD','Add STOCHASTIC','Add ROC','Add MOMENTUM','Add CCI','Add WILLIAMSR','Add STOCHRSI']);
  fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Favorites'}});
  expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(1);
  view.unmount();render(<ChartIndicators settings={emptySettings} onApply={apply} busy={false} error=""/>);
@@ -416,14 +416,16 @@ it('restores an enabled toolbar initiator when saving disables the legend and pe
  fireEvent.click(screen.getByRole('button',{name:'Add EMA'}));expect(apply).not.toHaveBeenCalled();
 });
 
-it('exposes exactly 21 validated types with bounded pages and resets pagination on filtering',()=>{
- expect(indicatorCatalog).toHaveLength(21);
- expect(new Set(indicatorCatalog.map(entry=>entry.kind)).size).toBe(21);
+it('exposes exactly 30 validated types with bounded pages and resets pagination on filtering',()=>{
+ expect(indicatorCatalog).toHaveLength(30);
+ expect(new Set(indicatorCatalog.map(entry=>entry.kind)).size).toBe(30);
  render(<ChartIndicators settings={emptySettings} onApply={vi.fn()} busy={false} error=""/>);
  fireEvent.click(screen.getByRole('button',{name:'Indicators (0)'}));
  expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(9);
  fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
  expect(screen.getByRole('button',{name:'Add KELTNER'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
+ expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(9);
  fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
  expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(3);
  fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:'keltner'}});
@@ -438,12 +440,12 @@ it('exposes exactly 21 validated types with bounded pages and resets pagination 
  fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
  fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Trend'}});
  expect(screen.getByRole('button',{name:'Add SMA'})).toBeTruthy();
- expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(5);
+ expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(9);
 });
 
 it('places all twelve new formulas on their intended panes with exact ports and bounded percent axes',()=>{
  const chart={priceScale:primaryScale,addSeries:vi.fn((kind,options,pane)=>({kind,options,pane,setData:vi.fn(),createPriceLine:vi.fn(),priceScale:()=>({applyOptions:vi.fn()})})),panes:()=>[]};
- const kinds=indicatorCatalog.slice(9).map(entry=>entry.kind);
+ const kinds=indicatorCatalog.slice(9,21).map(entry=>entry.kind);
  const owned=installIndicatorSeries(chart,null,kinds.map(kind=>item(kind)),false);
  expect(owned).toHaveLength(16);
  for(const kind of ['wma','rma','vwma','donchian','keltner'])expect(owned.filter(row=>row.kind===kind).every(row=>row.series.pane===0)).toBe(true);
@@ -472,4 +474,68 @@ it('uses the existing indicator poll for HA without instances and rejects obsole
  await act(async()=>finish({status:'ready',price_style:'heikin_ashi',price_candles:[{time:60,close:10}]}));
  expect(result.current.result.price_candles[0].close).toBe(10);
  unmount();
+});
+
+it('edits VWAP using UTC session names and aligned candle-open timestamps without saving a partial draft',()=>{
+ const apply=vi.fn();render(<ChartIndicators minutes={60} settings={{...emptySettings,instances:[item('vwap')]}} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 VWAP'}));
+ expect(screen.queryByLabelText('1 VWAP mode')).toBeNull();
+ expect(screen.getByText(/UTC candle-open time/)).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('1 VWAP session'),{target:{value:'1'}});
+ fireEvent.change(screen.getByLabelText('1 VWAP anchor UTC'),{target:{value:'2026-10-11T12:01:00'}});
+ expect(screen.getByRole('alert').textContent).toContain('native 60-minute candle open');
+ fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));expect(apply).not.toHaveBeenCalled();
+ fireEvent.change(screen.getByLabelText('1 VWAP anchor UTC'),{target:{value:'2026-10-11T12:00:00'}});
+ fireEvent.click(screen.getByRole('button',{name:'Close indicator settings'}));
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 VWAP'}));
+ expect((screen.getByLabelText('1 VWAP anchor UTC') as HTMLInputElement).value).toBe('2026-10-11T12:00');
+ fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
+ expect(apply.mock.calls[0][0][0].params).toEqual({mode:1,anchor:Date.parse('2026-10-11T12:00:00Z')/1000});
+ expect(indicatorName(apply.mock.calls[0][0][0])).toContain('2026-10-11 12:00:00 UTC');
+ fireEvent.change(screen.getByLabelText('1 VWAP session'),{target:{value:'0'}});
+ expect(screen.queryByLabelText('1 VWAP anchor UTC')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));expect(apply.mock.calls[1][0][0].params).toEqual({mode:0,anchor:0});
+});
+
+it('validates SAR acceleration ordering and preserves fractional values',()=>{
+ const apply=vi.fn();render(<ChartIndicators settings={{...emptySettings,instances:[item('sar')]}} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 SAR'}));
+ fireEvent.change(screen.getByLabelText('1 SAR step'),{target:{value:'0.3'}});
+ expect(screen.getByRole('alert').textContent).toContain('step ≤ max');
+ fireEvent.change(screen.getByLabelText('1 SAR max'),{target:{value:'0.4'}});
+ fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));expect(apply.mock.calls[0][0][0].params).toEqual({step:0.3,max:0.4});
+});
+
+it('installs advanced exact ports, readout-only direction, unbounded %B and SAR dots on raw price coordinates',()=>{
+ const chart={priceScale:primaryScale,addSeries:vi.fn((kind,options,pane)=>({kind,options,pane,setData:vi.fn(),createPriceLine:vi.fn(),priceScale:()=>({applyOptions:vi.fn()})})),panes:()=>[]};
+ const kinds=indicatorCatalog.slice(21,29).map(entry=>entry.kind);
+ const owned=installIndicatorSeries(chart,null,kinds.map(kind=>item(kind)),false);
+ expect(owned).toHaveLength(12);
+ expect(owned.filter(row=>row.kind==='supertrend').map(row=>row.port)).toEqual(['up','down']);
+ expect(owned.filter(row=>row.kind==='dmi').map(row=>row.port)).toEqual(['plus_di','minus_di','adx']);
+ expect(owned.filter(row=>row.kind==='stochrsi').map(row=>row.port)).toEqual(['k','d']);
+ for(const kind of ['supertrend','hma','vwap','sar'])expect(owned.filter(row=>row.kind===kind).every(row=>row.series.pane===0)).toBe(true);
+ for(const kind of ['dmi','stochrsi','bbpercentb','bbwidth'])expect(owned.filter(row=>row.kind===kind).every(row=>row.series.pane>0)).toBe(true);
+ const sar=owned.find(row=>row.kind==='sar')!;expect(sar.series.options).toMatchObject({lineVisible:false,pointMarkersVisible:true});
+ expect(owned.find(row=>row.kind==='bbpercentb')!.series.options.autoscaleInfoProvider).toBeUndefined();
+ updateIndicatorSeries(owned,{times:[60,120,180],columns:{supertrend:{up:[10,null,11],down:[null,12,null],direction:[1,-1,1]},sar:{value:[null,9,10]}}});
+ expect(owned.find(row=>row.kind==='supertrend'&&row.port==='up')!.series.setData).toHaveBeenCalledWith([{time:60,value:10,color:'transparent'},{time:120},{time:180,value:11,color:'#7eabff'}]);
+ expect(sar.series.setData).toHaveBeenCalledWith([{time:60},{time:120,value:9},{time:180,value:10}]);
+});
+
+it('keeps native UTC picker editing independent from numeric draft and accepts input events before blur',()=>{
+ const apply=vi.fn();render(<ChartIndicators minutes={60} settings={{...emptySettings,instances:[{...item('vwap'),params:{mode:1,anchor:0}}]}} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 VWAP'}));
+ const picker=screen.getByLabelText('1 VWAP anchor UTC') as HTMLInputElement;
+ fireEvent.input(picker,{target:{value:''}});expect(screen.getByRole('alert')).toBeTruthy();
+ expect(screen.getByLabelText('1 VWAP anchor UTC')).toBe(picker);
+ fireEvent.input(picker,{target:{value:'2010-01-01T00:01:00'}});expect(screen.getByRole('alert').textContent).toContain('align exactly');
+ fireEvent.input(picker,{target:{value:'2010-01-01T00:00:00'}});
+ fireEvent.change(picker,{target:{value:'2010-01-01T00:00:00'}});fireEvent.blur(picker);
+ expect(picker.value).toBe('2010-01-01T00:00');expect(screen.queryByRole('alert')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Close indicator settings'}));
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 VWAP'}));
+ expect((screen.getByLabelText('1 VWAP anchor UTC') as HTMLInputElement).value).toBe('2010-01-01T00:00');
+ fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
+ expect(apply.mock.calls[0][0][0].params.anchor).toBe(Date.parse('2010-01-01T00:00:00Z')/1000);
 });

@@ -58,7 +58,7 @@ fixtures and future-perturbation checks precede frontend metadata/rendering.
 Expose catalog entries only after backend validation, settings roundtrip and
 series integration agree. Preserve existing formulas and source-native units.
 
-### 4. Advanced formula batches, 30 total types — pending
+### 4. Advanced formula batches, 30 total types — bounded milestone complete
 
 The finite target adds nine further types (DMI/ADX counts as one three-output
 kind): DMI/ADX, Supertrend, Stochastic RSI, HMA, anchored/session VWAP, Parabolic
@@ -69,7 +69,17 @@ for DMI/ADX, Supertrend and SAR; compound warmup/rounding for Stochastic RSI/HMA
 UTC-day or explicit UTC anchor and native volume units for VWAP; causal shifted
 output timestamps and future whitespace without future input for Ichimoku; zero-
 width bands and units for %B/Bandwidth. Do not promise cross-vendor equality or
-strategy support. These entries remain absent from the current catalog.
+strategy support. All nine are now exposed in the integrated candidate under
+[ADR 0049](adr/0049-advanced-display-indicator-integration.md) and
+[ADR 0050](adr/0050-ichimoku-market-integration.md). Ichimoku projections use a
+raw-coordinate primitive without adding timestamps; Fit includes projections,
+Return targets raw history, and a disclosed projection-only pan guard retains
+the last populated raw candle. Independent review and bounded synthetic actual-App
+acceptance passed through corrected source `e4d35a0`; see the dated STATUS record
+for reused unchanged evidence and final checks. The finite 30-type implementation
+and browser milestone is complete. Whole-product, platform-parity, live-provider,
+Windows/native and owner-led unaided acceptance are not implied. Earlier phase
+acceptance remains valid only for its tested surface.
 
 ## Acceptance and boundaries
 

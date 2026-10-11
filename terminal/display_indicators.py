@@ -15,13 +15,14 @@ from terminal.data import canonical, digest, validate_symbol
 from terminal.graph import indicator_for
 from terminal import display_formula_catalog as formulas
 from terminal import chart_presentation as prices
+from terminal.display_projection import ProjectionCollector, MAX_DISPLACEMENT
 from terminal.market_sources import cache_market
 CONTRACT = 'native-close-engine-seeds-v1'
 MAX_BARS = 10000
 MAX_INSTANCES = 8
 FIELDS = {'sma': ('period',), 'ema': ('period',), 'bb': ('period', 'deviations'), 'rsi': ('period',), 'macd': ('fast', 'slow', 'signal'), 'volume': (), 'atr': ('period',), 'stochastic': ('period', 'smooth', 'signal'), 'obv': ()}
 
-FIELDS.update(formulas.FIELDS)
+FIELDS.update(formulas.ALL_FIELDS)
 
 def validate_instances(instances):
     if not isinstance(instances, list) or len(instances) > MAX_INSTANCES:
@@ -38,16 +39,20 @@ def validate_instances(instances):
         if not isinstance(ident, str) or not re.fullmatch('[a-zA-Z][a-zA-Z0-9_-]{0,63}', ident) or ident in seen:
             raise ValueError('Indicator IDs must be unique')
         seen.add(ident)
+        if isinstance(kind, str) and kind in formulas.BOUNDARY_FIELDS and isinstance(params, dict):
+            formulas.validate_boundary_params(kind, params)
         if not isinstance(kind, str) or kind not in FIELDS or (not isinstance(params, dict)) or (set(params) != set(FIELDS[kind])):
             raise ValueError('Invalid indicator type or parameters')
         if type(item['visible']) is not bool or not isinstance(item['color'], str) or (not re.fullmatch('#[0-9a-fA-F]{6}', item['color'])):
             raise ValueError('Invalid visibility or color')
-        for name, value in params.items():
+        for name, value in ({} if kind in formulas.BOUNDARY_FIELDS else params).items():
             if name in ('deviations', 'multiplier'):
                 if type(value) not in (int, float) or not math.isfinite(value) or (not 0 < value <= 10):
-                    raise ValueError('BB deviations must be greater than 0 and at most 10' if name == 'deviations' else 'Keltner multiplier must be greater than 0 and at most 10')
+                    raise ValueError('BB deviations must be greater than 0 and at most 10' if name == 'deviations' else 'Band multiplier must be greater than 0 and at most 10')
             elif type(value) is not int or not 1 <= value <= 1000:
                 raise ValueError('Periods must be whole numbers from 1 to 1000')
+        if kind == 'ichimoku' and params['displacement'] > MAX_DISPLACEMENT:
+            raise ValueError('Ichimoku displacement must be from 1 to 100 raw bars')
         if kind == 'macd' and params['fast'] >= params['slow']:
             raise ValueError('MACD fast must be less than slow')
     valid = copy.deepcopy(instances)
@@ -104,9 +109,12 @@ class NativeDisplayState:
         return result
 
 
-def calculate(candles, instances, minutes, start, end, cancel=None):
+def calculate(candles, instances, minutes, start, end, cancel=None, projection_axis=None):
     """One streaming replay; viewport is an output filter, never the seed."""
+    formulas.validate_timeframe(instances, minutes)
     width = minutes * 60
+    projection = ProjectionCollector(projection_axis if projection_axis is not None else candles, instances, minutes, start, end)
+    segment = 0
     states = {}
     count = 0
     previous = None
@@ -114,8 +122,8 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
     unknown = 0
     columns = {i['id']: {p: [] for p in ('upper', 'middle', 'lower') if i['type'] == 'bb'} for i in instances}
     for i in instances:
-        if i['type'] in formulas.FIELDS:
-            columns[i['id']] = {p: [] for p in formulas.ports(i['type'])}
+        if i['type'] in formulas.ALL_FIELDS:
+            columns[i['id']] = {p: [] for p in (('tenkan', 'kijun') if i['type'] == 'ichimoku' else formulas.ports(i['type']))}
         elif i['type'] == 'stochastic':
             columns[i['id']] = {'k': [], 'd': []}
         elif i['type'] == 'macd':
@@ -127,18 +135,24 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
     confirmed = 0
 
     def reset():
-        return {i['id']: formulas.FormulaState(i) if i['type'] in formulas.FIELDS else NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i) for i in instances if i['type'] != 'volume'}
+        fresh = {i['id']: formulas.FormulaState(i) if i['type'] in formulas.ALL_FIELDS else NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i) for i in instances if i['type'] != 'volume'}
+        # VWAP coverage is session-scoped, never restarted by a gap/unknown row.
+        fresh.update({i['id']: states[i['id']] for i in instances if i['type'] == 'vwap' and i['id'] in states})
+        return fresh
     states = reset()
     for index, row in enumerate(candles):
         if index % 32 == 0 and cancel and cancel.is_set():
             raise InterruptedError('Display calculation superseded')
         stamp = row['time']
+        if stamp > end:
+            break
         closed = row.get('confirmation') in ('closed_rest', 'provider_confirmed', 'synthetic_closed')
         if row.get('confirmation') == 'conflict':
             raise ValueError('Confirmed candle conflict; calculation invalidated. Review the cached source.')
         # Missing timestamps and unconfirmed inputs reset the segment.
         gap = previous is not None and stamp != previous + width
         if gap or not closed:
+            segment += 1
             states = reset()
             count = 0
             if gap:
@@ -164,14 +178,16 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
             ident = item['id']
             kind = item['type']
             values = {p: None for p in columns[ident]}
-            if kind == 'volume':
+            if kind == 'vwap':
+                values = states[ident].observe(row, width, closed)
+            elif kind == 'volume':
                 volume = row.get('volume')
                 if type(volume) in (int, float) and math.isfinite(volume) and (volume >= 0):
                     values['value'] = volume
             elif closed:
                 state = states[ident]
                 source = row['close']
-                if kind in formulas.FIELDS or kind in ('atr', 'stochastic', 'obv'):
+                if kind in formulas.ALL_FIELDS or kind in ('atr', 'stochastic', 'obv'):
                     values = state.update(row)
                 elif kind == 'macd':
                     line, signal = state
@@ -191,12 +207,16 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
                             values = {p: getattr(state, p) for p in values}
                         else:
                             values['value'] = state.value * (100 if kind == 'rsi' else 1)
+            if kind == 'ichimoku' and closed:
+                projection.observe(ident, stamp, segment, values)
             if visible:
-                for port, value in values.items():
+                for port in columns[ident]:
+                    value = values[port]
                     if value is not None and (not math.isfinite(value)):
                         raise ValueError('Non-finite display indicator value')
                     columns[ident][port].append(value)
-    return dict(times=times, columns=columns, directions=directions, confirmed=confirmed, unknown=unknown, gaps=gaps, segment_bars=count)
+    return dict(projections=projection.result(), times=times, columns=columns, directions=directions, confirmed=confirmed, unknown=unknown, gaps=gaps, segment_bars=count,
+                formula_status={i['id']: states[i['id']].status() for i in instances if i['type'] == 'vwap'})
 
 class DisplayIndicators:
 
@@ -276,6 +296,7 @@ class DisplayIndicators:
             doc = self.settings(market, symbol, source)
             if doc['revision'] != revision:
                 raise ValueError('Settings changed; calculation superseded')
+            formulas.validate_timeframe(doc['instances'], minutes)
             self.history.capture_hub(market, symbol, minutes, source)
             with self.store.connect() as db:
                 key = (cache_market(market,source), symbol, minutes)
@@ -313,7 +334,7 @@ class DisplayIndicators:
             transient = []
             current_forming = None
             if (source,market, symbol) == (getattr(self.history.hub,'source','bybit'),self.history.hub.market, self.history.hub.symbol):
-                known = {c['time'] for c in candles}
+                known = {c['time'] for c in candles} | {json.loads(r['candle'])['time'] for r in prefix}
                 observed = self.history.hub.latest(INTERVALS[minutes])
                 transient = [self.history.payload(r) for r in observed if start <= r['time'] <= end and r['time'] not in known and (r.get('confirmed') is not True)]
                 latest = max(observed, key=lambda r: r['time'], default=None)
@@ -328,10 +349,14 @@ class DisplayIndicators:
                 raise ValueError('Indicator output exceeds the 1,800-bar viewport budget')
             if any((c['confirmation'] == 'conflict' for c in candles)):
                 raise ValueError('Confirmed candle conflict; calculation invalidated. Review the cached source.')
-            cache_key = digest([key, candidate, doc['instances'], candles, [dict(r) for r in prefix], start, end, price_style, price_info['price_contract']])
+            if len(candles) + len(prefix) + len(transient) > MAX_BARS:
+                raise ValueError('Combined cached and forming inputs exceed the 10,000-bar work budget')
+            projection_axis = [self.history.annotate(r) for r in prefix] + candles + transient
+            cache_key = digest([key, candidate, doc['instances'], candles, [dict(r) for r in prefix], start, end, price_style, price_info['price_contract'], sorted(r['time'] for r in transient)])
 
             def compute(cancel):
-                output = calculate(candles, [i for i in doc['instances'] if i['visible']], minutes, start, end, cancel)
+                output = calculate(candles, [i for i in doc['instances'] if i['visible']], minutes, start, end, cancel, projection_axis=projection_axis)
+                output['projections']['context'] = dict(source=source, market=market, symbol=symbol, minutes=minutes, start=start, end=end, generation=candidate['generation'], origin=candidate['time'], settings_revision=doc['revision'])
                 if prefix:
                     volume_only = [i for i in doc['instances'] if i['type'] in ('volume', 'sma', 'bb') and i['visible']]
                     earlier = calculate([self.history.annotate(r) for r in prefix], volume_only, minutes, start, end, cancel)
@@ -356,7 +381,7 @@ class DisplayIndicators:
                         earlier_prices, _ = prices.replay([self.history.annotate(r) for r in prefix], price_style, minutes, start, end, cancel, before_origin=True)
                         output['price_candles'] = earlier_prices + output['price_candles']
                 output.update(price_info)
-                output['formula_metadata'] = {i['id']: formulas.metadata(i) for i in doc['instances'] if i['type'] in formulas.FIELDS}
+                output['formula_metadata'] = {i['id']: formulas.metadata(i) for i in doc['instances'] if i['type'] in formulas.ALL_FIELDS}
                 output.update(status='ready', settings=doc, origin=candidate, revision=cache_key, before_origin=start < candidate['time'], volume_unit=('contracts' if market=='linear' else 'base currency')+' (OKX native); up = close ≥ open, down = close < open' if source=='okx' else 'source-native units (unverified); up = close ≥ open, down = close < open')
                 if len(canonical(output)) > 900 * 1024:
                     raise ValueError('Indicator output exceeds transport budget; hide or remove some indicators')
@@ -409,8 +434,9 @@ class DisplayIndicators:
                 result = compute(cancel)
             except InterruptedError:
                 result = None
-            except Exception:
-                result = dict(status='error', error='Display calculation failed or is inconsistent; price browsing remains available.', times=[], columns={})
+            except Exception as exc:
+                message = str(exc) if isinstance(exc, ValueError) and 'transport budget' in str(exc) else 'Display calculation failed or is inconsistent; price browsing remains available.'
+                result = dict(status='error', error=message, times=[], columns={}, projections=None)
             with self.condition:
                 if not cancel.is_set() and result is not None:
                     self.cache[key] = result

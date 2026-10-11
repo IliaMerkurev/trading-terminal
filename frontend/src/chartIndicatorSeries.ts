@@ -1,7 +1,7 @@
 import {LineSeries, HistogramSeries} from 'lightweight-charts';
 import {type ChartIndicator} from './ChartIndicators';
 
-export const auxiliaryKinds = ['rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv', 'roc', 'momentum', 'cci', 'williamsr', 'mfi', 'cmf', 'stddev'];
+export const auxiliaryKinds = ['rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv', 'roc', 'momentum', 'cci', 'williamsr', 'mfi', 'cmf', 'stddev', 'dmi', 'stochrsi', 'bbpercentb', 'bbwidth'];
 
 // Rebuild only owned display series. Derive pane indexes from visible kinds,
 // then move the separate recorded IR series to the last pane.
@@ -20,8 +20,8 @@ export function installIndicatorSeries(
     const group = auxiliaryKinds.includes(item.type) && !volumeOverlay ? item.type : 'price';
     if (group !== 'price' && !panes.has(group)) panes.set(group, next++);
     const pane = panes.get(group) ?? 0;
-    const ports = ['bb', 'donchian', 'keltner'].includes(item.type) ? ['upper', 'middle', 'lower']
-      : item.type === 'macd' ? ['macd', 'signal', 'histogram'] : item.type === 'stochastic' ? ['k', 'd'] : ['value'];
+    const ports = item.type === 'ichimoku' ? ['tenkan', 'kijun'] : ['bb', 'donchian', 'keltner'].includes(item.type) ? ['upper', 'middle', 'lower']
+      : item.type === 'macd' ? ['macd', 'signal', 'histogram'] : ['stochastic', 'stochrsi'].includes(item.type) ? ['k', 'd'] : item.type === 'dmi' ? ['plus_di', 'minus_di', 'adx'] : item.type === 'supertrend' ? ['up', 'down'] : ['value'];
     for (const port of ports) {
       const histogram = item.type === 'volume' || port === 'histogram';
       const options: any = {
@@ -33,12 +33,14 @@ export function installIndicatorSeries(
         lastValueVisible: true,
         crosshairMarkerVisible: !histogram,
       };
-      if (['signal', 'upper', 'lower', 'd'].includes(port)) options.lineStyle = 2;
-      if (['rsi', 'stochastic', 'mfi', 'williamsr'].includes(item.type)) {
+      if (item.type === 'sar') Object.assign(options, {lineVisible: false, pointMarkersVisible: true, pointMarkersRadius: 3});
+      if (item.type === 'supertrend' && port === 'down') options.color = '#ed7e86';
+      if (['signal', 'upper', 'lower', 'd', 'minus_di', 'adx'].includes(port)) options.lineStyle = 2;
+      if (['rsi', 'stochastic', 'mfi', 'williamsr', 'stochrsi', 'dmi'].includes(item.type)) {
         options.autoscaleInfoProvider = () => ({priceRange: {minValue: item.type === 'williamsr' ? -100 : 0, maxValue: item.type === 'williamsr' ? 0 : 100}});
       }
-      if (['roc', 'williamsr', 'mfi'].includes(item.type)) options.priceFormat = {type: 'percent', precision: 2, minMove: 0.01};
-      if (item.type === 'cmf') options.priceFormat = {type: 'price', precision: 4, minMove: 0.0001};
+      if (['roc', 'williamsr', 'mfi', 'dmi', 'stochrsi', 'bbwidth'].includes(item.type)) options.priceFormat = {type: 'percent', precision: 2, minMove: 0.01};
+      if (['cmf', 'bbpercentb'].includes(item.type)) options.priceFormat = {type: 'price', precision: 4, minMove: 0.0001};
       if (item.type === 'obv') options.priceFormat = {type: 'volume'};
       if (item.type === 'volume') {
         options.priceFormat = {type: 'volume'};
@@ -53,10 +55,10 @@ export function installIndicatorSeries(
         const original = primaryScale.options();
         const margins = {...original.scaleMargins};
         series.priceScale().applyOptions({mode: 0, autoScale: true,
-          scaleMargins: ['rsi', 'stochastic', 'mfi', 'williamsr'].includes(item.type) ? {top: 0, bottom: 0} : {top: 0.2, bottom: 0.1}});
+          scaleMargins: ['rsi', 'stochastic', 'mfi', 'williamsr', 'stochrsi', 'dmi'].includes(item.type) ? {top: 0, bottom: 0} : {top: 0.2, bottom: 0.1}});
         primaryScale.applyOptions({mode: original.mode ?? 0, autoScale: original.autoScale ?? true, scaleMargins: margins});
       }
-      if (['rsi', 'stochastic', 'mfi', 'williamsr'].includes(item.type)) {
+      if (['rsi', 'stochastic', 'mfi', 'williamsr', 'stochrsi', 'dmi'].includes(item.type)) {
         for (const price of (item.type === 'rsi' ? [30, 70] : item.type === 'williamsr' ? [-80, -20] : item.type === 'mfi' || port === 'k' ? [20, 80] : [])) {
           series.createPriceLine({price, color: '#879bb5', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: String(price)});
         }
@@ -81,13 +83,17 @@ export function installIndicatorSeries(
   return owned;
 }
 
-export function updateIndicatorSeries(owned: ReturnType<typeof installIndicatorSeries>, result: any) {
+export function updateIndicatorSeries(owned: ReturnType<typeof installIndicatorSeries>, result: any, minutes = 1) {
   for (const item of owned) {
     const column = result?.columns?.[item.id]?.[item.port] ?? [];
     item.series.setData((result?.times ?? []).map((time: number, index: number) => {
       const value = column[index];
       if (value == null) return {time};
-      const color = item.kind === 'volume'
+      // LWC 5.2.1 removes whitespace before walkLine. Simple-line segments
+      // inherit the LEFT finite point's color, so hide only its outgoing bridge.
+      const color = item.kind === 'supertrend'
+        ? (index + 1 < column.length && (column[index + 1] == null || result.times[index + 1] - time !== minutes * 60) ? 'transparent' : item.port === 'down' ? '#ed7e86' : item.color)
+        : item.kind === 'volume'
         ? (result.directions[index] >= 0 ? item.color : '#ed7e86')
         : item.port === 'histogram' ? (value >= 0 ? item.color : '#ed7e86') : undefined;
       return {time, value, ...(color ? {color} : {})};

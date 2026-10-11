@@ -1,5 +1,69 @@
 # Implementation status
 
+## Bounded 30-type chart milestone complete — 2026-10-11
+
+Independent review and bounded synthetic actual-App browser checks accepted the
+advanced display integration through source `e4d35a0` (tree
+`fc5f3d5736218d2faf10cc95ea1851f1d8b7ae56`). Final browser smoke verified absent
+Supertrend inactive-regime bridges, SAR dots, three DMI curves, and the full
+forward Ichimoku cloud after calculation readiness and explicit Fit. Independent
+review also accepted the missing-raw-candle Supertrend correction.
+
+UTC picker browser checks on `6cca6bb` verified 5m rejection of a 00:01 anchor,
+disabled Apply while misaligned, persistence of aligned 00:00 through
+Collapse/reopen, save and rendered VWAP, native segmented year editing, and
+Cancel restoring the saved year. That editor is unchanged in `e4d35a0`.
+Earlier unchanged Ichimoku browser evidence on `5f52018` verified forward-cloud
+Fit, logarithmic/manual scales, far-right raw-anchor pan guard, raw-history
+Return, retained cloud with unavailable HA, Line switching, source isolation,
+and projected hover with distinct computed/plotted dates and estimated labels.
+
+This completes the bounded chart-expansion implementation and browser milestone,
+not the whole product, TradingView/platform parity, a release, live-provider or
+Windows/native acceptance, or owner-led unaided acceptance. Existing focused
+unit/build evidence is retained; this acceptance record reruns no source tests.
+Price-style selection remains transient. The large-bundle warning and documented
+projection-only pan/date-edit limitations remain disclosed.
+
+## Focused visual correction after initial 30-type browser review — 2026-10-11
+
+Initial real-GUI review identified Supertrend strokes bridging inactive regimes
+and native UTC date editing being reset by controlled input updates. Corrected
+Supertrend outgoing gap-segment colors using installed LWC renderer semantics;
+raw timestamps/values remain unchanged. UTC picker now separates native editing
+from numeric draft state and handles input/change events. Focused 31 tests,
+TypeScript and production build passed. Browser recheck subsequently passed as
+recorded above; see the
+correction section in ADR 0049. A follow-on missing-raw-candle correction also
+checks native timestamp discontinuities after viewport clipping; two actual-walker
+tests (including 1m/5m gap fixtures), TypeScript and build passed. Earlier
+primitive/unit evidence is unchanged.
+
+## Advanced 30-type display catalog integration candidate — 2026-10-11
+
+All nine remaining display kinds are integrated: DMI/ADX, Supertrend, Stochastic
+RSI, HMA, Bollinger %B/bandwidth, UTC-day/fixed-anchor VWAP, local SAR and
+Ichimoku. See [ADR 0049](adr/0049-advanced-display-indicator-integration.md) and
+[ADR 0050](adr/0050-ichimoku-market-integration.md) for contracts and limitations.
+Supertrend direction is readout-only; SAR uses dots. VWAP offers a UTC picker,
+alignment validation and readable exact-coverage diagnostics. Ichimoku uses a
+raw-carrier primitive, exact projection-context acceptance, synchronous clearing,
+computed/plotted hover dates, cloud-aware Fit and raw-only Return. Projection-only
+right pans retain the last raw point for library price-coordinate validity.
+
+Focused Linux evidence: 100 unique frontend tests passed across the initial pass
+and corrected affected-suite run; 27 formula plus 13 Ichimoku backend tests passed.
+The first new navigation test used an incorrect button label; its correction
+passed all 26 navigation tests. Ichimoku unittest invocation required tests on
+PYTHONPATH. TypeScript and production build passed; the existing large-bundle
+warning remains. No dependency or trading behavior changed. Registry assertions
+now cover 30 types. Price style remains transient and resets to Candles.
+
+Frozen-source independent integration review and real-GUI Fit/pan/log/manual/
+style/blank-HA checks subsequently passed within the bounded scope recorded above. These focused checks do not establish
+Windows/native, live-provider, full-regression or owner acceptance. Earlier
+21-type/style acceptance below remains scoped to its recorded source and checks.
+
 For the current branch, navigation, portable launch routes and prioritized UX
 continuation, see the [current checkpoint](CHECKPOINT.md). Entries below are
 dated evidence: later checks supersede only the corresponding earlier pending

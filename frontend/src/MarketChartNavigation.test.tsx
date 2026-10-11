@@ -8,7 +8,7 @@ vi.mock('lightweight-charts',()=>({CandlestickSeries:'candle',LineSeries:'line',
  const domain=()=>[...new Set(mock.series.flatMap(s=>s.data.map((row:any)=>row.time)))].sort((a:any,b:any)=>a-b);
  const scale={options:()=>({...mock.price}),applyOptions:(options:any)=>Object.assign(mock.price,options)};
  const timeScale={getVisibleLogicalRange:()=>mock.range,setVisibleLogicalRange:(range:any)=>{mock.range={...range};mock.ranges.push({range:{...range},domain:domain()});mock.rangeChanged(range);},fitContent:()=>{mock.fits++;mock.range={from:0,to:domain().length-1};mock.rangeChanged(mock.range);},subscribeVisibleLogicalRangeChange:(listener:any)=>{mock.rangeChanged=listener;},unsubscribeVisibleLogicalRangeChange:vi.fn()};
- mock.chart={addSeries:(kind:string,options:any)=>{const series:any={kind,options:{...options},data:[] as any[],setData:vi.fn((data:any[])=>{series.data=data;}),update:vi.fn((row:any)=>{const index=series.data.findIndex((c:any)=>c.time===row.time);if(index<0)series.data.push(row);else series.data[index]=row;}),applyOptions:vi.fn((change:any)=>Object.assign(series.options,change)),moveToPane:vi.fn(),priceToCoordinate:(price:number)=>series.data.some((row:any)=>Number.isFinite(row.value??row.close))?320-price:null,coordinateToPrice:(coordinate:number)=>series.data.some((row:any)=>Number.isFinite(row.value??row.close))?320-coordinate:null,createPriceLine:vi.fn((level:any)=>({coordinate:()=>series.options.visible===false?null:series.priceToCoordinate(level.price)})),removePriceLine:vi.fn(),priceScale:()=>scale};mock.series.push(series);return series;},removeSeries:(series:any)=>{mock.series=mock.series.filter(s=>s!==series);},priceScale:()=>scale,timeScale:()=>timeScale,applyOptions:vi.fn(),panes:()=>[],subscribeCrosshairMove:(listener:any)=>{mock.crosshair=listener;},unsubscribeCrosshairMove:vi.fn(),clearCrosshairPosition:vi.fn(()=>mock.crosshair({})),remove:()=>{mock.removed++;}};
+ mock.chart={addSeries:(kind:string,options:any)=>{const series:any={kind,options:{...options},data:[] as any[],setData:vi.fn((data:any[])=>{series.data=data;}),update:vi.fn((row:any)=>{const index=series.data.findIndex((c:any)=>c.time===row.time);if(index<0)series.data.push(row);else series.data[index]=row;}),applyOptions:vi.fn((change:any)=>Object.assign(series.options,change)),moveToPane:vi.fn(),priceToCoordinate:(price:number)=>series.data.some((row:any)=>Number.isFinite(row.value??row.close))?320-price:null,coordinateToPrice:(coordinate:number)=>series.data.some((row:any)=>Number.isFinite(row.value??row.close))?320-coordinate:null,createPriceLine:vi.fn((level:any)=>({coordinate:()=>series.options.visible===false?null:series.priceToCoordinate(level.price)})),removePriceLine:vi.fn(),priceScale:()=>scale,attachPrimitive:vi.fn(),detachPrimitive:vi.fn()};mock.series.push(series);return series;},removeSeries:(series:any)=>{mock.series=mock.series.filter(s=>s!==series);},priceScale:()=>scale,timeScale:()=>timeScale,applyOptions:vi.fn(),panes:()=>[],subscribeCrosshairMove:(listener:any)=>{mock.crosshair=listener;},unsubscribeCrosshairMove:vi.fn(),clearCrosshairPosition:vi.fn(()=>mock.crosshair({})),remove:()=>{mock.removed++;}};
  return mock.chart;
 }}));
 const candle=(index:number,close=100)=>({time:index*60,open:100,high:110,low:90,close,volume:1,confirmation:'provider_confirmed'});
@@ -322,4 +322,38 @@ it('retains actual-level coordinates and drawable geometry when HA has no first 
  expect(doc.drawings.at(-1).anchors[0].price).toBe(120);
  expect(doc.drawings).toHaveLength(2);
  vi.unstubAllGlobals();
+});
+
+it('shows UTC VWAP coverage diagnostics and Supertrend direction as a readout only',async()=>{
+ const original=mock.api.getMockImplementation()!;
+ mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve({...settings,instances:[{id:'vwap',type:'vwap',params:{mode:0,anchor:0},color:'#7eabff',visible:true},{id:'super',type:'supertrend',params:{period:10,multiplier:3},color:'#7eabff',visible:true}]}):original(command,p));
+ indicatorRead=p=>({status:'ready',times:[p.end+60],columns:{vwap:{value:[null]},super:{up:[105],down:[null],direction:[1]}},formula_status:{vwap:{status:'unavailable',reason:'missing_session_start'}}});
+ render(<MarketChart fresh/>);await flush();
+ expect(screen.getByLabelText('Display indicator values').textContent).toContain('direction Up (+1)');
+ fireEvent.click(screen.getByText('Price and indicator calculation details'));
+ expect(screen.getByText(/Latest evaluated candle:/).textContent).toContain('exact session-start candle is missing');
+ expect(screen.getByText(/readout only; not plotted/)).toBeTruthy();
+ expect(screen.getAllByText(/UTC day · midnight reset/).length).toBeGreaterThan(0);
+});
+
+it('mounts Ichimoku on raw coordinates, Fits cloud without adding times, Returns raw and clears obsolete windows',async()=>{
+ const original=mock.api.getMockImplementation()!;
+ mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve({...settings,instances:[{id:'cloud',type:'ichimoku',params:{conversion:1,base:1,span_b:1,displacement:2},color:'#7eabff',visible:true}]}):original(command,p));
+ indicatorRead=p=>{
+  const times=bars(p.start/60,(p.end-p.start)/60+1).map(row=>row.time+60),last=times.length-1;
+  return {status:'ready',origin:{time:0,generation:3},times,columns:{cloud:{tenkan:times.map(()=>101),kijun:times.map(()=>102)}},projections:{version:1,contract:'ichimoku-raw-ordinal-v1',raw_times:times,horizon:p.end+60,context:{source:p.source??'bybit',market:p.market,symbol:p.symbol,minutes:p.minutes,start:p.start,end:p.end,generation:3,origin:0,settings_revision:p.revision},instances:{cloud:{displacement:2,source_logical:[last-1,last],computed_at:times.slice(-2),segment:[0,0],senkou_a:[104,105],senkou_b:[102,103],chikou:[108,109],senkou_plotted_at:[times.at(-1)!+60,times.at(-1)!+120],chikou_plotted_at:[times[last-3],times[last-2]],senkou_estimated:[true,true]}}}};
+ };
+ const view=render(<MarketChart fresh/>);await flush();
+ const carrier=mock.series.find(series=>series.options.crosshairMarkerVisible===false);
+ expect(carrier.attachPrimitive).toHaveBeenCalled();
+ const cloud=carrier.attachPrimitive.mock.calls.at(-1)[0];expect(cloud.extent()).toEqual({from:296,to:301});
+ const domain=[...new Set(mock.series.flatMap(series=>series.data.map((row:any)=>row.time)))];expect(domain).toHaveLength(300);expect(Math.max(...domain)).toBe(3300*60);
+ act(()=>mock.crosshair({logical:301,point:{x:100,y:100}}));
+ expect(screen.getByLabelText('Ichimoku projected values').textContent).toContain('estimated date');
+ fireEvent.click(screen.getByText('Chart options'));fireEvent.click(screen.getByRole('button',{name:'Fit chart'}));expect(mock.range).toEqual({from:0,to:301});
+ pan(310,350);expect(mock.range).toEqual({from:298.5,to:338.5});
+ goLatest();expect(mock.range).toEqual({from:261,to:301});
+ const pendingRead=pending();indicatorRead=()=>pendingRead.promise;
+ marketRead=()=>ready(bars(3001,300));await tick();expect(cloud.extent()).toBeNull();
+ view.unmount();expect(carrier.detachPrimitive).toHaveBeenCalled();
 });
