@@ -2,10 +2,51 @@
 
 Updated 2026-10-11. Working branch: `codex/terminal-mvp`; product remains
 `0.6.0-dev`, licensed MIT. The original bounded Linux/browser engineering and
-research continuation is complete, along with the later daily candidates and six
-chart display tools. This is a development source checkpoint, not a packaged
+research continuation is complete, along with the later daily candidates, nine
+chart display tools and chart context/navigation improvements. This is a development source checkpoint, not a packaged
 release, main merge or final owner acceptance. [PROJECT.md](../PROJECT.md) remains
 the specification; [STATUS.md](STATUS.md) records exact-source evidence.
+
+## Current chart focus checkpoint
+
+The latest frontend-only candidate adds reversible Focus chart / Exit chart
+focus to the actual App / Live market layout (ADR 0046). It retains the mounted
+chart and editors, exposes a sticky source/freshness/Exit bar, hides surrounding
+chrome/book/tape and uses one outer scroll owner. Escape yields to drawing/editor
+work; drafts, selection/undo and pending Return survive layout changes. Source
+namespaces retain their existing reset rules; leaving Live market clears focus.
+Saved history/run charts are outside this feature. Focused scope: 84 distinct
+passing frontend tests plus TypeScript/production build. Independent source
+review and full-App browser acceptance passed on frozen `51b75fb` at 1180×757,
+995×688 and 625×432 CSS pixels (compact sizes through browser zoom). Compact
+views had no document-width overflow; expanded editors/chart remained reachable
+through the outer scroller with sticky Exit/source/status available. Wide checks
+retained chart/drawing history and drafts, layered Escape, source namespace reset
+and visible synthetic degraded/error recovery. See STATUS.md for exact evidence.
+Staged/outgoing Gitleaks 8.30.1 scans passed. This documentation-only acceptance
+record does not rerun tests/build or establish live-provider, native/Windows or
+owner-led unaided acceptance. No broad/backend rerun, new dependency,
+provider/trading behavior or product-version change.
+
+## Delivered chart context and navigation
+
+Pre-focus checkpoint `84d1d60` includes the later ADR 0044 context controls,
+ADR 0045 latest navigation and older-page viewport eviction correction, in
+addition to the earlier ADR 0043 tools described below. Drawing properties and
+indicator legends sit outside the plot, retain collapsed drafts and show failed
+save recovery. Non-scrolling drawing focus prevents capture-time anchor jumps.
+Return to latest preserves zoom and scale/editor state; Following latest is
+separate from feed freshness. A fully evicted older-page view moves only to the
+nearest retained boundary at the same zoom, preserving partial overlap/gaps.
+
+ADR 0044 has focused 40-test and pre-focus-correction 528-test aggregate evidence,
+then 16 post-correction drawing tests/build and bounded offline-wrapper browser
+acceptance. ADR 0045 has 61 focused tests/build/review and offline-wrapper
+navigation acceptance; the eviction correction adds 44 focused tests/build/review
+and same-zoom/partial-overlap/automatic-paging browser checks. Exact original
+source hashes, measurements and retained limits are in STATUS.md. These earlier
+wrapper checks do not substitute for the new full-App focus acceptance or prove
+live-provider, current Windows/native or owner unaided acceptance.
 
 ## Current indicator and drawing additions
 

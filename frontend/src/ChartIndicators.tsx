@@ -1,4 +1,5 @@
 import {useEffect, useId, useRef, useState} from 'react';
+import {isTypingTarget} from './chartDrawings';
 
 export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume' | 'atr' | 'stochastic' | 'obv';
 export type ChartIndicator = {
@@ -68,6 +69,7 @@ export function indicatorName(item: ChartIndicator) {
 }
 
 type Props = {
+  focusMode?: boolean;
   settings: IndicatorSettings;
   onApply: (items: ChartIndicator[]) => void;
   busy: boolean;
@@ -75,7 +77,7 @@ type Props = {
   volumeUnit?: string;
 };
 
-export default function ChartIndicators({settings, onApply, busy, error, volumeUnit}: Props) {
+export default function ChartIndicators({settings, onApply, busy, error, volumeUnit, focusMode=false}: Props) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const toggle = useRef<HTMLButtonElement>(null);
@@ -109,7 +111,11 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
   };
 
   const cancel = () => {setDraft(settings.instances); setOpen(false); setTarget(null); toggle.current?.focus();};
-  return <div className="chart-indicator-manager">
+  return <div className="chart-indicator-manager" onKeyDown={event=>{
+    if(focusMode&&open&&event.key==='Escape'&&!event.isDefaultPrevented()&&!isTypingTarget(event.target)){
+      event.preventDefault();setOpen(false);setTarget(null);toggle.current?.focus({preventScroll:true});
+    }
+  }}>
     <div className="chart-indicator-heading"><button ref={toggle} disabled={busy} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(value => !value)}>Indicators ({settings.instances.length})</button><small>Display only · native timeframe</small></div>
     {!open && dirty && <small className="indicator-draft-note">Unapplied edits retained. Open Indicators to apply or cancel.</small>}
     {settings.instances.length > 0 && <ul className="chart-indicator-legend" aria-label="Chart indicator legend">

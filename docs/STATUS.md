@@ -6,6 +6,74 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Reversible Market chart focus candidate — 2026-10-11
+
+ADR 0046 adds Focus chart / Exit chart focus to the actual App / Live market
+layout. The App-owned transient flag hides surrounding brand/service/platform/
+route/footer chrome and Market quote/paper/book/tape panels. The same mounted
+chart and editor tree retain zoom/following, scale options, indicator drafts,
+drawing selection/revisions/undo and pending Return. A sticky compact Exit/source/
+market/status bar, source detail and errors remain visible; timeframe and chart
+controls stay reachable. Long editors use the same outer terminal scroll owner.
+Normal scroll/focus restore on exit; leaving Live market clears the mode. Source
+changes keep focus with the existing isolated chart namespace reset. This does
+not add focus to Saved history or run charts and writes no layout preference.
+
+Escape gives drawing tools/gestures/rulers and open property/indicator editors
+priority. Editor collapse retains drafts; a neutral Escape exits focus. Typing,
+selects, composition, prevented events and dialogs keep their own behavior.
+A layout effect clears old pan intent before autoSize callbacks, avoiding false
+history paging/following changes during resize.
+
+Focused scope is **84 distinct passing tests across five files**. The first run
+passed 78/81 in 7.14s, including all 75 existing LiveTerminal,
+MarketChartNavigation, ChartIndicators and ChartDrawings cases. Three new
+AppChartFocus tests failed because the test helper counted settings reads as
+writes and the chart mock omitted coordinate conversions. Correcting those
+helpers and adding pending-Return coverage passed **7/7 AppChartFocus tests** in
+7.59s; production source was unchanged between the runs. Assertions cover actual
+App/Market ancestry, same chart instance/range/scales, drafts/selection/undo,
+Escape priority, source/timeframe/hidden-route changes, resize intent, pending
+Return, source/error labels, sticky/wrapping controls and nested-scroll removal.
+Review added two compact-status cases (transport failure and active frozen-profile
+namespace change), both passing in 2.46s with TypeScript. Final scroll restoration
+captures the normal offset before focus CSS can clamp it; its strengthened
+pre-layout-clamp regression passed 1/1 in 3.30s. The normal heading also wraps
+with the new button. Final `node scripts/frontend.mjs build` passed TypeScript
+`--noEmit` and production Vite build; the existing >500 kB bundle advisory remains
+non-failing.
+
+Independent read-only source review passed on frozen source
+`51b75fb7dff67974961eb0235bfc13f16c4a7a6e`, tree
+`89aa9857c771f685fe25ae50ab6778ed7803839d`, with no blocking source/test/documentation
+findings. Staged and outgoing-commit Gitleaks 8.30.1 scans found no leaks.
+
+Parent-led full-App browser acceptance passed on that exact frozen source using
+an isolated, source-labelled synthetic fixture and the actual chart library.
+The App → Market route was inspected at **1180×757**, **995×688** and **625×432**
+CSS pixels; compact dimensions used browser zoom. Document scroll width equalled
+the viewport at both compact widths. At 625×432, an expanded indicator editor and
+the chart remained reachable through the single outer scroll owner, while the
+sticky Exit/source/status bar stayed accessible during scrolling.
+
+At the wide size, entering/exiting focus retained the mounted chart, selected
+drawing and undo/redo. Escape collapsed drawing properties before exiting focus.
+Escape in an input was ignored; non-typing indicator Escape collapsed its draft,
+and a second Escape exited. A saved EMA period of 20 and unsaved draft of 30
+survived focus changes; Cancel restored 20. Bybit → OKX while focused retained
+focus and correctly reset the chart namespace. Synthetic degraded and recent-
+error states retained the chart with visible source/status/error, followed by
+successful restoration to the ready state.
+
+The source tree was unchanged throughout browser acceptance. This documentation-
+only record adds no tests/build rerun; the 84 distinct focused passes and final
+TypeScript/build above remain the engineering evidence. It does not establish
+actual live-exchange connectivity, native/Windows or owner-led unaided acceptance.
+No backend or broad regression suite was rerun. Backend, schema/storage, formulas,
+provider/acquisition, dependencies, trading, Windows code and product version are
+unchanged.
+
+
 ## Older-page viewport retention correction — 2026-10-11
 
 The successful older-page path now keeps the same logical zoom when the
@@ -3253,7 +3321,7 @@ Windows evidence on 2026-09-30:
 - `node node_modules/vitest/vitest.mjs run` passed all 83 entries across 21 files
   in 6.43s. Inspection then removed one accidentally duplicated coverage case;
   the remaining three HistoryWorkspace checks passed in 1.27s. Evidence covers
-  **82 distinct frontend tests**, including complete first-test, timeframe,
+  **84 distinct frontend tests**, including complete first-test, timeframe,
   saved-result, independent-copy and navigation/cancellation journeys.
 - `node scripts/frontend.mjs build` passed TypeScript/Vite after rendering the
   capital summary through its string representation. Locked offline Windows

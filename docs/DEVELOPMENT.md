@@ -740,3 +740,30 @@ and LiveChart tests plus the frontend build; no backend/full-suite rerun is need
 See STATUS.md for exact evidence and the separate bounded offline acceptance on
 9847b51, including its held-acquisition versus delayed-HTTP evidence and unmeasured
 exact manual-price bounds/narrow-layout matrix.
+
+## Market chart focus (ADR 0046)
+
+App owns the transient Live-market-only focus flag; LiveTerminal keeps the same
+scroll owner and chart subtree. Do not key, portal, recreate or Fit the chart
+when toggling. Preserve pending Return and settings/drawing state; clear old
+navigation intent before the library's layout resize callback. Keep source
+namespace resets separate from layout changes. Child Escape prevention precedes
+the window-level focus fallback; inputs/selects, composition and dialogs retain
+their own keyboard behavior. Expanded editors use the outer scroll surface while
+focused. The sticky Exit must remain reachable when all editors/panes are open.
+
+Focused commands:
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/AppChartFocus.test.tsx frontend/src/LiveTerminal.test.tsx frontend/src/MarketChartNavigation.test.tsx frontend/src/ChartIndicators.test.tsx frontend/src/ChartDrawings.test.tsx
+node scripts/frontend.mjs build
+```
+
+Use the actual production App → Market → Live market route for browser acceptance,
+not only a chart wrapper. Compare normal/focused/restored geometry at desktop,
+narrow and short sizes; scroll through expanded editors, verify a continuously
+visible Exit, retained source/freshness/error status, logical zoom/following,
+drafts/selection/undo and source/tab transitions. An offline synthetic source
+must be labelled and isolated from exchanges/user data. Record actual browser
+measurements separately from mocked component/CSS results. No backend or broad
+suite rerun is required for this frontend layout change.

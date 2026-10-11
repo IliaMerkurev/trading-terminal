@@ -3,10 +3,10 @@ import {api} from './api';
 import type {LiveCandle} from './liveChartData';
 import {defaultFibLevels,parseFibLevels,drawingTools,isTypingTarget,logicalToTime,moveDrawing,sanitizeAnnotation,timeToLogical,validAnchors,type Anchor,type Drawing,type DrawingDocument,type DrawingKind} from './chartDrawings';
 
-type Props={children:React.ReactNode;chart:React.MutableRefObject<any>;series:React.MutableRefObject<any>;rows:LiveCandle[];minutes:number;source:string;market:string;symbol:string;active:boolean};
+type Props={focusMode?:boolean;children:React.ReactNode;chart:React.MutableRefObject<any>;series:React.MutableRefObject<any>;rows:LiveCandle[];minutes:number;source:string;market:string;symbol:string;active:boolean};
 type Gesture={id:string;endpoint:number|null;start:Anchor;original:Drawing;creating:boolean};
 const empty:DrawingDocument={version:1,revision:0,drawings:[]};
-export default function ChartDrawings({children,chart,series,rows,minutes,source,market,symbol,active}:Props){
+export default function ChartDrawings({children,chart,series,rows,minutes,source,market,symbol,active,focusMode=false}:Props){
  const [doc,setDoc]=useState<DrawingDocument>(empty),[loaded,setLoaded]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const [tool,setTool]=useState<DrawingKind|'pointer'|'ruler'>('pointer'),[selected,setSelected]=useState<string|null>(null),[preview,setPreview]=useState<Drawing|null>(null),[magnet,setMagnet]=useState(false),[hide,setHide]=useState(false);
  const [ruler,setRuler]=useState(false);
@@ -116,7 +116,14 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
  };
  const keyDown=(event:React.KeyboardEvent)=>{
   if(isTypingTarget(event.target))return;
-  if(event.key==='Escape'){event.preventDefault();cancel();setSelected(null);return;}
+  if(event.key==='Escape'){
+   if(focusMode&&!gesture.current&&!preview&&tool==='pointer'){
+    if(propertiesOpen){event.preventDefault();setPropertiesOpen(false);propertiesToggle.current?.focus({preventScroll:true});}
+    // A collapsed selection (including its unsaved fields) survives focus exit.
+    return;
+   }
+   event.preventDefault();cancel();setSelected(null);return;
+  }
   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='z'){event.preventDefault();event.shiftKey?redo():undo();}
   else if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='y'){event.preventDefault();redo();}
   else if(event.key==='Delete'||event.key==='Backspace'){event.preventDefault();remove();}

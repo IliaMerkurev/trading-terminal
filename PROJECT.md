@@ -547,3 +547,18 @@ polls retain accepted indicator data. Keep existing paging/cap/retry contracts,
 initial/explicit Fit behavior and all financial/provider boundaries. See
 [ADR 0045](docs/adr/0045-chart-latest-navigation.md); no new dependency or product
 version is introduced.
+
+### Later authorized Market chart focus — 2026-10-11
+
+Provide reversible Focus chart / Exit chart focus in the actual App / Live market
+layout. Temporarily remove surrounding application/quote/paper/book chrome while
+retaining the same mounted chart, zoom/following state, price options, indicator
+drafts and drawing selection/history. Keep a labelled sticky Exit, essential
+source/symbol/market/freshness, reachable timeframe/chart controls and truthful
+errors. Use one outer scroll owner with wrapping narrow/short layouts. Escape
+must yield to drawing/editor interactions and never discard their drafts merely
+to exit focus. Restore normal layout/scroll without persisting a preference;
+leaving Live market clears focus. Source namespaces retain their existing reset
+rules. Saved history and run charts are not part of this workspace feature.
+See [ADR 0046](docs/adr/0046-market-chart-focus.md). No dependency, backend,
+provider/network, key, strategy/trading, Windows or product-version change.

@@ -142,3 +142,49 @@
 
 .chart-navigation{display:flex;flex-wrap:wrap;gap:5px 12px;align-items:center;margin:4px 0 10px;color:#a5b3c9;font-size:12px}
 .chart-navigation strong{color:#d5e6f7}
+
+/* Focus is a reversible App layout, not browser fullscreen or another chart. */
+.market-workspace-heading{flex-wrap:wrap}
+.chart-focus-status{display:none}
+.chart-focus-toggle{white-space:nowrap}
+.app.market-chart-focused{height:100dvh}
+.market-chart-focused>header,
+.market-chart-focused>.browser-service,
+.market-chart-focused>.capability-note,
+.market-chart-focused>footer,
+.market-chart-focused main>nav[aria-label=Workspace],
+.market-chart-focused main>.market-source-nav{display:none}
+.market-chart-focused main{min-height:0}
+.market-chart-focused .market-header,
+.market-chart-focused .market-advanced,
+.market-chart-focused .market-diagnostics,
+.market-chart-focused .market-side{display:none}
+.market-chart-focused .market-workspace-heading{
+ position:sticky;top:0;z-index:10;flex-wrap:wrap;gap:7px 14px;padding:8px 12px;
+ background:#111c25;border-bottom:1px solid #344359;
+}
+.market-chart-focused .market-workspace-heading>div,
+.market-chart-focused .market-workspace-heading>small{display:none}
+.market-chart-focused .chart-focus-toggle{order:-1;margin-right:auto}
+.market-chart-focused .market-workspace-heading label{font-size:11px;gap:5px}
+.market-chart-focused .market-workspace-heading select{min-width:0;padding:5px;max-width:140px}
+.market-chart-focused .chart-focus-status{display:block;flex-basis:100%;font-size:11px;color:#c2d4e7;overflow-wrap:anywhere}
+.market-chart-focused .market-source-note{flex:none;margin:6px 12px;font-size:11px;overflow-wrap:anywhere}
+.market-chart-focused .terminal-message{flex:none;overflow-wrap:anywhere}
+.market-chart-focused .terminal-market{display:flex;flex:1 0 auto;min-height:0;align-items:stretch}
+.market-chart-focused .live-chart{flex:1;padding:8px 12px;border:0}
+.market-chart-focused .drawing-workspace{display:flex;flex:1;flex-direction:column}
+.market-chart-focused .drawing-context{flex:none}
+.market-chart-focused .drawing-stage{display:flex;flex:1}
+.market-chart-focused .drawing-stage>.chart-plot{flex:1}
+/* Long editors use the same outer scroll owner; Exit remains sticky above it. */
+.market-chart-focused .chart-indicator-controls,
+.market-chart-focused .drawing-properties{max-height:none;overflow:visible}
+.market-chart-focused .indicator-editor-heading{position:static}
+@media(max-width:480px){
+ .market-chart-focused .market-workspace-heading{gap:6px 8px;padding:6px 8px}
+ .market-chart-focused .chart-focus-toggle{padding:7px 8px}
+ .market-chart-focused .market-workspace-heading label{gap:3px;font-size:10px}
+ .market-chart-focused .market-workspace-heading select{max-width:108px;font-size:10px}
+ .market-chart-focused .live-chart{padding:6px 8px}
+}
