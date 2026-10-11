@@ -139,3 +139,6 @@
 .drawing-properties>div small{display:block;margin:4px 0;overflow-wrap:anywhere}.drawing-properties label{flex-wrap:wrap}.drawing-properties strong{align-self:center}
 .drawing-feedback{font-size:10px;color:#9baec7}.drawing-feedback [role=alert]{display:block;color:#f0a2a7;overflow-wrap:anywhere}.drawing-feedback button{font-size:10px;margin-left:5px}
 @media(max-width:760px){.drawing-context{padding:5px}.chart-indicator-legend li{flex-wrap:wrap}.indicator-settings-link span{font-size:10px}.drawing-properties{max-height:190px}}
+
+.chart-navigation{display:flex;flex-wrap:wrap;gap:5px 12px;align-items:center;margin:4px 0 10px;color:#a5b3c9;font-size:12px}
+.chart-navigation strong{color:#d5e6f7}

@@ -7,6 +7,66 @@ gates, not unrelated platform or owner acceptance.
 
 
 
+## Explicit latest-chart navigation candidate — 2026-10-11
+
+Frontend-only ADR 0045 adds Return to latest and separate Following latest /
+Browsing history labels. Return preserves zoom, price-scale options, indicator
+and drawing editors, saved revisions and undo. Recent-buffer Return navigates
+without a special reload; historical Return retains the graph through loading
+and failed/empty responses, replacing it only after a successful bounded recent
+read. Following handles forming/new bars and the 1,800-bar rollover without
+refitting. Manual navigation stops following; a historical right edge does not
+implicitly become latest. Navigation epochs reject obsolete requests. Old hover
+and auxiliary timestamps are cleared/clipped before a new logical range is set.
+No backend, acquisition, schema, formulas, dependencies or trading behavior changed.
+
+Focused verification covers **61 passing tests across five files**:
+MarketChartNavigation, chartWindow, LiveChart, ChartIndicators and ChartDrawings.
+The new tests independently cover 80-bar zoom, rollover/history retention,
+disjoint return, loading/error/empty retry, repeated clicks, older/recent races,
+source/market/symbol/timeframe/active cancellation, stale display timestamps,
+settings/drawing drafts and drawing revision/undo preservation. The initial pass
+was 59/59; independent review added exact recorded-IR gap clipping, narrow-zoom
+gutter safety and cancellation by explicit Fit. The expanded pass was 60/61
+because its new signal fixture omitted the required `type` field. Correcting
+that fixture, without weakening assertions, yielded 15/15 in the changed
+MarketChartNavigation file; the other 46 passed cases remain valid. TypeScript
+`--noEmit` and production Vite build passed; the existing >500 kB bundle advisory
+remains non-failing. Independent read-only source review passed after the
+recorded-IR gap clipping and explicit-Fit cancellation refinements. Unchanged
+backend and broader regression evidence is reused rather than relabelled as a
+fresh full-suite pass.
+
+Parent-led bounded offline browser acceptance passed on frozen source commit
+`9847b5110cf955c1d93a93ef1f7c78e0dec952f4`, with the actual chart library and
+synthetic, source-labelled history. A roughly 100-bar zoom showed 15-minute ticks
+about 119 px apart. Following retained that zoom and the latest edge across the
+initial 1,800-bar rollover. Manual panning stopped following and retained the
+visible times across a new bar. Returning from a disjoint 1,800-bar historical
+buffer to a provider-sized 300-bar recent page retained the same 15-minute tick
+spacing, switched to Following latest and showed the fixture's January 4
+03:02 UTC latest candle. Loading and recent errors preserved candles and EMA;
+Retry restored the recent window.
+
+Auto scale off and Log scale on survived Return. For a same-price window
+replacement, the visual price-axis range remained approximately 228–241; exact
+numeric manual price bounds were not measured. A saved EMA period of 25 and an
+unsaved period-30 draft survived collapse, Return and reopen; Cancel restored 25.
+The drawing document and revision matched the saved pre-return JSON exactly.
+Cancelling held older acquisition via Return, then releasing it, did not switch
+back to history; ordinary latest polling resumed. This exercised the fixture's
+held acquisition state, not an actual delayed HTTP response race. Delayed
+response races remain covered by the deterministic component tests.
+
+The existing oldest-first retention limit remains visible: at the 1,800-bar cap,
+loading older history while viewing the discarded newest edge can leave mostly
+whitespace until the user pans or selects Return to latest. This slice preserves
+that earlier retention policy. A narrow-layout matrix was not measured in this
+slice. Offline-wrapper acceptance does not establish full-application,
+live-provider, native/Windows or owner unaided acceptance. This acceptance record
+changes documentation only; source and test/build evidence remain unchanged.
+
+
 ## Explicit indicator seeds and custom Fib candidate — 2026-10-11
 
 ADR 0043 adds separate native-timeframe ATR (Wilder, SMA seed), Stochastic K/D

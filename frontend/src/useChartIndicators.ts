@@ -11,6 +11,7 @@ export function useChartIndicators(
   active: boolean,
   rows: React.MutableRefObject<LiveCandle[]>,
   source = 'bybit',
+  windowEpoch = 0,
 ) {
   const [settings, setSettings] = useState<IndicatorSettings>(emptySettings);
   const [result, setResult] = useState<any>(null);
@@ -21,6 +22,7 @@ export function useChartIndicators(
   const settingsRef = useRef(settings);
   const anchor = useRef(false);
   const calculationEpoch = useRef(0);
+  const resultWindow = useRef(windowEpoch);
   settingsRef.current = settings;
 
   useEffect(() => {
@@ -69,6 +71,7 @@ export function useChartIndicators(
     }, reply => {
       if (!reply || stopped) return;
       if (reply.key !== JSON.stringify(rows.current) || reply.epoch !== calculationEpoch.current) return;
+      resultWindow.current = windowEpoch;
       setResult(reply.value);
       setError(reply.value.error ?? reply.value.settings?.warning ?? '');
     }, reason => {
@@ -83,7 +86,7 @@ export function useChartIndicators(
       stopped = true;
       cancel();
     };
-  }, [source, market, symbol, minutes, active, loaded, settings]);
+  }, [source, market, symbol, minutes, active, loaded, settings, windowEpoch]);
 
   const apply = async (instances: ChartIndicator[]) => {
     const token = generation.current;
@@ -111,5 +114,5 @@ export function useChartIndicators(
     anchor.current = true;
     setResult(null);
   };
-  return {settings, result, error, saving, loaded, apply, reanchor};
+  return {settings, result: resultWindow.current === windowEpoch ? result : null, error, saving, loaded, apply, reanchor};
 }

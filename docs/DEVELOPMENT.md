@@ -705,3 +705,33 @@ Focused checks: `python -m unittest tests.test_display_indicator_additions
  tests.test_display_indicators tests.test_chart_drawings -q` and the existing
 four chart component/unit files documented above. Final aggregate checks run
 only against frozen, committed source, followed by a separate browser review.
+
+## Latest-following chart navigation (ADR 0045)
+
+Following is a frontend viewport mode, separate from market freshness. Keep
+historical retention/cursors unchanged; Return from history replaces data only
+after a nonempty, nonloading, nonerror ordinary recent response. Preserve zoom
+and user state while waiting or retrying. Invalidate obsolete work on newer
+navigation and namespace/active changes, and remove old auxiliary timestamps
+before assigning the replacement candle window's logical range.
+
+Focused frontend command:
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/MarketChartNavigation.test.tsx frontend/src/chartWindow.test.ts frontend/src/LiveChart.test.tsx frontend/src/ChartIndicators.test.tsx frontend/src/ChartDrawings.test.tsx
+node scripts/frontend.mjs build
+```
+
+Use an isolated offline source-labelled fixture for actual chart-library/GUI
+acceptance: test a narrow zoom, manual/log price scaling, a disjoint old/recent
+window, repeated/pending Return, recent failure/retry, rollover and existing
+drawing/indicator drafts. Mocked range assertions do not prove browser geometry
+or native acceptance. No broad/backend rerun is needed solely for this frontend
+slice; reuse unchanged evidence and report each gate separately.
+
+The retained oldest-first 1,800-bar policy can leave a viewport over discarded
+newest candles mostly empty after loading older history. Pan or Return to latest
+restores a populated window; do not silently change retention to hide this
+existing limitation. See STATUS.md for the bounded offline acceptance on
+9847b51, including its separate held-acquisition versus delayed-HTTP evidence
+and unmeasured exact manual-price bounds/narrow-layout matrix.

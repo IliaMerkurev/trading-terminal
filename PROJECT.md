@@ -531,3 +531,19 @@ without verbose display-series titles, with source-unit and ATR seed caveats
 nearby and full provenance still available. See ADR 0044 for exact interaction
 and layout limits. This slice is frontend-only; all formulas, backend/schema,
 persistence, strategy/trading, dependencies and product version stay unchanged.
+
+### Later authorized explicit latest-chart navigation — 2026-10-11
+
+Provide Return to latest with explicit Following latest / Browsing history states,
+independent of feed freshness. Preserve logical zoom, log/manual price options,
+indicator settings/origins/drafts and drawings/revisions/undo. Following keeps the
+latest candle visible across forming updates, append and the bounded rollover;
+manual navigation away stops following. A historical buffer's right edge never
+implicitly becomes current. Return navigates a recent buffer directly, or keeps
+history visible until a successful bounded recent response replaces it. Loading,
+empty/error retry and obsolete-response cancellation must not destroy the visible
+graph. Remove obsolete auxiliary timestamps and hover on replacement; ordinary
+polls retain accepted indicator data. Keep existing paging/cap/retry contracts,
+initial/explicit Fit behavior and all financial/provider boundaries. See
+[ADR 0045](docs/adr/0045-chart-latest-navigation.md); no new dependency or product
+version is introduced.
