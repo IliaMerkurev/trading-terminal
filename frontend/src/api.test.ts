@@ -204,3 +204,45 @@ it('reasserts explicit chart cancellation after start admission before waiting f
  await expect(api('local_history_window',{start:0},{cancelRequested:()=>true})).rejects.toMatchObject({saveOutcome:'cancelled'});
  expect(commands.slice(0,2)).toEqual(['chart_read_start','chart_read_cancel']);
 });
+
+describe('indicator snapshot transport',()=>{
+ async function fixture(){
+  const {webcrypto,createHash}=await vi.importActual<any>('node:crypto');vi.stubGlobal('crypto',webcrypto);
+  (window as any).__TAURI_INTERNALS__={};
+  const result={status:'ready',columns:{one:{value:Array.from({length:1800},(_,i)=>i)}},padding:'x'.repeat(850000)};
+  const text=JSON.stringify(result);
+  const d={status:'paged',snapshot_id:'a'.repeat(32),sha256:createHash('sha256').update(text).digest('hex'),bytes:new TextEncoder().encode(text).length,pages:Math.ceil(text.length/65536)};
+  const page=(index:number)=>({...d,index,text:text.slice(index*65536,(index+1)*65536)});
+  return {result,d,page};
+ }
+ it('publishes only the complete verified snapshot',async()=>{
+  const {result,d,page}=await fixture();
+  vi.mocked(invoke).mockImplementation(async(_command,args:any)=>({type:'result',result:args.message.command==='chart_indicator_page'?page(args.message.params.index):d}));
+  const {api}=await import('./api');expect(await api('chart_indicator_read')).toEqual(result);
+  expect(invoke).toHaveBeenCalledTimes(d.pages+1);
+ });
+ it('rejects mixed, corrupted, and cancelled pages instead of partial results',async()=>{
+  const {d,page}=await fixture();const {api}=await import('./api');
+  vi.mocked(invoke).mockImplementation(async(_command,args:any)=>({type:'result',result:args.message.command==='chart_indicator_page'?{...page(args.message.params.index),snapshot_id:'b'.repeat(32)}:d}));
+  await expect(api('chart_indicator_read')).rejects.toThrow('page mismatch');
+  vi.mocked(invoke).mockImplementation(async(_command,args:any)=>({type:'result',result:args.message.command==='chart_indicator_page'?{...page(args.message.params.index),text:page(args.message.params.index).text.replace('x','y')}:d}));
+  await expect(api('chart_indicator_read')).rejects.toThrow('checksum');
+  const controller=new AbortController();
+  vi.mocked(invoke).mockImplementation(async()=>{controller.abort();return {type:'result',result:d};});
+  await expect(api('chart_indicator_read',{}, {signal:controller.signal})).rejects.toThrow('cancelled');
+ });
+ it('uploads large settings in ordered chunks and commits exactly once',async()=>{
+  const {webcrypto}=await vi.importActual<{webcrypto: Crypto}>('node:crypto');vi.stubGlobal('crypto',webcrypto);(window as any).__TAURI_INTERNALS__={};
+  const chunks:string[]=[];const ident='c'.repeat(32);let offset=0;let finish=0;
+  vi.mocked(invoke).mockImplementation(async(_command,args:any)=>{
+   const {command,params}=args.message;
+   if(command==='chart_indicator_upload_begin')return {type:'result',result:{upload_id:ident}};
+   if(command==='chart_indicator_upload_append'){expect(params.offset).toBe(offset);chunks.push(params.text);offset+=new TextEncoder().encode(params.text).length;return {type:'result',result:{upload_id:ident,offset}};}
+   if(command==='chart_indicator_upload_finish'){finish++;return {type:'result',result:{version:1,revision:1,instances:[]}};}
+   throw new Error('Unexpected direct save');
+  });
+  const instances=Array.from({length:10000},(_,i)=>({id:'i'+i,type:'ema',params:{period:20},color:'#abcdef',visible:false}));
+  const {api}=await import('./api');await api('chart_indicator_save',{market:'spot',symbol:'BTCUSDT',revision:0,instances});
+  expect(finish).toBe(1);expect(JSON.parse(chunks.join('')).instances).toEqual(instances);
+ });
+});

@@ -1,5 +1,19 @@
 # Current engineering checkpoint
 
+## Uncapped indicator-instance continuation — 2026-10-11
+
+The fixed indicator-instance limit is removed with no replacement count quota.
+Hidden instances persist without calculation. Large results/settings use atomic
+checksum-verified disk-backed paging; large saves use ordered uploads and the
+existing revision check. Explicit 64 MiB serialized and estimated 256 MiB working
+resource guards preserve bounded failure, alongside the unchanged historical
+bar/origin guards. See [ADR 0051](adr/0051-uncapped-indicator-instances.md).
+Earlier eight-instance requirements in this document are historical and
+superseded by ADR 0051. Current source recovery was verified against the exact
+published tree before these changes; earlier unpublished test evidence is not
+claimed for the rewritten continuation.
+
+
 Updated 2026-10-11. Working branch: `codex/terminal-mvp`; product remains
 `0.6.0-dev`, licensed MIT. The original bounded Linux/browser engineering and
 research continuation is complete, along with the later daily candidates, nine

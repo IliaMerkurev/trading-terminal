@@ -1,5 +1,7 @@
 # ADR 0047: Compact Market toolbar and indicator catalog
 
+Historical count-limit references below are superseded by [ADR 0051](0051-uncapped-indicator-instances.md). Other contracts remain.
+
 Date: 2026-10-11. Status: bounded UI phase implemented; initial 74 distinct
 focused tests, corrected 33/33 tests, TypeScript and production build passed.
 Actual-App wide/narrow/short browser acceptance passed on frozen source `1fd6a51`;

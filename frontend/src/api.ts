@@ -111,15 +111,22 @@ export async function api<T = any>(command: string, params: Record<string, unkno
     }finally{if(!saving)options.signal?.removeEventListener('abort',cancel);}
   }
 
+  if (command === 'chart_indicator_save') {
+    const text = JSON.stringify({source: 'bybit', ...params});
+    if (new TextEncoder().encode(text).length > 800 * 1024) return await uploadIndicatorSettings<T>(text, options);
+  }
   const message = {version: 1, id: crypto.randomUUID(), command, params};
   const response = isDesktop()
     ? await invoke<any>('research_request', {message})
-    : await browserPost('/api/request', message);
+    : await browserPost('/api/request', message, response => response.json(), options.signal);
   if (!response || typeof response !== 'object') throw new Error('Invalid local service response.');
   if (!isDesktop() && (response.version !== message.version || response.id !== message.id)) {
     throw new Error('Local service response does not match this request.');
   }
   if (response.type !== 'result') throw Object.assign(new Error(response.error?.message ?? 'Research service failed'),{definiteRejection:true});
+  if (['chart_indicator_read','chart_indicator_settings','chart_indicator_save','chart_indicator_upload_finish'].includes(command) && response.result?.status === 'paged') {
+    return await readIndicatorSnapshot<T>(response.result, options);
+  }
   return response.result as T;
 }
 
@@ -155,4 +162,57 @@ export async function stopLocalService(): Promise<void> {
   await browserPost('/api/shutdown', {});
   stopped = true;
   session = undefined;
+}
+
+// Publish only a complete verified snapshot: partial pages never reach a chart.
+async function readIndicatorSnapshot<T>(descriptor: any, options: VerifiedOptions): Promise<T> {
+  const d = descriptor;
+  if (!/^[a-f0-9]{32}$/.test(d.snapshot_id) || !/^[a-f0-9]{64}$/.test(d.sha256) ||
+      !Number.isSafeInteger(d.bytes) || d.bytes < 1 || d.bytes > 64 * 1024 * 1024 || !Number.isSafeInteger(d.pages) || d.pages < 1 || d.pages > d.bytes) {
+    throw new Error('Invalid indicator snapshot descriptor');
+  }
+  const check = () => {if (options.signal?.aborted) throw new Error('Indicator read cancelled');};
+  const chunks: string[] = [];
+  let bytes = 0;
+  for (let index = 0; index < d.pages; index++) {
+    check();
+    const page = await api<any>('chart_indicator_page', {snapshot_id: d.snapshot_id, index}, options);
+    check();
+    if (page?.snapshot_id !== d.snapshot_id || page.sha256 !== d.sha256 || page.bytes !== d.bytes ||
+        page.pages !== d.pages || page.index !== index || typeof page.text !== 'string' || !page.text.length || page.text.length > 65536) {
+      throw new Error('Indicator snapshot page mismatch');
+    }
+    // Canonical backend JSON escapes non-ASCII, so page boundaries are ASCII-safe.
+    bytes += new TextEncoder().encode(page.text).length;
+    if (bytes > d.bytes) throw new Error('Indicator snapshot length mismatch');
+    chunks.push(page.text);
+  }
+  const text = chunks.join('');
+  if (bytes !== d.bytes || await checksum(new TextEncoder().encode(text)) !== d.sha256) {
+    throw new Error('Indicator snapshot checksum or length mismatch');
+  }
+  check();
+  return JSON.parse(text) as T;
+}
+
+async function uploadIndicatorSettings<T>(text: string, options: VerifiedOptions): Promise<T> {
+  const bytes = new TextEncoder().encode(text);
+  const upload = await api<any>('chart_indicator_upload_begin', {size: bytes.length, sha256: await checksum(bytes)}, options);
+  if (!/^[a-f0-9]{32}$/.test(upload?.upload_id)) throw new Error('Invalid indicator settings upload');
+  let offset = 0;
+  // Settings strings have validated ASCII identifiers/colors/types. Use code-point
+  // boundaries anyway so a rejected malformed input cannot split a surrogate pair.
+  for (let position = 0; position < text.length;) {
+    if (options.signal?.aborted) throw new Error('Indicator settings upload cancelled');
+    let end = Math.min(position + 65536, text.length);
+    if (end < text.length && /[\uD800-\uDBFF]/.test(text[end - 1])) end--;
+    const chunk = text.slice(position, end);
+    const expected = offset + new TextEncoder().encode(chunk).length;
+    const response = await api<any>('chart_indicator_upload_append', {upload_id: upload.upload_id, offset, text: chunk}, options);
+    if (response?.upload_id !== upload.upload_id || response.offset !== expected) throw new Error('Indicator settings upload offset mismatch');
+    offset = expected;
+    position = end;
+  }
+  if (options.signal?.aborted) throw new Error('Indicator settings upload cancelled');
+  return await api<T>('chart_indicator_upload_finish', {upload_id: upload.upload_id}, options);
 }

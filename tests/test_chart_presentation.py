@@ -276,6 +276,7 @@ class PriceWorkerTests(unittest.TestCase):
 
     def test_complete_projected_payload_and_service_envelope_budget(self):
         self.seed([row(0),row(60)])
+        self.forming(row(120))
         self.read(end=120)
         key=next(iter(self.display.cache))
         cached=self.display.cache[key]
@@ -284,17 +285,24 @@ class PriceWorkerTests(unittest.TestCase):
         cached['padding']='x'*(900*1024-len(canonical(public))-len(canonical({'padding':''})))
         self.assertLess(len(canonical({k:v for k,v in cached.items() if k!='_price_state'})),900*1024)
         self.forming(row(120))
-        with self.assertRaisesRegex(ValueError,'transport budget'):self.read()
+        projected=self.read()
+        self.assertEqual(projected['status'],'ready')
+        self.assertGreater(len(canonical(projected)),900*1024)
         service=AppService.__new__(AppService)
+        from terminal.indicator_transport import IndicatorTransport
+        service.indicator_transport=IndicatorTransport()
         service.display_indicators=Mock()
         service.display_indicators.read.return_value={'padding':'x'*(900*1024-30)}
         response=service.handle(dict(version=1,id='r'*80,command='chart_indicator_read',params=dict(market='spot',symbol='BTCUSDT',minutes=1,start=0,end=120,revision=1,reanchor=False)))
-        self.assertEqual(response['type'],'error')
-        self.assertIn('transport budget',response['error']['message'])
+        self.assertEqual(response['type'],'result')
+        self.assertEqual(response['result']['status'],'paged')
+        service.indicator_transport.close()
 
     def test_optional_service_parameter_strict_allowlist_and_style_validation(self):
         self.seed([row(0)])
         service=AppService.__new__(AppService); service.display_indicators=self.display
+        from terminal.indicator_transport import IndicatorTransport
+        service.indicator_transport=IndicatorTransport(); self.addCleanup(service.indicator_transport.close)
         params=dict(market='spot',symbol='BTCUSDT',minutes=1,start=0,end=0,revision=1,reanchor=False)
         def call(p):return service.handle(dict(version=1,id='test',command='chart_indicator_read',params=p))
         default=call(params)

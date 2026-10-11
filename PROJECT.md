@@ -592,3 +592,13 @@ No Pine runtime, paid chart package, additional dependency, provider acquisition
 strategy/trading change, product-version bump, release or main merge is implied.
 
 The chart styles and first twelve formula additions follow [ADR 0048](docs/adr/0048-chart-price-styles-and-formula-batch.md).
+
+### Later authorized removal of fixed indicator-instance limits — 2026-10-11
+
+There is no fixed count limit for visible or hidden chart indicator instances.
+Hidden instances are not calculated. Large result/settings transport must be
+paged and coherent; applying settings remains atomic and revision-checked.
+Explicit byte/work safety guards remain and must never truncate settings or
+claim unlimited hardware. ADR 0051 supersedes earlier eight-instance references;
+unchanged historical bar/origin, strategy/trading and provider boundaries apply.
+See [ADR 0051](docs/adr/0051-uncapped-indicator-instances.md).

@@ -119,7 +119,7 @@ it('drops old-source chart replies and requests separate settings after a source
  await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([{...candle(200),time:60}]));
  finishOld({candles:[candle(10)],source:'bybit'});
  await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([{...candle(200),time:60}]));
- expect(mock.api).toHaveBeenCalledWith('chart_indicator_settings',{market:'spot',symbol:'BTCUSDT',source:'okx'});
+ expect(mock.api).toHaveBeenCalledWith('chart_indicator_settings',{market:'spot',symbol:'BTCUSDT',source:'okx'},expect.objectContaining({signal:expect.any(AbortSignal)}));
 });
 
 it('integrates indicator management and drawing context before the plot in the production chart',async()=>{

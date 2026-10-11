@@ -31,13 +31,14 @@ export function useChartIndicators(
 
   useEffect(() => {
     const token = ++generation.current;
+    const controller = new AbortController();
     setLoaded(false);
     setSettings(emptySettings);
     setResult(null);
     setError('');
     setSaving(false);
     anchor.current = false;
-    api<IndicatorSettings>('chart_indicator_settings', {market, symbol, ...(source==='bybit'?{}:{source})}).then(doc => {
+    api<IndicatorSettings>('chart_indicator_settings', {market, symbol, ...(source==='bybit'?{}:{source})}, {signal: controller.signal}).then(doc => {
       if (token !== generation.current) return;
       if (doc.version !== 1 || !Array.isArray(doc.instances)) {
         throw new Error('Settings unavailable');
@@ -50,7 +51,7 @@ export function useChartIndicators(
         setError('Indicator settings could not be read. Price browsing remains available; reopen the chart to retry.');
       }
     });
-    return () => { ++generation.current; };
+    return () => { ++generation.current; controller.abort(); };
   }, [source, market, symbol]);
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function useChartIndicators(
     ++calculationEpoch.current;
     if (!active || !loaded || (!settings.instances.some(item => item.visible) && priceStyle !== 'heikin_ashi')) return;
     let stopped = false;
+    const controller = new AbortController();
     const cancel = poll(async () => {
       const current = rows.current;
       if (!current.length) return null;
@@ -70,7 +72,7 @@ export function useChartIndicators(
       anchor.current = false;
       const value = await api<any>('chart_indicator_read', {
         market, symbol, ...(source==='bybit'?{}:{source}), minutes, start, end, revision: settings.revision, reanchor, ...(priceStyle === 'heikin_ashi' ? {price_style: 'heikin_ashi'} : {}),
-      });
+      }, {signal: controller.signal});
       return {key, epoch, value};
     }, reply => {
       if (!reply || stopped) return;
@@ -90,6 +92,7 @@ export function useChartIndicators(
     }, 1000);
     return () => {
       stopped = true;
+      controller.abort();
       cancel();
     };
   }, [source, market, symbol, minutes, active, loaded, settings, windowEpoch, priceStyle]);
@@ -108,7 +111,7 @@ export function useChartIndicators(
       }
     } catch (cause) {
       if (token === generation.current) {
-        setError('Settings not saved. ' + (cause instanceof Error ? cause.message : 'Try again.'));
+        setError('Settings save could not be confirmed. Reload the chart before retrying. ' + (cause instanceof Error ? cause.message : 'Try again.'));
       }
     } finally {
       if (token === generation.current) setSaving(false);

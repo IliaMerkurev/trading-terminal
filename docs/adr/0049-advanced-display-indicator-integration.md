@@ -1,5 +1,7 @@
 # ADR 0049: Advanced display indicators and exact-boundary VWAP
 
+Historical count-limit references below are superseded by [ADR 0051](0051-uncapped-indicator-instances.md). Other contracts remain.
+
 ## Status and scope
 
 Implemented in an isolated integration checkpoint; browser geometry and native

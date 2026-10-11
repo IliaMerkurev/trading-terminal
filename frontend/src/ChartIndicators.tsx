@@ -54,13 +54,12 @@ export const defaults: Record<IndicatorKind, Record<string, number>> = {
 };
 
 export function validateIndicators(items: ChartIndicator[], minutes = 1): string {
-  if (items.length > 8) return 'Use at most 8 indicators.';
   for (const item of items) {
     if (!/^#[0-9a-fA-F]{6}$/.test(item.color)) return 'Choose a valid color.';
     if (item.type === 'vwap') {
       const {mode, anchor} = item.params;
       if (![0, 1].includes(mode) || !Number.isInteger(anchor) || anchor < 0 || anchor > 253402300799 || (mode === 0 && anchor !== 0)) return 'Choose a valid VWAP mode and UTC anchor.';
-      if (anchor % (minutes * 60)) return `VWAP anchor must align exactly with the native ${minutes}-minute candle open.`;
+      if (item.visible && anchor % (minutes * 60)) return `VWAP anchor must align exactly with the native ${minutes}-minute candle open.`;
       continue;
     }
     if (item.type === 'sar') {
@@ -202,7 +201,7 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
     setDraft(rows => rows.map(row => row.id === id ? {...row, ...change} : row));
   };
   const add = (kind: IndicatorKind) => {
-    if (busy || draft.length >= 8) return;
+    if (busy) return;
     const item: ChartIndicator = {
       id: 'i' + crypto.randomUUID().replaceAll('-', ''), type: kind,
       params: {...defaults[kind]}, color: kind === 'volume' ? '#42cda8' : '#7eabff', visible: true,
@@ -246,7 +245,7 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
     </ul>}
     {settings.instances.some(item => ['atr', 'volume', 'obv', 'keltner', 'vwma', 'mfi', 'cmf'].includes(item.type)) && <details className="indicator-unit-note"><summary>Indicator units and seed notes</summary><p>ATR/Keltner ATR: price units, Wilder smoothing with an SMA true-range seed; initialization differs from graph/recorded IR. Volume-weighted formulas use raw source volume. Volume/OBV: {volumeUnit ?? 'source-native units (unverified)'}. OBV starts at zero at the saved origin or segment reset. Stochastic: percent. Full calculation details are below the chart.</p></details>}
     {open && <div id={panelId} className="chart-indicator-controls" aria-label="Chart indicator settings">
-      <div className="indicator-editor-heading"><strong>Display indicators · {draft.length}/8 instances</strong>{!catalogOpen && <button onClick={() => {setCatalogOpen(true);setTarget('search');}}>Browse indicators</button>}<button onClick={collapse} aria-label="Close indicator settings">Collapse · keep edits</button></div>
+      <div className="indicator-editor-heading"><strong>Display indicators · {draft.length} instances</strong>{!catalogOpen && <button onClick={() => {setCatalogOpen(true);setTarget('search');}}>Browse indicators</button>}<button onClick={collapse} aria-label="Close indicator settings">Collapse · keep edits</button></div>
       <div className={catalogOpen ? "indicator-workbench" : "indicator-workbench indicator-editor-only"}>
       {catalogOpen && <section className="indicator-catalog" aria-label="Indicator catalog">
         <div className="indicator-catalog-filters">
@@ -257,7 +256,7 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
         </div>
         <ul className="indicator-catalog-list" aria-label="Available indicators">
           {matches.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(entry => <li key={entry.kind}>
-            <button className="indicator-catalog-add" disabled={busy || draft.length >= 8} aria-label={`Add ${entry.kind.toUpperCase()}`} title={entry.description} onClick={() => add(entry.kind)}>
+            <button className="indicator-catalog-add" disabled={busy} aria-label={`Add ${entry.kind.toUpperCase()}`} title={entry.description} onClick={() => add(entry.kind)}>
               <strong>{entry.kind.toUpperCase()}</strong><span>{entry.name}</span><small>{entry.category}</small>
             </button>
             <button className="indicator-favorite" aria-label={`Favorite ${entry.kind.toUpperCase()}`} aria-pressed={favorites.includes(entry.kind)} onClick={() => favorite(entry.kind)}>{favorites.includes(entry.kind) ? '★' : '☆'}</button>
@@ -265,7 +264,6 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
         </ul>
         {matches.length > pageSize && <div className="indicator-catalog-pages" aria-label="Indicator catalog pages"><button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous indicators</button><span>Page {currentPage + 1} of {lastPage + 1} · {matches.length} types</span><button disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Next indicators</button></div>}
         {!matches.length && <p role="status">No indicators match. Try another search or category.</p>}
-        {draft.length >= 8 && <p role="status">Limit reached: 8 instances, including hidden ones. Remove an instance to add another.</p>}
         {favoriteNotice && <p role="status">{favoriteNotice}</p>}
       </section>}
       <section className="indicator-instance-editor" aria-label="Selected indicator editor">
@@ -316,7 +314,7 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
       {(invalid || error) && <p role="alert">{invalid || error}</p>}
       <button disabled={busy || !!invalid} onClick={() => onApply(draft)}>{busy ? 'Saving…' : 'Apply indicators'}</button>
       <button disabled={busy} onClick={cancel}>Cancel edits</button>
-      <small>Display only · confirmed native-timeframe closes. Apply saves all valid edits together in this source workspace. Cancel discards edits; Collapse retains them. Recorded IR and trading settings are separate. Defaults are examples, not trading recommendations.</small>
+      <small>Display only · confirmed native-timeframe closes. More visible instances increase calculation and rendering work; hidden instances are not calculated. Apply saves all valid edits together in this source workspace. Cancel discards edits; Collapse retains them. Recorded IR and trading settings are separate. Defaults are examples, not trading recommendations.</small>
     </div>}
   </div>;
 }

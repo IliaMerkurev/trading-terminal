@@ -1,5 +1,33 @@
 # Implementation status
 
+## Uncapped indicator-instance continuation — 2026-10-11
+
+The fixed indicator-instance limit is removed with no replacement count quota.
+Hidden instances persist without calculation. Large results/settings use atomic
+checksum-verified disk-backed paging; large saves use ordered uploads and the
+existing revision check. Explicit 64 MiB serialized and estimated 256 MiB working
+resource guards preserve bounded failure, alongside the unchanged historical
+bar/origin guards. See [ADR 0051](adr/0051-uncapped-indicator-instances.md).
+Verification for this recovered continuation: 47 focused Python tests pass
+(display 14, presentation 15, Ichimoku 13, transport 5). Frontend focused scope
+contains 98 tests: the initial combined run passed 97/98, with one stale mock
+expecting two arguments after AbortSignal propagation; the corrected LiveChart
+file passes 8/8. The other four files' unchanged passing evidence is retained.
+Initial reconstruction test failures (outdated count/transport expectations,
+missing test-only Node types, and synthetic upload fixture below its asserted
+byte threshold) were corrected without weakening production invariants.
+TypeScript/production build and pinned Linux runtime verification pass; the
+existing large-bundle advisory remains. Independent review passes seven separate
+transport/calculation checks, including rejection before allocation and prompt
+cancellation. A fresh actual-App GUI pass has not yet run on this source;
+Windows/native, external-provider and owner-led acceptance remain unverified.
+
+Earlier eight-instance requirements in this document are historical and
+superseded by ADR 0051. Current source recovery was verified against the exact
+published tree before these changes; earlier unpublished test evidence is not
+claimed for the rewritten continuation.
+
+
 ## Bounded 30-type chart milestone complete — 2026-10-11
 
 Independent review and bounded synthetic actual-App browser checks accepted the

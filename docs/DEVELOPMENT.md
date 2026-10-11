@@ -806,3 +806,14 @@ MarketChartNavigation, ChartDrawings and AppChartFocus; run the production build
 after source changes. Reuse the reviewed unchanged display_formula_catalog and
 chart_presentation backend evidence. See [ADR 0048](adr/0048-chart-price-styles-and-formula-batch.md)
 and STATUS for exact executed checks and remaining acceptance.
+
+## Uncapped indicator instances (ADR 0051)
+
+Fixed instance counts in earlier sections are superseded by ADR 0051. Use the
+focused display_indicators, chart_presentation, ichimoku_projection and
+indicator_transport Python tests; frontend ChartIndicators, API, LiveChart,
+MarketChartNavigation and AppChartFocus tests; then the production build.
+Verify exact large snapshots and corruption/cancellation instead of claiming
+page completion from count alone. Settings uploads commit only at finish and
+must retain original-revision conflict checks. Actual resource errors must be
+visible; never replace the removed limit with another count cap.

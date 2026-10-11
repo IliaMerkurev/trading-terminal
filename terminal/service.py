@@ -30,6 +30,8 @@ class AppService:
         self.live=LiveManager(self.store)
         from terminal.display_indicators import DisplayIndicators
         self.display_indicators=DisplayIndicators(self.live.chart_history)
+        from terminal.indicator_transport import IndicatorTransport
+        self.indicator_transport=IndicatorTransport()
         from terminal.chart_drawings import ChartDrawings
         self.chart_drawings=ChartDrawings(self.store)
 
@@ -66,6 +68,7 @@ class AppService:
             fields.update(live_start_terminal={'strategy_id','profile','paper','channels','execution_source'},
                           live_chart={'session_id'},paper_manual={'session_id','action','request_id'})
             fields.update(chart_drawing_settings={'market','symbol','source'},chart_drawing_save={'market','symbol','source','drawings','revision'})
+            fields.update(chart_indicator_page={'snapshot_id','index'}, chart_indicator_upload_begin={'size','sha256'}, chart_indicator_upload_append={'upload_id','offset','text'}, chart_indicator_upload_finish={'upload_id'})
             fields.update(chart_indicator_settings={'market','symbol','source'},chart_indicator_save={'market','symbol','instances','revision','source'},chart_indicator_read={'market','symbol','minutes','start','end','revision','reanchor','source'})
             fields.update(market_preferences=set(),market_open={'market','symbol','source'},market_close=set(),market_chart={'market','symbol','minutes','before','source'})
             fields.update(managed_experiment_fields={'strategy_id','profile'})
@@ -115,6 +118,10 @@ class AppService:
             elif command=='chart_indicator_settings':result=self.display_indicators.settings(**p)
             elif command=='chart_indicator_save':result=self.display_indicators.save(**p)
             elif command=='chart_indicator_read':result=self.display_indicators.read(**p)
+            elif command=='chart_indicator_page':result=self.indicator_transport.page(**p)
+            elif command=='chart_indicator_upload_begin':result=self.indicator_transport.upload_begin(**p)
+            elif command=='chart_indicator_upload_append':result=self.indicator_transport.upload_append(**p)
+            elif command=='chart_indicator_upload_finish':result=self.display_indicators.save(**self.indicator_transport.upload_finish(**p))
             elif command=='market_chart':result=self.live.chart_history.request(**p)
             elif command=='live_chart':result=self.live.journal.chart(**p)
             elif command=='paper_manual':result=self.live.manual(**p)
@@ -238,9 +245,9 @@ class AppService:
                     from terminal.library import native_window_document
                     strategy=native_window_document(strategy,window['start'])
                 result={'run_id':self.jobs.start(strategy,p['profile'],p['dataset_id'],research={'window':window})}
+            if command in ('chart_indicator_settings','chart_indicator_save','chart_indicator_read','chart_indicator_upload_finish'):
+                result=self.indicator_transport.pack(result)
             response={"version":1,"id":request_id,"type":"result","result":result}
-            if command=='chart_indicator_read' and len(canonical(response))>900*1024:
-                raise ValueError('Indicator response exceeds transport budget; hide or remove some indicators')
             if len(canonical(response))>1024*1024: raise ValueError("Response exceeds IPC budget; request a smaller page")
             return response
         except Exception as exc:
@@ -257,6 +264,7 @@ class AppService:
         # The calculation process is only one workspace owner. Defer unlocking
         # until live/history/download threads have also actually stopped.
         attempt(self.display_indicators.close)
+        attempt(self.indicator_transport.close)
         attempt(self.chart_reads.close)
         attempt(self.exports.close)
         attempt(self.archives.close)

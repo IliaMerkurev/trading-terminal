@@ -156,14 +156,15 @@ class IchimokuCacheTests(unittest.TestCase):
         self.assertEqual(other['origins'], {})
 
 
-    def test_actual_serialized_budget_is_honest_error(self):
+    def test_large_projection_is_complete_for_paged_transport(self):
         self.seed(rows(1900))
         items = [dict(ichi(conversion=1,base=1,span_b=1,displacement=100), id=f'cloud{i}') for i in range(8)]
         self.settings=self.display.save('spot','BTCUSDT',items,0)
         out=self.read(6000,113940)
-        self.assertEqual(out['status'],'error')
-        self.assertIn('transport budget; hide or remove',out['error'])
-        self.assertIsNone(out['projections'])
+        self.assertEqual(out['status'],'ready')
+        self.assertGreater(len(canonical(out)),900*1024)
+        self.assertEqual(len(out['projections']['instances']),8)
+        self.assertEqual(out['projections']['contract'],'ichimoku-raw-ordinal-v1')
 
 
     def test_forming_axis_and_tick_does_not_recompute(self):

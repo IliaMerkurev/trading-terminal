@@ -1,5 +1,7 @@
 # ADR 0048: Stable chart price styles and 21-type display catalog
 
+Historical count-limit references below are superseded by [ADR 0051](0051-uncapped-indicator-instances.md). Other contracts remain.
+
 Date: 2026-10-11. Status: integrated candidate; focused automated checks passed.
 Bounded actual-App browser acceptance passed on corrected source `7086f36`.
 Independent review and platform/owner acceptance remain separately tracked.

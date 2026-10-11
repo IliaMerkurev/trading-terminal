@@ -234,3 +234,9 @@
 .indicator-workbench.indicator-editor-only{grid-template-columns:minmax(0,1fr)}
 
 .indicator-catalog-pages{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11px}
+
+/* Instance count is unrestricted; keep the legend and selector within the viewport. */
+.chart-indicator-legend{max-height:132px;overflow-y:auto;overflow-x:hidden}
+.indicator-instance-editor{min-width:0;max-width:100%}
+.indicator-instance-editor>label{display:flex;min-width:0;max-width:100%;align-items:center;gap:6px}
+.indicator-instance-editor>label select{min-width:0;max-width:100%;flex:1}

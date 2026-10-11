@@ -61,7 +61,7 @@ it('storage failures are nonfatal and valid Apply preserves old state until save
  const rows={current:[]};
  function Harness(){const state=useChartIndicators('spot','BTCUSDT',1,true,rows);return <><button disabled={!state.loaded||state.saving} onClick={()=>{void state.apply([item('rsi')]);}}>Save fixture</button><span>{state.settings.instances[0]?.type}</span>{state.error&&<p role="alert">{state.error}</p>}</>;}
  render(<Harness/>);await waitFor(()=>expect((screen.getByRole('button',{name:'Save fixture'}) as HTMLButtonElement).disabled).toBe(false));
- fireEvent.click(screen.getByRole('button',{name:'Save fixture'}));expect((await screen.findByRole('alert')).textContent).toContain('Settings not saved');
+ fireEvent.click(screen.getByRole('button',{name:'Save fixture'}));expect((await screen.findByRole('alert')).textContent).toContain('Settings save could not be confirmed');
  expect(screen.getByText('ema')).toBeTruthy();expect(screen.queryByText('rsi')).toBeNull();expect((screen.getByRole('button',{name:'Save fixture'}) as HTMLButtonElement).disabled).toBe(false);
 });
 
@@ -197,7 +197,7 @@ it('rejects delayed settings, calculation and save replies from the previous exc
  const rows={current:[{time:0,open:10,high:12,low:9,close:11,volume:10}]};
  const {result,rerender}=renderHook(({source})=>useChartIndicators('spot','BTCUSDT',1,true,rows,source),{initialProps:{source:'bybit'}});
  rerender({source:'okx'});
- await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('chart_indicator_read',expect.objectContaining({source:'okx'})));
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('chart_indicator_read',expect.objectContaining({source:'okx'}),expect.objectContaining({signal:expect.any(AbortSignal)})));
  let save:Promise<void>;act(()=>{save=result.current.apply([item('rsi')]);});
  expect(result.current.saving).toBe(true);
  rerender({source:'bybit'});
@@ -306,7 +306,7 @@ it('keeps legend visibility truthful and disabled until asynchronous save settle
  await act(async()=>rejectSave(new Error('Save denied')));
  expect(screen.getByRole('button',{name:'Hide 1 EMA'}).getAttribute('aria-pressed')).toBe('true');
  fireEvent.click(screen.getByRole('button',{name:'Indicators (1)'}));
- expect(screen.getByRole('alert').textContent).toContain('Settings not saved');
+ expect(screen.getByRole('alert').textContent).toContain('Settings save could not be confirmed');
 });
 
 it('offers only implemented kinds with search, categories and persistent type-only favorites',()=>{
@@ -344,13 +344,12 @@ it('bounds favorites to recognized identifiers and falls back safely on malforme
  } finally {read.mockRestore();write.mockRestore();}
 });
 
-it('counts hidden instances toward the cap and validates the entire draft behind a single editor',()=>{
+it('allows additional hidden instances and validates the entire draft behind a single editor',()=>{
  const settings={...emptySettings,instances:Array.from({length:8},(_,index)=>({...item('ema',String(index)),visible:false}))};
  const apply=vi.fn();render(<ChartIndicators settings={settings} onApply={apply} busy={false} error=""/>);
  fireEvent.click(screen.getByRole('button',{name:'Indicators (8)'}));
  expect(screen.getAllByRole('group')).toHaveLength(1);
- expect(screen.getAllByRole('button',{name:/^Add /}).every(button=>(button as HTMLButtonElement).disabled)).toBe(true);
- expect(screen.getByRole('status').textContent).toContain('including hidden');
+ expect(screen.getAllByRole('button',{name:/^Add /}).every(button=>(button as HTMLButtonElement).disabled)).toBe(false);
  fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'0'}});
  fireEvent.change(screen.getByLabelText('Selected indicator instance'),{target:{value:'7'}});
  expect(screen.queryByLabelText('1 EMA period')).toBeNull();expect(screen.getByLabelText('8 EMA period')).toBeTruthy();
@@ -464,7 +463,7 @@ it('uses the existing indicator poll for HA without instances and rejects obsole
  mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve(emptySettings):new Promise(resolve=>{finish=resolve;}));
  const rows={current:[{time:0,open:10,high:12,low:9,close:11,volume:1}]};
  const {result,rerender,unmount}=renderHook(({style}:{style:'candles'|'heikin_ashi'|'line'})=>useChartIndicators('spot','BTCUSDT',1,true,rows,'bybit',0,style),{initialProps:{style:'heikin_ashi'}});
- await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('chart_indicator_read',expect.objectContaining({price_style:'heikin_ashi',revision:0})));
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('chart_indicator_read',expect.objectContaining({price_style:'heikin_ashi',revision:0}),expect.objectContaining({signal:expect.any(AbortSignal)})));
  rerender({style:'line'});
  await act(async()=>finish({status:'ready',price_style:'heikin_ashi',price_candles:[{time:60,close:999}]}));
  expect(result.current.result).toBeNull();
@@ -538,4 +537,17 @@ it('keeps native UTC picker editing independent from numeric draft and accepts i
  expect((screen.getByLabelText('1 VWAP anchor UTC') as HTMLInputElement).value).toBe('2010-01-01T00:00');
  fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
  expect(apply.mock.calls[0][0][0].params.anchor).toBe(Date.parse('2010-01-01T00:00:00Z')/1000);
+});
+
+it('adds the 129th instance, preserves search and atomically applies every instance',()=>{
+ const settings={...emptySettings,instances:Array.from({length:128},(_,index)=>({...item('ema','i'+index),visible:false}))};
+ const apply=vi.fn();render(<ChartIndicators settings={settings} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (128)'}));
+ const search=screen.getByLabelText('Search indicators');fireEvent.change(search,{target:{value:'ema'}});
+ fireEvent.click(screen.getByRole('button',{name:'Add EMA'}));
+ expect((search as HTMLInputElement).value).toBe('ema');
+ expect(screen.getByLabelText('129 EMA period')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
+ expect(apply.mock.calls[0][0]).toHaveLength(129);
+ expect(apply.mock.calls[0][0].filter((entry:any)=>entry.visible)).toHaveLength(1);
 });

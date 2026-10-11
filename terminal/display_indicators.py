@@ -17,16 +17,16 @@ from terminal import display_formula_catalog as formulas
 from terminal import chart_presentation as prices
 from terminal.display_projection import ProjectionCollector, MAX_DISPLACEMENT
 from terminal.market_sources import cache_market
+from terminal.indicator_transport import check_result_budget
 CONTRACT = 'native-close-engine-seeds-v1'
 MAX_BARS = 10000
-MAX_INSTANCES = 8
 FIELDS = {'sma': ('period',), 'ema': ('period',), 'bb': ('period', 'deviations'), 'rsi': ('period',), 'macd': ('fast', 'slow', 'signal'), 'volume': (), 'atr': ('period',), 'stochastic': ('period', 'smooth', 'signal'), 'obv': ()}
 
 FIELDS.update(formulas.ALL_FIELDS)
 
 def validate_instances(instances):
-    if not isinstance(instances, list) or len(instances) > MAX_INSTANCES:
-        raise ValueError('Use at most 8 indicators')
+    if not isinstance(instances, list):
+        raise ValueError('Indicator settings must be a list')
     seen = set()
     for item in instances:
         if not isinstance(item, dict) or set(item) - {'placement'} != {'id', 'type', 'params', 'color', 'visible'}:
@@ -111,8 +111,23 @@ class NativeDisplayState:
 
 def calculate(candles, instances, minutes, start, end, cancel=None, projection_axis=None):
     """One streaming replay; viewport is an output filter, never the seed."""
+    instances = [item for item in instances if item['visible']]
     formulas.validate_timeframe(instances, minutes)
     width = minutes * 60
+    # Conservative scalar/list/state allocation preflight, not an instance quota.
+    # Gaps may add one whitespace slot per row; projections add nine arrays.
+    output_rows = 2 * sum(start <= row['time'] <= end for row in candles)
+    estimated = 0
+    for item in instances:
+        kind = item['type']
+        ports = len(formulas.ports(kind)) if kind in formulas.ALL_FIELDS else 3 if kind in ('bb','macd') else 2 if kind == 'stochastic' else 1
+        cells = output_rows * ports
+        if kind == 'ichimoku':
+            cells += (output_rows + MAX_DISPLACEMENT) * 9
+        state_slots = sum(value for name, value in item['params'].items() if name not in ('anchor','mode','deviations','multiplier','step','max') and type(value) is int)
+        estimated += cells * 40 + state_slots * 48 + 4096
+        if estimated > 256 * 1024 * 1024:
+            raise ValueError('Indicator calculation exceeds the estimated 256 MiB working resource budget; use a smaller chart window. Settings are not truncated.')
     projection = ProjectionCollector(projection_axis if projection_axis is not None else candles, instances, minutes, start, end)
     segment = 0
     states = {}
@@ -135,7 +150,12 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
     confirmed = 0
 
     def reset():
-        fresh = {i['id']: formulas.FormulaState(i) if i['type'] in formulas.ALL_FIELDS else NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i) for i in instances if i['type'] != 'volume'}
+        fresh = {}
+        for index, i in enumerate(instances):
+            if index % 32 == 0 and cancel and cancel.is_set():
+                raise InterruptedError('Display calculation superseded')
+            if i['type'] != 'volume':
+                fresh[i['id']] = formulas.FormulaState(i) if i['type'] in formulas.ALL_FIELDS else NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i)
         # VWAP coverage is session-scoped, never restarted by a gap/unknown row.
         fresh.update({i['id']: states[i['id']] for i in instances if i['type'] == 'vwap' and i['id'] in states})
         return fresh
@@ -174,7 +194,9 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
                         values.append(None)
             times.append(stamp + width)
             directions.append(1 if row['close'] >= row['open'] else -1)
-        for item in instances:
+        for item_index, item in enumerate(instances):
+            if item_index % 32 == 0 and cancel and cancel.is_set():
+                raise InterruptedError('Display calculation superseded')
             ident = item['id']
             kind = item['type']
             values = {p: None for p in columns[ident]}
@@ -270,6 +292,7 @@ class DisplayIndicators:
             if doc['revision'] != revision:
                 raise ValueError('Indicator settings changed; reopen Indicators before applying')
             doc = dict(version=1, revision=revision + 1, instances=valid, origins=doc['origins'])
+            check_result_budget(doc)
             self._write(cache_market(market,source), symbol, doc)
             self.cache.clear()
             if self.running:
@@ -296,7 +319,7 @@ class DisplayIndicators:
             doc = self.settings(market, symbol, source)
             if doc['revision'] != revision:
                 raise ValueError('Settings changed; calculation superseded')
-            formulas.validate_timeframe(doc['instances'], minutes)
+            formulas.validate_timeframe([i for i in doc['instances'] if i['visible']], minutes)
             self.history.capture_hub(market, symbol, minutes, source)
             with self.store.connect() as db:
                 key = (cache_market(market,source), symbol, minutes)
@@ -383,8 +406,7 @@ class DisplayIndicators:
                 output.update(price_info)
                 output['formula_metadata'] = {i['id']: formulas.metadata(i) for i in doc['instances'] if i['type'] in formulas.ALL_FIELDS}
                 output.update(status='ready', settings=doc, origin=candidate, revision=cache_key, before_origin=start < candidate['time'], volume_unit=('contracts' if market=='linear' else 'base currency')+' (OKX native); up = close ≥ open, down = close < open' if source=='okx' else 'source-native units (unverified); up = close ≥ open, down = close < open')
-                if len(canonical(output)) > 900 * 1024:
-                    raise ValueError('Indicator output exceeds transport budget; hide or remove some indicators')
+                check_result_budget(output)
                 output['_price_state'] = price_state
                 return output
             if cache_key in self.cache:
@@ -409,9 +431,7 @@ class DisplayIndicators:
                 if output['status'] == 'ready':
                     if price_style == 'heikin_ashi' and current_forming is not None:
                         output['price_candles'].append(prices.preview(current_forming, price_style, minutes, price_state))
-                    # Enforce the combined payload after all transient projections.
-                    if len(canonical(output)) > 900 * 1024:
-                        raise ValueError('Indicator output exceeds transport budget; hide or remove some indicators')
+                check_result_budget(output)
                 return output
             if not self.running or self.running[0] != cache_key or self.running[1].is_set():
                 if self.running:
@@ -435,7 +455,7 @@ class DisplayIndicators:
             except InterruptedError:
                 result = None
             except Exception as exc:
-                message = str(exc) if isinstance(exc, ValueError) and 'transport budget' in str(exc) else 'Display calculation failed or is inconsistent; price browsing remains available.'
+                message = str(exc) if isinstance(exc, ValueError) and 'resource budget' in str(exc) else 'Display calculation failed or is inconsistent; price browsing remains available.'
                 result = dict(status='error', error=message, times=[], columns={}, projections=None)
             with self.condition:
                 if not cancel.is_set() and result is not None:
