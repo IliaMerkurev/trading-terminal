@@ -456,3 +456,15 @@ rule-summary hashes and limitations are explicit in ADR 0039 and catalog cards.
 Test all strategies retains its 4h/1d default and unavailable rows; individual new
 cards offer daily only. No optional Supertrend, chart-display indicator controls,
 new source acquisition, live orders, main merge or release belongs to this slice.
+
+### Later authorized baseline chart indicators — 2026-10-11
+
+Following the daily catalog addition, add explicitly separate cache-only chart
+SMA/EMA/Bollinger Bands/RSI/MACD/native-volume presentation tools, with atomic
+parameters/colors/visibility, multiple instances and workspace-local persistence.
+This later authorization extends the older recorded-IR-only display restriction;
+recorded IR itself and every strategy/financial computation remain unchanged.
+Require explicit confirmed provenance, deterministic persisted calculation origins,
+gap/warmup disclosure, bounded cancellable off-dispatch replay and independently
+verified engine seed conventions. See [ADR 0040](docs/adr/0040-cache-only-chart-indicators.md).
+No new data acquisition, real orders, release, version change or Windows claim.

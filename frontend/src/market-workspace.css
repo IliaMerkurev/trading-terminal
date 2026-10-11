@@ -63,3 +63,48 @@
 .observation-navigation{min-width:0;margin:12px 0;padding:12px;border:1px solid #2b374b;border-radius:8px}
 .observation-date-jump{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 12px}.observation-date-jump .field{flex:1;min-width:190px;max-width:310px;margin:0}.observation-date-jump input{width:100%;min-width:0;font-variant-numeric:tabular-nums}.observation-date-jump button{margin:0}
 .observation-navigation .run-actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.observation-navigation .run-actions button{padding:7px 9px;font-size:11px}.observation-navigation p{font-size:11px;line-height:1.5;overflow-wrap:anywhere;margin:8px 0}.observation-page-error{overflow-wrap:anywhere}
+
+.chart-indicator-controls{flex-basis:100%;padding:12px;border:1px solid #53647d;border-radius:6px;background:#151d29;max-width:100%;box-sizing:border-box}
+.chart-indicator-controls fieldset{border:1px solid #53647d;margin:8px 0;min-width:0}.chart-indicator-fields,.chart-indicator-add{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.chart-indicator-fields input[type=number]{width:78px}.chart-indicator-fields input[type=color]{width:42px;padding:2px}.chart-indicator-controls p{margin:6px 0}.chart-indicator-controls small{display:block;margin-top:8px}.chart-indicator-controls :focus-visible,.chart-indicator-details :focus-visible{outline:2px solid #b3d4ff;outline-offset:2px}.chart-indicator-readout{display:flex;flex-wrap:wrap;gap:6px 15px;font-size:11px;color:#c5d4e8}.chart-indicator-details{font-size:11px;color:#b6c7dc;margin:6px 0}.chart-indicator-details small{display:block;margin:5px 0}.chart-indicator-details summary{cursor:pointer}.chart-indicator-details p{max-width:100%;overflow-wrap:anywhere}
+
+/* One visible scroll owner contains every chart control and pane. The chart
+   grows with its panes rather than overflowing a clipped flex/grid child. */
+.market-host > .live-terminal {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+.market-host > .live-terminal:focus-visible {
+  outline: 2px solid #b3d4ff;
+  outline-offset: -2px;
+}
+.market-host .terminal-market {
+  flex: none;
+  overflow: visible;
+  align-items: start;
+}
+.market-host .live-chart {
+  height: auto;
+  min-height: 0;
+  flex: none;
+  align-self: stretch;
+  width: 100%;
+  box-sizing: border-box;
+}
+.market-host .chart-plot {
+  flex: none;
+  min-height: 320px;
+}
+.market-host .live-chart-toolbar,
+.market-host .chart-indicator-readout,
+.market-host .chart-indicator-details,
+.market-host .live-chart > small {
+  flex-shrink: 0;
+}
+.market-host .market-side {
+  height: 420px;
+  align-self: start;
+}
+@media (max-width: 900px) {
+  .market-host .market-side { height: auto; }
+}

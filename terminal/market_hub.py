@@ -69,6 +69,19 @@ class MarketHub:
     def latest(self,interval):
         with self.lock:return [dict(row) for row in self.candles.get(interval,{}).values()]
 
+    def _observe_candle(self,event):
+        interval=event.get('interval','1');candle=event['candle']
+        row={**candle,'confirmed':event['kind']=='candle' or event.get('confirmed',False),'provider_ms':event.get('provider_ms',0)}
+        table=self.candles.setdefault(interval,{})
+        old=table.get(candle['time'])
+        if old and old['confirmed'] and row['provider_ms']>=old['provider_ms']:
+            if row['confirmed'] and any(old[k]!=row[k] for k in ('open','high','low','close','volume')):
+                old['conflict']=True
+            # Exact duplicates advance the provider watermark, not indicator state.
+            old['provider_ms']=row['provider_ms']
+        if old is None or (not old['confirmed'] and row['provider_ms']>=old['provider_ms']):table[candle['time']]=row
+        for key in sorted(table)[:-3]:del table[key]
+
     def _run(self):
         attempts=0
         while not self.stop.is_set():
@@ -86,12 +99,7 @@ class MarketHub:
                             kind=event['kind']
                             if kind=='price':last_price=time.monotonic()
                             if kind in ('candle','forming','display_candle'):
-                                interval=event.get('interval','1');candle=event['candle']
-                                row={**candle,'confirmed':kind=='candle' or event.get('confirmed',False),'provider_ms':event.get('provider_ms',0)}
-                                table=self.candles.setdefault(interval,{})
-                                old=table.get(candle['time'])
-                                if old is None or (not old['confirmed'] and row['provider_ms']>=old['provider_ms']):table[candle['time']]=row
-                                for key in sorted(table)[:-3]:del table[key]
+                                self._observe_candle(event)
                             if kind!='display_candle':
                                 for feed in self.consumers:
                                     if feed.failed:continue

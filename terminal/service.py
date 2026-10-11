@@ -28,6 +28,8 @@ class AppService:
         self.chart_reads=ChartReads(self)
         from terminal.live import LiveManager
         self.live=LiveManager(self.store)
+        from terminal.display_indicators import DisplayIndicators
+        self.display_indicators=DisplayIndicators(self.live.chart_history)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -61,6 +63,7 @@ class AppService:
                           notification_test={'channel'},telegram_configure={'token','chat_id'},telegram_clear=set())
             fields.update(live_start_terminal={'strategy_id','profile','paper','channels','execution_source'},
                           live_chart={'session_id'},paper_manual={'session_id','action','request_id'})
+            fields.update(chart_indicator_settings={'market','symbol'},chart_indicator_save={'market','symbol','instances','revision'},chart_indicator_read={'market','symbol','minutes','start','end','revision','reanchor'})
             fields.update(market_open={'market','symbol'},market_close=set(),market_chart={'market','symbol','minutes','before'})
             fields.update(managed_experiment_fields={'strategy_id','profile'})
             fields.update(paper_start_manual={'profile'})
@@ -100,6 +103,9 @@ class AppService:
             elif command in ('live_start','live_start_terminal'):result=self.live.start(**p)
             elif command=='market_open':result=self.live.market_open(**p)
             elif command=='market_close':result=self.live.market_close()
+            elif command=='chart_indicator_settings':result=self.display_indicators.settings(**p)
+            elif command=='chart_indicator_save':result=self.display_indicators.save(**p)
+            elif command=='chart_indicator_read':result=self.display_indicators.read(**p)
             elif command=='market_chart':result=self.live.chart_history.request(**p)
             elif command=='live_chart':result=self.live.journal.chart(**p)
             elif command=='paper_manual':result=self.live.manual(**p)
@@ -239,12 +245,13 @@ class AppService:
         attempt(self.experiments.close)
         # The calculation process is only one workspace owner. Defer unlocking
         # until live/history/download threads have also actually stopped.
+        attempt(self.display_indicators.close)
         attempt(self.chart_reads.close)
         attempt(self.exports.close)
         attempt(self.archives.close)
         attempt(lambda:self.jobs.close(release_workspace=False))
         attempt(self.downloads.close)
-        threads=(self.live.thread,self.live.warmup_thread,self.live.hub.thread,self.live.chart_history.thread,
+        threads=(self.display_indicators.thread,self.live.thread,self.live.warmup_thread,self.live.hub.thread,self.live.chart_history.thread,
                  self.live.delivery_thread,self.downloads.thread)
         if self.chart_reads.active or self.exports.active or self.archives.worker.active or self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
             errors.append(RuntimeError('Service shutdown is incomplete; workspace ownership is retained'))

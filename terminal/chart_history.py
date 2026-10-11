@@ -5,7 +5,7 @@ import queue
 import threading
 import time
 
-from terminal.data import BybitClient, DataError, canonical, validate_symbol
+from terminal.data import BybitClient, DataError, canonical, validate_symbol, digest
 from terminal.series import Candle
 
 INTERVALS={1:'1',5:'5',15:'15',60:'60',240:'240',1440:'D'}
@@ -23,6 +23,10 @@ class ChartHistory:
                 CREATE TABLE IF NOT EXISTS chart_candles_v1(
                   market TEXT NOT NULL,symbol TEXT NOT NULL,minutes INTEGER NOT NULL,time INTEGER NOT NULL,
                   candle TEXT NOT NULL,PRIMARY KEY(market,symbol,minutes,time));
+                CREATE TABLE IF NOT EXISTS chart_confirmation_v1(
+                  market TEXT NOT NULL,symbol TEXT NOT NULL,minutes INTEGER NOT NULL,time INTEGER NOT NULL,
+                  content_hash TEXT NOT NULL,provenance TEXT NOT NULL,conflict INTEGER NOT NULL DEFAULT 0,
+                  PRIMARY KEY(market,symbol,minutes,time));
                 CREATE TABLE IF NOT EXISTS chart_pages_v1(
                   market TEXT NOT NULL,symbol TEXT NOT NULL,minutes INTEGER NOT NULL,before_time INTEGER NOT NULL,
                   oldest INTEGER,exhausted INTEGER NOT NULL,PRIMARY KEY(market,symbol,minutes,before_time));
@@ -35,18 +39,20 @@ class ChartHistory:
         validate_symbol(symbol)
         if type(minutes) is not int or minutes not in INTERVALS:raise ValueError('Unsupported chart interval')
         if before is not None and (type(before) is not int or before<0 or before%(minutes*60)):raise ValueError('Invalid chart page cursor')
+        self.capture_hub(market,symbol,minutes)
         width=minutes*60;now=int(time.time());boundary=now//width*width
         key=(market,symbol,minutes,before)
         with self.store.connect() as db:
             page=db.execute('SELECT * FROM chart_pages_v1 WHERE market=? AND symbol=? AND minutes=? AND before_time=?',(*key[:3],before)).fetchone() if before is not None else None
-            rows=db.execute('SELECT candle FROM chart_candles_v1 WHERE market=? AND symbol=? AND minutes=? AND time<? ORDER BY time DESC LIMIT ?',(*key[:3],before if before is not None else boundary,PAGE)).fetchall()
-        candles=[json.loads(r['candle']) for r in reversed(rows)]
+            rows=db.execute('SELECT c.candle,p.provenance,p.content_hash,p.conflict FROM chart_candles_v1 c LEFT JOIN chart_confirmation_v1 p USING(market,symbol,minutes,time) WHERE c.market=? AND c.symbol=? AND c.minutes=? AND c.time<? ORDER BY c.time DESC LIMIT ?',(*key[:3],before if before is not None else boundary,PAGE)).fetchall()
+        candles=[self.annotate(r) for r in reversed(rows)]
         # Current and immediately preceding observed intervals survive finalization
         # before the background REST refresh. Never aggregate M1 into coarse history.
-        if candles and before is None and (market,symbol)==(self.hub.market,self.hub.symbol):
+        if before is None and (market,symbol)==(self.hub.market,self.hub.symbol):
             merged={r['time']:r for r in candles}
             for row in self.hub.latest(INTERVALS[minutes]):
-                if row['time']<=boundary:merged[row['time']]={k:row[k] for k in ('time','open','high','low','close','volume')}
+                if row['time']<=boundary and row['time'] not in merged:
+                    merged[row['time']]={**self.payload(row),'confirmation':'conflict' if row.get('conflict') else 'provider_confirmed' if row.get('confirmed') is True else 'forming'}
             candles=[merged[t] for t in sorted(merged)][-PAGE:]
         with self.lock:
             # Complete prior pages are immutable cache hits; recent data refreshes
@@ -84,14 +90,48 @@ class ChartHistory:
             candle=asdict(Candle(stamp,*(float(v) for v in row[1:6])))
             if stamp in rows and rows[stamp]!=candle:raise DataError('Conflicting chart candle')
             rows[stamp]=candle
+        conflict=False
         with self.store.connect() as db:
             if self.stop.is_set():return
             for stamp,candle in rows.items():
                 existing=db.execute('SELECT candle FROM chart_candles_v1 WHERE market=? AND symbol=? AND minutes=? AND time=?',(market,symbol,minutes,stamp)).fetchone()
-                if existing and json.loads(existing[0])!=candle:raise DataError('Confirmed chart history changed; review required')
+                if existing and json.loads(existing[0])!=candle:
+                    key=(market,symbol,minutes,stamp)
+                    db.execute('INSERT OR IGNORE INTO chart_confirmation_v1 VALUES(?,?,?,?,?,?,1)',(*key,digest(json.loads(existing[0])),'legacy_unknown'))
+                    db.execute('UPDATE chart_confirmation_v1 SET conflict=1 WHERE market=? AND symbol=? AND minutes=? AND time=?',key)
+                    conflict=True;break
                 db.execute('INSERT OR IGNORE INTO chart_candles_v1 VALUES(?,?,?,?,?)',(market,symbol,minutes,stamp,canonical(candle).decode()))
-            if before is not None:
+                db.execute('INSERT OR IGNORE INTO chart_confirmation_v1 VALUES(?,?,?,?,?,?,0)',(market,symbol,minutes,stamp,digest(json.loads(existing[0])) if existing else digest(candle),'closed_rest'))
+            if before is not None and not conflict:
                 db.execute('INSERT OR REPLACE INTO chart_pages_v1 VALUES(?,?,?,?,?,?)',(market,symbol,minutes,before,min(rows) if rows else None,int(len(rows)<limit)))
+
+        if conflict:raise DataError('Confirmed chart history changed; review required')
+
+    @staticmethod
+    def payload(row):
+        return {k:row.get(k) for k in ('time','open','high','low','close','volume')}
+
+    @staticmethod
+    def annotate(row):
+        candle=json.loads(row['candle'])
+        provenance=row['provenance']
+        state=('conflict' if row['conflict'] or (row['content_hash'] and digest(candle)!=row['content_hash'])
+               else provenance or 'legacy_unknown')
+        return {**candle,'confirmation':state}
+
+    def capture_hub(self,market,symbol,minutes):
+        """Persist only explicit provider confirmations, never age a forming row."""
+        if (market,symbol)!=(self.hub.market,self.hub.symbol):return
+        rows=self.hub.latest(INTERVALS[minutes])
+        with self.store.connect() as db:
+            for row in rows:
+                if row.get('confirmed') is not True:continue
+                candle=self.payload(row);key=(market,symbol,minutes,candle['time'])
+                old=db.execute('SELECT candle FROM chart_candles_v1 WHERE market=? AND symbol=? AND minutes=? AND time=?',key).fetchone()
+                conflict=bool(row.get('conflict') or (old and json.loads(old[0])!=candle))
+                if old is None:db.execute('INSERT INTO chart_candles_v1 VALUES(?,?,?,?,?)',(*key,canonical(candle).decode()))
+                db.execute('INSERT OR IGNORE INTO chart_confirmation_v1 VALUES(?,?,?,?,?,?,?)',(*key,digest(json.loads(old[0])) if old else digest(candle),'provider_confirmed',int(conflict)))
+                if conflict:db.execute('UPDATE chart_confirmation_v1 SET conflict=1 WHERE market=? AND symbol=? AND minutes=? AND time=?',key)
 
     def _run(self):
         while not self.stop.is_set():

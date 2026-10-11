@@ -6,6 +6,165 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Chart indicator browser acceptance — 2026-10-11
+
+The final Linux/browser source checkpoint `ce7e3fd` was exercised against three
+isolated, explicitly labelled synthetic workspaces with exchange transports
+blocked. This is application interaction evidence, not live-exchange, Windows,
+strategy profitability or unaided owner acceptance.
+
+- Added all six indicator types through the UI; an additional EMA retained an
+  independent period. Invalid period 1001 disabled Apply with a clear error;
+  eight draft instances disabled adding a ninth. Hide/unhide, RSI removal and
+  re-addition, saved settings reopening, Fit, older-cache paging and rapid chart
+  timeframe switches were exercised. BTC latest values and persisted origin
+  remained stable across the observed paging/reopen sequence.
+- A separate eight-close oracle displayed SMA3 11.66666667, EMA3 11.28125,
+  Bollinger2/2 lower/middle/upper 8/10/12, RSI2 45.5, and MACD2/3/2
+  line -0.3384059214, signal -0.3492703094, histogram 0.01086438805;
+  volume was 10 source-native fixture units. These agree with independently
+  authored arithmetic expectations, not exchange data.
+- Actual 1180px and 718px browser checks found and corrected clipped workspace
+  scrolling, JSON-key-dependent labels and compressed oscillator panes. Final
+  measured pane heights were 306/124/124/125px within a 710px chart. The final
+  RSI axis showed its bounded 0–100 range with 30/70 guides, without changing
+  the other pane margins. Controls and readouts wrapped at the narrow width.
+- An explicitly historical forming candle remained visible in price and raw
+  volume (777), while its EMA value stayed unavailable. The previous confirmed
+  EMA endpoint remained 11.28125; details showed eight confirmed and one unknown
+  input after repeated polling/Latest. No age-based confirmation was inferred.
+- A 10,001-bar saved-origin fixture visibly refused indicator replay while price
+  browsing stayed usable. Switching to the small oracle recovered EMA3 11.28125.
+  Read-only SQLite comparison confirmed every pre-persisted over-budget origin
+  document unchanged; no silent reseed occurred. In the refusal state, details
+  currently show an unavailable-result placeholder rather than the saved origin;
+  the explicit error correctly explains that the origin was not changed.
+- All three hosts stopped through the visible service control. Exit evidence
+  showed zero external transport attempts and zero result, native-trust, live
+  session/evaluation/signal or paper action rows; SQLite integrity was valid.
+
+The aggregate checkpoints were 466 Python tests (8 explicit Windows-only skips)
+and 489 frontend tests across 55 files. Later narrow corrections passed 23
+backend-focused tests and the final 33-test frontend-focused set, TypeScript and
+Vite. Independent review and secret scans passed. An earlier unchanged
+CardOrdering timing failure was retained; focused retry and the next aggregate
+passed without weakening its expectations.
+
+Native color-picker automation was inconclusive; component, backend persistence
+and series color tests passed. Browser checks did not exhaust every 1,800-bar
+trim boundary, interactive provider-confirmation transition, recorded-session
+combination or 390px layout; corresponding automated evidence does not become
+browser evidence. Current Windows/native and actual public feed acceptance remain
+separate pending work. No dependency, product version or financial formula changed.
+
+
+## RSI scale padding correction — 2026-10-11
+
+Actual browser checks at 1180px and 718px widths verified readable relative pane
+heights, reachable narrow controls and remove/re-add without ghost panes. RSI
+re-add exposed a remaining axis-padding issue: its fixed 0–100 autoscale range
+was expanded by library-default scale margins. RSI series now apply zero top
+and bottom margins to their current shared pane scale using the installed
+library's supported API. Independent source review caught that this library also
+updates defaults for future panes: the implementation immediately restores a
+copied snapshot of the primary scale margins, preserving RSI's local setting
+without leaking zero margins into MACD, volume or recorded panes. The regression
+models that library behavior across shared RSI instances and pane rebuilding.
+Price and all non-RSI scale margins remain unchanged.
+
+Thirty-three focused frontend tests and TypeScript/Vite passed, including shared
+multiple RSI instances and a rebuilt RSI at a different pane index. Calculations
+are unchanged. Actual-browser confirmation of the corrected axis and the pending
+forming/over-budget scenarios remain acceptance checks; no Windows claim follows.
+
+## Stable relative chart pane sizing — 2026-10-11
+
+Parent browser checks confirmed the scroll/label corrections, independent ETH
+oracle values, invalid-period and instance-limit controls, retained hidden EMA
+settings and stable origin/output through paging and reopening. They then found
+RSI/MACD panes compressed after the canvas resized. Installed chart-library source
+review confirmed that sequential pixel-height setters redistribute neighboring
+panes. The correction uses persistent relative stretch factors, 320 for price
+and 130 for each oscillator/volume/recorded pane, after pane reconciliation.
+Actual pixel heights account for the time axis and separators.
+
+Thirty-two focused frontend tests and TypeScript/Vite passed. Independent source
+review approved the sizing change. Native color-picker automation remained
+inconclusive; unchanged color handling passed draft/Apply/canonical-reopen/series
+regressions and a separate synthetic backend save/reopen check. No color-handler
+or numerical change was made. Actual-browser rendered sizing after this correction
+still requires the parent's repeat check; no new Windows acceptance follows.
+
+## Chart pane reachability and canonical labels — 2026-10-11
+
+Parent browser acceptance found that the original clipped grid could hide the
+price pane and toolbar after applying several display tools, and canonical
+parameter-key sorting reversed BB/MACD title order. The correction gives the
+Market workspace a visible, keyboard-focusable vertical scroll owner. Chart
+controls and naturally sized panes remain ordinary document flow; narrow layouts
+stretch the chart to available width instead of retaining a fixed chart height.
+The bounded order-book/tape scrollers remain separate. Indicator names and field
+order now use explicit semantic parameter ordering, independent of JSON keys.
+
+Thirty focused frontend tests passed, including canonical BB/MACD settings,
+keyboard focus and computed stylesheet rules, followed by TypeScript and Vite.
+Numerical/backend code is unchanged; prior financial evidence is retained rather
+than rerun. Actual-browser normal/narrow reachability after this correction still
+requires the parent's repeat check; simulated DOM style checks do not prove it.
+
+## Cache-only chart display indicators — 2026-10-11
+
+The Market chart now offers separate SMA, EMA, Bollinger Bands, RSI, MACD and
+native-volume display instances. Up to eight may be added, edited, colored,
+hidden or removed atomically, including two independent EMAs. Workspace SQLite
+persists configuration and timeframe-specific origins. Price overlays, fixed
+0–100 RSI, MACD, volume and recorded IR have separate compatible panes. Display
+controls do not start a strategy, write signals, place paper orders or modify the
+execution profile. Product remains 0.6.0-dev; no dependency or license change.
+
+Explicit confirmation metadata distinguishes closed REST/provider input, forming
+observations, legacy-unknown cache and conflicts. No age-based promotion occurs.
+Price and available native volume remain useful when calculated values lack
+confirmed history. The calculation reuses pinned graph indicator primitives,
+with independently verified seeds, warmup, gap resets and matching UTC
+interval-end labels. Origins survive paging/trim/reopen; explicit reanchoring
+creates a new generation. Over-budget replay refuses without silent reseeding.
+One bounded coalesced worker keeps numerical replay off service dispatch;
+forming volume cannot repeatedly cancel unchanged confirmed work. See
+[ADR 0040](adr/0040-cache-only-chart-indicators.md).
+
+Independent Fraction goldens cover SMA/EMA/BB/RSI/MACD and native-volume edge
+values. Independent source review found and verified fixes for confirmation
+corrections, delayed closes, duplicate watermarks, corrupted settings, work caps,
+responsiveness and forming-tick starvation. An external synthetic fixture
+self-check verified baseline, historical-time forming and over-budget scenarios,
+all with zero external transport attempts, zero trading/journal records and clean
+shutdown. These are service checks, not actual-browser acceptance.
+
+After readability cleanup, the complete Python suite passed **466 tests in
+208.420s, with 8 explicit Windows-only skips**; **489 frontend tests / 55 files**
+passed in the final run in 17.88s. TypeScript and production Vite build passed. Linux runtime
+verification and `pip check` passed. Existing Pandas deprecation and bundle-size
+advisories remain nonfatal. The initial aggregate exposed an outdated shutdown
+test double missing the new worker; the corrected test also asserts its cleanup.
+
+A later narrow correction adds an explicit whitespace break at a gapped join
+between pre-origin finite windows and the saved-origin segment, including
+period-1 SMA/BB. Its final focused indicator/market/shutdown regression passed
+**23 tests**. The earlier complete aggregate is retained separately and is not
+represented as a full rerun after this final correction. A subsequent frontend
+aggregate had one intermittent failure in the unchanged CardOrdering alert-timing
+test; a 16-test focused retry and the final 489-test aggregate both passed, without
+changing that test or its expectations. Staged and outgoing
+secret/privacy/license checks cover the final deliverable; an initial scanner
+false positive on compressed program syntax was resolved by normal multiline
+formatting without scanner suppression.
+
+Actual-browser pane removal/readdition, numeric readouts, normal/narrow layouts
+and owner usability remain parent acceptance gates. No Windows/native/live
+acceptance, source acquisition, empirical profitability, main merge, release or
+publication claim follows from this local implementation checkpoint.
+
 ## Observation-to-Lab resolution correction and browser evidence — 2026-10-11
 
 Parent-led production-browser checks on `d9f9640` completed both daily strategy

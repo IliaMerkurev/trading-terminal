@@ -613,3 +613,20 @@ reimport preserves graph and saved result bytes; imports do not grant native
 trust. Stop the host before rebuilding, and retain fixture versus ordinary
 research data separation. Browser, Windows and owner acceptance are separately
 reported; synthetic values are never presented as market profitability.
+
+## Cache-only chart display indicators
+
+See [ADR 0040](adr/0040-cache-only-chart-indicators.md). Display settings use the
+workspace database rather than browser localStorage. `chart_indicator_settings`,
+`chart_indicator_save` and `chart_indicator_read` are presentation-only service
+commands. The read command returns `calculating` while the single bounded worker
+replays, then `ready`; it never queues market acquisition. Existing market/chart
+history acquisition is independent. Actual native confirmation is required for
+calculated values; legacy cached prices and volume remain browseable.
+
+Focused deterministic checks: `python -m unittest tests.test_display_indicators
+tests.test_market_lifecycle -v`, and `node node_modules/vitest/vitest.mjs run
+frontend/src/ChartIndicators.test.tsx frontend/src/LiveChart.test.tsx`. Run with the
+matching pinned project environment. Validate actual pane layout and source/
+timeframe switching in an isolated synthetic browser workspace; never relabel
+synthetic values as a live feed or merge its journal into ordinary data.

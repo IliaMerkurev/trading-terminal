@@ -1,0 +1,136 @@
+{
+  "source": "Independent standard-library Fraction oracle; synthetic, not market data",
+  "closes": [
+    "10",
+    "12",
+    "11",
+    "16",
+    "13",
+    "15",
+    "9",
+    "11"
+  ],
+  "sma3": [
+    null,
+    null,
+    "11",
+    "13",
+    "40/3",
+    "44/3",
+    "37/3",
+    "35/3"
+  ],
+  "ema3": [
+    null,
+    null,
+    "11",
+    "27/2",
+    "53/4",
+    "113/8",
+    "185/16",
+    "361/32"
+  ],
+  "bb2_2": [
+    null,
+    {
+      "middle": "11",
+      "band_distance_squared": "4"
+    },
+    {
+      "middle": "23/2",
+      "band_distance_squared": "1"
+    },
+    {
+      "middle": "27/2",
+      "band_distance_squared": "25"
+    },
+    {
+      "middle": "29/2",
+      "band_distance_squared": "9"
+    },
+    {
+      "middle": "14",
+      "band_distance_squared": "4"
+    },
+    {
+      "middle": "12",
+      "band_distance_squared": "36"
+    },
+    {
+      "middle": "10",
+      "band_distance_squared": "4"
+    }
+  ],
+  "rsi2": [
+    null,
+    null,
+    "50",
+    "275/3",
+    "275/6",
+    "135/2",
+    "675/34",
+    "91/2"
+  ],
+  "macd2_3_2": [
+    {
+      "macd": null,
+      "signal": null,
+      "histogram": null
+    },
+    {
+      "macd": null,
+      "signal": null,
+      "histogram": null
+    },
+    {
+      "macd": "1/9",
+      "signal": null,
+      "histogram": null
+    },
+    {
+      "macd": "47/54",
+      "signal": "50/81",
+      "histogram": "41/162"
+    },
+    {
+      "macd": "67/324",
+      "signal": "167/486",
+      "histogram": "-133/972"
+    },
+    {
+      "macd": "701/1944",
+      "signal": "115/324",
+      "histogram": "11/1944"
+    },
+    {
+      "macd": "-8561/11664",
+      "signal": "-6491/17496",
+      "histogram": "-12701/34992"
+    },
+    {
+      "macd": "-23683/69984",
+      "signal": "-36665/104976",
+      "histogram": "2281/209952"
+    }
+  ],
+  "volume_fixture": [
+    {
+      "open": 10,
+      "close": 10,
+      "volume": 0,
+      "direction": "up"
+    },
+    {
+      "open": 11,
+      "close": 10,
+      "volume": 7,
+      "direction": "down"
+    },
+    {
+      "open": 9,
+      "close": 10,
+      "volume": null,
+      "direction": "up"
+    }
+  ]
+}

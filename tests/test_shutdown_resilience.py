@@ -36,6 +36,7 @@ class ShutdownResilienceTests(unittest.TestCase):
         self.assertTrue(service.live.delivery_stop.is_set())
         self.assertFalse(service.live.delivery_thread.is_alive())
         self.assertFalse(service.live.chart_history.thread.is_alive())
+        self.assertFalse(service.display_indicators.thread.is_alive())
         self.assertTrue(service.jobs.instance_file.closed)
         reopened=JobManager(self.tmp.name);reopened.close()
 
@@ -69,12 +70,13 @@ class ShutdownResilienceTests(unittest.TestCase):
         service.experiments=Mock(active=None)
         service.downloads=Mock(thread=None)
         service.chart_reads=Mock(active=None)
+        service.display_indicators=Mock(thread=None)
         service.exports=Mock(active=None)
         service.archives=Mock(worker=Mock(active=None))
         with self.assertRaises(ExceptionGroup) as caught:service.close()
         self.assertIn(original,failures(caught.exception))
         self.assertTrue(any('ownership is retained' in str(error) for error in failures(caught.exception)))
-        for owner in (live,service.library_batches,service.experiments,service.downloads,service.chart_reads,service.exports,service.archives):owner.close.assert_called_once()
+        for owner in (live,service.library_batches,service.experiments,service.downloads,service.display_indicators,service.chart_reads,service.exports,service.archives):owner.close.assert_called_once()
         self.assertFalse(jobs.instance_file.closed)
         with self.assertRaisesRegex(ValueError,'Another application instance'):JobManager(self.tmp.name)
         # This is an explicit second close after the owner has actually exited.

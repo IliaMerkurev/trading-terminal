@@ -156,3 +156,13 @@ it('displays the frozen active session instrument and disables market switching'
  expect((screen.getByLabelText('Market view market') as HTMLSelectElement).disabled).toBe(true);
  expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'ETHUSDT'});
 });
+
+
+it('allows keyboard focus on the scrollable market workspace',()=>{
+ mock.api.mockResolvedValue({active:false,market:{},terminal_state:'PAUSED'});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ const workspace=screen.getByRole('region',{name:'Live Terminal'});
+ expect(workspace.tabIndex).toBe(0);
+ workspace.focus();
+ expect(document.activeElement).toBe(workspace);
+});
