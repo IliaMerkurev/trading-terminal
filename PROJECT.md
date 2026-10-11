@@ -577,8 +577,14 @@ compatible display catalog. HA must use a stable cache-derived origin, explicit
 synthetic-price labeling and independent seed/gap/paging tests; raw prices,
 indicator inputs and all trading/recorded IR stay unchanged. Formula additions
 need bounded contracts, independent fixtures, causality, persistence and series
-integration before catalog exposure. The current slice exposes only the existing
-nine types; later HA/line and formula batches are pending. See the
+integration before catalog exposure. The current integrated candidate exposes 21 implemented types with bounded
+catalog pagination and Candles/Heikin Ashi/raw-close Line. The final nine
+advanced types and owner acceptance remain pending; bounded synthetic
+actual-App browser acceptance passed on corrected source `7086f36`. Price style
+is transient and resets to Candles on reload; indicator/drawing persistence
+remains unchanged. See the
 [expansion plan](docs/CHART_EXPANSION_PLAN.md) and [ADR 0047](docs/adr/0047-market-indicator-catalog.md).
 No Pine runtime, paid chart package, additional dependency, provider acquisition,
 strategy/trading change, product-version bump, release or main merge is implied.
+
+The chart styles and first twelve formula additions follow [ADR 0048](docs/adr/0048-chart-price-styles-and-formula-batch.md).

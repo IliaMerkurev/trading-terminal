@@ -12,6 +12,7 @@ export function useChartIndicators(
   rows: React.MutableRefObject<LiveCandle[]>,
   source = 'bybit',
   windowEpoch = 0,
+  priceStyle: 'candles' | 'heikin_ashi' | 'line' = 'candles',
 ) {
   const [settings, setSettings] = useState<IndicatorSettings>(emptySettings);
   const [result, setResult] = useState<any>(null);
@@ -23,6 +24,8 @@ export function useChartIndicators(
   const anchor = useRef(false);
   const calculationEpoch = useRef(0);
   const resultWindow = useRef(windowEpoch);
+  const resultKey = useRef('');
+  const requestKey = JSON.stringify([source, market, symbol, minutes, priceStyle]);
   settingsRef.current = settings;
 
   useEffect(() => {
@@ -53,7 +56,7 @@ export function useChartIndicators(
     setResult(null);
     anchor.current = false;
     ++calculationEpoch.current;
-    if (!active || !loaded || !settings.instances.some(item => item.visible)) return;
+    if (!active || !loaded || (!settings.instances.some(item => item.visible) && priceStyle !== 'heikin_ashi')) return;
     let stopped = false;
     const cancel = poll(async () => {
       const current = rows.current;
@@ -65,13 +68,14 @@ export function useChartIndicators(
       const reanchor = anchor.current;
       anchor.current = false;
       const value = await api<any>('chart_indicator_read', {
-        market, symbol, ...(source==='bybit'?{}:{source}), minutes, start, end, revision: settings.revision, reanchor,
+        market, symbol, ...(source==='bybit'?{}:{source}), minutes, start, end, revision: settings.revision, reanchor, ...(priceStyle === 'heikin_ashi' ? {price_style: 'heikin_ashi'} : {}),
       });
       return {key, epoch, value};
     }, reply => {
       if (!reply || stopped) return;
       if (reply.key !== JSON.stringify(rows.current) || reply.epoch !== calculationEpoch.current) return;
       resultWindow.current = windowEpoch;
+      resultKey.current = requestKey;
       setResult(reply.value);
       setError(reply.value.error ?? reply.value.settings?.warning ?? '');
     }, reason => {
@@ -86,7 +90,7 @@ export function useChartIndicators(
       stopped = true;
       cancel();
     };
-  }, [source, market, symbol, minutes, active, loaded, settings, windowEpoch]);
+  }, [source, market, symbol, minutes, active, loaded, settings, windowEpoch, priceStyle]);
 
   const apply = async (instances: ChartIndicator[]) => {
     const token = generation.current;
@@ -114,5 +118,5 @@ export function useChartIndicators(
     anchor.current = true;
     setResult(null);
   };
-  return {settings, result: resultWindow.current === windowEpoch ? result : null, error, saving, loaded, apply, reanchor};
+  return {settings, result: resultWindow.current === windowEpoch && resultKey.current === requestKey ? result : null, error, saving, loaded, apply, reanchor};
 }

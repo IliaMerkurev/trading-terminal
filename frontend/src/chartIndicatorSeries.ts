@@ -1,6 +1,8 @@
 import {LineSeries, HistogramSeries} from 'lightweight-charts';
 import {type ChartIndicator} from './ChartIndicators';
 
+export const auxiliaryKinds = ['rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv', 'roc', 'momentum', 'cci', 'williamsr', 'mfi', 'cmf', 'stddev'];
+
 // Rebuild only owned display series. Derive pane indexes from visible kinds,
 // then move the separate recorded IR series to the last pane.
 export function installIndicatorSeries(
@@ -15,10 +17,10 @@ export function installIndicatorSeries(
   for (const item of instances) {
     if (!item.visible) continue;
     const volumeOverlay = item.type === 'volume' && item.placement !== 'pane';
-    const group = ['rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv'].includes(item.type) && !volumeOverlay ? item.type : 'price';
+    const group = auxiliaryKinds.includes(item.type) && !volumeOverlay ? item.type : 'price';
     if (group !== 'price' && !panes.has(group)) panes.set(group, next++);
     const pane = panes.get(group) ?? 0;
-    const ports = item.type === 'bb' ? ['upper', 'middle', 'lower']
+    const ports = ['bb', 'donchian', 'keltner'].includes(item.type) ? ['upper', 'middle', 'lower']
       : item.type === 'macd' ? ['macd', 'signal', 'histogram'] : item.type === 'stochastic' ? ['k', 'd'] : ['value'];
     for (const port of ports) {
       const histogram = item.type === 'volume' || port === 'histogram';
@@ -32,9 +34,11 @@ export function installIndicatorSeries(
         crosshairMarkerVisible: !histogram,
       };
       if (['signal', 'upper', 'lower', 'd'].includes(port)) options.lineStyle = 2;
-      if (item.type === 'rsi' || item.type === 'stochastic') {
-        options.autoscaleInfoProvider = () => ({priceRange: {minValue: 0, maxValue: 100}});
+      if (['rsi', 'stochastic', 'mfi', 'williamsr'].includes(item.type)) {
+        options.autoscaleInfoProvider = () => ({priceRange: {minValue: item.type === 'williamsr' ? -100 : 0, maxValue: item.type === 'williamsr' ? 0 : 100}});
       }
+      if (['roc', 'williamsr', 'mfi'].includes(item.type)) options.priceFormat = {type: 'percent', precision: 2, minMove: 0.01};
+      if (item.type === 'cmf') options.priceFormat = {type: 'price', precision: 4, minMove: 0.0001};
       if (item.type === 'obv') options.priceFormat = {type: 'volume'};
       if (item.type === 'volume') {
         options.priceFormat = {type: 'volume'};
@@ -49,11 +53,11 @@ export function installIndicatorSeries(
         const original = primaryScale.options();
         const margins = {...original.scaleMargins};
         series.priceScale().applyOptions({mode: 0, autoScale: true,
-          scaleMargins: ['rsi', 'stochastic'].includes(item.type) ? {top: 0, bottom: 0} : {top: 0.2, bottom: 0.1}});
+          scaleMargins: ['rsi', 'stochastic', 'mfi', 'williamsr'].includes(item.type) ? {top: 0, bottom: 0} : {top: 0.2, bottom: 0.1}});
         primaryScale.applyOptions({mode: original.mode ?? 0, autoScale: original.autoScale ?? true, scaleMargins: margins});
       }
-      if (item.type === 'rsi' || item.type === 'stochastic') {
-        for (const price of (item.type === 'rsi' ? [30, 70] : port === 'k' ? [20, 80] : [])) {
+      if (['rsi', 'stochastic', 'mfi', 'williamsr'].includes(item.type)) {
+        for (const price of (item.type === 'rsi' ? [30, 70] : item.type === 'williamsr' ? [-80, -20] : item.type === 'mfi' || port === 'k' ? [20, 80] : [])) {
           series.createPriceLine({price, color: '#879bb5', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: String(price)});
         }
       }

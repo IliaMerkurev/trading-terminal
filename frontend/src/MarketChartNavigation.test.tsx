@@ -2,13 +2,13 @@ import {beforeEach,afterEach,it,expect,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import MarketChart from './MarketChart';
 
-const mock=vi.hoisted(()=>({api:vi.fn(),chart:null as any,series:[] as any[],range:null as any,rangeChanged:(_r:any)=>{},crosshair:(_r:any)=>{},fits:0,ranges:[] as any[],markers:vi.fn(),price:{mode:0,autoScale:true,scaleMargins:{top:.2,bottom:.1}},removed:0}));
+const mock=vi.hoisted(()=>({api:vi.fn(),chart:null as any,series:[] as any[],range:null as any,rangeChanged:(_r:any)=>{},crosshair:(_r:any)=>{},fits:0,ranges:[] as any[],markers:vi.fn(),markerTargets:[] as any[],price:{mode:0,autoScale:true,scaleMargins:{top:.2,bottom:.1}},removed:0}));
 vi.mock('./api',()=>({api:mock.api}));
-vi.mock('lightweight-charts',()=>({CandlestickSeries:'candle',LineSeries:'line',HistogramSeries:'histogram',ColorType:{Solid:'solid'},createSeriesMarkers:()=>({setMarkers:mock.markers}),createChart:()=>{
+vi.mock('lightweight-charts',()=>({CandlestickSeries:'candle',LineSeries:'line',HistogramSeries:'histogram',ColorType:{Solid:'solid'},createSeriesMarkers:(series:any)=>{mock.markerTargets.push(series);return {setMarkers:mock.markers,detach:vi.fn()};},createChart:()=>{
  const domain=()=>[...new Set(mock.series.flatMap(s=>s.data.map((row:any)=>row.time)))].sort((a:any,b:any)=>a-b);
  const scale={options:()=>({...mock.price}),applyOptions:(options:any)=>Object.assign(mock.price,options)};
  const timeScale={getVisibleLogicalRange:()=>mock.range,setVisibleLogicalRange:(range:any)=>{mock.range={...range};mock.ranges.push({range:{...range},domain:domain()});mock.rangeChanged(range);},fitContent:()=>{mock.fits++;mock.range={from:0,to:domain().length-1};mock.rangeChanged(mock.range);},subscribeVisibleLogicalRangeChange:(listener:any)=>{mock.rangeChanged=listener;},unsubscribeVisibleLogicalRangeChange:vi.fn()};
- mock.chart={addSeries:(kind:string)=>{const series={kind,data:[] as any[],setData:vi.fn((data:any[])=>{series.data=data;}),update:vi.fn((row:any)=>{const index=series.data.findIndex(c=>c.time===row.time);if(index<0)series.data.push(row);else series.data[index]=row;}),applyOptions:vi.fn(),moveToPane:vi.fn(),createPriceLine:vi.fn(),removePriceLine:vi.fn(),priceScale:()=>scale};mock.series.push(series);return series;},removeSeries:(series:any)=>{mock.series=mock.series.filter(s=>s!==series);},priceScale:()=>scale,timeScale:()=>timeScale,applyOptions:vi.fn(),panes:()=>[],subscribeCrosshairMove:(listener:any)=>{mock.crosshair=listener;},unsubscribeCrosshairMove:vi.fn(),clearCrosshairPosition:vi.fn(()=>mock.crosshair({})),remove:()=>{mock.removed++;}};
+ mock.chart={addSeries:(kind:string,options:any)=>{const series:any={kind,options:{...options},data:[] as any[],setData:vi.fn((data:any[])=>{series.data=data;}),update:vi.fn((row:any)=>{const index=series.data.findIndex((c:any)=>c.time===row.time);if(index<0)series.data.push(row);else series.data[index]=row;}),applyOptions:vi.fn((change:any)=>Object.assign(series.options,change)),moveToPane:vi.fn(),priceToCoordinate:(price:number)=>series.data.some((row:any)=>Number.isFinite(row.value??row.close))?320-price:null,coordinateToPrice:(coordinate:number)=>series.data.some((row:any)=>Number.isFinite(row.value??row.close))?320-coordinate:null,createPriceLine:vi.fn((level:any)=>({coordinate:()=>series.options.visible===false?null:series.priceToCoordinate(level.price)})),removePriceLine:vi.fn(),priceScale:()=>scale};mock.series.push(series);return series;},removeSeries:(series:any)=>{mock.series=mock.series.filter(s=>s!==series);},priceScale:()=>scale,timeScale:()=>timeScale,applyOptions:vi.fn(),panes:()=>[],subscribeCrosshairMove:(listener:any)=>{mock.crosshair=listener;},unsubscribeCrosshairMove:vi.fn(),clearCrosshairPosition:vi.fn(()=>mock.crosshair({})),remove:()=>{mock.removed++;}};
  return mock.chart;
 }}));
 const candle=(index:number,close=100)=>({time:index*60,open:100,high:110,low:90,close,volume:1,confirmation:'provider_confirmed'});
@@ -27,7 +27,7 @@ function mode(){return screen.getByLabelText('Chart navigation').textContent;}
 function goLatest(){fireEvent.click(screen.getByRole('button',{name:/^(Return to latest|Retry return to latest)$/}));}
 async function older(){fireEvent.click(screen.getByRole('button',{name:'Older history'}));await tick();}
 beforeEach(()=>{
- vi.useFakeTimers();mock.api.mockReset();mock.series=[];mock.range=null;mock.ranges=[];mock.fits=0;mock.removed=0;mock.markers.mockClear();mock.price={mode:0,autoScale:true,scaleMargins:{top:.2,bottom:.1}};
+ vi.useFakeTimers();mock.api.mockReset();mock.series=[];mock.range=null;mock.ranges=[];mock.fits=0;mock.removed=0;mock.markers.mockClear();mock.markerTargets=[];mock.price={mode:0,autoScale:true,scaleMargins:{top:.2,bottom:.1}};
  doc={version:1,revision:4,drawings:[drawing]};marketRead=p=>ready(p.before==null?bars(3000,300):bars(p.before/60-300,300));
  indicatorRead=p=>({status:'ready',times:[p.start+60,p.end+60],columns:{ema:{value:[101,102]}},origin:{time:0,generation:3},directions:[1,1]});
  mock.api.mockImplementation(async(command:string,p:any)=>{
@@ -196,7 +196,7 @@ it('keeps recorded IR and marker gap timestamps out of the shared logical domain
  });
  render(<MarketChart fresh sessionId="gap"/>);await flush();
  fireEvent.change(screen.getByLabelText('Live chart indicator'),{target:{value:'ema'}});
- expect(mock.series.filter(s=>s.kind==='line').flatMap(s=>s.data)).toEqual([{time:180180,value:105,observed:180180}]);
+ expect(mock.series.filter(s=>s.kind==='line'&&s.options.crosshairMarkerVisible!==false).flatMap(s=>s.data)).toEqual([{time:180180,value:105,observed:180180}]);
  pan(0,1);goLatest();expect(mock.range).toEqual({from:1.25,to:2.25});
  expect(mock.ranges.at(-1).domain).toEqual([180060,180180,180240]);expect(mock.markers).toHaveBeenLastCalledWith([]);
  await tick();expect(mock.ranges.at(-1).domain).toEqual([180060,180180,180240]);
@@ -208,4 +208,118 @@ it('treats an explicit Fit during pending Return as newer navigation and keeps t
  fireEvent.click(screen.getByText('Chart options'));
  fireEvent.click(screen.getByRole('button',{name:'Fit chart'}));expect(mock.fits).toBe(2);expect(mode()).toContain('Browsing history');
  delayed.resolve(ready(bars(9000,300)));await flush();expect(candles()).toEqual(old);expect(mock.range).toEqual({from:0,to:599});
+});
+
+it('switches mounted price styles without changing raw readouts, zoom, scales, drawings or recorded IR',async()=>{
+ indicatorRead=p=>({status:'ready',price_style:p.price_style??'candles',times:[p.end+60],columns:{ema:{value:[102]}},origin:{time:0,generation:3},price_candles:p.price_style==='heikin_ashi'?[{time:p.end+60,open:500,high:510,low:490,close:505}]:[]});
+ render(<MarketChart fresh price="108" mark="107" sessionId="session"/>);await flush();
+ pan(100,180);const range={...mock.range};
+ fireEvent.click(screen.getByText('Chart options'));fireEvent.click(screen.getByRole('button',{name:'Log scale'}));fireEvent.click(screen.getByRole('button',{name:'Auto scale'}));
+ fireEvent.change(screen.getByLabelText('Live chart indicator'),{target:{value:'ema'}});
+ const recorded=mock.series.find(series=>series.data.some((row:any)=>row.observed===180060));
+ expect(recorded).toBeTruthy();
+ const candleSeries=mock.series.find(series=>series.kind==='candle');
+ candleSeries.setData.mockClear();
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'heikin_ashi'}});
+ expect(candles().every((row:any)=>row.close===undefined)).toBe(true);
+ await flush();
+ expect(candles().at(-1)).toMatchObject({open:500,close:505});
+ expect(candleSeries.setData.mock.calls.flatMap((call:any[])=>call[0]).some((row:any)=>row.close===100)).toBe(false);
+ expect(screen.getByLabelText('Chart OHLC and volume').textContent).toContain('C 100');
+ expect(screen.getByText(/Heikin Ashi · synthetic prices/)).toBeTruthy();
+ expect(candleSeries.applyOptions).toHaveBeenLastCalledWith({lastValueVisible:false,priceLineVisible:false});
+ expect(mock.series.some(series=>series.createPriceLine.mock.calls.some((call:any[])=>call[0].title==='Last'&&call[0].price===108))).toBe(true);
+ expect(mock.range).toEqual(range);expect(mock.price).toMatchObject({mode:1,autoScale:false});
+ expect(recorded.data).toEqual([{time:180060,value:111,observed:180060}]);
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'line'}});await flush();
+ expect(candles().every((row:any)=>row.close===undefined)).toBe(true);
+ const line=mock.series.find(series=>series!==recorded&&series.data.some((row:any)=>row.value===100));
+ expect(line.data.at(-1)).toEqual({time:3300*60,value:100});expect(mock.markerTargets.at(-1)).toBe(line);
+ expect(line.createPriceLine).toHaveBeenCalledWith(expect.objectContaining({title:'Last',price:108}));
+ expect(line.createPriceLine).toHaveBeenCalledWith(expect.objectContaining({title:'Mark',price:107}));
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'candles'}});await flush();
+ expect(candles()).toEqual(plotted(3000,300));expect(line.data).toHaveLength(300);expect(line.applyOptions).toHaveBeenLastCalledWith({visible:true,lineVisible:false});expect(mock.markerTargets.at(-1)).toBe(candleSeries);
+ expect(mock.range).toEqual(range);expect(mock.fits).toBe(1);expect(mock.removed).toBe(0);
+ expect(mock.api.mock.calls.filter(call=>call[0]==='chart_drawing_settings')).toHaveLength(1);
+ expect(mock.api.mock.calls.some(call=>call[0]==='chart_drawing_save')).toBe(false);
+});
+
+it('keeps HA on the raw timestamp domain during disjoint Return, timeframe changes and failed calculations',async()=>{
+ let recent=bars(3000,300);marketRead=p=>ready(p.before==null?recent:bars(p.before/60-600,600));
+ indicatorRead=p=>({status:'ready',price_style:'heikin_ashi',times:[p.end+p.minutes*60],columns:{},price_candles:[{time:p.end+p.minutes*60,open:200,high:220,low:180,close:210},{time:9999999,open:1,high:1,low:1,close:1}]});
+ render(<MarketChart fresh/>);await flush();
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'heikin_ashi'}});await flush();
+ await older();await older();await older();pan(1719,1799);
+ const obsolete=pending();indicatorRead=()=>obsolete.promise;
+ await tick();recent=bars(5000,300);goLatest();await flush();
+ expect(candles().every((row:any)=>row.time>=5001*60&&row.time<=5300*60)).toBe(true);
+ expect(candles().every((row:any)=>row.close===undefined)).toBe(true);
+ obsolete.resolve({price_style:'heikin_ashi',price_candles:[{time:60,open:999,high:999,low:999,close:999}]});await flush();
+ expect(candles().every((row:any)=>row.close===undefined)).toBe(true);
+ expect(mock.ranges.at(-1).domain).not.toContain(60);expect(mock.ranges.at(-1).domain).not.toContain(9999999);
+ indicatorRead=()=>{throw new Error('Saved calculation origin is missing');};
+ fireEvent.change(screen.getByLabelText('Chart display timeframe'),{target:{value:'60'}});await flush();await tick();
+ expect(screen.getAllByRole('alert').some(alert=>alert.textContent?.includes('Saved calculation origin is missing'))).toBe(true);
+ expect(candles().every((row:any)=>row.close===undefined)).toBe(true);
+ expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_read').at(-1)![1]).toMatchObject({minutes:60,price_style:'heikin_ashi'});
+});
+
+it('offers the shared origin action with zero indicators and sends reanchor through the same HA poll',async()=>{
+ const original=mock.api.getMockImplementation()!;
+ mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve({...settings,instances:[]}):original(command,p));
+ indicatorRead=p=>({status:'ready',price_style:'heikin_ashi',times:[],columns:{},origin:{time:0,generation:p.reanchor?4:3},price_candles:[]});
+ render(<MarketChart fresh/>);await flush();
+ expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_read')).toHaveLength(0);
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'heikin_ashi'}});await flush();
+ expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_read')).toHaveLength(1);
+ fireEvent.click(screen.getByText('Price and indicator calculation details'));
+ expect(screen.getByText(/This changes the shared origin/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Recalculate with earlier cached history'}));await tick();
+ expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_read').at(-1)![1]).toMatchObject({price_style:'heikin_ashi',reanchor:true});
+ expect(screen.getByText(/Origin:/).textContent).toContain('generation 4');
+ expect(mock.api.mock.calls.some(call=>call[0]==='chart_indicator_save')).toBe(false);
+});
+
+it('discloses new formula seed and units from the actual backend formula_metadata response',async()=>{
+ const original=mock.api.getMockImplementation()!;
+ mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve({...settings,instances:[{id:'channel',type:'keltner',params:{period:20,atr_period:10,multiplier:2},color:'#7eabff',visible:true}]}):original(command,p));
+ indicatorRead=p=>({status:'ready',times:[p.end+60],columns:{channel:{upper:[105],middle:[100],lower:[95]}},formula_metadata:{channel:{seed:'First-close-seeded EMA; display SMA-seeded Wilder ATR (not graph ATR)',unit:'price',warmup_bars:20}}});
+ render(<MarketChart fresh/>);await flush();
+ fireEvent.click(screen.getByText('Price and indicator calculation details'));
+ expect(screen.getByText(/KELTNER \(20, 10, 2\): First-close-seeded EMA/).textContent).toContain('price');
+ expect(screen.getByLabelText('Display indicator values').textContent).toContain('upper 105 · middle 100 · lower 95');
+});
+
+it('retains actual-level coordinates and drawable geometry when HA has no first value',async()=>{
+ vi.stubGlobal('PointerEvent',MouseEvent);
+ const calculation=pending();indicatorRead=()=>calculation.promise;
+ render(<MarketChart fresh price="108" mark="107" paper={{position:{entry:103,stop:95,take:115}}}/>);await flush();
+ mock.chart.paneSize=()=>({width:600,height:320});
+ mock.chart.timeScale().logicalToCoordinate=(n:number)=>n*2;
+ mock.chart.timeScale().coordinateToLogical=(n:number)=>n/2;
+ await tick(32);
+ const raw=mock.series.find(series=>series.kind==='line'&&series.options.crosshairMarkerVisible===false);
+ const native=mock.series.find(series=>series.kind==='candle');
+ const canvas=screen.getByLabelText('Price chart drawing canvas');
+ expect(canvas.querySelector('.drawing-hit-target line')?.getAttribute('y1')).toBe('219');
+ const levels=raw.createPriceLine.mock.results.map((result:any)=>result.value);
+ expect(levels.map((level:any)=>level.coordinate())).toEqual([217,225,205,212,213]);
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'heikin_ashi'}});await flush();await tick(32);
+ expect(native.priceToCoordinate(101)).toBeNull(); // LWC firstValue requirement.
+ expect(native.coordinateToPrice(219)).toBeNull();
+ expect(raw.options).toMatchObject({visible:true,lineVisible:false,lastValueVisible:false,priceLineVisible:false,crosshairMarkerVisible:false});
+ expect(raw.data).toHaveLength(300);expect(candles().every((row:any)=>row.close===undefined)).toBe(true);
+ expect(canvas.querySelector('.drawing-hit-target line')?.getAttribute('y1')).toBe('219');
+ expect(levels.map((level:any)=>level.coordinate())).toEqual([217,225,205,212,213]);
+ calculation.reject(new Error('Synthetic calculation failed'));await flush();await tick(32);
+ expect(screen.getAllByRole('alert').some(alert=>alert.textContent?.includes('Synthetic calculation failed'))).toBe(true);
+ expect(canvas.querySelector('.drawing-hit-target line')?.getAttribute('y1')).toBe('219');
+ indicatorRead=()=>({status:'ready',price_style:'heikin_ashi',price_candles:[],times:[],columns:{}});await tick();
+ expect(candles().every((row:any)=>row.close===undefined)).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Horizontal line'}));
+ fireEvent.pointerDown(canvas,{clientX:50,clientY:200,button:0,pointerId:1});
+ fireEvent.pointerUp(canvas,{clientX:50,clientY:200,pointerId:1});await flush();
+ expect(doc.drawings.at(-1).anchors[0].price).toBe(120);
+ expect(doc.drawings).toHaveLength(2);
+ vi.unstubAllGlobals();
 });

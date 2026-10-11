@@ -2,7 +2,7 @@ import {useEffect, useId, useRef, useState} from 'react';
 import {isTypingTarget} from './chartDrawings';
 import {indicatorCatalog, indicatorCategories, favoritesKey, parseIndicatorFavorites} from './indicatorCatalog';
 
-export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume' | 'atr' | 'stochastic' | 'obv';
+export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume' | 'atr' | 'stochastic' | 'obv' | 'wma' | 'rma' | 'vwma' | 'donchian' | 'keltner' | 'roc' | 'momentum' | 'cci' | 'williamsr' | 'mfi' | 'cmf' | 'stddev';
 export type ChartIndicator = {
   id: string;
   type: IndicatorKind;
@@ -29,6 +29,19 @@ export const defaults: Record<IndicatorKind, Record<string, number>> = {
   atr: {period: 14},
   stochastic: {period: 14, smooth: 3, signal: 3},
   obv: {},
+  wma: {period: 20},
+  rma: {period: 20},
+  vwma: {period: 20},
+  donchian: {period: 20},
+  keltner: {period: 14, atr_period: 10, multiplier: 2},
+  roc: {period: 14},
+  momentum: {period: 14},
+  cci: {period: 14},
+  williamsr: {period: 14},
+  mfi: {period: 14},
+  cmf: {period: 14},
+  stddev: {period: 20},
+
 };
 
 export function validateIndicators(items: ChartIndicator[]): string {
@@ -36,9 +49,9 @@ export function validateIndicators(items: ChartIndicator[]): string {
   for (const item of items) {
     if (!/^#[0-9a-fA-F]{6}$/.test(item.color)) return 'Choose a valid color.';
     for (const [key, value] of Object.entries(item.params)) {
-      if (key === 'deviations') {
+      if ((key === 'deviations' || key === 'multiplier')) {
         if (!Number.isFinite(value) || value <= 0 || value > 10) {
-          return 'BB deviations must be greater than 0 and at most 10.';
+          return `${key === 'multiplier' ? 'Keltner multiplier' : 'BB deviations'} must be greater than 0 and at most 10.`;
         }
       } else if (!Number.isInteger(value) || value < 1 || value > 1000) {
         return 'Periods must be whole numbers from 1 to 1000.';
@@ -61,6 +74,19 @@ export const parameterOrder: Record<IndicatorKind, string[]> = {
   atr: ['period'],
   stochastic: ['period', 'smooth', 'signal'],
   obv: [],
+  wma: ['period'],
+  rma: ['period'],
+  vwma: ['period'],
+  donchian: ['period'],
+  keltner: ['period', 'atr_period', 'multiplier'],
+  roc: ['period'],
+  momentum: ['period'],
+  cci: ['period'],
+  williamsr: ['period'],
+  mfi: ['period'],
+  cmf: ['period'],
+  stddev: ['period'],
+
 };
 
 export function indicatorName(item: ChartIndicator) {
@@ -93,6 +119,8 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
   const [draft, setDraft] = useState<ChartIndicator[]>(settings.instances);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [page, setPage] = useState(0);
+  const pageSize = 9;
   const [favorites, setFavorites] = useState<IndicatorKind[]>(() => {
     try { return parseIndicatorFavorites(localStorage.getItem(favoritesKey)); } catch { return []; }
   });
@@ -109,6 +137,8 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
   const matches = indicatorCatalog.filter(entry =>
     (category === 'All' || category === entry.category || category === 'Favorites' && favorites.includes(entry.kind)) &&
     `${entry.kind} ${entry.name} ${entry.description}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const lastPage = Math.max(0, Math.ceil(matches.length / pageSize) - 1);
+  const currentPage = Math.min(page, lastPage);
   const invalid = validateIndicators(draft);
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.instances);
   const edit = (id: string, change: Partial<ChartIndicator>) => {
@@ -157,25 +187,26 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
         <button disabled={busy || open || dirty} aria-label={`${item.visible ? 'Hide' : 'Show'} ${index + 1} ${item.type.toUpperCase()}`} aria-pressed={item.visible} title={open || dirty ? 'Apply or cancel edits before changing visibility here' : 'Save visibility immediately'} onClick={() => onApply(settings.instances.map(row => row.id === item.id ? {...row, visible: !row.visible} : row))}>{item.visible ? 'Hide' : 'Show'}</button>
       </li>)}
     </ul>}
-    {settings.instances.some(item => ['atr', 'volume', 'obv'].includes(item.type)) && <details className="indicator-unit-note"><summary>Indicator units and seed notes</summary><p>ATR: price units, Wilder smoothing with an SMA true-range seed; initialization differs from graph/recorded IR. Volume/OBV: {volumeUnit ?? 'source-native units (unverified)'}. OBV starts at zero at the saved origin or segment reset. Stochastic: percent. Full calculation details are below the chart.</p></details>}
+    {settings.instances.some(item => ['atr', 'volume', 'obv', 'keltner', 'vwma', 'mfi', 'cmf'].includes(item.type)) && <details className="indicator-unit-note"><summary>Indicator units and seed notes</summary><p>ATR/Keltner ATR: price units, Wilder smoothing with an SMA true-range seed; initialization differs from graph/recorded IR. Volume-weighted formulas use raw source volume. Volume/OBV: {volumeUnit ?? 'source-native units (unverified)'}. OBV starts at zero at the saved origin or segment reset. Stochastic: percent. Full calculation details are below the chart.</p></details>}
     {open && <div id={panelId} className="chart-indicator-controls" aria-label="Chart indicator settings">
       <div className="indicator-editor-heading"><strong>Display indicators · {draft.length}/8 instances</strong>{!catalogOpen && <button onClick={() => {setCatalogOpen(true);setTarget('search');}}>Browse indicators</button>}<button onClick={collapse} aria-label="Close indicator settings">Collapse · keep edits</button></div>
       <div className={catalogOpen ? "indicator-workbench" : "indicator-workbench indicator-editor-only"}>
       {catalogOpen && <section className="indicator-catalog" aria-label="Indicator catalog">
         <div className="indicator-catalog-filters">
-          <label>Search<input ref={searchInput} aria-label="Search indicators" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or abbreviation" maxLength={120}/></label>
-          <label>Category<select aria-label="Indicator category" value={category} onChange={event => setCategory(event.target.value)}>
+          <label>Search<input ref={searchInput} aria-label="Search indicators" value={search} onChange={event => {setSearch(event.target.value); setPage(0);}} placeholder="Name or abbreviation" maxLength={120}/></label>
+          <label>Category<select aria-label="Indicator category" value={category} onChange={event => {setCategory(event.target.value); setPage(0);}}>
             {['All', 'Favorites', ...indicatorCategories].map(value => <option key={value}>{value}</option>)}
           </select></label>
         </div>
         <ul className="indicator-catalog-list" aria-label="Available indicators">
-          {matches.map(entry => <li key={entry.kind}>
+          {matches.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map(entry => <li key={entry.kind}>
             <button className="indicator-catalog-add" disabled={busy || draft.length >= 8} aria-label={`Add ${entry.kind.toUpperCase()}`} title={entry.description} onClick={() => add(entry.kind)}>
               <strong>{entry.kind.toUpperCase()}</strong><span>{entry.name}</span><small>{entry.category}</small>
             </button>
             <button className="indicator-favorite" aria-label={`Favorite ${entry.kind.toUpperCase()}`} aria-pressed={favorites.includes(entry.kind)} onClick={() => favorite(entry.kind)}>{favorites.includes(entry.kind) ? '★' : '☆'}</button>
           </li>)}
         </ul>
+        {matches.length > pageSize && <div className="indicator-catalog-pages" aria-label="Indicator catalog pages"><button disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous indicators</button><span>Page {currentPage + 1} of {lastPage + 1} · {matches.length} types</span><button disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Next indicators</button></div>}
         {!matches.length && <p role="status">No indicators match. Try another search or category.</p>}
         {draft.length >= 8 && <p role="status">Limit reached: 8 instances, including hidden ones. Remove an instance to add another.</p>}
         {favoriteNotice && <p role="status">{favoriteNotice}</p>}
@@ -193,9 +224,9 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
             <input
               aria-label={`${index + 1} ${item.type.toUpperCase()} ${key}`}
               type="number"
-              min={key === 'deviations' ? 0.01 : 1}
-              max={key === 'deviations' ? 10 : 1000}
-              step={key === 'deviations' ? 'any' : 1}
+              min={(key === 'deviations' || key === 'multiplier') ? 0.01 : 1}
+              max={(key === 'deviations' || key === 'multiplier') ? 10 : 1000}
+              step={(key === 'deviations' || key === 'multiplier') ? 'any' : 1}
               value={Number.isNaN(value) ? '' : value}
               onChange={event => edit(item.id, {params: {
                 ...item.params,

@@ -780,3 +780,29 @@ mounted, but validation and Apply still cover every draft instance. Collapse
 retains drafts, Cancel discards, and the parent focus Exit must remain reachable.
 Chart options is a native in-flow disclosure; tests open it before scale/Fit
 controls. HA/line and later formula integrations remain separately gated.
+
+
+## Price styles and first formula batch (ADR 0048)
+
+The 21-kind registry must agree with backend validation, ordered parameter inputs,
+ports, units and pane grouping. Catalog pages are bounded to nine; resetting
+search/category must reset pagination. Preserve the eight-instance total cap.
+HA is additive output of the existing indicator read/worker, including with zero
+instances. Keep raw candle state as the source of paging, hover, timestamps,
+volume, drawing snaps and trading levels. Never implement frontend HA recurrence.
+Retain the mounted chart/series and explicit visible range through style changes;
+Line has its own raw-close series, separate from recorded IR. Keep that raw
+series data-bearing and visible in every style, hiding only its line stroke
+outside Line. Actual levels and all drawing coordinate conversions use this
+carrier because the chart engine returns null without an owning first value.
+Raw-close autoscale contribution must remain explicit; never hide the whole
+carrier or feed synthetic OHLC into raw state. Clip price_candles
+independently in indicatorWindow and render unavailable HA as raw-domain whitespace.
+Style/source/timeframe/window changes reject obsolete responses. Reanchor changes
+the shared synthetic-price/indicator origin and must explain that impact.
+
+Focused frontend scope: ChartIndicators, chartPriceData, chartWindow, LiveChart,
+MarketChartNavigation, ChartDrawings and AppChartFocus; run the production build
+after source changes. Reuse the reviewed unchanged display_formula_catalog and
+chart_presentation backend evidence. See [ADR 0048](adr/0048-chart-price-styles-and-formula-batch.md)
+and STATUS for exact executed checks and remaining acceptance.

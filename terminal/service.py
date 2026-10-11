@@ -85,6 +85,7 @@ class AppService:
                           observation_get={'observation_id','revision'},
                           observation_save_start={'request_id','expected_source','observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
             fields.update(chart_read_start={'request_id','view_id','generation','surface','query'},chart_read_status={'request_id'},chart_read_cancel={'request_id'},chart_read_activity=set(),observation_save_history=set())
+            if command=='chart_indicator_read' and 'price_style' in p:fields[command].add('price_style')
             if command=='archive_import_cancel' and 'attempt_key' in p:fields[command].add('attempt_key')
             if command in ('library_batch_preview','library_batch_start') and 'spot_benchmark' in p:fields[command]=fields[command]|{'spot_benchmark'}
             if command=='library_batch_start' and 'observation' in p:fields[command].add('observation')
@@ -238,6 +239,8 @@ class AppService:
                     strategy=native_window_document(strategy,window['start'])
                 result={'run_id':self.jobs.start(strategy,p['profile'],p['dataset_id'],research={'window':window})}
             response={"version":1,"id":request_id,"type":"result","result":result}
+            if command=='chart_indicator_read' and len(canonical(response))>900*1024:
+                raise ValueError('Indicator response exceeds transport budget; hide or remove some indicators')
             if len(canonical(response))>1024*1024: raise ValueError("Response exceeds IPC budget; request a smaller page")
             return response
         except Exception as exc:

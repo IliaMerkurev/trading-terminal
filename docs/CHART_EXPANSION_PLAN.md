@@ -29,9 +29,9 @@ services, subscriptions, trading behavior or a product-version change.
   supplies scoped save-error/retry/reload/favorite evidence. See STATUS.md for
   exact runs, source hashes, limits and remaining platform/owner acceptance.
 
-### 2. Candles, Heikin Ashi and line — pending
+### 2. Candles, Heikin Ashi and line — integrated candidate
 
-Add functional chart-style choices only with their implemented behavior. HA uses
+Implemented Candles, Heikin Ashi and raw-close Line under [ADR 0048](adr/0048-chart-price-styles-and-formula-batch.md). Bounded actual-App browser acceptance passed on corrected source `7086f36`; independent review and platform/owner acceptance are tracked separately. Price style is transient and resets to Candles on reload. HA uses
 an explicit, stable cache-derived origin shared with the display calculation
 worker, not the moving viewport's first candle. An optional price_style on
 chart_indicator_read can carry display output without changing the raw candle
@@ -42,9 +42,9 @@ uses raw close. Indicator inputs, raw OHLC readouts, price levels, trading,
 strategy and immutable recorded IR remain unchanged. Drawing price-coordinate
 semantics must stay explicit, and unsupported modes must never be dead controls.
 
-### 3. First formula batches, 21 total types — pending integration
+### 3. First formula batches, 21 total types — integrated candidate
 
-Add twelve types to the nine-kind baseline, in bounded reviewed batches:
+The catalog now exposes twelve reviewed additions to the nine-kind baseline, with nine entries per page:
 
 - Trend: WMA, RMA, VWMA
 - Channels and volatility: Donchian, Keltner, standard deviation

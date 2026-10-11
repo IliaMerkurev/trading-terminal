@@ -13,11 +13,15 @@ import threading
 from terminal.chart_history import INTERVALS
 from terminal.data import canonical, digest, validate_symbol
 from terminal.graph import indicator_for
+from terminal import display_formula_catalog as formulas
+from terminal import chart_presentation as prices
 from terminal.market_sources import cache_market
 CONTRACT = 'native-close-engine-seeds-v1'
 MAX_BARS = 10000
 MAX_INSTANCES = 8
 FIELDS = {'sma': ('period',), 'ema': ('period',), 'bb': ('period', 'deviations'), 'rsi': ('period',), 'macd': ('fast', 'slow', 'signal'), 'volume': (), 'atr': ('period',), 'stochastic': ('period', 'smooth', 'signal'), 'obv': ()}
+
+FIELDS.update(formulas.FIELDS)
 
 def validate_instances(instances):
     if not isinstance(instances, list) or len(instances) > MAX_INSTANCES:
@@ -39,9 +43,9 @@ def validate_instances(instances):
         if type(item['visible']) is not bool or not isinstance(item['color'], str) or (not re.fullmatch('#[0-9a-fA-F]{6}', item['color'])):
             raise ValueError('Invalid visibility or color')
         for name, value in params.items():
-            if name == 'deviations':
+            if name in ('deviations', 'multiplier'):
                 if type(value) not in (int, float) or not math.isfinite(value) or (not 0 < value <= 10):
-                    raise ValueError('BB deviations must be greater than 0 and at most 10')
+                    raise ValueError('BB deviations must be greater than 0 and at most 10' if name == 'deviations' else 'Keltner multiplier must be greater than 0 and at most 10')
             elif type(value) is not int or not 1 <= value <= 1000:
                 raise ValueError('Periods must be whole numbers from 1 to 1000')
         if kind == 'macd' and params['fast'] >= params['slow']:
@@ -80,7 +84,7 @@ class NativeDisplayState:
                 return {'value': None}
             self.value = 0.0 if self.previous is None else self.value + (volume if close > self.previous else -volume if close < self.previous else 0)
             result = {'value': self.value}
-        else:
+        elif self.kind == 'stochastic':
             result = {'k': None, 'd': None}
             self.samples.append((high, low))
             if len(self.samples) == self.params['period']:
@@ -94,6 +98,8 @@ class NativeDisplayState:
                     result['k'] = value
                     if len(self.k) == self.params['signal']:
                         result['d'] = sum(self.k)/len(self.k)
+        else:
+            raise ValueError('Unsupported native display formula')
         self.previous = close
         return result
 
@@ -108,7 +114,9 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
     unknown = 0
     columns = {i['id']: {p: [] for p in ('upper', 'middle', 'lower') if i['type'] == 'bb'} for i in instances}
     for i in instances:
-        if i['type'] == 'stochastic':
+        if i['type'] in formulas.FIELDS:
+            columns[i['id']] = {p: [] for p in formulas.ports(i['type'])}
+        elif i['type'] == 'stochastic':
             columns[i['id']] = {'k': [], 'd': []}
         elif i['type'] == 'macd':
             columns[i['id']] = {p: [] for p in ('macd', 'signal', 'histogram')}
@@ -119,7 +127,7 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
     confirmed = 0
 
     def reset():
-        return {i['id']: NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i) for i in instances if i['type'] != 'volume'}
+        return {i['id']: formulas.FormulaState(i) if i['type'] in formulas.FIELDS else NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i) for i in instances if i['type'] != 'volume'}
     states = reset()
     for index, row in enumerate(candles):
         if index % 32 == 0 and cancel and cancel.is_set():
@@ -163,7 +171,7 @@ def calculate(candles, instances, minutes, start, end, cancel=None):
             elif closed:
                 state = states[ident]
                 source = row['close']
-                if kind in ('atr', 'stochastic', 'obv'):
+                if kind in formulas.FIELDS or kind in ('atr', 'stochastic', 'obv'):
                     values = state.update(row)
                 elif kind == 'macd':
                     line, signal = state
@@ -253,7 +261,8 @@ class DisplayIndicators:
         with self.store.connect() as db:
             db.execute('INSERT OR REPLACE INTO chart_presentation_v1 VALUES(?,?,?)', (market, symbol, canonical(doc).decode()))
 
-    def read(self, market, symbol, minutes, start, end, revision, reanchor=False, source='bybit'):
+    def read(self, market, symbol, minutes, start, end, revision, reanchor=False, source='bybit', price_style='candles'):
+        price_info = prices.metadata(price_style)
         self.key(market, symbol, source)
         if type(minutes) is not int or minutes not in INTERVALS:
             raise ValueError('Unsupported native interval')
@@ -262,6 +271,8 @@ class DisplayIndicators:
         if type(reanchor) is not bool or type(revision) is not int:
             raise ValueError('Invalid calculation request')
         with self.lock:
+            if self.closed:
+                raise ValueError('Display calculation is stopping')
             doc = self.settings(market, symbol, source)
             if doc['revision'] != revision:
                 raise ValueError('Settings changed; calculation superseded')
@@ -274,7 +285,7 @@ class DisplayIndicators:
                     if reanchor:
                         first = db.execute('SELECT MIN(time) FROM chart_candles_v1 WHERE market=? AND symbol=? AND minutes=?', key).fetchone()[0]
                     if first is None:
-                        return dict(status='empty', message='No cached native history. Indicators never fetch history.', settings=doc, times=[], columns={})
+                        return dict(status='empty', message='No cached native history. Indicators never fetch history.', settings=doc, times=[], columns={}, price_candles=[], **price_info)
                     candidate = dict(time=first, generation=origin['generation'] + 1 if origin else 1, contract=CONTRACT)
                 else:
                     candidate = origin
@@ -300,14 +311,24 @@ class DisplayIndicators:
             # Forming volume is projected after replay, so ticks cannot
             # cancel or reseed unchanged confirmed calculations.
             transient = []
+            current_forming = None
             if (source,market, symbol) == (getattr(self.history.hub,'source','bybit'),self.history.hub.market, self.history.hub.symbol):
                 known = {c['time'] for c in candles}
-                transient = [self.history.payload(r) for r in self.history.hub.latest(INTERVALS[minutes]) if start <= r['time'] <= end and r['time'] not in known and (r.get('confirmed') is not True)]
+                observed = self.history.hub.latest(INTERVALS[minutes])
+                transient = [self.history.payload(r) for r in observed if start <= r['time'] <= end and r['time'] not in known and (r.get('confirmed') is not True)]
+                latest = max(observed, key=lambda r: r['time'], default=None)
+                if latest and latest.get('confirmed') is not True and start <= latest['time'] <= end:
+                    if latest.get('conflict'):
+                        raise ValueError('Confirmed candle conflict; calculation invalidated')
+                    # Legacy cache rows remain unavailable, even if the hub now
+                    # observes that timestamp without an explicit confirmation.
+                    if latest['time'] not in known and latest['time'] > candles[-1]['time']:
+                        current_forming = self.history.payload(latest)
             if sum((start <= c['time'] <= end for c in candles)) + sum((start <= json.loads(r['candle'])['time'] <= end for r in prefix)) + len(transient) > 1800:
                 raise ValueError('Indicator output exceeds the 1,800-bar viewport budget')
             if any((c['confirmation'] == 'conflict' for c in candles)):
                 raise ValueError('Confirmed candle conflict; calculation invalidated. Review the cached source.')
-            cache_key = digest([key, candidate, doc['instances'], candles, [dict(r) for r in prefix], start, end])
+            cache_key = digest([key, candidate, doc['instances'], candles, [dict(r) for r in prefix], start, end, price_style, price_info['price_contract']])
 
             def compute(cancel):
                 output = calculate(candles, [i for i in doc['instances'] if i['visible']], minutes, start, end, cancel)
@@ -328,12 +349,24 @@ class DisplayIndicators:
                             ports[port] = earlier['columns'].get(ident, {}).get(port, [None] * len(earlier['times'])) + values
                     output['times'] = earlier['times'] + output['times']
                     output['directions'] = earlier['directions'] + output['directions']
+                output['price_candles'], price_state = [], None
+                if price_style == 'heikin_ashi':
+                    output['price_candles'], price_state = prices.replay(candles, price_style, minutes, start, end, cancel)
+                    if prefix:
+                        earlier_prices, _ = prices.replay([self.history.annotate(r) for r in prefix], price_style, minutes, start, end, cancel, before_origin=True)
+                        output['price_candles'] = earlier_prices + output['price_candles']
+                output.update(price_info)
+                output['formula_metadata'] = {i['id']: formulas.metadata(i) for i in doc['instances'] if i['type'] in formulas.FIELDS}
                 output.update(status='ready', settings=doc, origin=candidate, revision=cache_key, before_origin=start < candidate['time'], volume_unit=('contracts' if market=='linear' else 'base currency')+' (OKX native); up = close ≥ open, down = close < open' if source=='okx' else 'source-native units (unverified); up = close ≥ open, down = close < open')
                 if len(canonical(output)) > 900 * 1024:
                     raise ValueError('Indicator output exceeds transport budget; hide or remove some indicators')
+                output['_price_state'] = price_state
                 return output
             if cache_key in self.cache:
                 output = copy.deepcopy(self.cache[cache_key])
+                price_state = output.pop('_price_state', None)
+                output.update(price_info)
+                output.setdefault('price_candles', [])
                 if output['status'] == 'ready' and transient:
                     for row in sorted(transient, key=lambda r: r['time']):
                         stamp = row['time'] + minutes * 60
@@ -348,15 +381,19 @@ class DisplayIndicators:
                                     values.append(row.get('volume') if item['type'] == 'volume' else None)
                         output['unknown'] += 1
                     output['revision'] = digest([cache_key, transient])
+                if output['status'] == 'ready':
+                    if price_style == 'heikin_ashi' and current_forming is not None:
+                        output['price_candles'].append(prices.preview(current_forming, price_style, minutes, price_state))
+                    # Enforce the combined payload after all transient projections.
+                    if len(canonical(output)) > 900 * 1024:
+                        raise ValueError('Indicator output exceeds transport budget; hide or remove some indicators')
                 return output
-            if self.closed:
-                raise ValueError('Display calculation is stopping')
-            if not self.running or self.running[0] != cache_key:
+            if not self.running or self.running[0] != cache_key or self.running[1].is_set():
                 if self.running:
                     self.running[1].set()
                 self.pending = (cache_key, compute)
                 self.condition.notify()
-            return dict(status='calculating', message='Calculating cached confirmed history…', settings=doc, origin=candidate, times=[], columns={})
+            return dict(status='calculating', message='Calculating cached confirmed history…', settings=doc, origin=candidate, times=[], columns={}, price_candles=[], **price_info)
 
     def _run(self):
         while True:

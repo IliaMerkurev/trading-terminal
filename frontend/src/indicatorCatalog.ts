@@ -13,6 +13,18 @@ export const indicatorCatalog: {kind: IndicatorKind; name: string; category: Ind
   {kind:'stochastic', name:'Stochastic oscillator', category:'Momentum', description:'Rolling high / low · SMA K / D · percent'},
   {kind:'volume', name:'Volume', category:'Volume', description:'Source-native units · overlay or pane'},
   {kind:'obv', name:'On balance volume', category:'Volume', description:'Signed source-native volume · zero origin'},
+  {kind:'wma', name:'Weighted moving average', category:'Trend', description:'Rolling closes · newest weight N'},
+  {kind:'rma', name:'Wilder moving average', category:'Trend', description:'SMA seed · Wilder smoothing'},
+  {kind:'vwma', name:'Volume weighted moving average', category:'Trend', description:'Raw closes weighted by source-native volume'},
+  {kind:'donchian', name:'Donchian channel', category:'Volatility', description:'Current-inclusive high / low and midpoint'},
+  {kind:'keltner', name:'Keltner channel', category:'Volatility', description:'EMA with SMA-seeded Wilder ATR bands'},
+  {kind:'roc', name:'Rate of change', category:'Momentum', description:'N-bar close change · percent'},
+  {kind:'momentum', name:'Momentum', category:'Momentum', description:'Close minus N-bar prior close · price units'},
+  {kind:'cci', name:'Commodity channel index', category:'Momentum', description:'HLC3 mean deviation · dimensionless'},
+  {kind:'williamsr', name:'Williams %R', category:'Momentum', description:'Rolling high / low · -100 to 0 percent'},
+  {kind:'mfi', name:'Money flow index', category:'Volume', description:'HLC3 changes weighted by source-native volume · percent'},
+  {kind:'cmf', name:'Chaikin money flow', category:'Volume', description:'Rolling volume-weighted flow · dimensionless'},
+  {kind:'stddev', name:'Standard deviation', category:'Volatility', description:'Population deviation of closes · price units'},
 ];
 export const favoritesKey = 'trading-terminal.indicator-favorites.v1';
 export function parseIndicatorFavorites(raw: string | null): IndicatorKind[] {

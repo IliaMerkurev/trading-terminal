@@ -7,6 +7,99 @@ gates, not unrelated platform or owner acceptance.
 
 
 
+## Price styles and 21-type chart catalog candidate — 2026-10-11
+
+[ADR 0048](adr/0048-chart-price-styles-and-formula-batch.md) integrates the reviewed
+HA backend and twelve cache-only formula additions with the Market UI. Candles,
+Heikin Ashi and raw-close Line use the same mounted chart and preserve zoom,
+scale choices, drawing state and recorded IR. HA shares the indicator worker,
+poll and persisted origin, including with zero indicators. Missing/pending HA
+is raw-domain whitespace, never raw-price substitution. UTC interval-end output
+is clipped on paging/Return; obsolete source/timeframe/style/window results are
+rejected. Actual raw OHLC, snapping, Last/Mark/PAPER levels remain separate from
+synthetic prices. Marker attachment follows the selected price series.
+
+Exactly 21 implemented types are available; catalog pages contain at most nine
+entries and search/category changes reset pagination. The twelve additions have
+ordered/bounded parameters, correct channel ports, independent auxiliary panes,
+percentage/dimensionless formatting and backend seed/unit disclosures. Eight
+instances including hidden ones, whole-draft atomic saves, source namespaces,
+revision conflicts, favorites and one outer scroll owner are retained. The final
+nine advanced kinds remain absent. No dependencies, schema, provider acquisition,
+strategy/accounting changes or product-version bump were introduced.
+
+Focused frontend scope now has **102 distinct passing tests** across seven files:
+ChartIndicators, chartPriceData, chartWindow, LiveChart, MarketChartNavigation,
+ChartDrawings and AppChartFocus. The initial pass was **95/98 in 10.87s**. It
+exposed two native range regressions from unnecessary reprojection and a legacy
+result-shape regression from injecting an absent additive field. The corrected
+three-file pass was **47/47 in 5.65s**, including three new HA integration cases;
+unchanged passing files were reused. Additional narrow checks passed for marker
+reattachment, formula formatting and the actual formula_metadata response shape.
+The latter adds the 102nd distinct test. TypeScript and production Vite build
+passed (246 modules); the existing >500 kB bundle advisory remains non-failing.
+No broad aggregate suite was redundantly rerun.
+
+The backend is integrated unchanged from its reviewed commits. Reused evidence:
+15 HA tests plus 30 existing display/formula checks, and independent HA review
+against 400 Fraction-oracle scenarios including 10,000 rows, four timeframes,
+gaps, unknowns, windows and forming previews. These establish bounded synthetic
+calculation/integration behavior. This candidate's independent integrated review
+and actual-App wide/narrow/short GUI pass are pending; no live-provider,
+Windows/native or owner-led acceptance is inferred. Earlier ADR 0047 browser
+acceptance remains evidence only for its earlier UI checkpoint.
+
+
+### Raw coordinate-carrier correction — 2026-10-11
+
+Independent source review found that the initial integrated checkpoint blanked
+the HA candle series while pending/failed/unavailable, but still used it for
+actual-price levels and drawing coordinates. Lightweight Charts requires the
+owning series to have a first value, so mocked createPriceLine calls alone did
+not establish usable labels or geometry. The correction retains raw closes in a
+visible coordinate-carrier series in all styles, hiding only its line stroke
+outside Line. That series owns actual levels and drawings; default value labels,
+price line and crosshair markers stay hidden. Raw closes contribute to the
+shared price scale, including when HA is unavailable, with explicit UI disclosure.
+Synthetic candle gaps remain whitespace. The raw carrier is clipped to the same
+current timestamps on Return/rollover; markers still follow the plotted style.
+
+A first-value-aware regression verifies non-null actual-level coordinates,
+retained rendered drawing geometry and successful drawing creation through
+pending, failed and all-unavailable HA. Focused four-file first pass was 49/50;
+the sole failing legacy assertion incorrectly treated every line series as
+recorded IR after adding the raw carrier. Its updated selector still verifies
+the recorded output exactly, while the unchanged adjacent assertion verifies
+the full shared timestamp domain. The corrected navigation file passed 24/24
+in 3.75s; the other 26 passing tests were reused, giving 50 distinct passing
+correction-scope tests and 103 distinct tests in the overall focused scope. An
+initial TypeScript check found an implicit-any annotation in the expanded test
+double; that annotation was corrected and the final TypeScript/production build
+passed (246 modules; unchanged bundle-size advisory). Actual-App unavailable-HA
+acceptance remains separate.
+
+
+### Corrected chart-style GUI acceptance — 2026-10-11
+
+Parent-led actual-App / Market browser acceptance passed on corrected source
+`7086f3634e67cee2504ac5915abdeb6114ba4f13` using an isolated synthetic fixture.
+All-unavailable HA fault injection left actual Last/Mark labels, an EMA overlay
+and an existing horizontal drawing visible. A second drawing was successfully
+created while HA remained blank. Candles/Line switches preserved both drawings;
+restoring normal calculation recovered HA. Keltner and MFI were added through
+catalog pages two/three, applied with four total indicators, and displayed
+channel bands and a separate oscillator. At measured 729px width there was no
+horizontal overflow. Reload preserved all four indicators and both drawings.
+
+Price style reset to Candles on reload, as intended for transient chart state;
+this slice does not persist style in indicator settings or favorites. The
+observation establishes that behavior rather than implying style persistence.
+This GUI evidence supersedes the preceding unavailable-HA browser gate only;
+live-provider, Windows/native and owner-led unaided acceptance remain separate.
+The documentation-only acceptance record reuses existing focused tests and build
+evidence and introduces no code changes or repeated suite runs.
+
+
 ## Compact Market toolbar and indicator catalog candidate — 2026-10-11
 
 ADR 0047 composes symbol/source/market, supported native timeframe controls and

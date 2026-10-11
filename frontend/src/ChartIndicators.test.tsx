@@ -321,7 +321,7 @@ it('offers only implemented kinds with search, categories and persistent type-on
  expect(JSON.parse(localStorage.getItem(favoritesKey)!)).toEqual(['bb']);expect(apply).not.toHaveBeenCalled();
  fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:''}});
  fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Momentum'}});
- expect(screen.getAllByRole('button',{name:/^Add /}).map(button=>button.getAttribute('aria-label'))).toEqual(['Add RSI','Add MACD','Add STOCHASTIC']);
+ expect(screen.getAllByRole('button',{name:/^Add /}).map(button=>button.getAttribute('aria-label'))).toEqual(['Add RSI','Add MACD','Add STOCHASTIC','Add ROC','Add MOMENTUM','Add CCI','Add WILLIAMSR']);
  fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Favorites'}});
  expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(1);
  view.unmount();render(<ChartIndicators settings={emptySettings} onApply={apply} busy={false} error=""/>);
@@ -414,4 +414,62 @@ it('restores an enabled toolbar initiator when saving disables the legend and pe
  expect((screen.getByRole('button',{name:'Add EMA'}) as HTMLButtonElement).disabled).toBe(true);
  expect((screen.getByRole('button',{name:'Saving…'}) as HTMLButtonElement).disabled).toBe(true);
  fireEvent.click(screen.getByRole('button',{name:'Add EMA'}));expect(apply).not.toHaveBeenCalled();
+});
+
+it('exposes exactly 21 validated types with bounded pages and resets pagination on filtering',()=>{
+ expect(indicatorCatalog).toHaveLength(21);
+ expect(new Set(indicatorCatalog.map(entry=>entry.kind)).size).toBe(21);
+ render(<ChartIndicators settings={emptySettings} onApply={vi.fn()} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (0)'}));
+ expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(9);
+ fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
+ expect(screen.getByRole('button',{name:'Add KELTNER'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
+ expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(3);
+ fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:'keltner'}});
+ fireEvent.click(screen.getByRole('button',{name:'Add KELTNER'}));
+ expect(screen.getAllByRole('spinbutton').map(input=>input.getAttribute('aria-label'))).toEqual(['1 KELTNER period','1 KELTNER atr_period','1 KELTNER multiplier']);
+ fireEvent.change(screen.getByLabelText('1 KELTNER multiplier'),{target:{value:'0'}});
+ expect(screen.getByRole('alert').textContent).toContain('Keltner multiplier');
+ fireEvent.change(screen.getByLabelText('1 KELTNER multiplier'),{target:{value:'2.5'}});
+ expect(screen.queryByRole('alert')).toBeNull();
+ fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:''}});
+ expect(screen.getByRole('button',{name:'Add SMA'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
+ fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Trend'}});
+ expect(screen.getByRole('button',{name:'Add SMA'})).toBeTruthy();
+ expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(5);
+});
+
+it('places all twelve new formulas on their intended panes with exact ports and bounded percent axes',()=>{
+ const chart={priceScale:primaryScale,addSeries:vi.fn((kind,options,pane)=>({kind,options,pane,setData:vi.fn(),createPriceLine:vi.fn(),priceScale:()=>({applyOptions:vi.fn()})})),panes:()=>[]};
+ const kinds=indicatorCatalog.slice(9).map(entry=>entry.kind);
+ const owned=installIndicatorSeries(chart,null,kinds.map(kind=>item(kind)),false);
+ expect(owned).toHaveLength(16);
+ for(const kind of ['wma','rma','vwma','donchian','keltner'])expect(owned.filter(row=>row.kind===kind).every(row=>row.series.pane===0)).toBe(true);
+ for(const kind of ['donchian','keltner'])expect(owned.filter(row=>row.kind===kind).map(row=>row.port)).toEqual(['upper','middle','lower']);
+ const separate=owned.filter(row=>!['wma','rma','vwma','donchian','keltner'].includes(row.kind));
+ expect(new Set(separate.map(row=>row.series.pane)).size).toBe(7);
+ expect(separate.every(row=>row.series.pane>0)).toBe(true);
+ expect(owned.find(row=>row.kind==='williamsr')!.series.options.autoscaleInfoProvider().priceRange).toEqual({minValue:-100,maxValue:0});
+ expect(owned.find(row=>row.kind==='roc')!.series.options.priceFormat.type).toBe('percent');
+ expect(owned.find(row=>row.kind==='cmf')!.series.options.priceFormat.precision).toBe(4);
+ expect(owned.find(row=>row.kind==='mfi')!.series.options.autoscaleInfoProvider().priceRange).toEqual({minValue:0,maxValue:100});
+});
+
+it('uses the existing indicator poll for HA without instances and rejects obsolete style responses',async()=>{
+ let finish:(value:any)=>void=()=>{};
+ mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve(emptySettings):new Promise(resolve=>{finish=resolve;}));
+ const rows={current:[{time:0,open:10,high:12,low:9,close:11,volume:1}]};
+ const {result,rerender,unmount}=renderHook(({style}:{style:'candles'|'heikin_ashi'|'line'})=>useChartIndicators('spot','BTCUSDT',1,true,rows,'bybit',0,style),{initialProps:{style:'heikin_ashi'}});
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('chart_indicator_read',expect.objectContaining({price_style:'heikin_ashi',revision:0})));
+ rerender({style:'line'});
+ await act(async()=>finish({status:'ready',price_style:'heikin_ashi',price_candles:[{time:60,close:999}]}));
+ expect(result.current.result).toBeNull();
+ expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_read')).toHaveLength(1);
+ rerender({style:'heikin_ashi'});
+ await waitFor(()=>expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_read')).toHaveLength(2));
+ await act(async()=>finish({status:'ready',price_style:'heikin_ashi',price_candles:[{time:60,close:10}]}));
+ expect(result.current.result.price_candles[0].close).toBe(10);
+ unmount();
 });

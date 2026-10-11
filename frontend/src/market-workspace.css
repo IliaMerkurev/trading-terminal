@@ -232,3 +232,5 @@
 }
 .chart-options:not([open])>div{display:none}
 .indicator-workbench.indicator-editor-only{grid-template-columns:minmax(0,1fr)}
+
+.indicator-catalog-pages{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11px}
