@@ -45,6 +45,7 @@ afterEach(()=>{cleanup();vi.useRealTimers();});
 it('returns within the recent buffer at the same 80-bar zoom without reload, fit or scale changes; freshness is separate',async()=>{
  const view=render(<MarketChart fresh/>);await flush();
  expect(mock.fits).toBe(1);pan(100,180);expect(mode()).toContain('Browsing history');
+ fireEvent.click(screen.getByText('Chart options'));
  fireEvent.click(screen.getByRole('button',{name:'Log scale'}));fireEvent.click(screen.getByRole('button',{name:'Auto scale'}));
  const reads=mock.api.mock.calls.filter(c=>c[0]==='market_chart').length;
  goLatest();expect(mock.range).toEqual({from:221,to:301});expect(mock.fits).toBe(1);
@@ -84,6 +85,7 @@ it('keeps oldest history capped, never follows its right edge, then replaces it 
 it('keeps a fully evicted older-page viewport populated at the same zoom without following, fitting or resetting price scales',async()=>{
  marketRead=p=>ready(p.before==null?bars(3000,1800):bars(2700,300));
  render(<MarketChart fresh/>);await flush();pan(1699,1799);
+ fireEvent.click(screen.getByText('Chart options'));
  fireEvent.click(screen.getByRole('button',{name:'Log scale'}));fireEvent.click(screen.getByRole('button',{name:'Auto scale'}));
  await older();expect(candles()).toEqual(plotted(2700,1800));expect(mock.range).toEqual({from:1699,to:1799});
  expect(mock.ranges.at(-1).domain).toEqual(Array.from({length:1800},(_,i)=>(2701+i)*60));
@@ -203,6 +205,7 @@ it('keeps recorded IR and marker gap timestamps out of the shared logical domain
 it('treats an explicit Fit during pending Return as newer navigation and keeps the historical view',async()=>{
  render(<MarketChart fresh/>);await flush();await older();const old=candles();
  const delayed=pending();marketRead=()=>delayed.promise;goLatest();await flush();
+ fireEvent.click(screen.getByText('Chart options'));
  fireEvent.click(screen.getByRole('button',{name:'Fit chart'}));expect(mock.fits).toBe(2);expect(mode()).toContain('Browsing history');
  delayed.resolve(ready(bars(9000,300)));await flush();expect(candles()).toEqual(old);expect(mock.range).toEqual({from:0,to:599});
 });

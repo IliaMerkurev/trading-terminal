@@ -767,3 +767,16 @@ drafts/selection/undo and source/tab transitions. An offline synthetic source
 must be labelled and isolated from exchanges/user data. Record actual browser
 measurements separately from mocked component/CSS results. No backend or broad
 suite rerun is required for this frontend layout change.
+
+## Market chart catalog continuation
+
+Follow [ADR 0047](adr/0047-market-indicator-catalog.md) and the
+[phased chart expansion plan](CHART_EXPANSION_PLAN.md). The typed catalog is
+presentation metadata, not permission to expose unimplemented formulas. Keep
+favorites bounded to known type identifiers; source-specific instance settings,
+revisions and calculation origins stay in the existing workspace service.
+Tests must select an instance before editing its fields; only one fieldset is
+mounted, but validation and Apply still cover every draft instance. Collapse
+retains drafts, Cancel discards, and the parent focus Exit must remain reachable.
+Chart options is a native in-flow disclosure; tests open it before scale/Fit
+controls. HA/line and later formula integrations remain separately gated.

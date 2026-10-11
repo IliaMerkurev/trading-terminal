@@ -55,6 +55,7 @@ afterEach(()=>{cleanup();styleElement.remove();vi.useRealTimers();});
 it('focuses the actual App/Market layout while preserving the mounted chart, range, scale, drafts, selection and undo',async()=>{
  await market();const canvas=document.querySelector('.live-chart-canvas'),chart=mock.chart;
  fireEvent.wheel(canvas!);act(()=>{mock.range={from:100,to:180};mock.rangeChanged(mock.range);});
+ fireEvent.click(screen.getByText('Chart options'));
  fireEvent.click(screen.getByRole('button',{name:'Log scale'}));fireEvent.click(screen.getByRole('button',{name:'Auto scale'}));
  fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
  fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'37'}});
@@ -176,4 +177,27 @@ it('keeps focus while an active session freezes a different instrument and label
  expect(screen.getByText(/ETHUSDT · BYBIT · linear · CONNECTED · Live/)).toBeTruthy();expect((screen.getByLabelText('Market data source') as HTMLSelectElement).disabled).toBe(true);
  expect(mock.api).toHaveBeenCalledWith('market_open',{market:'linear',symbol:'ETHUSDT'});expect(mock.api).toHaveBeenCalledWith('chart_drawing_settings',{source:'bybit',market:'linear',symbol:'ETHUSDT'});
  exit();expect(focused()).toBe(false);expect(screen.getByText('Explore ETHUSDT · public market data')).toBeTruthy();expect(mock.created).toBe(2);
+});
+
+it('keeps toolbar options and the catalog in flow with layered Escape and no price-navigation gesture',async()=>{
+ await market();focus();
+ const toolbar=screen.getByLabelText('Market chart toolbar');
+ expect(toolbar.textContent).toContain('BTCUSDT');expect(toolbar.textContent).toContain('BYBIT · spot');
+ expect(toolbar.contains(screen.getByRole('button',{name:'Indicators (1)'}))).toBe(true);
+ expect(screen.queryByRole('button',{name:'Fit chart'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (1)'}));
+ expect(document.activeElement).toBe(screen.getByLabelText('Search indicators'));
+ fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'33'}});
+ const range={...mock.range},fits=mock.fits;
+ fireEvent.pointerDown(screen.getByRole('button',{name:'Favorite EMA'}),{button:0,pointerId:1});
+ fireEvent.click(screen.getByRole('button',{name:'Favorite EMA'}));
+ fireEvent.click(screen.getByText('Chart options'));
+ fireEvent.keyDown(screen.getByRole('button',{name:'Fit chart'}),{key:'Escape'});
+ expect(screen.queryByRole('button',{name:'Fit chart'})).toBeNull();expect(focused()).toBe(true);
+ expect((screen.getByLabelText('1 EMA period') as HTMLInputElement).value).toBe('33');
+ fireEvent.keyDown(screen.getByRole('button',{name:'Close indicator settings'}),{key:'Escape'});
+ expect(screen.queryByLabelText('1 EMA period')).toBeNull();expect(focused()).toBe(true);
+ expect(mock.range).toEqual(range);expect(mock.fits).toBe(fits);expect(writes()).toHaveLength(0);
+ expect(document.querySelector('.chart-plot')!.contains(toolbar)).toBe(false);
+ fireEvent.keyDown(document.activeElement!,{key:'Escape'});expect(focused()).toBe(false);
 });

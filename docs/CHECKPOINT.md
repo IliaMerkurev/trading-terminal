@@ -3,13 +3,42 @@
 Updated 2026-10-11. Working branch: `codex/terminal-mvp`; product remains
 `0.6.0-dev`, licensed MIT. The original bounded Linux/browser engineering and
 research continuation is complete, along with the later daily candidates, nine
-chart display tools and chart context/navigation improvements. This is a development source checkpoint, not a packaged
+chart display tools, chart context/navigation improvements and the bounded
+compact toolbar/catalog UI phase. This is a development source checkpoint, not a packaged
 release, main merge or final owner acceptance. [PROJECT.md](../PROJECT.md) remains
 the specification; [STATUS.md](STATUS.md) records exact-source evidence.
 
+## Current compact chart catalog checkpoint
+
+ADR 0047's bounded UI phase is complete on source `1fd6a51`, tree
+`505e94e38b68a817439df2bee79dde547327e977`. The compact toolbar offers supported
+native timeframes, Indicators, visible Return and in-flow Chart options. A
+searchable categorized catalog exposes the existing nine types with bounded
+UI-only favorites; a legend entry opens just its selected editor. Native instance
+selection retains keyboard focus, and Collapse keeps drafts while Cancel discards.
+Atomic revisioned saves, source namespaces and the hidden-inclusive eight-instance
+cap are unchanged. No unsupported styles or future formulas are exposed.
+
+The initial five-file focused scope passed 74 distinct tests; the GUI-driven
+keyboard/editor correction passed 33/33 ChartIndicators/AppChartFocus tests.
+TypeScript and production build passed, with the existing bundle-size advisory.
+Pinned Gitleaks 8.30.1 staged/outgoing scans passed. Full-App synthetic browser
+acceptance on the corrected source passed at 1094×757, 729×505 and 625×432 CSS
+pixels. It verified repeated native-selector keyboard changes, editor-only legend
+entry, explicit catalog access, saved eight-instance cap, filtering, reachable
+Apply, no document overflow, sticky Exit/source/status and collapse/Escape.
+Earlier frozen `f22e5c1` independently supplied save-error/draft/retry/reload and
+favorite evidence; exact scopes and the busy-latency limitation are in STATUS.md.
+
+This documentation checkpoint changes no source and reruns no tests/build.
+Live-provider, Windows/native and owner-led unaided acceptance remain separate.
+The [expansion plan](CHART_EXPANSION_PLAN.md) keeps HA/line and later formula
+integration pending toward the finite 30-type target. This is not a release,
+main merge, provider/trading change or product-version bump.
+
 ## Current chart focus checkpoint
 
-The latest frontend-only candidate adds reversible Focus chart / Exit chart
+The preceding frontend-only candidate adds reversible Focus chart / Exit chart
 focus to the actual App / Live market layout (ADR 0046). It retains the mounted
 chart and editors, exposes a sticky source/freshness/Exit bar, hides surrounding
 chrome/book/tape and uses one outer scroll owner. Escape yields to drawing/editor

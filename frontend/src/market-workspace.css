@@ -188,3 +188,47 @@
  .market-chart-focused .market-workspace-heading select{max-width:108px;font-size:10px}
  .market-chart-focused .live-chart{padding:6px 8px}
 }
+
+/* Compact native toolbar and in-flow catalog: no floating surface over price. */
+.chart-instrument{display:flex;flex-direction:column;gap:2px;font-size:13px}
+.chart-instrument small{font-size:10px;font-weight:400;color:#9baec7}
+.chart-timeframe-select{display:none!important}
+.chart-options{font-size:11px;min-width:0}
+.chart-options summary{cursor:pointer;padding:6px;border:1px solid #53647d;border-radius:4px}
+.chart-options[open]{flex-basis:100%}
+.chart-options[open] summary{width:fit-content}
+.chart-options>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0}
+.chart-options:focus-visible,.chart-options :focus-visible{outline:2px solid #b3d4ff;outline-offset:2px}
+.chart-navigation{font-size:11px;margin:3px 0 6px}
+.chart-navigation button{font-size:11px;padding:4px 7px;margin-left:auto}
+.chart-indicator-controls{max-height:none;overflow:visible;padding:10px;margin:5px 0}
+.indicator-editor-heading{position:static;padding:0 0 7px}
+.indicator-workbench{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px}
+.indicator-catalog,.indicator-instance-editor{min-width:0}
+.indicator-catalog-filters{display:flex;flex-wrap:wrap;align-items:end;gap:8px}
+.indicator-catalog-filters label,.indicator-instance-editor>label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.indicator-catalog-filters input{width:170px;max-width:100%;box-sizing:border-box}
+.indicator-instance-editor select{width:100%;min-width:0;max-width:100%}
+.indicator-catalog-list{list-style:none;padding:0;margin:7px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.indicator-catalog-list li{display:flex;min-width:0;border:1px solid #344359;border-radius:4px}
+.indicator-catalog-add{display:flex;flex:1;flex-direction:column;align-items:flex-start;min-width:0;text-align:left;padding:5px 6px;border:0;background:transparent;font-size:11px}
+.indicator-catalog-add span{overflow-wrap:anywhere;font-size:10px;color:#bbcee5}
+.indicator-catalog-add small{font-size:9px;color:#93a9c2;margin:2px 0 0}
+.indicator-favorite{align-self:flex-start;border:0;background:transparent;padding:5px;color:#b6c7dc;font-size:16px}
+.indicator-favorite[aria-pressed=true]{color:#e8c56d}
+.chart-indicator-controls .chart-indicator-fields{align-items:end;gap:8px}
+.chart-indicator-fields>label{display:flex;flex-direction:column;gap:4px}
+.chart-indicator-controls fieldset:focus{outline:2px solid #b3d4ff;outline-offset:1px}
+@media(max-width:760px){
+ .chart-timeframe-select{display:flex!important}
+ .chart-quick-timeframes{display:none}
+ .indicator-workbench{grid-template-columns:minmax(0,1fr)}
+ .indicator-catalog-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:480px){
+ .indicator-catalog-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .indicator-catalog-filters input{width:145px}
+ .chart-navigation span{flex-basis:100%}
+}
+.chart-options:not([open])>div{display:none}
+.indicator-workbench.indicator-editor-only{grid-template-columns:minmax(0,1fr)}

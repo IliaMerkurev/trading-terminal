@@ -5,23 +5,26 @@ import {render,screen,fireEvent,waitFor,renderHook,act} from '@testing-library/r
 import ChartIndicators,{emptySettings,defaults,indicatorName,type ChartIndicator} from './ChartIndicators';
 import {installIndicatorSeries,updateIndicatorSeries} from './chartIndicatorSeries';
 import {useChartIndicators} from './useChartIndicators';
+import {favoritesKey,parseIndicatorFavorites,indicatorCatalog} from './indicatorCatalog';
 const mock=vi.hoisted(()=>({api:vi.fn()}));
 vi.mock('./api',()=>({api:mock.api}));
 const primaryScale = () => ({options: () => ({scaleMargins: {top: 0.2, bottom: 0.1}}), applyOptions: vi.fn()});
 const item=(type:ChartIndicator['type'],id:string=type):ChartIndicator=>({id,type,params:{...defaults[type]},color:'#7eabff',visible:true,...(type==='volume'?{placement:'pane' as const}:{})});
-beforeEach(()=>{mock.api.mockReset();});
+beforeEach(()=>{mock.api.mockReset();localStorage.clear();});
 
 it('adds duplicate EMA instances and applies parameters, visibility and removal atomically',()=>{
  const apply=vi.fn();render(<ChartIndicators settings={emptySettings} onApply={apply} busy={false} error=""/>);
  fireEvent.click(screen.getByRole('button',{name:'Indicators (0)'}));
- fireEvent.click(screen.getByRole('button',{name:'Add indicator'}));fireEvent.click(screen.getByRole('button',{name:'Add indicator'}));
+ fireEvent.click(screen.getByRole('button',{name:'Add EMA'}));fireEvent.click(screen.getByRole('button',{name:'Add EMA'}));
+ fireEvent.change(screen.getByLabelText('Selected indicator instance'),{target:{value:(screen.getByLabelText('Selected indicator instance') as HTMLSelectElement).options[0].value}});
  const first=screen.getByLabelText('1 EMA period');
  fireEvent.change(first,{target:{value:'0'}});fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));expect(apply).not.toHaveBeenCalled();
  expect(screen.getByRole('alert').textContent).toContain('whole numbers');
- fireEvent.change(first,{target:{value:'9'}});fireEvent.click(screen.getByLabelText('2 EMA visible'));
+ fireEvent.change(first,{target:{value:'9'}});fireEvent.change(screen.getByLabelText('Selected indicator instance'),{target:{value:(screen.getByLabelText('Selected indicator instance') as HTMLSelectElement).options[1].value}});fireEvent.click(screen.getByLabelText('2 EMA visible'));
  fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
  expect(apply.mock.calls[0][0]).toHaveLength(2);expect(apply.mock.calls[0][0][0].params.period).toBe(9);expect(apply.mock.calls[0][0][1].visible).toBe(false);
  expect(apply.mock.calls[0][0][0].id).not.toBe(apply.mock.calls[0][0][1].id);
+ fireEvent.change(screen.getByLabelText('Selected indicator instance'),{target:{value:(screen.getByLabelText('Selected indicator instance') as HTMLSelectElement).options[0].value}});
  fireEvent.click(screen.getByRole('button',{name:'Remove 1 EMA'}));fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));expect(apply.mock.calls[1][0]).toHaveLength(1);
 });
 
@@ -71,7 +74,9 @@ it('names persisted BB and MACD with semantic order after canonical key sorting'
  const {rerender}=render(<ChartIndicators settings={{...emptySettings,instances:[bb,macd]}} onApply={vi.fn()} busy={false} error=""/>);
  fireEvent.click(screen.getByRole('button',{name:'Indicators (2)'}));
  expect(screen.getAllByRole('spinbutton').map(input=>input.getAttribute('aria-label'))).toEqual([
-  '1 BB period','1 BB deviations','2 MACD fast','2 MACD slow','2 MACD signal']);
+  '1 BB period','1 BB deviations']);
+ fireEvent.change(screen.getByLabelText('Selected indicator instance'),{target:{value:'macd'}});
+ expect(screen.getAllByRole('spinbutton').map(input=>input.getAttribute('aria-label'))).toEqual(['2 MACD fast','2 MACD slow','2 MACD signal']);
  rerender(<ChartIndicators settings={{...emptySettings,revision:2,instances:[bb,macd]}} onApply={vi.fn()} busy={false} error=""/>);
  expect((screen.getByLabelText('2 MACD slow') as HTMLInputElement).value).toBe('26');
 });
@@ -228,7 +233,8 @@ it('keeps logarithmic/manual price choices out of newly created auxiliary scales
 it('adds ATR, Stochastic and OBV with bounded parameters and preserves old instances',()=>{
  const apply=vi.fn();render(<ChartIndicators settings={{...emptySettings,instances:[item('ema')]}} onApply={apply} busy={false} error=""/>);
  fireEvent.click(screen.getByRole('button',{name:'Indicators (1)'}));
- for(const kind of ['atr','stochastic','obv']){fireEvent.change(screen.getByLabelText('Add indicator type'),{target:{value:kind}});fireEvent.click(screen.getByRole('button',{name:'Add indicator'}));}
+ for(const kind of ['atr','stochastic','obv']){fireEvent.click(screen.getByRole('button',{name:`Add ${kind.toUpperCase()}`}));}
+ fireEvent.change(screen.getByLabelText('Selected indicator instance'),{target:{value:(screen.getByLabelText('Selected indicator instance') as HTMLSelectElement).options[2].value}});
  fireEvent.change(screen.getByLabelText('3 STOCHASTIC smooth'),{target:{value:'0'}});
  expect((screen.getByRole('button',{name:'Apply indicators'}) as HTMLButtonElement).disabled).toBe(true);
  fireEvent.change(screen.getByLabelText('3 STOCHASTIC smooth'),{target:{value:'2'}});fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
@@ -268,14 +274,17 @@ it('retains unsaved edits across collapse and targeted settings, guards quick ac
  fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
  expect(document.activeElement?.tagName).toBe('FIELDSET');
  fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'37'}});
- fireEvent.click(screen.getByRole('button',{name:'Indicators (2)'}));
+ fireEvent.click(screen.getByRole('button',{name:'Close indicator settings'}));
  expect(screen.getByText(/Unapplied edits retained/)).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Hide 1 EMA'}));expect(apply).not.toHaveBeenCalled();
  fireEvent.click(screen.getByRole('button',{name:'Settings for 2 BB'}));
  expect(document.activeElement?.textContent).toContain('Bollinger Bands');
- expect((screen.getByLabelText('1 EMA period') as HTMLInputElement).value).toBe('37');
+ expect(screen.queryByLabelText('1 EMA period')).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:'Close indicator settings'}));
- expect(document.activeElement).toBe(screen.getByRole('button',{name:'Indicators (2)'}));
+ expect(document.activeElement).toBe(screen.getByRole('button',{name:'Settings for 2 BB'}));
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
+ expect((screen.getByLabelText('1 EMA period') as HTMLInputElement).value).toBe('37');
+ fireEvent.click(screen.getByRole('button',{name:'Cancel edits'}));
  fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
  expect((screen.getByLabelText('1 EMA period') as HTMLInputElement).value).toBe('20');
  fireEvent.click(screen.getByRole('button',{name:'Cancel edits'}));
@@ -291,11 +300,118 @@ it('keeps legend visibility truthful and disabled until asynchronous save settle
  fireEvent.click(screen.getByRole('button',{name:'Hide 1 EMA'}));
  expect((screen.getByRole('button',{name:'Hide 1 EMA'}) as HTMLButtonElement).disabled).toBe(true);
  expect((screen.getByRole('button',{name:'Settings for 1 EMA'}) as HTMLButtonElement).disabled).toBe(true);
- expect((screen.getByRole('button',{name:'Indicators (1)'}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByRole('button',{name:'Indicators (1)'}) as HTMLButtonElement).disabled).toBe(false);
  fireEvent.click(screen.getByRole('button',{name:'Hide 1 EMA'}));
  expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_save')).toHaveLength(1);
  await act(async()=>rejectSave(new Error('Save denied')));
  expect(screen.getByRole('button',{name:'Hide 1 EMA'}).getAttribute('aria-pressed')).toBe('true');
  fireEvent.click(screen.getByRole('button',{name:'Indicators (1)'}));
  expect(screen.getByRole('alert').textContent).toContain('Settings not saved');
+});
+
+it('offers only implemented kinds with search, categories and persistent type-only favorites',()=>{
+ const apply=vi.fn();const view=render(<ChartIndicators settings={emptySettings} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (0)'}));
+ expect(document.activeElement).toBe(screen.getByLabelText('Search indicators'));
+ expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(9);
+ expect(indicatorCatalog.map(entry=>entry.kind).sort()).toEqual(Object.keys(defaults).sort());
+ fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:'bollinger'}});
+ expect(screen.getByRole('button',{name:'Add BB'})).toBeTruthy();expect(screen.queryByRole('button',{name:'Add EMA'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Favorite BB'}));
+ expect(JSON.parse(localStorage.getItem(favoritesKey)!)).toEqual(['bb']);expect(apply).not.toHaveBeenCalled();
+ fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:''}});
+ fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Momentum'}});
+ expect(screen.getAllByRole('button',{name:/^Add /}).map(button=>button.getAttribute('aria-label'))).toEqual(['Add RSI','Add MACD','Add STOCHASTIC']);
+ fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Favorites'}});
+ expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(1);
+ view.unmount();render(<ChartIndicators settings={emptySettings} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (0)'}));
+ expect(screen.getByRole('button',{name:'Favorite BB'}).getAttribute('aria-pressed')).toBe('true');
+ fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:'unsupported'}});
+ expect(screen.getByRole('status').textContent).toContain('No indicators match');
+});
+
+it('bounds favorites to recognized identifiers and falls back safely on malformed or unavailable storage',()=>{
+ for(const value of ['{','{}','null','"ema"','x'.repeat(4097),JSON.stringify(Array(65).fill('ema'))])expect(parseIndicatorFavorites(value)).toEqual([]);
+ expect(parseIndicatorFavorites('["ema","ema","unknown",{"params":99},"volume"]')).toEqual(['ema','volume']);
+ const read=vi.spyOn(Storage.prototype,'getItem').mockImplementation(()=>{throw new Error('Denied');});
+ const write=vi.spyOn(Storage.prototype,'setItem').mockImplementation(()=>{throw new Error('Denied');});
+ try {
+  render(<ChartIndicators settings={emptySettings} onApply={vi.fn()} busy={false} error=""/>);
+  fireEvent.click(screen.getByRole('button',{name:'Indicators (0)'}));fireEvent.click(screen.getByRole('button',{name:'Favorite EMA'}));
+  expect(screen.getByRole('button',{name:'Favorite EMA'}).getAttribute('aria-pressed')).toBe('true');
+  expect(screen.getByRole('status').textContent).toContain('this session only');
+ } finally {read.mockRestore();write.mockRestore();}
+});
+
+it('counts hidden instances toward the cap and validates the entire draft behind a single editor',()=>{
+ const settings={...emptySettings,instances:Array.from({length:8},(_,index)=>({...item('ema',String(index)),visible:false}))};
+ const apply=vi.fn();render(<ChartIndicators settings={settings} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (8)'}));
+ expect(screen.getAllByRole('group')).toHaveLength(1);
+ expect(screen.getAllByRole('button',{name:/^Add /}).every(button=>(button as HTMLButtonElement).disabled)).toBe(true);
+ expect(screen.getByRole('status').textContent).toContain('including hidden');
+ fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'0'}});
+ fireEvent.change(screen.getByLabelText('Selected indicator instance'),{target:{value:'7'}});
+ expect(screen.queryByLabelText('1 EMA period')).toBeNull();expect(screen.getByLabelText('8 EMA period')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));expect(apply).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Remove 8 EMA'}));
+ expect((screen.getByRole('button',{name:'Add EMA'}) as HTMLButtonElement).disabled).toBe(false);
+ expect(screen.getByRole('alert').textContent).toContain('whole numbers');
+});
+
+it('retains a failed draft across safe dismissal and Escape without focus mode, and accepts canonical revisions',()=>{
+ const settings={...emptySettings,revision:4,instances:[item('ema')]};const apply=vi.fn();
+ const view=render(<ChartIndicators settings={settings} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
+ fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'31'}});
+ fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
+ const saved=apply.mock.calls[0][0];
+ view.rerender(<ChartIndicators settings={settings} onApply={apply} busy={true} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Close indicator settings'}));
+ expect(screen.getByText(/Unapplied edits retained/)).toBeTruthy();
+ view.rerender(<ChartIndicators settings={settings} onApply={apply} busy={false} error="Settings not saved. Revision conflict."/>);
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (1)'}));
+ expect((screen.getByLabelText('1 EMA period') as HTMLInputElement).value).toBe('31');
+ expect(screen.getByRole('alert').textContent).toContain('Revision conflict');
+ fireEvent.keyDown(screen.getByLabelText('1 EMA period'),{key:'Escape'});expect(screen.getByLabelText('1 EMA period')).toBeTruthy();
+ fireEvent.keyDown(screen.getByRole('button',{name:'Apply indicators'}),{key:'Escape'});
+ expect(document.activeElement).toBe(screen.getByRole('button',{name:'Indicators (1)'}));
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (1)'}));
+ view.rerender(<ChartIndicators settings={{...settings,revision:5,instances:saved}} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Close indicator settings'}));expect(screen.queryByText(/Unapplied edits retained/)).toBeNull();
+});
+
+it('keeps repeated native instance selection focused and opens legend settings without the catalog',()=>{
+ const settings={...emptySettings,instances:[item('volume'),item('ema'),item('rsi')]};
+ render(<ChartIndicators settings={settings} onApply={vi.fn()} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 3 RSI'}));
+ expect(screen.queryByLabelText('Indicator catalog')).toBeNull();
+ expect(document.activeElement?.tagName).toBe('FIELDSET');
+ fireEvent.change(screen.getByLabelText('3 RSI period'),{target:{value:'21'}});
+ const selector=screen.getByLabelText('Selected indicator instance');selector.focus();
+ fireEvent.change(selector,{target:{value:'ema'}});expect(document.activeElement).toBe(selector);
+ fireEvent.change(selector,{target:{value:'volume'}});expect(document.activeElement).toBe(selector);
+ expect(screen.getByLabelText('1 VOLUME placement')).toBeTruthy();
+ fireEvent.change(selector,{target:{value:'rsi'}});expect((screen.getByLabelText('3 RSI period') as HTMLInputElement).value).toBe('21');
+ fireEvent.click(screen.getByRole('button',{name:'Browse indicators'}));
+ expect(screen.getByLabelText('Indicator catalog')).toBeTruthy();expect(document.activeElement).toBe(screen.getByLabelText('Search indicators'));
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 2 EMA'}));expect(screen.queryByLabelText('Indicator catalog')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (3)'}));expect(screen.getByLabelText('Indicator catalog')).toBeTruthy();
+ expect(document.activeElement).toBe(screen.getByLabelText('Search indicators'));
+});
+
+it('restores an enabled toolbar initiator when saving disables the legend and permits read-only reopening',()=>{
+ const settings={...emptySettings,instances:[item('ema')]};const apply=vi.fn();
+ const view=render(<ChartIndicators settings={settings} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
+ fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'30'}});
+ view.rerender(<ChartIndicators settings={settings} onApply={apply} busy={true} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Close indicator settings'}));
+ const toggle=screen.getByRole('button',{name:'Indicators (1)'});
+ expect(document.activeElement).toBe(toggle);expect((toggle as HTMLButtonElement).disabled).toBe(false);
+ fireEvent.click(toggle);expect((screen.getByLabelText('1 EMA period') as HTMLInputElement).value).toBe('30');
+ expect((screen.getByRole('button',{name:'Add EMA'}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByRole('button',{name:'Saving…'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Add EMA'}));expect(apply).not.toHaveBeenCalled();
 });

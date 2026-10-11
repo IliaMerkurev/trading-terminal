@@ -1,5 +1,6 @@
 import {useEffect, useId, useRef, useState} from 'react';
 import {isTypingTarget} from './chartDrawings';
+import {indicatorCatalog, indicatorCategories, favoritesKey, parseIndicatorFavorites} from './indicatorCatalog';
 
 export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume' | 'atr' | 'stochastic' | 'obv';
 export type ChartIndicator = {
@@ -70,6 +71,8 @@ export function indicatorName(item: ChartIndicator) {
 
 type Props = {
   focusMode?: boolean;
+  toolbar?: React.ReactNode;
+  toolbarActions?: React.ReactNode;
   settings: IndicatorSettings;
   onApply: (items: ChartIndicator[]) => void;
   busy: boolean;
@@ -77,51 +80,78 @@ type Props = {
   volumeUnit?: string;
 };
 
-export default function ChartIndicators({settings, onApply, busy, error, volumeUnit, focusMode=false}: Props) {
+export default function ChartIndicators({settings, onApply, busy, error, volumeUnit, toolbar, toolbarActions}: Props) {
   const [open, setOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(true);
   const panelId = useId();
   const toggle = useRef<HTMLButtonElement>(null);
-  const fields = useRef(new Map<string, HTMLFieldSetElement>());
-  const [target, setTarget] = useState<string | null>(null);
-  useEffect(() => {
-    if (open && target) {fields.current.get(target)?.focus(); fields.current.get(target)?.scrollIntoView?.({block: 'nearest'}); setTarget(null);}
-  }, [open, target]);
+  const initiator = useRef<HTMLElement | null>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const editor = useRef<HTMLFieldSetElement>(null);
+  const [target, setTarget] = useState<'search' | 'editor' | null>(null);
+  const [selected, setSelected] = useState<string | null>(settings.instances[0]?.id ?? null);
   const [draft, setDraft] = useState<ChartIndicator[]>(settings.instances);
   const [search, setSearch] = useState('');
-  const [kind, setKind] = useState<IndicatorKind>('ema');
-  useEffect(() => { setDraft(settings.instances); }, [settings]);
-  const matches = (Object.keys(defaults) as IndicatorKind[]).filter(type => (type + ' ' + ({sma:'Simple moving average',ema:'Exponential moving average',bb:'Bollinger Bands',rsi:'Relative strength index',macd:'Moving average convergence divergence',volume:'Volume',atr:'Average true range',stochastic:'Stochastic oscillator',obv:'On balance volume'}[type])).toLowerCase().includes(search.toLowerCase()));
-  const selectedKind = matches.includes(kind) ? kind : matches[0];
+  const [category, setCategory] = useState('All');
+  const [favorites, setFavorites] = useState<IndicatorKind[]>(() => {
+    try { return parseIndicatorFavorites(localStorage.getItem(favoritesKey)); } catch { return []; }
+  });
+  const [favoriteNotice, setFavoriteNotice] = useState('');
+  useEffect(() => {
+    setDraft(settings.instances);
+    setSelected(previous => settings.instances.some(item => item.id === previous) ? previous : settings.instances[0]?.id ?? null);
+  }, [settings]);
+  useEffect(() => {
+    if (!open || !target) return;
+    (target === 'search' ? searchInput.current : editor.current)?.focus({preventScroll:true});
+    setTarget(null);
+  }, [open, target, selected]);
+  const matches = indicatorCatalog.filter(entry =>
+    (category === 'All' || category === entry.category || category === 'Favorites' && favorites.includes(entry.kind)) &&
+    `${entry.kind} ${entry.name} ${entry.description}`.toLowerCase().includes(search.trim().toLowerCase()));
   const invalid = validateIndicators(draft);
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings.instances);
   const edit = (id: string, change: Partial<ChartIndicator>) => {
     setDraft(rows => rows.map(row => row.id === id ? {...row, ...change} : row));
   };
-  const add = () => {
-    if (!selectedKind) return;
-    const kind = selectedKind;
-    setDraft(rows => [...rows, {
-      id: 'i' + crypto.randomUUID().replaceAll('-', ''),
-      type: kind,
-      params: {...defaults[kind]},
-      color: kind === 'volume' ? '#42cda8' : '#7eabff',
-      visible: true,
+  const add = (kind: IndicatorKind) => {
+    if (busy || draft.length >= 8) return;
+    const item: ChartIndicator = {
+      id: 'i' + crypto.randomUUID().replaceAll('-', ''), type: kind,
+      params: {...defaults[kind]}, color: kind === 'volume' ? '#42cda8' : '#7eabff', visible: true,
       ...(kind === 'volume' ? {placement: 'overlay' as const} : {}),
-    }]);
+    };
+    setDraft(rows => [...rows, item]); setSelected(item.id); setTarget('editor');
   };
-
-  const cancel = () => {setDraft(settings.instances); setOpen(false); setTarget(null); toggle.current?.focus();};
+  const favorite = (kind: IndicatorKind) => {
+    const next = indicatorCatalog.filter(entry => entry.kind === kind ? !favorites.includes(kind) : favorites.includes(entry.kind)).map(entry => entry.kind);
+    setFavorites(next);
+    try { localStorage.setItem(favoritesKey, JSON.stringify(next)); setFavoriteNotice(''); }
+    catch { setFavoriteNotice('Favorites are available for this session only; local preferences could not be saved.'); }
+  };
+  const collapse = () => {
+    setOpen(false); setTarget(null);
+    (initiator.current?.isConnected && !initiator.current.matches(':disabled') ? initiator.current : toggle.current)?.focus({preventScroll:true});
+  };
+  const cancel = () => {setDraft(settings.instances); setSelected(settings.instances[0]?.id ?? null); collapse();};
+  const selectedItem = draft.find(item => item.id === selected) ?? draft[0];
   return <div className="chart-indicator-manager" onKeyDown={event=>{
-    if(focusMode&&open&&event.key==='Escape'&&!event.isDefaultPrevented()&&!isTypingTarget(event.target)){
-      event.preventDefault();setOpen(false);setTarget(null);toggle.current?.focus({preventScroll:true});
+    if(open && event.key==='Escape' && !event.isDefaultPrevented() && !event.nativeEvent.isComposing && !isTypingTarget(event.target)){
+      event.preventDefault(); event.stopPropagation(); collapse();
     }
   }}>
-    <div className="chart-indicator-heading"><button ref={toggle} disabled={busy} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(value => !value)}>Indicators ({settings.instances.length})</button><small>Display only · native timeframe</small></div>
+    <div className="live-chart-toolbar chart-indicator-heading" aria-label="Market chart toolbar">
+      {toolbar}
+      <button ref={toggle} aria-expanded={open} aria-controls={panelId} onClick={event => {
+        if(open && catalogOpen) collapse(); else {initiator.current=event.currentTarget; setCatalogOpen(true); setOpen(true); setTarget('search');}
+      }}>Indicators ({settings.instances.length})</button>
+      {toolbarActions}
+    </div>
     {!open && dirty && <small className="indicator-draft-note">Unapplied edits retained. Open Indicators to apply or cancel.</small>}
     {settings.instances.length > 0 && <ul className="chart-indicator-legend" aria-label="Chart indicator legend">
       {settings.instances.map((item, index) => <li key={item.id} className={item.visible ? '' : 'indicator-hidden'}>
         <span className="indicator-swatch" style={{backgroundColor: item.color}} aria-hidden="true"/>
-        <button disabled={busy} className="indicator-settings-link" aria-label={`Settings for ${index + 1} ${item.type.toUpperCase()}`} title={indicatorName(item)} onClick={() => {setOpen(true); setTarget(item.id);}}>
+        <button disabled={busy} className="indicator-settings-link" aria-label={`Settings for ${index + 1} ${item.type.toUpperCase()}`} title={indicatorName(item)} onClick={event => {initiator.current=event.currentTarget; setSelected(item.id); setCatalogOpen(false); setOpen(true); setTarget('editor');}}>
           <strong>{index + 1}. {item.type.toUpperCase()}</strong><span>{parameterOrder[item.type].map(key => `${key} ${item.params[key]}`).join(' · ') || (item.type === 'volume' ? item.placement === 'pane' ? 'separate pane' : 'price overlay' : 'zero origin')}</span>
         </button>
         <button disabled={busy || open || dirty} aria-label={`${item.visible ? 'Hide' : 'Show'} ${index + 1} ${item.type.toUpperCase()}`} aria-pressed={item.visible} title={open || dirty ? 'Apply or cancel edits before changing visibility here' : 'Save visibility immediately'} onClick={() => onApply(settings.instances.map(row => row.id === item.id ? {...row, visible: !row.visible} : row))}>{item.visible ? 'Hide' : 'Show'}</button>
@@ -129,19 +159,34 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
     </ul>}
     {settings.instances.some(item => ['atr', 'volume', 'obv'].includes(item.type)) && <details className="indicator-unit-note"><summary>Indicator units and seed notes</summary><p>ATR: price units, Wilder smoothing with an SMA true-range seed; initialization differs from graph/recorded IR. Volume/OBV: {volumeUnit ?? 'source-native units (unverified)'}. OBV starts at zero at the saved origin or segment reset. Stochastic: percent. Full calculation details are below the chart.</p></details>}
     {open && <div id={panelId} className="chart-indicator-controls" aria-label="Chart indicator settings">
-      <div className="indicator-editor-heading"><strong>Indicator settings</strong><button disabled={busy} onClick={cancel} aria-label="Close indicator settings">Close · discard edits</button></div>
-      <p>Display only · selected native chart timeframe · confirmed closes. Recorded IR and trading settings are separate. ATR uses price units; Stochastic uses percent; OBV uses the disclosed source-native volume units and starts at zero at the saved origin or segment reset.</p>
-      <div className="chart-indicator-add">
-        <label>Search indicators<input aria-label="Search indicators" value={search} onChange={event => setSearch(event.target.value)} placeholder="EMA, volume…"/></label>
-        <label>Indicator type
-          <select aria-label="Add indicator type" value={selectedKind ?? ''} onChange={event => setKind(event.target.value as IndicatorKind)}>
-            {matches.map(type => <option key={type} value={type}>{type === 'bb' ? 'Bollinger Bands' : type === 'atr' ? 'ATR · Wilder, SMA seed' : type.toUpperCase()}</option>)}
-          </select>
-        </label>
-        <button disabled={draft.length >= 8 || busy || !selectedKind} onClick={add}>Add indicator</button>
-        <small>{draft.length}/8</small>
-      </div>
-      {draft.map((item, index) => <fieldset disabled={busy} key={item.id} tabIndex={-1} ref={element => {if(element)fields.current.set(item.id,element);else fields.current.delete(item.id);}}>
+      <div className="indicator-editor-heading"><strong>Display indicators · {draft.length}/8 instances</strong>{!catalogOpen && <button onClick={() => {setCatalogOpen(true);setTarget('search');}}>Browse indicators</button>}<button onClick={collapse} aria-label="Close indicator settings">Collapse · keep edits</button></div>
+      <div className={catalogOpen ? "indicator-workbench" : "indicator-workbench indicator-editor-only"}>
+      {catalogOpen && <section className="indicator-catalog" aria-label="Indicator catalog">
+        <div className="indicator-catalog-filters">
+          <label>Search<input ref={searchInput} aria-label="Search indicators" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name or abbreviation" maxLength={120}/></label>
+          <label>Category<select aria-label="Indicator category" value={category} onChange={event => setCategory(event.target.value)}>
+            {['All', 'Favorites', ...indicatorCategories].map(value => <option key={value}>{value}</option>)}
+          </select></label>
+        </div>
+        <ul className="indicator-catalog-list" aria-label="Available indicators">
+          {matches.map(entry => <li key={entry.kind}>
+            <button className="indicator-catalog-add" disabled={busy || draft.length >= 8} aria-label={`Add ${entry.kind.toUpperCase()}`} title={entry.description} onClick={() => add(entry.kind)}>
+              <strong>{entry.kind.toUpperCase()}</strong><span>{entry.name}</span><small>{entry.category}</small>
+            </button>
+            <button className="indicator-favorite" aria-label={`Favorite ${entry.kind.toUpperCase()}`} aria-pressed={favorites.includes(entry.kind)} onClick={() => favorite(entry.kind)}>{favorites.includes(entry.kind) ? '★' : '☆'}</button>
+          </li>)}
+        </ul>
+        {!matches.length && <p role="status">No indicators match. Try another search or category.</p>}
+        {draft.length >= 8 && <p role="status">Limit reached: 8 instances, including hidden ones. Remove an instance to add another.</p>}
+        {favoriteNotice && <p role="status">{favoriteNotice}</p>}
+      </section>}
+      <section className="indicator-instance-editor" aria-label="Selected indicator editor">
+      <label>On chart<select aria-label="Selected indicator instance" disabled={busy || !draft.length} value={selectedItem?.id ?? ''} onChange={event => setSelected(event.target.value)}>
+        {!draft.length && <option value="">No instances yet</option>}
+        {draft.map((item, index) => <option value={item.id} key={item.id}>{index+1}. {indicatorName(item)}{item.visible ? '' : ' · hidden'}</option>)}
+      </select></label>
+      {!draft.length && <p>Add an indicator from the catalog, then edit its inputs and style here.</p>}
+      {draft.map((item, index) => item.id === selectedItem?.id && <fieldset disabled={busy} key={item.id} tabIndex={-1} ref={editor}>
         <legend>{index + 1}. {item.type === 'bb' ? 'Bollinger Bands' : item.type.toUpperCase()}</legend>
         <div className="chart-indicator-fields">
           {parameterOrder[item.type].map(key => [key, item.params[key]] as const).map(([key, value]) => <label key={key}>{key}
@@ -168,15 +213,17 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
               onChange={event => edit(item.id, {visible: event.target.checked})}/>
             Visible
           </label>
-          <button disabled={busy} onClick={() => setDraft(rows => rows.filter(row => row.id !== item.id))}>
+          <button disabled={busy} onClick={() => {const remaining=draft.filter(row => row.id !== item.id);setDraft(remaining);setSelected(remaining[Math.min(index,remaining.length-1)]?.id ?? null);if(!remaining.length)setCatalogOpen(true);setTarget(remaining.length ? 'editor' : 'search');}}>
             Remove {index + 1} {item.type.toUpperCase()}
           </button>
         </div>
       </fieldset>)}
+      </section>
+      </div>
       {(invalid || error) && <p role="alert">{invalid || error}</p>}
       <button disabled={busy || !!invalid} onClick={() => onApply(draft)}>{busy ? 'Saving…' : 'Apply indicators'}</button>
       <button disabled={busy} onClick={cancel}>Cancel edits</button>
-      <small>Apply saves all valid edits together in this workspace. Hidden indicators retain their settings. Defaults are examples, not trading recommendations.</small>
+      <small>Display only · confirmed native-timeframe closes. Apply saves all valid edits together in this source workspace. Cancel discards edits; Collapse retains them. Recorded IR and trading settings are separate. Defaults are examples, not trading recommendations.</small>
     </div>}
   </div>;
 }

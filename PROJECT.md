@@ -562,3 +562,23 @@ leaving Live market clears focus. Source namespaces retain their existing reset
 rules. Saved history and run charts are not part of this workspace feature.
 See [ADR 0046](docs/adr/0046-market-chart-focus.md). No dependency, backend,
 provider/network, key, strategy/trading, Windows or product-version change.
+
+### Later authorized chart catalog, styles and formula expansion — 2026-10-11
+
+Deliver a compact reference-inspired Market toolbar and searchable categorized
+catalog with type-only UI favorites and a single selected-instance settings
+editor. Preserve atomic whole-draft saves/revisions, hidden-instance cap of eight,
+source namespaces, focus/Return, source-unit and seed disclosures. Collapse keeps
+drafts; Cancel discards. Catalog/controls must remain reachable in flow without
+covering axes, handles or Exit. No inert service or chart-style controls.
+
+Continue in gated slices with candles/Heikin Ashi/line and a finite 30-type free-
+compatible display catalog. HA must use a stable cache-derived origin, explicit
+synthetic-price labeling and independent seed/gap/paging tests; raw prices,
+indicator inputs and all trading/recorded IR stay unchanged. Formula additions
+need bounded contracts, independent fixtures, causality, persistence and series
+integration before catalog exposure. The current slice exposes only the existing
+nine types; later HA/line and formula batches are pending. See the
+[expansion plan](docs/CHART_EXPANSION_PLAN.md) and [ADR 0047](docs/adr/0047-market-indicator-catalog.md).
+No Pine runtime, paid chart package, additional dependency, provider acquisition,
+strategy/trading change, product-version bump, release or main merge is implied.

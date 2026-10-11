@@ -6,6 +6,91 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+
+## Compact Market toolbar and indicator catalog candidate — 2026-10-11
+
+ADR 0047 composes symbol/source/market, supported native timeframe controls and
+Indicators into one toolbar. The narrow layout substitutes the native timeframe
+selector; Return stays visible. Chart options contains scale/Fit/Recorded IR,
+while Older history remains in the navigation row. All surfaces remain in flow
+before the plot. No inert chart-style, alert or layout controls are added.
+
+A typed metadata registry exposes the existing nine formulas through search and
+Trend/Volatility/Momentum/Volume filters. Favorites persist only a bounded list of
+recognized type IDs; malformed/unavailable storage falls back safely. Exactly one
+selected-instance editor is mounted. Complete-draft validation, the eight-instance
+cap including hidden instances, atomic revisioned Apply, source namespaces,
+failed-save retry and quick-visibility guards are preserved. Collapse/Escape keep
+edits; Cancel discards. Search/editor focus and initiator restoration are explicit;
+Chart options owns its first Escape. The workbench uses the outer scroll owner.
+
+Focused scope: **74 distinct tests passed across five files** (ChartIndicators,
+AppChartFocus, MarketChartNavigation, LiveChart, ChartDrawings). First pass:
+**73/74 in 10.50s**. The new closed-options test exposed missing explicit hidden
+content CSS in the simulated DOM; adding `.chart-options:not([open])>div` hiding
+made the native disclosure contract explicit. The corrected AppChartFocus file
+passed **10/10 in 10.02s**, including layered Escape, catalog draft retention and
+no chart pan/Fit/write from catalog interaction. The other four passing files
+were not redundantly rerun. `node scripts/frontend.mjs build` passed TypeScript
+`--noEmit` and production Vite build (245 modules; existing >500 kB advisory).
+
+This is a frontend-only candidate. The [phased plan](CHART_EXPANSION_PLAN.md)
+marks HA/line and later formula integrations pending, with a finite 30-type target.
+The current catalog still exposes only nine existing kinds. The initial
+checkpoint preceded browser acceptance; corrected-source wide/narrow/short
+actual-App evidence is recorded below. No backend, broad aggregate, live-provider, native/Windows or owner-
+led acceptance was rerun or inferred. Existing formulas, source acquisition,
+workspace schema, dependencies, strategy/trading and product version are unchanged.
+
+
+### Bounded catalog GUI findings and correction — 2026-10-11
+
+Parent-led actual-App browser checks on frozen UI source `f22e5c1`, approximately
+1094×757 CSS pixels, verified adding EMA and RSI, retaining an unsaved EMA period
+of 30 across selection/addition, and favorite EMA. A one-shot injected save
+failure kept the original saved instance and all three draft instances; the
+error remained visible after collapse. Reopening retained the draft, retry saved
+all three, and reload restored EMA 30, RSI 14 and favorite EMA. These are scoped
+synthetic wide-browser findings, not native or live-provider acceptance.
+
+The same GUI pass found a keyboard bug: changing RSI to EMA with ArrowUp moved
+focus into the fieldset, preventing a second ArrowUp from selecting Volume. The
+correction leaves focus on the native instance selector. Legend Settings now
+opens only the compact selected editor, with explicit Browse indicators; the
+top Indicators entry opens the catalog. Busy dismissal falls back from a disabled
+legend initiator to the enabled main toggle, which permits read-only reopening
+without enabling mutations. These changes preserve all draft/save semantics.
+Focused correction verification passed **33/33 tests** across ChartIndicators
+and AppChartFocus in **9.58s**, including repeated native-selector focus retention,
+compact legend entry, explicit catalog access and enabled busy-dismissal fallback.
+TypeScript and production Vite build passed; the existing bundle advisory remains.
+Corrected-source actual-App browser acceptance subsequently passed on frozen
+`1fd6a51d0a8ae38c32a0ec6f6a5fed47d1ae1009`, tree
+`505e94e38b68a817439df2bee79dde547327e977`, with source unchanged throughout.
+
+At **1094×757**, repeated ArrowUp selection RSI → EMA → Volume retained native
+selector focus. Legend EMA opened editor-only without the catalog; Browse
+indicators opened it explicitly. Eight instances (Volume, EMA, RSI, SMA,
+Bollinger Bands, ATR, MACD and OBV) were added/saved; all Add actions were disabled
+at the cap with the explicit hidden-inclusive limit message.
+
+At **729×505** and **625×432** CSS pixels, using browser zoom, document width did
+not overflow. Catalog/category controls, selected editor and Apply remained
+reachable through the outer scroll owner; sticky Exit/source/status stayed
+available. Trend filtered to SMA/EMA and empty favorites/search feedback was
+observed. Collapse followed by Escape exited focus without losing the eight
+saved instances. Normal layout at 625×432 also had no document overflow; the
+browser was restored to 100 percent zoom and focus mode afterward.
+
+The disabled-initiator busy-dismissal fallback has unit/source coverage, not a
+sustained-latency GUI test. The earlier `f22e5c1` save-error/retry/reload/favorite
+findings remain scoped to that source and unchanged paths; they are not claimed
+as repeated on this correction. This documentation-only record reruns no tests
+or build and does not establish live-provider, native/Windows, broad regression,
+independent source review or owner-led unaided acceptance. The bounded UI phase
+is complete; HA/line and later formula integrations remain pending.
+
+
 ## Reversible Market chart focus candidate — 2026-10-11
 
 ADR 0046 adds Focus chart / Exit chart focus to the actual App / Live market
