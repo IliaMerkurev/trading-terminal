@@ -3451,3 +3451,54 @@ The model implements one single-position cross-margin profile, not full Bybit UT
 The native Windows file-picker import and a cancel-and-exit click before a desktop calculation finishes remain manual acceptance checks. The automation helper could not address the WebView-owned picker; bounded calculations completed before the exit click. Backend archive roundtrip, browser File transfer, close-dialog IPC ordering and actual worker cancellation pass independently. These observations do not establish that the unperformed native actions were tested.
 
 Review the complete [demonstration](DEMO.md), including source trust, edited strategy wiring, indicator display and usability. Owner acceptance is distinct from implementation and automated checks. Deferred live trading, AI, optimization, DCA, multiple instruments and other post-0.1 features remain outside this build.
+
+## Chart context ergonomics — 2026-10-11
+
+Implemented frontend-only ADR 0044: drawing properties precede all panes in a
+collapsible bounded context; save errors/retry/discard remain visible. Selection
+and property changes from unlocked drawing gestures wait until pointer release,
+so the context does not move the plot during capture. The indicator legend shows
+saved instances/parameters and visibility/settings actions outside the plot;
+axis last values retain numbers without verbose display titles. Units and ATR
+seed caveats are accessible above the plot. Draft/busy guards protect existing
+atomic saves. Verification: final focused ChartDrawings/ChartIndicators/LiveChart pass 40/40;
+frozen frontend aggregate 528/528 across 57 files; TypeScript `--noEmit` and
+production Vite build passed. The existing >500 kB bundle warning remains.
+Independent read-only interaction review found no remaining blocker after
+correcting draft-loss and selection-driven geometry risks. The initial checkpoint
+preceded browser acceptance; the corrected browser evidence is recorded below. Backend,
+calculations, data, schema and dependencies are unchanged; unchanged backend
+evidence was reused, not rerun. No new native/Windows/live-provider acceptance
+is implied.
+
+The initial bounded browser pass found a horizontal-drag price jump when the
+SVG was partly outside the viewport. Ordinary focus could scroll the workspace
+after sampling the initial anchor. The correction uses non-scrolling SVG focus;
+a deterministic simulated-scroll regression verifies unchanged prices for
+horizontal body, endpoint and creation gestures. Post-correction focused drawing
+tests pass 16/16, TypeScript and production build pass. The preceding 528-test
+aggregate predates this minimal correction; unaffected aggregate evidence is
+reused rather than claiming a fresh full run.
+
+Bounded browser acceptance subsequently passed on corrected source commit
+`021994d942fe81b80fe2b568d43622616692d96b`, using the production chart and Market
+sizing ancestors in an isolated offline wrapper. The initial candidate's
+collapsed-Fib horizontal drag from (400,535) to (455,535) had changed prices from
+80873.97139862804 / 71993.91569975375 to approximately 76906.778 / 68026.722 despite
+zero vertical displacement. This observed failure is retained rather than
+counted as a pass. After the non-scrolling-focus correction, the partially
+visible SVG's collapsed-Fib drag from (400,672) to (455,672) preserved both stored
+prices exactly (80873.97139862804 / 71993.91569975375), changing only anchor times.
+An open-properties trend-to-Fib zero-vertical-displacement drag also preserved
+prices exactly. At a measured 718px viewport, that cross-kind gesture preserved
+prices within 1.46e-11 floating-point roundoff, with no panel-height jump;
+document scroll width equalled the 718px viewport. This is the measured narrow
+width, not a claim that a separate 703px viewport was verified.
+
+Legend quick Hide/Show passed. An unsaved period change from 20 to 30 survived
+collapse/reopen; quick visibility stayed disabled with a retained-edits notice,
+and Cancel restored 20. Numeric axis labels were uncluttered and the context
+above the plot remained reachable. The wrapper used matching production source,
+actual Market sizing and offline cached history; it is not full-application,
+live-provider, native/Windows or owner unaided acceptance. No source edits or
+additional suite runs were made for this documentation-only acceptance record.

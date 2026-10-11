@@ -517,3 +517,17 @@ in the existing selector. Legacy version-1 drawings remain readable without
 read-time rewrites. See [ADR 0043](docs/adr/0043-chart-indicator-drawing-additions.md)
 for formulas, warmup, limits and acceptance boundaries. No new dependency,
 provider acquisition, release, main merge or version bump.
+
+### Later authorized chart context ergonomics — 2026-10-11
+
+Move drawing properties into a collapsible in-flow context before all chart
+panes, with saved-object access and visible failed-save recovery even when
+collapsed. Keep context geometry stable throughout pointer capture and retain
+keyboard text-input protections. Add an outside-plot indicator instance legend
+with ordered parameter labels, explicit visibility saves and focused settings
+access. Preserve unsaved parameter drafts when collapsing; quick actions cannot
+overwrite them or bypass loading/save state. Keep numeric axis values readable
+without verbose display-series titles, with source-unit and ATR seed caveats
+nearby and full provenance still available. See ADR 0044 for exact interaction
+and layout limits. This slice is frontend-only; all formulas, backend/schema,
+persistence, strategy/trading, dependencies and product version stay unchanged.

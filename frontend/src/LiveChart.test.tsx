@@ -121,3 +121,22 @@ it('drops old-source chart replies and requests separate settings after a source
  await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([{...candle(200),time:60}]));
  expect(mock.api).toHaveBeenCalledWith('chart_indicator_settings',{market:'spot',symbol:'BTCUSDT',source:'okx'});
 });
+
+it('integrates indicator management and drawing context before the plot in the production chart',async()=>{
+ mock.api.mockImplementation(async(command:string,p:any)=>{
+  if(command==='chart_indicator_settings')return {version:1,revision:1,instances:[{id:'ema',type:'ema',params:{period:20},color:'#7eabff',visible:true}],origins:{}};
+  if(command==='chart_drawing_settings')return {version:1,revision:1,drawings:[]};
+  if(command==='chart_indicator_read')return {status:'ready',times:[],columns:{},volume_unit:'source-native units (unverified)'};
+  return {candles:[{time:0,open:100,high:110,low:90,close:105,volume:1}],evaluations:[]};
+ });
+ const {container}=render(<LiveChart fresh/>);
+ const legend=await screen.findByRole('list',{name:'Chart indicator legend'});
+ const chart=container.querySelector('.chart-plot')!;
+ expect(legend.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(legend.closest('.live-chart-toolbar')).toBeNull();
+ expect(container.querySelector('.drawing-context')!.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
+ expect(screen.getByLabelText('1 EMA period')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Cancel edits'}));
+ expect(screen.queryByLabelText('1 EMA period')).toBeNull();
+});

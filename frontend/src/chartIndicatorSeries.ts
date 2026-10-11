@@ -1,5 +1,5 @@
 import {LineSeries, HistogramSeries} from 'lightweight-charts';
-import {indicatorName, type ChartIndicator} from './ChartIndicators';
+import {type ChartIndicator} from './ChartIndicators';
 
 // Rebuild only owned display series. Derive pane indexes from visible kinds,
 // then move the separate recorded IR series to the last pane.
@@ -12,7 +12,7 @@ export function installIndicatorSeries(
   const owned: {id: string; port: string; kind: string; series: any; color: string}[] = [];
   const panes = new Map<string, number>();
   let next = 1;
-  for (const [index, item] of instances.entries()) {
+  for (const item of instances) {
     if (!item.visible) continue;
     const volumeOverlay = item.type === 'volume' && item.placement !== 'pane';
     const group = ['rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv'].includes(item.type) && !volumeOverlay ? item.type : 'price';
@@ -24,7 +24,8 @@ export function installIndicatorSeries(
       const histogram = item.type === 'volume' || port === 'histogram';
       const options: any = {
         color: item.color,
-        title: `${indicatorName(item)} #${index + 1} ${port === 'value' ? '' : port}`,
+        // Full names/parameters live in the accessible outside-plot legend.
+        title: '',
         lineWidth: 2,
         priceLineVisible: false,
         lastValueVisible: true,

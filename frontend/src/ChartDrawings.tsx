@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useId,useMemo,useRef,useState} from 'react';
 import {api} from './api';
 import type {LiveCandle} from './liveChartData';
 import {defaultFibLevels,parseFibLevels,drawingTools,isTypingTarget,logicalToTime,moveDrawing,sanitizeAnnotation,timeToLogical,validAnchors,type Anchor,type Drawing,type DrawingDocument,type DrawingKind} from './chartDrawings';
@@ -10,6 +10,8 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
  const [doc,setDoc]=useState<DrawingDocument>(empty),[loaded,setLoaded]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const [tool,setTool]=useState<DrawingKind|'pointer'|'ruler'>('pointer'),[selected,setSelected]=useState<string|null>(null),[preview,setPreview]=useState<Drawing|null>(null),[magnet,setMagnet]=useState(false),[hide,setHide]=useState(false);
  const [ruler,setRuler]=useState(false);
+ const [propertiesOpen,setPropertiesOpen]=useState(false);
+ const propertiesId=useId(),propertiesToggle=useRef<HTMLButtonElement>(null);
  const [color,setColor]=useState('#e0b95e'),[width,setWidth]=useState(2),[style,setStyle]=useState<Drawing['style']>('solid'),[text,setText]=useState('Note');
  const [levelsText,setLevelsText]=useState(defaultFibLevels.join(', ')),[name,setName]=useState('');
  const [history,setHistory]=useState<{past:Drawing[][];future:Drawing[][]}>({past:[],future:[]});
@@ -18,7 +20,7 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
  docRef.current=doc;
  const namespace=JSON.stringify([source,market,symbol]);
  useEffect(()=>{
-  const token=++epoch.current;setDoc(empty);setLoaded(false);setSaving(false);setError('');setSelected(null);setPreview(null);gesture.current=null;pending.current=null;setTool('pointer');setHide(false);setHistory({past:[],future:[]});
+  const token=++epoch.current;setDoc(empty);setLoaded(false);setSaving(false);setError('');setSelected(null);setPreview(null);gesture.current=null;pending.current=null;setTool('pointer');setPropertiesOpen(false);setHide(false);setHistory({past:[],future:[]});
   api<DrawingDocument>('chart_drawing_settings',{source,market,symbol}).then(value=>{
    if(token!==epoch.current)return;
    if(value.version!==1||!Array.isArray(value.drawings))throw new Error('Unsupported drawing settings');
@@ -44,6 +46,7 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
  const current=doc.drawings.find(d=>d.id===selected);
  useEffect(()=>{setLevelsText((current?.levels??defaultFibLevels).join(', '));},[selected,JSON.stringify(current?.levels)]);
  useEffect(()=>{setName(current?.name??'');},[selected,current?.name]);
+ useEffect(()=>{if(tool!=='pointer')setPropertiesOpen(true);},[tool]);
  const parsedLevels=parseFibLevels(levelsText);
  const edit=(change:Partial<Drawing>)=>{if(current&&!saving&&!pending.current)commit(doc.drawings.map(d=>d.id===selected?{...d,...change}:d));};
  const remove=()=>{if(gesture.current){cancel();return;}if(current&&!current.locked&&!saving&&!pending.current){commit(doc.drawings.filter(d=>d.id!==selected));setSelected(null);}};
@@ -80,10 +83,12 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
  const begin=(event:React.PointerEvent,drawing?:Drawing,endpoint:number|null=null)=>{
   if(event.button!==0||saving||!loaded||pending.current||hide)return;
   const anchor=anchorAt(event);if(!anchor)return;
-  if(drawing){setSelected(drawing.id);setText(drawing.text);if(drawing.locked){event.stopPropagation();return;}}
-  else if(tool==='pointer'){setSelected(null);return;}
-  else if(doc.drawings.length>=100&&tool!=='ruler')return;
-  event.preventDefault();event.stopPropagation();svg.current?.focus();svg.current?.setPointerCapture?.(event.pointerId);
+  if(drawing?.locked){setSelected(drawing.id);setText(drawing.text);setPropertiesOpen(true);event.stopPropagation();return;}
+  else if(!drawing&&tool==='pointer'){setSelected(null);return;}
+  else if(!drawing&&doc.drawings.length>=100&&tool!=='ruler')return;
+  // Focusing a partly visible SVG must not scroll its ancestor after anchorAt
+  // establishes the gesture origin. Keep both pointer coordinate frames equal.
+  event.preventDefault();event.stopPropagation();svg.current?.focus({preventScroll:true});svg.current?.setPointerCapture?.(event.pointerId);
   if(drawing){gesture.current={id:drawing.id,endpoint,start:anchor,original:drawing,creating:false};setPreview(drawing);}
   else{
    setRuler(tool==='ruler');
@@ -102,6 +107,9 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
   if(!gesture.current||!preview)return;
   const operation=gesture.current;
   svg.current?.releasePointerCapture?.(event.pointerId);gesture.current=null;
+  // Expanding the in-flow editor during pointer capture would move the canvas
+  // under an existing drag and change its anchor coordinate frame.
+  if(tool!=='ruler'){setSelected(operation.id);setText(preview.text);setPropertiesOpen(true);}
   if(!operation.creating&&JSON.stringify(preview.anchors)===JSON.stringify(operation.original.anchors)){setPreview(null);return;}
   if(tool==='ruler'){setTool('pointer');return;}
   commit([...doc.drawings.filter(d=>d.id!==preview.id),preview]);setTool('pointer');
@@ -135,7 +143,28 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
    {selected===drawing.id&&!drawing.locked&&points.map(([px,py],index)=><circle key={index} cx={px} cy={py} r={5} fill="#111720" stroke="#eaf2ff" strokeWidth={2} style={{cursor:'crosshair'}} onPointerDown={event=>begin(event,drawing,index)}/>)}
   </g>;
  };
- return <div className="drawing-workspace" onKeyDown={keyDown}><div className="drawing-stage">{children}
+ return <div className="drawing-workspace" onKeyDown={keyDown}><div className="drawing-context">
+  <div className="drawing-context-header">
+   <button ref={propertiesToggle} aria-expanded={propertiesOpen} aria-controls={propertiesId} onClick={()=>setPropertiesOpen(value=>!value)}>{propertiesOpen?'Collapse properties':'Drawing properties'}</button>
+   <select aria-label="Select saved drawing" value={selected??''} onChange={event=>{setSelected(event.target.value||null);if(event.target.value)setPropertiesOpen(true);const item=doc.drawings.find(d=>d.id===event.target.value);if(item)setText(item.text);}}><option value="">Select drawing ({doc.drawings.length}/100)</option>{doc.drawings.map((drawing,index)=><option key={drawing.id} value={drawing.id}>{index+1}. {drawing.name||drawing.kind}{drawing.locked?' · locked':''}{drawing.visible?'':' · hidden'}</option>)}</select>
+   {current&&<button aria-label="Close drawing selection" onClick={()=>{cancel();setSelected(null);setPropertiesOpen(false);propertiesToggle.current?.focus();}}>Close selection</button>}
+  </div>
+  <div id={propertiesId} className="drawing-properties" aria-label="Drawing properties" hidden={!propertiesOpen}>
+   <strong>{current?drawingTools.find(t=>t.kind===current.kind)?.label:tool==='pointer'?'Drawings':drawingTools.find(t=>t.kind===tool)?.label}</strong>
+   <label>Color<input aria-label="Drawing color" type="color" value={current?.color??color} disabled={disabled||current?.locked} onChange={event=>{setColor(event.target.value);if(current)edit({color:event.target.value});}}/></label>
+   <label>Width<select aria-label="Drawing width" value={current?.width??width} disabled={disabled||current?.locked} onChange={event=>{setWidth(Number(event.target.value));if(current)edit({width:Number(event.target.value)});}}>{[1,2,3,4].map(value=><option key={value}>{value}</option>)}</select></label>
+   <label>Style<select aria-label="Drawing style" value={current?.style??style} disabled={disabled||current?.locked} onChange={event=>{const value=event.target.value as Drawing['style'];setStyle(value);if(current)edit({style:value});}}>{['solid','dashed','dotted'].map(value=><option key={value}>{value}</option>)}</select></label>
+   {(tool==='text'||current?.kind==='text')&&<label>Text<input aria-label="Annotation text" maxLength={200} value={text} onChange={event=>setText(sanitizeAnnotation(event.target.value))}/>{current&&<button disabled={disabled||current.locked} onClick={()=>edit({text})}>Apply text</button>}</label>}
+   {current&&<label>Name<input aria-label="Drawing name" maxLength={80} value={name} disabled={disabled||current.locked} onChange={event=>setName(sanitizeAnnotation(event.target.value).slice(0,80))}/><button disabled={disabled||current.locked||name===(current.name??'')} onClick={()=>edit({name})}>Rename drawing</button></label>}
+   {current?.kind==='fib'&&<div><label>Levels<input aria-label="Fibonacci levels" value={levelsText} disabled={disabled||current.locked} onChange={event=>setLevelsText(event.target.value)}/></label><small>Comma-separated ratios, 1–20 unique values from -5 to 5. Labels show ratio and price; nonpositive derived prices are omitted.</small>{!parsedLevels&&<span role="alert">Enter unique finite Fibonacci levels from -5 to 5.</span>}<button disabled={disabled||current.locked||!parsedLevels} onClick={()=>{if(parsedLevels)edit({levels:parsedLevels});}}>Apply levels</button><button disabled={disabled||current.locked} onClick={()=>{setLevelsText(defaultFibLevels.join(', '));edit({levels:[...defaultFibLevels]});}}>Reset levels</button></div>}
+   {current&&<><button aria-pressed={current.locked} disabled={disabled} onClick={()=>edit({locked:!current.locked})}>{current.locked?'Unlock':'Lock'} drawing</button><button disabled={disabled||current.locked} onClick={()=>edit({visible:!current.visible})}>{current.visible?'Hide':'Show'} selected</button><button disabled={disabled||current.locked} onClick={remove}>Delete drawing</button></>}
+
+
+  </div>
+  <div className="drawing-feedback">   <span role="status">{saving?'Saving drawing…':error?'Changes need attention':loaded?'Drawings saved locally':'Loading drawings…'}</span>
+   {preview&&!gesture.current&&<button onClick={cancel}>Clear ruler</button>}
+   {error&&<span role="alert">{error}{pending.current&&<><button disabled={saving} onClick={()=>{const retry=pending.current;if(retry)void save(retry.next,retry.history);}}>Retry saving</button><button disabled={saving} onClick={()=>{pending.current=null;setError('');setPreview(null);}}>Discard unsaved change</button></>}</span>}</div>
+ </div><div className="drawing-stage">{children}
   <div className="drawing-toolbar" role="toolbar" aria-label="Drawing tools">{drawingTools.map(item=><button key={item.kind} title={item.label} aria-label={item.label} aria-pressed={tool===item.kind} disabled={disabled||hide} onClick={()=>{cancel();if(item.kind!=='pointer')setSelected(null);setTool(item.kind);}}>{item.icon}</button>)}
    <button title="Snap anchors to nearest candle OHLC" aria-label="Magnet snapping" aria-pressed={magnet} onClick={()=>setMagnet(v=>!v)}>⌁</button>
    <button title="Hide all drawings temporarily" aria-label="Hide drawings" aria-pressed={hide} onClick={()=>{cancel();setHide(v=>!v);}}>◉</button>
@@ -145,19 +174,6 @@ export default function ChartDrawings({children,chart,series,rows,minutes,source
   <svg ref={svg} className="drawing-overlay" width={geometry.width} height={geometry.height} tabIndex={0} aria-label="Price chart drawing canvas" style={{pointerEvents:tool==='pointer'&&!gesture.current?'none':'auto',cursor:tool==='pointer'?'default':'crosshair'}} onPointerDown={event=>begin(event)} onPointerMove={move} onPointerUp={finish} onPointerCancel={cancel}>{!hide&&drawings.filter(d=>d.visible).map(shape)}
    {preview&&ruler&&preview.anchors.length===2&&<text x={10} y={22} fill="#eaf2ff" fontSize={13}>{(preview.anchors[1].price-preview.anchors[0].price).toPrecision(5)} ({((preview.anchors[1].price/preview.anchors[0].price-1)*100).toFixed(2)}%) · {(Math.abs(preview.anchors[1].time-preview.anchors[0].time)/60).toFixed(1)} min</text>}
   </svg></div>
-  <div className="drawing-properties" aria-label="Drawing properties">
-   <span>{current?drawingTools.find(t=>t.kind===current.kind)?.label:tool==='pointer'?'Drawings':drawingTools.find(t=>t.kind===tool)?.label}</span>
-   <label>Color<input aria-label="Drawing color" type="color" value={current?.color??color} disabled={disabled||current?.locked} onChange={event=>{setColor(event.target.value);if(current)edit({color:event.target.value});}}/></label>
-   <label>Width<select aria-label="Drawing width" value={current?.width??width} disabled={disabled||current?.locked} onChange={event=>{setWidth(Number(event.target.value));if(current)edit({width:Number(event.target.value)});}}>{[1,2,3,4].map(value=><option key={value}>{value}</option>)}</select></label>
-   <label>Style<select aria-label="Drawing style" value={current?.style??style} disabled={disabled||current?.locked} onChange={event=>{const value=event.target.value as Drawing['style'];setStyle(value);if(current)edit({style:value});}}>{['solid','dashed','dotted'].map(value=><option key={value}>{value}</option>)}</select></label>
-   {(tool==='text'||current?.kind==='text')&&<label>Text<input aria-label="Annotation text" maxLength={200} value={text} onChange={event=>setText(sanitizeAnnotation(event.target.value))}/>{current&&<button disabled={disabled||current.locked} onClick={()=>edit({text})}>Apply text</button>}</label>}
-   {current&&<label>Name<input aria-label="Drawing name" maxLength={80} value={name} disabled={disabled||current.locked} onChange={event=>setName(sanitizeAnnotation(event.target.value).slice(0,80))}/><button disabled={disabled||current.locked||name===(current.name??'')} onClick={()=>edit({name})}>Rename drawing</button></label>}
-   {current?.kind==='fib'&&<div><label>Levels<input aria-label="Fibonacci levels" value={levelsText} disabled={disabled||current.locked} onChange={event=>setLevelsText(event.target.value)}/></label><small>Comma-separated ratios, 1–20 unique values from -5 to 5. Labels show ratio and price; nonpositive derived prices are omitted.</small>{!parsedLevels&&<span role="alert">Enter unique finite Fibonacci levels from -5 to 5.</span>}<button disabled={disabled||current.locked||!parsedLevels} onClick={()=>{if(parsedLevels)edit({levels:parsedLevels});}}>Apply levels</button><button disabled={disabled||current.locked} onClick={()=>{setLevelsText(defaultFibLevels.join(', '));edit({levels:[...defaultFibLevels]});}}>Reset levels</button></div>}
-   {current&&<><button aria-pressed={current.locked} disabled={disabled} onClick={()=>edit({locked:!current.locked})}>{current.locked?'Unlock':'Lock'} drawing</button><button disabled={disabled||current.locked} onClick={()=>edit({visible:!current.visible})}>{current.visible?'Hide':'Show'} selected</button><button disabled={disabled||current.locked} onClick={remove}>Delete drawing</button></>}
-   <select aria-label="Select saved drawing" value={selected??''} onChange={event=>{setSelected(event.target.value||null);const item=doc.drawings.find(d=>d.id===event.target.value);if(item)setText(item.text);}}><option value="">Select drawing ({doc.drawings.length}/100)</option>{doc.drawings.map((drawing,index)=><option key={drawing.id} value={drawing.id}>{index+1}. {drawing.name||drawing.kind}{drawing.locked?' · locked':''}{drawing.visible?'':' · hidden'}</option>)}</select>
-   <span role="status">{saving?'Saving drawing…':error?'Changes need attention':loaded?'Drawings saved locally':'Loading drawings…'}</span>
-   {preview&&!gesture.current&&<button onClick={cancel}>Clear ruler</button>}
-   {error&&<span role="alert">{error}{pending.current&&<><button disabled={saving} onClick={()=>{const retry=pending.current;if(retry)void save(retry.next,retry.history);}}>Retry saving</button><button disabled={saving} onClick={()=>{pending.current=null;setError('');setPreview(null);}}>Discard unsaved change</button></>}</span>}
-  </div>
+
  </div>;
 }

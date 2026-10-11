@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useId, useRef, useState} from 'react';
 
 export type IndicatorKind = 'sma' | 'ema' | 'bb' | 'rsi' | 'macd' | 'volume' | 'atr' | 'stochastic' | 'obv';
 export type ChartIndicator = {
@@ -72,10 +72,18 @@ type Props = {
   onApply: (items: ChartIndicator[]) => void;
   busy: boolean;
   error: string;
+  volumeUnit?: string;
 };
 
-export default function ChartIndicators({settings, onApply, busy, error}: Props) {
+export default function ChartIndicators({settings, onApply, busy, error, volumeUnit}: Props) {
   const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const toggle = useRef<HTMLButtonElement>(null);
+  const fields = useRef(new Map<string, HTMLFieldSetElement>());
+  const [target, setTarget] = useState<string | null>(null);
+  useEffect(() => {
+    if (open && target) {fields.current.get(target)?.focus(); fields.current.get(target)?.scrollIntoView?.({block: 'nearest'}); setTarget(null);}
+  }, [open, target]);
   const [draft, setDraft] = useState<ChartIndicator[]>(settings.instances);
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<IndicatorKind>('ema');
@@ -83,6 +91,7 @@ export default function ChartIndicators({settings, onApply, busy, error}: Props)
   const matches = (Object.keys(defaults) as IndicatorKind[]).filter(type => (type + ' ' + ({sma:'Simple moving average',ema:'Exponential moving average',bb:'Bollinger Bands',rsi:'Relative strength index',macd:'Moving average convergence divergence',volume:'Volume',atr:'Average true range',stochastic:'Stochastic oscillator',obv:'On balance volume'}[type])).toLowerCase().includes(search.toLowerCase()));
   const selectedKind = matches.includes(kind) ? kind : matches[0];
   const invalid = validateIndicators(draft);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(settings.instances);
   const edit = (id: string, change: Partial<ChartIndicator>) => {
     setDraft(rows => rows.map(row => row.id === id ? {...row, ...change} : row));
   };
@@ -99,9 +108,22 @@ export default function ChartIndicators({settings, onApply, busy, error}: Props)
     }]);
   };
 
-  return <>
-    <button aria-expanded={open} onClick={() => setOpen(value => !value)}>Indicators ({settings.instances.length})</button>
-    {open && <div className="chart-indicator-controls" aria-label="Chart indicator settings">
+  const cancel = () => {setDraft(settings.instances); setOpen(false); setTarget(null); toggle.current?.focus();};
+  return <div className="chart-indicator-manager">
+    <div className="chart-indicator-heading"><button ref={toggle} disabled={busy} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(value => !value)}>Indicators ({settings.instances.length})</button><small>Display only · native timeframe</small></div>
+    {!open && dirty && <small className="indicator-draft-note">Unapplied edits retained. Open Indicators to apply or cancel.</small>}
+    {settings.instances.length > 0 && <ul className="chart-indicator-legend" aria-label="Chart indicator legend">
+      {settings.instances.map((item, index) => <li key={item.id} className={item.visible ? '' : 'indicator-hidden'}>
+        <span className="indicator-swatch" style={{backgroundColor: item.color}} aria-hidden="true"/>
+        <button disabled={busy} className="indicator-settings-link" aria-label={`Settings for ${index + 1} ${item.type.toUpperCase()}`} title={indicatorName(item)} onClick={() => {setOpen(true); setTarget(item.id);}}>
+          <strong>{index + 1}. {item.type.toUpperCase()}</strong><span>{parameterOrder[item.type].map(key => `${key} ${item.params[key]}`).join(' · ') || (item.type === 'volume' ? item.placement === 'pane' ? 'separate pane' : 'price overlay' : 'zero origin')}</span>
+        </button>
+        <button disabled={busy || open || dirty} aria-label={`${item.visible ? 'Hide' : 'Show'} ${index + 1} ${item.type.toUpperCase()}`} aria-pressed={item.visible} title={open || dirty ? 'Apply or cancel edits before changing visibility here' : 'Save visibility immediately'} onClick={() => onApply(settings.instances.map(row => row.id === item.id ? {...row, visible: !row.visible} : row))}>{item.visible ? 'Hide' : 'Show'}</button>
+      </li>)}
+    </ul>}
+    {settings.instances.some(item => ['atr', 'volume', 'obv'].includes(item.type)) && <details className="indicator-unit-note"><summary>Indicator units and seed notes</summary><p>ATR: price units, Wilder smoothing with an SMA true-range seed; initialization differs from graph/recorded IR. Volume/OBV: {volumeUnit ?? 'source-native units (unverified)'}. OBV starts at zero at the saved origin or segment reset. Stochastic: percent. Full calculation details are below the chart.</p></details>}
+    {open && <div id={panelId} className="chart-indicator-controls" aria-label="Chart indicator settings">
+      <div className="indicator-editor-heading"><strong>Indicator settings</strong><button disabled={busy} onClick={cancel} aria-label="Close indicator settings">Close · discard edits</button></div>
       <p>Display only · selected native chart timeframe · confirmed closes. Recorded IR and trading settings are separate. ATR uses price units; Stochastic uses percent; OBV uses the disclosed source-native volume units and starts at zero at the saved origin or segment reset.</p>
       <div className="chart-indicator-add">
         <label>Search indicators<input aria-label="Search indicators" value={search} onChange={event => setSearch(event.target.value)} placeholder="EMA, volume…"/></label>
@@ -113,7 +135,7 @@ export default function ChartIndicators({settings, onApply, busy, error}: Props)
         <button disabled={draft.length >= 8 || busy || !selectedKind} onClick={add}>Add indicator</button>
         <small>{draft.length}/8</small>
       </div>
-      {draft.map((item, index) => <fieldset key={item.id}>
+      {draft.map((item, index) => <fieldset disabled={busy} key={item.id} tabIndex={-1} ref={element => {if(element)fields.current.set(item.id,element);else fields.current.delete(item.id);}}>
         <legend>{index + 1}. {item.type === 'bb' ? 'Bollinger Bands' : item.type.toUpperCase()}</legend>
         <div className="chart-indicator-fields">
           {parameterOrder[item.type].map(key => [key, item.params[key]] as const).map(([key, value]) => <label key={key}>{key}
@@ -147,8 +169,8 @@ export default function ChartIndicators({settings, onApply, busy, error}: Props)
       </fieldset>)}
       {(invalid || error) && <p role="alert">{invalid || error}</p>}
       <button disabled={busy || !!invalid} onClick={() => onApply(draft)}>{busy ? 'Saving…' : 'Apply indicators'}</button>
-      <button disabled={busy} onClick={() => {setDraft(settings.instances); setOpen(false);}}>Cancel edits</button>
+      <button disabled={busy} onClick={cancel}>Cancel edits</button>
       <small>Apply saves all valid edits together in this workspace. Hidden indicators retain their settings. Defaults are examples, not trading recommendations.</small>
     </div>}
-  </>;
+  </div>;
 }

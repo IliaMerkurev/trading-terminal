@@ -176,3 +176,92 @@ it('projects reversed custom Fib levels in price space under nonlinear scales an
  const label=Array.from(container.querySelectorAll('svg text')).find(n=>n.textContent==='0.25 · 175')!;
  expect(Number(label.getAttribute('y'))).toBeCloseTo(Math.log(175)*10-4);
 });
+
+it('keeps selected properties before all chart panes, collapses without changing data, and closes with focus restored',async()=>{
+ const {container}=render(<ChartDrawings {...props}/>);await ready();
+ fireEvent.change(screen.getByLabelText('Select saved drawing'),{target:{value:'d1'}});
+ const properties=screen.getByLabelText('Drawing properties');
+ expect(properties.compareDocumentPosition(screen.getByText('Price chart')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Drawing name'),{target:{value:'Local draft'}});
+ for(const key of ['Delete','Backspace','Escape','z'])fireEvent.keyDown(screen.getByLabelText('Drawing name'),{key,ctrlKey:key==='z'});
+ expect(saved.drawings).toEqual([drawing]);
+ fireEvent.click(screen.getByRole('button',{name:'Collapse properties'}));
+ expect(properties.hidden).toBe(true);
+ expect((screen.getByLabelText('Select saved drawing') as HTMLSelectElement).value).toBe('d1');
+ fireEvent.click(screen.getByRole('button',{name:'Drawing properties'}));
+ expect((screen.getByLabelText('Drawing name') as HTMLInputElement).value).toBe('Local draft');
+ fireEvent.click(screen.getByRole('button',{name:'Close drawing selection'}));
+ expect(properties.hidden).toBe(true);expect(document.activeElement).toBe(screen.getByRole('button',{name:'Drawing properties'}));
+ expect(container.querySelector('.drawing-context')?.contains(screen.getByLabelText('Price chart drawing canvas'))).toBe(false);
+ expect(mock.api.mock.calls.filter(call=>call[0]==='chart_drawing_save')).toHaveLength(0);
+});
+
+it('keeps save failures and retry/discard reachable while drawing properties are collapsed',async()=>{
+ mock.api.mockImplementation(async(command:string)=>{if(command==='chart_drawing_settings')return structuredClone(saved);throw new Error('Disk unavailable');});
+ render(<ChartDrawings {...props}/>);await ready();
+ fireEvent.change(screen.getByLabelText('Select saved drawing'),{target:{value:'d1'}});
+ fireEvent.change(screen.getByLabelText('Drawing color'),{target:{value:'#123456'}});
+ await screen.findByRole('alert');
+ fireEvent.click(screen.getByRole('button',{name:'Collapse properties'}));
+ expect(screen.getByRole('alert').closest('[hidden]')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Retry saving'}));
+ await waitFor(()=>expect(mock.api.mock.calls.filter(call=>call[0]==='chart_drawing_save')).toHaveLength(2));
+ await waitFor(()=>expect((screen.getByRole('button',{name:'Discard unsaved change'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Discard unsaved change'}));
+ expect(screen.queryByRole('alert')).toBeNull();expect(saved.drawings[0].color).toBe('#abcdef');
+});
+
+it('defers collapsed property expansion until a captured drawing drag finishes',async()=>{
+ saved.drawings=[{...drawing,kind:'fib'}];const {container}=render(<ChartDrawings {...props}/>);await ready();
+ const properties=screen.getByLabelText('Drawing properties'),canvas=screen.getByLabelText('Price chart drawing canvas');
+ await waitFor(()=>expect(container.querySelector('line')).toBeTruthy());
+ expect(properties.hidden).toBe(true);
+ fireEvent.pointerDown(container.querySelector('line')!,{clientX:0,clientY:310,button:0});
+ expect(properties.hidden).toBe(true);
+ fireEvent.pointerMove(canvas,{clientX:50,clientY:300});
+ expect(properties.hidden).toBe(true);
+ fireEvent.pointerUp(canvas);
+ await waitFor(()=>expect(saved.drawings[0].anchors).toEqual([{time:90,price:20},{time:150,price:30}]));
+ expect(properties.hidden).toBe(false);
+});
+
+it('keeps existing property content and selection stable while dragging a different drawing kind',async()=>{
+ saved.drawings=[drawing,{...drawing,id:'fib',kind:'fib'}];const {container}=render(<ChartDrawings {...props}/>);await ready();
+ fireEvent.change(screen.getByLabelText('Select saved drawing'),{target:{value:'d1'}});
+ const selector=screen.getByLabelText('Select saved drawing') as HTMLSelectElement,canvas=screen.getByLabelText('Price chart drawing canvas');
+ await waitFor(()=>expect(container.querySelectorAll('svg>g').length).toBe(2));
+ fireEvent.pointerDown(container.querySelectorAll('svg>g')[1].querySelector('line')!,{clientX:0,clientY:310,button:0});
+ expect(selector.value).toBe('d1');expect(screen.queryByLabelText('Fibonacci levels')).toBeNull();
+ fireEvent.pointerMove(canvas,{clientX:50,clientY:300});
+ expect(selector.value).toBe('d1');expect(screen.queryByLabelText('Fibonacci levels')).toBeNull();
+ fireEvent.pointerUp(canvas);
+ await waitFor(()=>expect(selector.value).toBe('fib'));
+ expect(screen.getByLabelText('Fibonacci levels')).toBeTruthy();
+ expect(saved.drawings[0]).toEqual(drawing);
+ expect(saved.drawings[1].anchors).toEqual([{time:90,price:20},{time:150,price:30}]);
+});
+
+it('prevents focus scrolling from changing prices in horizontal body, endpoint and creation gestures',async()=>{
+ saved.drawings=[{...drawing,kind:'fib'}];const {container}=render(<ChartDrawings {...props}/>);await ready();
+ const canvas=screen.getByLabelText('Price chart drawing canvas') as unknown as SVGSVGElement;
+ let top=100;
+ vi.spyOn(canvas,'getBoundingClientRect').mockImplementation(()=>({left:0,top,width:600,height:320,right:600,bottom:top+320,x:0,y:top,toJSON:()=>({})}));
+ // Model a browser scrolling a partly visible focus target into view. The
+ // expected anchors are independent of the coordinate helper implementation.
+ const focus=vi.spyOn(canvas,'focus').mockImplementation(options=>{if(!options?.preventScroll)top-=80;});
+ await waitFor(()=>expect(container.querySelector('line')).toBeTruthy());
+ fireEvent.pointerDown(container.querySelector('line')!,{clientX:0,clientY:410,button:0});
+ fireEvent.pointerMove(canvas,{clientX:50,clientY:410});fireEvent.pointerUp(canvas);
+ await waitFor(()=>expect(saved.drawings[0].anchors).toEqual([{time:90,price:10},{time:150,price:20}]));
+ await waitFor(()=>expect(container.querySelector('circle')).toBeTruthy());
+ fireEvent.pointerDown(container.querySelector('circle')!,{clientX:50,clientY:410,button:0});
+ fireEvent.pointerMove(canvas,{clientX:100,clientY:410});fireEvent.pointerUp(canvas);
+ await waitFor(()=>expect(saved.drawings[0].anchors).toEqual([{time:120,price:10},{time:150,price:20}]));
+ fireEvent.click(screen.getByRole('button',{name:'Trend line'}));
+ fireEvent.pointerDown(canvas,{clientX:0,clientY:410,button:0});
+ fireEvent.pointerMove(canvas,{clientX:100,clientY:410});fireEvent.pointerUp(canvas);
+ await waitFor(()=>expect(saved.drawings).toHaveLength(2));
+ expect(saved.drawings[1].anchors).toEqual([{time:60,price:10},{time:120,price:10}]);
+ expect(focus).toHaveBeenCalledTimes(3);expect(focus.mock.calls.every(([options])=>options?.preventScroll===true)).toBe(true);
+ expect(top).toBe(100);
+});

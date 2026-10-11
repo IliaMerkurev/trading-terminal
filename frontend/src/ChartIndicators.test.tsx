@@ -30,7 +30,7 @@ it('separates price, RSI fixed scale, MACD, volume and recorded IR panes; remove
  const items=[item('ema'),item('ema','second'),item('sma'),item('bb'),item('rsi'),item('macd'),item('volume')];
  const owned=installIndicatorSeries(chart,recorded,items,true);
  expect(owned).toHaveLength(11);expect(added.filter(s=>s.pane===0)).toHaveLength(6);
- const rsi=added.find(s=>s.options.title.startsWith('RSI'));expect(rsi.pane).toBe(1);expect(rsi.options.autoscaleInfoProvider().priceRange).toEqual({minValue:0,maxValue:100});expect(rsi.createPriceLine.mock.calls.map((c:any[])=>c[0].price)).toEqual([30,70]);
+ const rsi=owned.find(s=>s.kind==='rsi')!.series;expect(rsi.pane).toBe(1);expect(rsi.options.autoscaleInfoProvider().priceRange).toEqual({minValue:0,maxValue:100});expect(rsi.createPriceLine.mock.calls.map((c:any[])=>c[0].price)).toEqual([30,70]);
  expect(added.filter(s=>s.pane===2)).toHaveLength(3);expect(added.filter(s=>s.pane===3)).toHaveLength(1);expect(recorded.moveToPane).toHaveBeenLastCalledWith(4);
  updateIndicatorSeries(owned,{times:[60,120],columns:{ema:{value:[null,12.5]}},directions:[1,-1]});expect(owned[0].series.setData).toHaveBeenCalledWith([{time:60},{time:120,value:12.5}]);
  installIndicatorSeries(chart,recorded,[item('volume')],true);expect(recorded.moveToPane).toHaveBeenLastCalledWith(2);
@@ -164,7 +164,7 @@ it('isolates RSI padding from shared-scale defaults and rebuilt non-RSI panes', 
  const instances = [item('ema'), item('rsi'), item('rsi', 'second-rsi'), item('macd'), item('volume')];
  const recorded = {moveToPane: vi.fn((pane: number) => scales.set(pane, makeScale()))};
  installIndicatorSeries(chart, recorded, instances, true);
- expect(added.filter(series => series.options.title.startsWith('RSI')).map(series => series.pane)).toEqual([1, 1]);
+ expect(added.filter(series => series.options.autoscaleInfoProvider).map(series => series.pane)).toEqual([1, 1]);
  expect(scales.get(1)!.options().scaleMargins).toEqual({top: 0, bottom: 0});
  for (const index of [0, 2, 3, 4]) expect(scales.get(index)!.options().scaleMargins).toEqual(normalMargins);
  expect(defaults).toEqual(normalMargins);
@@ -174,7 +174,7 @@ it('isolates RSI padding from shared-scale defaults and rebuilt non-RSI panes', 
  installIndicatorSeries(chart, null, [item('volume'), item('rsi', 'readded'), item('macd')], false);
  expect(scales.get(2)!.options().scaleMargins).toEqual({top: 0, bottom: 0});
  for (const index of [0, 1, 3]) expect(scales.get(index)!.options().scaleMargins).toEqual(normalMargins);
- expect(added.find(series => series.options.title.startsWith('RSI'))!.options.autoscaleInfoProvider()).toEqual({priceRange: {minValue: 0, maxValue: 100}});
+ expect(added.find(series => series.options.autoscaleInfoProvider)!.options.autoscaleInfoProvider()).toEqual({priceRange: {minValue: 0, maxValue: 100}});
  expect(defaults).toEqual(normalMargins);
 });
 
@@ -247,4 +247,55 @@ it('keeps ATR, Stochastic and negative OBV in normal auxiliary panes under log p
  updateIndicatorSeries(owned,{times:[60,120],columns:{obv:{value:[0,-20]}},directions:[1,-1]});
  expect(added[3].setData).toHaveBeenCalledWith([{time:60,value:0},{time:120,value:-20}]);
  expect(primary.applyOptions.mock.calls.at(-1)?.[0].mode).toBe(1);
+});
+
+it('exposes semantic parameters and source units outside the plot while keeping axis values compact',()=>{
+ const instances=[item('atr'),item('stochastic'),item('obv')];
+ render(<ChartIndicators settings={{...emptySettings,instances}} onApply={vi.fn()} busy={false} error="" volumeUnit="OKX contracts"/>);
+ const legend=screen.getByRole('list',{name:'Chart indicator legend'});
+ expect(legend.textContent).toContain('period 14 · smooth 3 · signal 3');
+ fireEvent.click(screen.getByText('Indicator units and seed notes'));
+ expect(screen.getByText(/ATR: price units/).textContent).toContain('initialization differs from graph/recorded IR');
+ expect(screen.getByText(/ATR: price units/).textContent).toContain('OKX contracts');
+ const added:any[]=[];const chart={priceScale:primaryScale,panes:()=>[],addSeries:vi.fn((_kind,options)=>{added.push(options);return {priceScale:()=>({applyOptions:vi.fn()}),createPriceLine:vi.fn()};})};
+ installIndicatorSeries(chart,null,instances,false);
+ expect(added.every(options=>options.title===''&&options.lastValueVisible===true)).toBe(true);
+});
+
+it('retains unsaved edits across collapse and targeted settings, guards quick actions, and cancels explicitly',()=>{
+ const apply=vi.fn(),settings={...emptySettings,instances:[item('ema'),item('bb')]};
+ render(<ChartIndicators settings={settings} onApply={apply} busy={false} error=""/>);
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
+ expect(document.activeElement?.tagName).toBe('FIELDSET');
+ fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'37'}});
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (2)'}));
+ expect(screen.getByText(/Unapplied edits retained/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Hide 1 EMA'}));expect(apply).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 2 BB'}));
+ expect(document.activeElement?.textContent).toContain('Bollinger Bands');
+ expect((screen.getByLabelText('1 EMA period') as HTMLInputElement).value).toBe('37');
+ fireEvent.click(screen.getByRole('button',{name:'Close indicator settings'}));
+ expect(document.activeElement).toBe(screen.getByRole('button',{name:'Indicators (2)'}));
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
+ expect((screen.getByLabelText('1 EMA period') as HTMLInputElement).value).toBe('20');
+ fireEvent.click(screen.getByRole('button',{name:'Cancel edits'}));
+ fireEvent.click(screen.getByRole('button',{name:'Hide 1 EMA'}));
+ expect(apply).toHaveBeenCalledExactlyOnceWith([{...settings.instances[0],visible:false},settings.instances[1]]);
+});
+
+it('keeps legend visibility truthful and disabled until asynchronous save settles',async()=>{
+ let rejectSave:(reason:Error)=>void=()=>{};
+ mock.api.mockImplementation((command:string)=>command==='chart_indicator_settings'?Promise.resolve({...emptySettings,instances:[item('ema')]}):command==='chart_indicator_save'?new Promise((_resolve,reject)=>{rejectSave=reject;}):Promise.resolve({}));
+ const rows={current:[]};function Harness(){const state=useChartIndicators('spot','BTCUSDT',1,true,rows);return <ChartIndicators settings={state.settings} onApply={state.apply} busy={!state.loaded||state.saving} error={state.error}/>;}
+ render(<Harness/>);await waitFor(()=>expect((screen.getByRole('button',{name:'Hide 1 EMA'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Hide 1 EMA'}));
+ expect((screen.getByRole('button',{name:'Hide 1 EMA'}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByRole('button',{name:'Settings for 1 EMA'}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByRole('button',{name:'Indicators (1)'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Hide 1 EMA'}));
+ expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_save')).toHaveLength(1);
+ await act(async()=>rejectSave(new Error('Save denied')));
+ expect(screen.getByRole('button',{name:'Hide 1 EMA'}).getAttribute('aria-pressed')).toBe('true');
+ fireEvent.click(screen.getByRole('button',{name:'Indicators (1)'}));
+ expect(screen.getByRole('alert').textContent).toContain('Settings not saved');
 });

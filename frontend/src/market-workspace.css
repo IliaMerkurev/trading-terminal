@@ -120,3 +120,22 @@
 .drawing-properties{display:flex;flex-wrap:wrap;align-items:center;gap:7px;font-size:10px;padding:8px 0;color:#a9bdd3}.drawing-properties label{display:flex;align-items:center;gap:4px}.drawing-properties input[type=color]{width:28px;height:23px;padding:1px}.drawing-properties button,.drawing-properties select{font-size:10px;padding:4px}.drawing-properties input[type=text],.drawing-properties input:not([type]){max-width:160px}.drawing-properties [role=alert]{flex-basis:100%;color:#f0a2a7}
 .drawing-workspace :focus-visible,.chart-quick-timeframes :focus-visible{outline:2px solid #afceff;outline-offset:1px}.drawing-hit-target text{fill-opacity:0}
 @media(max-width:760px){.drawing-properties{gap:5px}.chart-ohlcv{font-size:11px;gap:5px 9px}.live-chart-toolbar{gap:5px!important}.drawing-properties>span[role=status]{flex-basis:100%}}
+
+/* In-flow controls precede the plot: no axis, attribution, or handle occlusion. */
+.chart-indicator-manager{min-width:0;width:100%;flex-shrink:0;font-size:11px}
+.chart-indicator-heading,.indicator-editor-heading,.drawing-context-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chart-indicator-heading small{color:#9baec7}.chart-indicator-legend{list-style:none;margin:5px 0;padding:0;display:flex;flex-wrap:wrap;gap:5px}
+.chart-indicator-legend li{display:flex;align-items:center;gap:5px;max-width:100%;min-width:0;padding:3px 5px;border:1px solid #344359;border-radius:5px;background:#151e2a}
+.indicator-swatch{width:8px;height:8px;border-radius:2px;flex-shrink:0}.indicator-hidden .indicator-swatch{opacity:.35}
+.chart-indicator-legend button{font-size:10px;padding:3px 5px}.chart-indicator-legend .indicator-settings-link{display:flex;gap:6px;align-items:center;flex-wrap:wrap;text-align:left;min-width:0;background:transparent;border-color:transparent}
+.indicator-settings-link span{color:#b6c7dc;overflow-wrap:anywhere}.indicator-hidden .indicator-settings-link strong{text-decoration:line-through;color:#9baec7}
+.indicator-unit-note{color:#b6c7dc;margin:4px 0}.indicator-unit-note summary{cursor:pointer}.indicator-unit-note p{margin:5px 0;overflow-wrap:anywhere}
+.indicator-editor-heading{justify-content:space-between;position:sticky;top:-12px;background:#151d29;z-index:1;padding:5px 0}
+.chart-indicator-manager :focus-visible{outline:2px solid #b3d4ff;outline-offset:2px}
+.drawing-context{margin-bottom:6px;border:1px solid #344359;border-radius:5px;background:#151e2a;padding:5px 8px}
+.drawing-context-header{font-size:11px}.drawing-context-header button,.drawing-context-header select{font-size:11px;padding:4px 6px;max-width:100%}
+.drawing-context-header select{min-width:0;max-width:260px;flex:1}
+.drawing-properties{max-height:220px;overflow-y:auto;align-items:flex-start}.drawing-properties[hidden]{display:none}.drawing-properties>div{flex-basis:100%;max-width:100%}
+.drawing-properties>div small{display:block;margin:4px 0;overflow-wrap:anywhere}.drawing-properties label{flex-wrap:wrap}.drawing-properties strong{align-self:center}
+.drawing-feedback{font-size:10px;color:#9baec7}.drawing-feedback [role=alert]{display:block;color:#f0a2a7;overflow-wrap:anywhere}.drawing-feedback button{font-size:10px;margin-left:5px}
+@media(max-width:760px){.drawing-context{padding:5px}.chart-indicator-legend li{flex-wrap:wrap}.indicator-settings-link span{font-size:10px}.drawing-properties{max-height:190px}}
