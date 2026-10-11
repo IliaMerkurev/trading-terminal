@@ -24,6 +24,8 @@ class AppService:
         self.library_batches=LibraryBatchManager(self.jobs)
         from terminal.observations import Observations
         self.observations=Observations(self.store,self.datasets)
+        from terminal.chart_reads import ChartReads
+        self.chart_reads=ChartReads(self)
         from terminal.live import LiveManager
         self.live=LiveManager(self.store)
 
@@ -43,7 +45,7 @@ class AppService:
                 "preview_native":{"document"},"save_native":{"name","document","strategy_id","profile"},
                 "trust_native":{"document","expected_sha256","acknowledge_user_permissions"},
                 "dataset_profile":{"dataset_id"},"download_start":{"market","symbol","start","end"},
-                "download_status":set(),"download_cancel":set(),"chart_window":{"run_id","start","minutes"},"run_logs":{"run_id"},
+                "download_status":set(),"download_cancel":set(),"run_logs":{"run_id"},
                 "compare_runs":{"run_ids"},"archive_export_start":{"request_id","strategy","profile","run_ids"},"archive_export_status":{"export_id"},"archive_export_cancel":{"export_id"},"archive_export_list":set(),"archive_begin":{"size"},
                 "archive_import_status":{"operation_id"},"archive_import_list":{"before","limit"},"archive_import_cancel":{"operation_id"},
                 "archive_append":{"upload_id","offset","data"},"archive_finish":{"upload_id"},"archive_cancel":set()}
@@ -73,9 +75,10 @@ class AppService:
                           library_batch_status={'batch_id'},library_batch_resume={'batch_id'},
                           library_batch_cancel={'active_id'},library_batches=set())
             fields.update(library_batch_equity={'batch_id','ordinal'},library_validation_freeze={'batch_id','ordinal','dataset_id','start','end','spot_dataset_id'},library_validation_start={'batch_id'})
-            fields.update(local_history_window={'dataset_id','start','end'}, observation_history={'before'},
+            fields.update(observation_history={'before'},
                           observation_get={'observation_id','revision'},
-                          observation_save={'observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
+                          observation_save_start={'request_id','expected_source','observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
+            fields.update(chart_read_start={'request_id','view_id','generation','surface','query'},chart_read_status={'request_id'},chart_read_cancel={'request_id'},chart_read_activity=set(),observation_save_history=set())
             if command=='archive_import_cancel' and 'attempt_key' in p:fields[command].add('attempt_key')
             if command in ('library_batch_preview','library_batch_start') and 'spot_benchmark' in p:fields[command]=fields[command]|{'spot_benchmark'}
             if command=='library_batch_start' and 'observation' in p:fields[command].add('observation')
@@ -93,7 +96,7 @@ class AppService:
             if command=='platform_capabilities':
                 from terminal.process_lifecycle import platform_capabilities
                 result=platform_capabilities()
-            elif command=='scheduler_status':result=self.jobs.scheduler_status()
+            elif command=='scheduler_status':result={**self.jobs.scheduler_status(),'verified_reads':self.chart_reads.activity()}
             elif command in ('live_start','live_start_terminal'):result=self.live.start(**p)
             elif command=='market_open':result=self.live.market_open(**p)
             elif command=='market_close':result=self.live.market_close()
@@ -114,12 +117,15 @@ class AppService:
                 self.live.telegram.credentials.save(p['token'],p['chat_id']);result=self.live.telegram.status()
             elif command=='telegram_clear':
                 self.live.telegram.credentials.clear();result=self.live.telegram.status()
-            elif command=='local_history_window':
-                from terminal.displayed_evidence import chart_page
-                result=chart_page(self,'observation_chart',self.observations.window(**p),p['dataset_id'])
+
             elif command=='observation_history':result=self.observations.history(**p)
             elif command=='observation_get':result=self.observations.get(**p)
-            elif command=='observation_save':result=self.observations.save(**p)
+            elif command=='chart_read_start':result=self.chart_reads.start(**p)
+            elif command=='chart_read_status':result=self.chart_reads.status(**p)
+            elif command=='chart_read_cancel':result=self.chart_reads.cancel(**p)
+            elif command=='chart_read_activity':result=self.chart_reads.activity()
+            elif command=='observation_save_history':result=self.chart_reads.save_history()
+            elif command=='observation_save_start':result=self.chart_reads.save(**p)
             elif command=='library_catalog':
                 from terminal.library import catalog
                 result=catalog()
@@ -144,9 +150,7 @@ class AppService:
             elif command=="run_logs": result=self.jobs.logs(p["run_id"])
             elif command=="run_manifest": result=self.store.get(p["run_id"])["manifest"]
             elif command=="result_page": result=self.store.page(**p)
-            elif command=="chart_window":
-                from terminal.displayed_evidence import chart_page
-                result=chart_page(self,'run_chart',self.store.chart_window(**p),p['run_id'])
+
             elif command=="start_run": result={"run_id":self.jobs.start(p["strategy"],p["profile"],p["dataset_id"])}
             elif command=="cancel_run": result=self.jobs.cancel(p["run_id"])
             elif command=="list_strategies": result=self.store.strategies()
@@ -235,13 +239,14 @@ class AppService:
         attempt(self.experiments.close)
         # The calculation process is only one workspace owner. Defer unlocking
         # until live/history/download threads have also actually stopped.
+        attempt(self.chart_reads.close)
         attempt(self.exports.close)
         attempt(self.archives.close)
         attempt(lambda:self.jobs.close(release_workspace=False))
         attempt(self.downloads.close)
         threads=(self.live.thread,self.live.warmup_thread,self.live.hub.thread,self.live.chart_history.thread,
                  self.live.delivery_thread,self.downloads.thread)
-        if self.exports.active or self.archives.worker.active or self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
+        if self.chart_reads.active or self.exports.active or self.archives.worker.active or self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
             errors.append(RuntimeError('Service shutdown is incomplete; workspace ownership is retained'))
         else:attempt(self.jobs.close)
         if errors:raise ExceptionGroup('Service shutdown cleanup failed',errors)

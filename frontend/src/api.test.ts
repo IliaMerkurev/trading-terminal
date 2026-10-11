@@ -150,3 +150,57 @@ it('requests multiple chunks in order and validates the final joined checksum',a
   const create=vi.fn(()=>'blob:verified');vi.stubGlobal('URL',class extends URL{static createObjectURL=create;static revokeObjectURL=vi.fn();});vi.spyOn(HTMLAnchorElement.prototype,'click').mockImplementation(()=>{});
   await (await import('./api')).downloadArchive(d);expect(offsets).toEqual([0,262144]);expect(create).toHaveBeenCalledOnce();
 });
+
+it('moves both chart aliases onto observable bounded requests and polls exact identity',async()=>{
+ const commands:string[]=[];let polls=0;
+ vi.stubGlobal('fetch',vi.fn(async(path:string,init:RequestInit)=>{
+  if(path==='/api/session')return json({token:'synthetic-session-value',product_version:'0.6.0-dev'});
+  const message=JSON.parse(String(init.body));commands.push(message.command);
+  const request_id=message.params.request_id;
+  return envelope(init,{request_id,status:message.command==='chart_read_start'?'running':++polls>0?'ready':'running',phase:'verifying',result:{candles:[{time:60}]}});
+ }));
+ const {api}=await import('./api');
+ for(const command of ['local_history_window','chart_window'])expect(await api(command,{start:0})).toEqual({candles:[{time:60}]});
+ expect(commands).toEqual(['chart_read_start','chart_read_status','chart_read_start','chart_read_status']);
+});
+
+it('cancels an obsolete chart request and ignores a late success',async()=>{
+ let release:(value:Response)=>void=()=>{};let id='';let startInit:RequestInit={};const commands:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(path:string,init:RequestInit)=>{
+  if(path==='/api/session')return json({token:'synthetic-session-value',product_version:'0.6.0-dev'});
+  const message=JSON.parse(String(init.body));commands.push(message.command);id=message.params.request_id;
+  if(message.command==='chart_read_start'){startInit=init;return new Promise<Response>(r=>{release=r;});}
+  return envelope(init,{request_id:id,status:'cancelled'});
+ }));
+ const {api}=await import('./api');const controller=new AbortController();
+ const task=api('local_history_window',{start:0},{signal:controller.signal});const outcome=expect(task).rejects.toThrow('cancelled');
+ await vi.waitFor(()=>expect(commands).toContain('chart_read_start'));controller.abort();
+ release(envelope(startInit,{request_id:id,status:'ready',result:{candles:[{time:99}]}}));await outcome;
+ expect(commands.filter(c=>c==='chart_read_start')).toHaveLength(1);expect(commands).toContain('chart_read_cancel');
+});
+
+it('distinguishes rejected note admission from a lost save acknowledgement without retrying intent',async()=>{
+ let reject=true;const commands:string[]=[];let saveId='';
+ vi.stubGlobal('fetch',vi.fn(async(path:string,init:RequestInit)=>{
+  if(path==='/api/session')return json({token:'synthetic-session-value',product_version:'0.6.0-dev'});
+  const message=JSON.parse(String(init.body));commands.push(message.command);saveId=message.params.request_id;
+  if(reject)return json({version:1,id:message.id,type:'error',error:{message:'Invalid note'}});
+  throw new TypeError('Lost acknowledgement');
+ }));
+ const {api}=await import('./api');
+ await expect(api('observation_save',{})).rejects.toMatchObject({saveOutcome:'not_started'});
+ reject=false;
+ await expect(api('observation_save',{})).rejects.toMatchObject({saveOutcome:'unknown'});
+ expect(saveId).toMatch(/^[a-f0-9]{32}$/);expect(commands).toEqual(['observation_save_start','observation_save_start']);
+});
+it('reasserts explicit chart cancellation after start admission before waiting for a page',async()=>{
+ const commands:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(path:string,init:RequestInit)=>{
+  if(path==='/api/session')return json({token:'synthetic-session-value',product_version:'0.6.0-dev'});
+  const message=JSON.parse(String(init.body));commands.push(message.command);
+  return envelope(init,{request_id:message.params.request_id,status:message.command==='chart_read_start'?'running':'cancelled',phase:'terminal'});
+ }));
+ const {api}=await import('./api');
+ await expect(api('local_history_window',{start:0},{cancelRequested:()=>true})).rejects.toMatchObject({saveOutcome:'cancelled'});
+ expect(commands.slice(0,2)).toEqual(['chart_read_start','chart_read_cancel']);
+});

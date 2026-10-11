@@ -37,7 +37,7 @@ it('sets only explicitly chosen UTC endpoints, preserves text and browsing, and 
  expect(input('Go to UTC date').value).toBe('Not submitted');expect(input('Observation hypothesis').value).toBe('Keep this draft');expect(input('Observation falsification').value).toBe('Keep falsification');
  expect(calls('observation_save')).toHaveLength(0);expect(props.onTest).not.toHaveBeenCalled();expect(calls('local_history_window')).toHaveLength(1);
  fireEvent.click(screen.getByRole('button',{name:'Save observation'}));await screen.findByRole('heading',{name:'Observation · revision 1'});
- expect(api).toHaveBeenCalledWith('observation_save',{observation_id:null,expected_revision:0,dataset_id:'source',start:S+12*H,end:S+16*H,hypothesis:'Keep this draft',falsification:'Keep falsification'});
+ expect(api).toHaveBeenCalledWith('observation_save',expect.objectContaining({observation_id:null,expected_revision:0,dataset_id:'source',start:S+12*H,end:S+16*H,hypothesis:'Keep this draft',falsification:'Keep falsification'}),expect.objectContaining({onRequest:expect.any(Function),onPhase:expect.any(Function)}));
  fireEvent.click(screen.getByRole('button',{name:'Test observation in Lab'}));expect(props.onTest).toHaveBeenCalledWith({id:'note',revision:1,source,start:S+12*H,end:S+16*H});
  expect(calls('library_batch_start')).toHaveLength(0);
 });
@@ -59,7 +59,7 @@ it('blocks old-page callbacks during navigation, failure and retry, even when th
  const pending=deferred();let reads=0;mock(p=>++reads===2?pending.promise:page(p));render(<Observations {...props} request={{dataset:source.id,request:1}}/>);await ready();const old=chart();
  fireEvent.click(screen.getByRole('button',{name:'Latest saved page'}));boundary('start',S+12*H,S+13*H,old);expect(start().value).toBe(navigationUTC(S));
  await act(async()=>pending.reject(Error('Controlled read failure')));boundary('start',S+12*H,S+13*H,old);expect(start().value).toBe(navigationUTC(S));
- fireEvent.click(screen.getByRole('button',{name:'Retry saved-history page'}));await ready();boundary('start',S+12*H,S+13*H,old);expect(start().value).toBe(navigationUTC(S));
+ fireEvent.click(screen.getByRole('button',{name:'Retry reading'}));await ready();boundary('start',S+12*H,S+13*H,old);expect(start().value).toBe(navigationUTC(S));
  fireEvent.click(screen.getByRole('button',{name:'First saved page'}));await waitFor(()=>expect(chart().start).toBe(S));boundary('start',S+12*H,S+13*H,old);expect(start().value).toBe(navigationUTC(S));boundary();expect(start().value).toBe(navigationUTC(S+12*H));
 });
 it.each([2,1])('protects saved revision %s and requires explicit New observation before editing its period',async revision=>{

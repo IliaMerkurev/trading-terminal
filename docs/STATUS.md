@@ -6,6 +6,124 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+
+## TT13 exact-source combined acceptance — 2026-10-11
+
+Measured production source: `9a9c3e92a90887b67865314c6ec047949769a25d`, tree
+`e8e46643bc6e5391e2720322b2e59364ebcadf90`. The one frozen Linux campaign
+refreshed the exact six-row, **2,000,000 modeled source-candle** preview and ran
+all six rows through ordinary admitted batch execution, without reuse. Four
+strategy runs and two spot passive runs completed. This is independently
+invented synthetic engineering data, not exchange research or profitability
+acceptance. No source/build change or parallel load campaign occurred.
+
+The workload, including concurrent reads and completed-report page probes,
+took **1,352.731 seconds**; total with sequential full verification and cleanup
+was **1,393.810 seconds**. All six worker/result hashes and all **3,672,046** new
+normalized rows matched exact ordered values. Result JSON totaled
+**610,239,551 bytes** before duplicate artifacts/database storage. The preserved
+old report's 720,274 rows, artifacts and evidence remained unchanged. Expected
+first/middle/last candles and recorded indicators/equity/nanosecond fill boundaries
+passed for actual reports, including new shared-source reports. Database integrity,
+foreign keys, zero native trust, source invariance and clean shutdown passed.
+
+- **41,897 ordinary HTTP requests** succeeded. Maximum was a graph save at
+  **1.998035 seconds**, below the two-second target with little margin. Chart
+  start/status/cancel acknowledgement maxima were **0.460121 / 0.828532 /
+  0.479245 seconds**. Note-save start maximum was **0.002865 seconds**.
+- All **30 cancellation probes actually cancelled**, maximum terminal time
+  **0.571451 seconds**, below five seconds. A report cancellation during real
+  calculation finalization took **0.052592 seconds**. Two explicit note saves
+  completed in **1.084302 / 1.239928 seconds**; two were cancelled. Completion-
+  winning races are accepted by the oracle but none occurred in this campaign.
+- READY is measured separately: report first/middle/last pages took
+  **0.228860–1.667432 seconds**; observation pages **1.033331–2.164473 seconds**.
+  Another **1,386 sustained reads** alternated both surfaces during calculation:
+  report **0.229432–0.855390 seconds**, observation **0.981046–1.459313 seconds**.
+  Actual finalization overlap passed; the independent reader lane stayed usable.
+- Peak summed parent/client/service and managed-descendant RSS was
+  **4,351,184,896 bytes** (about 4.35 GB), sampled every 50 ms over 25,975 samples.
+  Minimum system MemAvailable was **3,921,707,008 bytes**. Shared pages may be
+  counted more than once and brief peaks may be missed. Browser-process memory
+  and later sequential full-result verification are excluded; this is not a
+  universal runtime memory ceiling. The source-materialization admission estimate
+  is a separate bound. Retained campaign workspace/evidence occupied about 2.9 GB.
+
+Parent-led production-browser acceptance on the same source passed both explicit
+chart Cancel/Retry flows, released verified 500-slot observation READY, neutral
+note-cancel draft retention and report reopening with recorded `channel.upper`.
+The forced reader gate proves lifecycle behavior, not natural latency. Final
+closed reconciliation preserved original results and evidence. The Lab reviewed-
+setup close/reopen journey passed the aggregate automated test; its GUI preview
+was blocked by missing fixture instrument metadata and is **not** claimed as a
+browser pass. Aggregate source coverage remains 442 backend tests (8 skipped),
+476 frontend tests, TypeScript/build/runtime validation and independent review.
+
+This closes the bounded Linux/browser TT13 chart-read and combined six-row gate.
+Windows/native acceptance, live exchange work and the separate remaining research
+plan are still pending. No whole-plan completion, merge or release is implied.
+The following documentation-only checkpoint does not alter measured runtime bytes.
+
+## TT13 chart controls and aggregate integration — 2026-10-11
+
+The production-browser first pass verified pending report navigation, actual
+500-slot observation pages, cancelled note draft retention, one durable saved
+revision after leaving the view, and report indicator/window/pagination. Closed
+workspace reconciliation preserved the original 720,274 normalized rows and
+artifacts, old evidence, and zero native trust; new viewed events came from UI
+presentation. This was a preserved report and deterministic reader gate, with
+no simultaneous financial workload or browser-memory measurement.
+
+Both charts now provide explicit Cancel reading, terminal Retry reading and
+same-request Inspect reading for uncertain cancellation delivery. Pending
+cancellation does not fabricate a terminal state or attach a stale page.
+Intentional note cancellation is neutral and preserves the draft. A narrow
+pre-existing Lab defect found by aggregate tests was also corrected: completed
+reviews survive unchanged setup-modal close/reopen, while substantive input and
+source invalidation remains. Existing card-order journey assertions remain.
+
+The full backend suite completed **442 tests in 180.665 seconds: OK, 8 skipped**
+on Linux. The full frontend suite passed **476 tests across 53 files**. The final production
+build includes TypeScript checking and passed with the existing bundle-size
+advisory. Runtime verification and `pip check` passed. Initial failing aggregate
+logs were retained: older tests needed additive reader/receipt mocks and an
+explicit wait for real worker cleanup; those changes do not weaken financial
+expectations. The setup-modal defect was an application fix, separate from those
+test-contract updates. Independent source review found no outstanding blocker.
+
+Corrected-control browser verification and the single exact-source six-row 2M
+combined workload remain pending. Normal start/status/cancel acknowledgements
+and bounded writes target two seconds; READY duration is separately measured.
+Windows/native acceptance, live exchange work and browser-process peak memory
+remain unverified by these Linux checks.
+
+
+## Original-plan TT13: verified background chart reads — 2026-10-11
+
+Based on published `d1dcb4b`, with no product-version/license or financial-output
+change. Both saved chart routes now use a separate managed reader lane, bounded
+observable request/generation lifecycle and full same-descriptor streamed trade
+verification. Note-save verification uses the same lane with separate explicit
+intent, durable exactly-once receipt and a guarded small revision commit.
+[ADR 0038](adr/0038-verified-background-chart-reads.md) records the contracts.
+
+Focused Linux verification passed 50 backend tests (`test_chart_reads`,
+`test_observations`, `test_displayed_evidence`, `test_jobs`,
+`test_library_batches`, `test_linux_lifecycle`). Independent source review found
+and corrected postcommit cancellation, failed-start queue, dirty-draft receipt
+navigation, lost acknowledgement and descriptor-delivery races. No outstanding
+review blocker remains. Existing Pandas deprecation warnings remain unchanged.
+
+The targeted frontend pass covered 97 cases across eight files; 96 passed in the
+combined pass and a test-only unsupported matcher was corrected and its two-case
+file reverified. TypeScript/production build passed; the existing large-bundle
+advisory remains. These are focused checks, not a full regression or browser QA.
+
+Supported-load READY latency, combined reader/calculation memory, exact-source
+six-row 2M workload and production-browser acceptance remain pending. No real
+market acquisition or near-limit financial workload was run for this entry.
+
+
 ## Original-plan TT13: managed local result finalization — 2026-10-11
 
 Based on published `1ac84faa677a9185bc3aae788812bf66bcf391bd`; product remains

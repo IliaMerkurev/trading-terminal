@@ -21,10 +21,41 @@ export default function RunChart({runId,focus}:{runId:string;focus:{time:number;
   const container=useRef<HTMLDivElement>(null),[data,setData]=useState<any>(null),[start,setStart]=useState<number|null>(null),[minutes,setMinutes]=useState(240),[indicator,setIndicator]=useState(''),[error,setError]=useState('');
   const record=useRef<ReturnType<typeof displayRecorder>|null>(null);
   if(!record.current)record.current=displayRecorder();
+  const reader=useRef({viewId:crypto.randomUUID().replaceAll('-',''),generation:0});
+  const [phase,setPhase]=useState(''),[readNotice,setReadNotice]=useState(''),[retry,setRetry]=useState(0);
+  const readControl=useRef<{requestId:string|null;cancelRequested:boolean;settled:boolean;finish:(value:any)=>void}|null>(null);
   const viewport=useRef<{key:string;range:LogicalRange|null}|null>(null);
   useEffect(()=>{setStart(null);setData(null);setIndicator('');},[runId]);
   useEffect(()=>{if(focus!==null)setStart(Math.floor(focus.time/(data?.interval_seconds??60))*(data?.interval_seconds??60)-(data?.interval_seconds??60)*30);},[focus]);
-  useEffect(()=>{let live=true;setError('');api<any>('chart_window',{run_id:runId,start,minutes}).then(d=>{if(live)setData(d);}).catch(e=>{if(live)setError(e.message);});return()=>{live=false;};},[runId,start,minutes]);
+  useEffect(()=>{let live=true;const controller=new AbortController();const generation=++reader.current.generation;
+    const owns=()=>live&&generation===reader.current.generation;
+    const control={requestId:null as string|null,cancelRequested:false,settled:false,finish:(value:any)=>{
+      if(!owns()||control.settled)return;
+      if(['cancelled','ready','failed','superseded'].includes(value.status)){
+        control.settled=true;setPhase('');setError('');
+        if(value.status==='failed')setError(value.error??'Could not read saved series.');
+        else setReadNotice(value.status==='ready'?'Read completed before cancellation. Retry reading to display it.':'Reading cancelled. No partial page is displayed.');
+      }
+    }};readControl.current=control;
+    setError('');setData(null);setReadNotice('');setPhase('queued');
+    api<any>('chart_window',{run_id:runId,start,minutes},{signal:controller.signal,viewId:reader.current.viewId,generation,
+      onRequest:id=>{control.requestId=id;},cancelRequested:()=>control.cancelRequested,onPhase:p=>{if(owns()&&!control.settled)setPhase(control.cancelRequested?'cancellation requested':p);}})
+      .then(d=>{if(!owns()||control.settled)return;if(control.cancelRequested)control.finish({status:'ready'});else{control.settled=true;setData(d);setPhase('');}})
+      .catch(e=>{if(!owns()||control.settled)return;if(e.saveOutcome==='cancelled')control.finish({status:'cancelled'});else if(control.cancelRequested&&e.saveOutcome==='unknown'){setPhase('cancellation requested; outcome unavailable');setError('Could not confirm the read outcome. Inspect this request before retrying.');}else{control.settled=true;setError(e.message);setPhase('');}});
+    return()=>{live=false;controller.abort();};},[runId,start,minutes,retry]);
+  async function cancelReading(inspect=false){
+    const control=readControl.current;if(!control?.requestId||control.settled||!inspect&&control.cancelRequested)return;
+    if(!inspect)control.cancelRequested=true;
+    setPhase(control.cancelRequested?'cancellation requested':'checking request');
+    try{
+      let result:any=await api(inspect?'chart_read_status':'chart_read_cancel',{request_id:control.requestId});
+      if(readControl.current!==control||control.settled)return;
+      if(inspect&&control.cancelRequested&&!['ready','cancelled','failed','superseded'].includes(result.status))result=await api('chart_read_cancel',{request_id:control.requestId});
+      control.finish(result);
+    }
+    catch{if(readControl.current===control&&!control.settled)setError('Cancellation is not confirmed yet; checking the current request.');}
+  }
+
   const available:string[]=data?[...new Set<string>(data.series.indicators.flatMap((p:any)=>Object.keys(p.values).filter(k=>typeof p.values[k]==='number')))]:[];
   useEffect(()=>{
     if(!container.current||!data)return;
@@ -41,5 +72,5 @@ export default function RunChart({runId,focus}:{runId:string;focus:{time:number;
     const stop=observeChartDisplay(chart.panes()[0].getHTMLElement()??container.current,chart,data.series.candles,data.interval_seconds??60,true,range=>record.current!(data.display_reference,range));
     return()=>{stop();viewport.current={key,range:chart.timeScale().getVisibleLogicalRange()};chart.remove();};
   },[data,indicator]);
-  return <div className="run-chart"><DisplayTrackingNotice/><div className="chart-toolbar"><strong>Recorded candles & indicators</strong><select aria-label="Chart indicator" value={indicator} onChange={e=>setIndicator(e.target.value)}><option value="">Select recorded indicator</option>{available.map(k=><option key={k}>{k}</option>)}</select><select aria-label="Chart window" value={minutes} onChange={e=>setMinutes(Number(e.target.value))}>{[60,240,480].map(n=><option key={n} value={n}>{n} candles</option>)}</select></div>{error&&<p role="alert">{error}</p>}{data&&!data.series.candles.length&&<p className="assumption">Raw candle history is absent from this saved report. Available derived series remain viewable; rerunning requires the original dataset.</p>}<div ref={container} style={{height:430}}/><div className="pagination"><button disabled={!data||data.start<=data.range[0]} onClick={()=>setStart(data.start-minutes*(data.interval_seconds??60))}>Earlier</button><span>{data?`${new Date(data.start*1000).toISOString().slice(0,16)} — ${new Date(data.end*1000).toISOString().slice(0,16)} UTC`: 'Loading saved series'}</span><button disabled={!data||data.end>=data.range[1]} onClick={()=>setStart(data.end)}>Later</button></div><details><summary>Fill details in this window ({data?.series.fills.length??0})</summary>{data&&fillGroups(data.series.fills).map(g=><div key={`${g.time}:${g.side}`}><strong>{new Date(g.time*1000).toISOString()} · {g.side} · {g.fills.length} fill(s)</strong>{g.fills.map((f:any,i:number)=><p key={i}>{f.reason} · price {f.price} · quantity {f.quantity} · fee {f.fee} USDT</p>)}</div>)}</details><small>Source candles labeled at their actual interval close; indicators use their recorded availability times. Arrows identify fills within the recorded source candle. No indicator is recalculated by the UI. Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">TradingView</a>.</small></div>;
+  return <div className="run-chart"><DisplayTrackingNotice/><div className="chart-toolbar"><strong>Recorded candles & indicators</strong><select aria-label="Chart indicator" value={indicator} onChange={e=>setIndicator(e.target.value)}><option value="">Select recorded indicator</option>{available.map(k=><option key={k}>{k}</option>)}</select><select aria-label="Chart window" value={minutes} onChange={e=>setMinutes(Number(e.target.value))}>{[60,240,480].map(n=><option key={n} value={n}>{n} candles</option>)}</select></div>{phase&&<div><p role="status">Reading verified saved series · {phase}</p><button disabled={!readControl.current?.requestId||readControl.current.cancelRequested} onClick={()=>cancelReading()}>{readControl.current?.cancelRequested?'Cancellation requested':'Cancel reading'}</button>{readControl.current?.cancelRequested&&<button onClick={()=>cancelReading(true)}>Inspect reading</button>}</div>}{readNotice&&<p role="status">{readNotice}</p>}{!phase&&(error||readNotice)&&<button onClick={()=>setRetry(value=>value+1)}>Retry reading</button>}{error&&<p role="alert">{error}</p>}{data?.missing?.length>0&&<p role="alert">Missing local history: {data.missing.length} candle slots. No candles are fabricated.</p>}{data?.history_note&&<p>{data.history_note}</p>}{data&&!data.series.candles.length&&<p className="assumption">Raw candle history is absent from this saved report. Available derived series remain viewable; rerunning requires the original dataset.</p>}<div ref={container} style={{height:430}}/><div className="pagination"><button disabled={!data||data.start<=data.range[0]} onClick={()=>setStart(data.start-minutes*(data.interval_seconds??60))}>Earlier</button><span>{data?`${new Date(data.start*1000).toISOString().slice(0,16)} — ${new Date(data.end*1000).toISOString().slice(0,16)} UTC`: 'Loading saved series'}</span><button disabled={!data||data.end>=data.range[1]} onClick={()=>setStart(data.end)}>Later</button></div><details><summary>Fill details in this window ({data?.series.fills.length??0})</summary>{data&&fillGroups(data.series.fills).map(g=><div key={`${g.time}:${g.side}`}><strong>{new Date(g.time*1000).toISOString()} · {g.side} · {g.fills.length} fill(s)</strong>{g.fills.map((f:any,i:number)=><p key={i}>{f.reason} · price {f.price} · quantity {f.quantity} · fee {f.fee} USDT</p>)}</div>)}</details><small>Source candles labeled at their actual interval close; indicators use their recorded availability times. Arrows identify fills within the recorded source candle. No indicator is recalculated by the UI. Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">TradingView</a>.</small></div>;
 }

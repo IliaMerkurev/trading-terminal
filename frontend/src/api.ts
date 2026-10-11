@@ -73,7 +73,44 @@ export async function productVersion(): Promise<string> {
   return isDesktop() ? getVersion() : (await browserSession()).product_version;
 }
 
-export async function api<T = any>(command: string, params: Record<string, unknown> = {}): Promise<T> {
+export type VerifiedOptions={signal?:AbortSignal;viewId?:string;generation?:number;onPhase?:(phase:string)=>void;onRequest?:(id:string)=>void;cancelRequested?:()=>boolean};
+const requestIdentity=()=>crypto.randomUUID().replaceAll('-','');
+
+export async function api<T = any>(command: string, params: Record<string, unknown> = {}, options:VerifiedOptions={}): Promise<T> {
+  if(command==='chart_window'||command==='local_history_window'||command==='observation_save'){
+    const request_id=requestIdentity(),saving=command==='observation_save';
+    options.onRequest?.(request_id);
+    const current=()=>!options.signal?.aborted;
+    const cancel=()=>{void api('chart_read_cancel',{request_id}).catch(()=>{});};
+    if(!current())throw new Error('Verified read cancelled');
+    // Aborting a viewport cancels its read; a save requires its explicit cancel button.
+    if(!saving)options.signal?.addEventListener('abort',cancel,{once:true});
+    let accepted=false,cancelAccepted=false;
+    try{
+      let operation:any=await api(saving?'observation_save_start':'chart_read_start',saving?{request_id,...params}:{
+        request_id,view_id:options.viewId??requestIdentity(),generation:options.generation??1,
+        surface:command==='chart_window'?'run':'observation',query:params});
+      accepted=true;
+      while(true){
+        if(!current()){if(!saving)cancel();throw new Error('Verified read cancelled');}
+        if(operation?.request_id!==request_id)throw new Error('Verified response identity mismatch');
+        if(!saving&&options.cancelRequested?.()&&!cancelAccepted&&!['ready','failed','cancelled','superseded','interrupted'].includes(operation.status)){
+          operation=await api('chart_read_cancel',{request_id});cancelAccepted=true;continue;
+        }
+        options.onPhase?.(operation.phase);
+        if(operation.status===(saving?'completed':'ready'))return operation.result as T;
+        if(['failed','cancelled','superseded','interrupted'].includes(operation.status))throw Object.assign(new Error(operation.error??(saving?'Note was not saved.':'Verified chart request was cancelled.')),{saveOutcome:operation.status});
+        await new Promise(resolve=>setTimeout(resolve,100));
+        if(!current())continue;
+        operation=await api('chart_read_status',{request_id});
+      }
+    }catch(error){
+      if(!saving)cancel();
+      const outcome=(error as any)?.saveOutcome??(!accepted&&(error as any)?.definiteRejection?'not_started':'unknown');
+      throw Object.assign(new Error(`${error instanceof Error?error.message:String(error)}${saving&&outcome==='unknown'?` Save request: ${request_id}. Inspect this request before saving again.`:''}`),{saveOutcome:outcome});
+    }finally{if(!saving)options.signal?.removeEventListener('abort',cancel);}
+  }
+
   const message = {version: 1, id: crypto.randomUUID(), command, params};
   const response = isDesktop()
     ? await invoke<any>('research_request', {message})
@@ -82,7 +119,7 @@ export async function api<T = any>(command: string, params: Record<string, unkno
   if (!isDesktop() && (response.version !== message.version || response.id !== message.id)) {
     throw new Error('Local service response does not match this request.');
   }
-  if (response.type !== 'result') throw new Error(response.error?.message ?? 'Research service failed');
+  if (response.type !== 'result') throw Object.assign(new Error(response.error?.message ?? 'Research service failed'),{definiteRejection:true});
   return response.result as T;
 }
 

@@ -180,7 +180,7 @@ class RunStore:
         if hashlib.sha256(raw).hexdigest()!=run["result_hash"]: raise ValueError("Saved result checksum mismatch")
         return json.loads(raw)
 
-    def chart_window(self,run_id,start=None,minutes=240):
+    def chart_window(self,run_id,start=None,minutes=240,*,verified=None):
         run=self.get(run_id)
         if run["status"]!="completed": raise ValueError("No completed result available")
         if type(minutes) is not int or not 30<=minutes<=480 or (start is not None and (type(start) is not int or start%60)):
@@ -195,7 +195,11 @@ class RunStore:
             for kind in ("candles","indicators","fills","equity"):
                 # Candle timestamps are interval starts; indicators are availability times.
                 lower,upper=(start,end) if kind=="candles" else (start if kind=="fills" else start+1e-6,end+1e-6)
-                rows=db.execute(f"SELECT value FROM series WHERE run_id=? AND kind=? AND ({TIME_SQL})>=? AND ({TIME_SQL})<? ORDER BY ({TIME_SQL}),row_index LIMIT 4000",(run_id,kind,lower,upper)).fetchall()
+                query=f"FROM series WHERE run_id=? AND kind=? AND ({TIME_SQL})>=? AND ({TIME_SQL})<? ORDER BY ({TIME_SQL}),row_index LIMIT 4000"
+                args=(run_id,kind,lower,upper)
+                budget=db.execute("SELECT COALESCE(SUM(n),0) FROM (SELECT length(CAST(value AS BLOB)) AS n "+query+")",args).fetchone()[0]
+                if budget>900*1024:raise ValueError("Chart window exceeds payload budget; choose a shorter window")
+                rows=db.execute("SELECT value "+query,args).fetchall()
                 result["series"][kind]=[json.loads(row[0]) for row in rows]
         result['series']['fills']=[f for f in result['series']['fills'] if start*1_000_000_000<=f['time_ns']<end*1_000_000_000]
         for fill in result['series']['fills']:
@@ -204,16 +208,16 @@ class RunStore:
         research=run['manifest'].get('research',{})
         if run['summary'].get('origin')=='local' and (research.get('experiment') or research.get('library')):
             from terminal.data import DatasetStore
-            import pyarrow.parquet as pq
+            from terminal.verified_chart import candle_window
             dataset=run['manifest']['dataset']
             try:
                 manifest=DatasetStore(self.root/'datasets').describe(dataset['id'])
                 if manifest['content_sha256']!=dataset['content_sha256']:raise ValueError('Shared candle identity changed')
                 path=self.root/'datasets'/dataset['id']/'trade.parquet'
-                with path.open('rb') as stream:
-                    checksum=hashlib.file_digest(stream,'sha256').hexdigest()
-                if checksum!=manifest['files_sha256']['trade']:raise ValueError('Shared candle checksum mismatch')
-                result['series']['candles']=pq.read_table(path,filters=[('time','>=',start),('time','<',end)]).to_pylist()
+                result['series']['candles'],result['missing'],identity=candle_window(path,manifest,start,end)
+                if verified:
+                    from terminal.observations import source_identity
+                    verified(dict(dataset_id=dataset['id'],source=source_identity(manifest),file_identity=identity))
             except FileNotFoundError:
                 result['history_note']='The shared dataset is unavailable; saved derived results are unchanged.'
         if len(canonical(result))>900*1024: raise ValueError("Chart window exceeds payload budget; choose a shorter window")

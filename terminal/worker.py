@@ -13,7 +13,10 @@ def main():
     line=sys.stdin.buffer.readline(1024*1024+1)
     if len(line)>1024*1024: raise ValueError("Worker input exceeds budget")
     request=json.loads(line)
-    if request.get("version")!=1 or request.get("command") not in ('run','replay','archive_import','archive_export','finalize_run'): raise ValueError("Invalid worker command")
+    if request.get("version")!=1 or request.get("command") not in ('run','replay','archive_import','archive_export','finalize_run','chart_read'): raise ValueError("Invalid worker command")
+    if request['command']=='chart_read':
+        from terminal.chart_reads import execute
+        return execute(request)
     if request['command']=='finalize_run':
         from terminal.result_finalization import execute
         return execute(request)

@@ -91,7 +91,7 @@ it('reloads the same observation after Lab handoff, then saves edits without rer
  expect((screen.getByRole('button',{name:'Save note revision'}) as HTMLButtonElement).disabled).toBe(false);
  fireEvent.click(screen.getByRole('button',{name:'Save note revision'}));
  expect(await screen.findByRole('heading',{name:'Observation · revision 2'})).toBeTruthy();
- expect(api).toHaveBeenCalledWith('observation_save',expect.objectContaining({observation_id:'note',expected_revision:1,hypothesis:'Edited after the test',falsification:''}));
+ expect(api).toHaveBeenCalledWith('observation_save',expect.objectContaining({observation_id:'note',expected_revision:1,hypothesis:'Edited after the test',falsification:''}),expect.objectContaining({onRequest:expect.any(Function),onPhase:expect.any(Function)}));
 });
 
 it('keeps a newer reopen page when an older page response resolves later',async()=>{
@@ -200,7 +200,7 @@ it.each([
   const button=screen.getByRole('button',{name}) as HTMLButtonElement;
   expect(button.disabled).toBe(true);fireEvent.click(button);
  }
- expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_save_history','observation_history','local_history_window']);
  expect(onTest).not.toHaveBeenCalled();
  fireEvent.change(inputs[0],{target:{value:'2024-01-01T00:00'}});
  fireEvent.change(inputs[1],{target:{value:'2024-01-03T00:00'}});
@@ -212,7 +212,7 @@ it.each([
  expect((screen.getByRole('button',{name:'Test observation in Lab'}) as HTMLButtonElement).disabled).toBe(true);
  expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).value).toBe('Synthetic draft, no implicit save');
  expect((screen.getByLabelText('Observation falsification') as HTMLTextAreaElement).value).toBe('Keep this draft too');
- expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_save_history','observation_history','local_history_window']);
 });
 
 it('accepts the last full source candle and preserves the exclusive endpoint through explicit save and Lab handoff',async()=>{
@@ -224,13 +224,13 @@ it('accepts the last full source candle and preserves the exclusive endpoint thr
  expect((screen.getByRole('button',{name:'Return to observation start'}) as HTMLButtonElement).disabled).toBe(false);
  expect((screen.getByRole('button',{name:'Save observation'}) as HTMLButtonElement).disabled).toBe(true);
  fireEvent.change(screen.getByLabelText('Observation hypothesis'),{target:{value:'One final 4h candle'}});
- expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_save_history','observation_history','local_history_window']);
  fireEvent.click(screen.getByRole('button',{name:'Return to observation start'}));
- await waitFor(()=>expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:d.id,start:1704225600,end:1704240000}));
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:d.id,start:1704225600,end:1704240000},expect.objectContaining({signal:expect.any(AbortSignal),viewId:expect.any(String),generation:expect.any(Number)})));
  await waitFor(()=>expect((screen.getByRole('button',{name:'Save observation'}) as HTMLButtonElement).disabled).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Save observation'}));
  await waitFor(()=>expect((screen.getByRole('button',{name:'Test observation in Lab'}) as HTMLButtonElement).disabled).toBe(false));
- expect(vi.mocked(api).mock.calls.filter(([c])=>c==='observation_save')).toEqual([['observation_save',{observation_id:null,expected_revision:0,dataset_id:d.id,start:1704225600,end:1704240000,hypothesis:'One final 4h candle',falsification:''}]]);
+ expect(vi.mocked(api).mock.calls.filter(([c])=>c==='observation_save')).toEqual([['observation_save',{observation_id:null,expected_revision:0,dataset_id:d.id,start:1704225600,end:1704240000,hypothesis:'One final 4h candle',falsification:'',expected_source:d},expect.objectContaining({onRequest:expect.any(Function),onPhase:expect.any(Function)})]]);
  expect(onTest).not.toHaveBeenCalled();
  fireEvent.click(screen.getByRole('button',{name:'Test observation in Lab'}));
  expect(onTest).toHaveBeenCalledExactlyOnceWith({id:'note',revision:1,source:d,start:1704225600,end:1704240000});
@@ -251,7 +251,7 @@ it('keeps historical observation dates and notes locked while allowing an explic
  expect((screen.getByRole('button',{name:'Test observation in Lab'}) as HTMLButtonElement).disabled).toBe(false);
  fireEvent.click(screen.getByRole('button',{name:'Test observation in Lab'}));
  expect(onTest).toHaveBeenCalledExactlyOnceWith({id:'note',revision:1,source,start:600,end:1200});
- expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|prepare|resume/.test(c))).toBe(false);
+ expect(vi.mocked(api).mock.calls.some(([c])=>c!=='observation_save_history'&&/save|start|preview|prepare|resume/.test(c))).toBe(false);
 });
 
 
@@ -263,7 +263,7 @@ it('passes exact verified OHLCV, source interval, missing slots and evidence ref
  render(<Observations datasets={[smallSource]} request={{dataset:source.id,request:1}} onTest={vi.fn()} onBatch={vi.fn()}/>);
  await screen.findByText('Chart: 1 candles');
  expect(JSON.parse(screen.getByTestId('observation-chart').getAttribute('data-chart-page')!)).toEqual({candles:[{time:60,open:100,high:103,low:99,close:102,volume:0}],missing:[0,120],seconds:60,displaySeconds:60,start:0,end:180,reference:{surface:'observation_chart',page_id:'verified-page'}});
- expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_save_history','observation_history','local_history_window']);
 });
 
 const chartPage=()=>JSON.parse(screen.getByTestId('observation-chart').getAttribute('data-chart-page')!);
@@ -280,7 +280,7 @@ it('switches display only, keeps source-aligned non-display-aligned dates and di
   expect(screen.getByLabelText('Observation start (UTC)').getAttribute('aria-invalid')).toBe('false');
   expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).value).toBe('Keep my draft');
  }
- expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_save_history','observation_history','local_history_window']);
 });
 it('retains same-source display across explicit pages, but resets on exact source identity changes including return to the earlier source',async()=>{
  const a={...hourlySource,id:'a',range:[0,900*3600]},b={...a,id:'b'};mock();vi.mocked(api).mockClear();
@@ -289,7 +289,7 @@ it('retains same-source display across explicit pages, but resets on exact sourc
  fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'86400'}});
  fireEvent.click(screen.getByRole('button',{name:'Later candles'}));await waitFor(()=>expect(chartPage().start).toBe(500*3600));
  expect((screen.getByLabelText('Saved-history display interval') as HTMLSelectElement).value).toBe('86400');
- expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:'a',start:500*3600,end:900*3600});
+ expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:'a',start:500*3600,end:900*3600},expect.objectContaining({signal:expect.any(AbortSignal),viewId:expect.any(String),generation:expect.any(Number)}));
  fireEvent.click(screen.getByRole('button',{name:'Earlier candles'}));await waitFor(()=>expect(chartPage().start).toBe(0));expect(chartPage().displaySeconds).toBe(86400);
  fireEvent.change(screen.getByLabelText('Observation history'),{target:{value:'b'}});await screen.findByTestId('observation-chart');expect(chartPage().displaySeconds).toBe(3600);
  fireEvent.change(screen.getByLabelText('Observation history'),{target:{value:'a'}});await screen.findByTestId('observation-chart');expect(chartPage().displaySeconds).toBe(3600);
@@ -299,7 +299,7 @@ it.each([[60,'1d','Needs 1440 source slots'],[14400,'1h','Finer than the 4h sour
  const d={...source,interval_seconds:step,range:[0,step*20]};mockPeriod(d);render(<Observations datasets={[d]} request={{dataset:d.id,request:1}} onTest={vi.fn()} onBatch={vi.fn()}/>);
  await screen.findByTestId('observation-chart');expect((screen.getByRole('option',{name:`${label} · unavailable`}) as HTMLOptionElement).disabled).toBe(true);
  expect(screen.getByText(new RegExp(`${label} unavailable: ${reason}`))).toBeTruthy();expect(chartPage().seconds).toBe(step);expect(chartPage().displaySeconds).toBe(step);
- expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_history','local_history_window']);
+ expect(vi.mocked(api).mock.calls.map(([c])=>c)).toEqual(['observation_save_history','observation_history','local_history_window']);
 });
 it('retains display choice for a locked exact revision reopen without changing the Lab handoff',async()=>{
  const d=hourlySource,note={...record,source:d,start:1704070800,end:1704164400,revision:2,latest_revision:3};mock();vi.mocked(api).mockClear();
@@ -310,7 +310,7 @@ it('retains display choice for a locked exact revision reopen without changing t
  view.rerender(<Observations {...props} request={{...props.request,request:2}}/>);await waitFor(()=>{expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(2);expect(chartPage().displaySeconds).toBe(14400);});
  expect((screen.getByLabelText('Observation hypothesis') as HTMLTextAreaElement).disabled).toBe(true);
  expect((screen.getByLabelText('Observation start (UTC)') as HTMLInputElement).value).toBe('2024-01-01T01:00');
- expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|prepare|preview|resume/.test(c))).toBe(false);
+ expect(vi.mocked(api).mock.calls.some(([c])=>c!=='observation_save_history'&&/save|start|prepare|preview|resume/.test(c))).toBe(false);
 });
 it('resets on a changed verified identity with the same dataset ID and derives chart resolution from the verified page',async()=>{
  const listed={...hourlySource,range:[1704067200,1704081600],interval_seconds:60};let hash='first';mock();vi.mocked(api).mockClear();

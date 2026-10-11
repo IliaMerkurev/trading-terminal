@@ -166,6 +166,7 @@ class StorageFinalizationTests(unittest.TestCase):
 
     def test_scheduler_status_remains_readable_without_storage(self):
         service=object.__new__(AppService);service.jobs=self.jobs
+        service.chart_reads=Mock(activity=Mock(return_value=[]))
         self.jobs.latch_storage_failure(self.ident,'run')
         with patch.object(self.store,'connect',side_effect=sqlite3.OperationalError('unavailable')):
             response=service.handle({'version':1,'id':'test','command':'scheduler_status','params':{}})
@@ -173,6 +174,7 @@ class StorageFinalizationTests(unittest.TestCase):
         self.assertEqual(response['result']['storage_failure']['id'],self.ident)
         self.assertIsNone(response['result']['active'])
         self.assertIsNone(response['result']['reservation'])
+        self.assertEqual(response['result']['verified_reads'],[])
         self.jobs.reservation='c'*32
         self.assertEqual(self.jobs.scheduler_status()['reservation'],'c'*32)
         self.jobs.reservation=None

@@ -14,6 +14,7 @@ function deferred(){let resolve!:(value:any)=>void,reject!:(reason:Error)=>void;
 function setup(history:(params:any)=>any){
  vi.mocked(api).mockReset();props.onTest.mockClear();props.onBatch.mockClear();
  vi.mocked(api).mockImplementation(async(command,p:any)=>{
+  if(command==='observation_save_history')return [];
   if(command==='observation_history')return history(p);
   if(command==='observation_get')return note;
   if(command==='local_history_window')return {...page,start:p.start,end:p.end};
@@ -51,7 +52,7 @@ it('distinguishes a pending or failed initial list from empty history and retrie
  expect(input('Observation end, exclusive (UTC)')).toBe('1970-01-01T00:20');
  expect(input('Observation hypothesis')).toBe(note.hypothesis);
  expect(list().queryByRole('alert')).toBeNull();
- expect(vi.mocked(api).mock.calls.every(([c])=>['observation_history','observation_get','local_history_window'].includes(c))).toBe(true);
+ expect(vi.mocked(api).mock.calls.every(([c])=>['observation_save_history','observation_history','observation_get','local_history_window'].includes(c))).toBe(true);
  expect(props.onTest).not.toHaveBeenCalled();
 });
 
@@ -127,7 +128,7 @@ it('separates a saved revision from its failed list refresh and never retries th
  expect(input('Observation start (UTC)')).toBe('1970-01-01T00:10');
  expect(input('Observation end, exclusive (UTC)')).toBe('1970-01-01T00:20');
  expect(calls('observation_save')).toHaveLength(1);
- expect(calls('observation_save')[0][1]).toEqual({observation_id:note.id,expected_revision:1,dataset_id:source.id,start:600,end:1200,hypothesis:'Explicitly saved revision',falsification:note.falsification});
+ expect(calls('observation_save')[0][1]).toEqual({observation_id:note.id,expected_revision:1,dataset_id:source.id,start:600,end:1200,hypothesis:'Explicitly saved revision',falsification:note.falsification,expected_source:source});
  expect(calls('observation_history').map(([,p])=>p)).toEqual([{before:null},{before:null},{before:null}]);
  expect(props.onTest).not.toHaveBeenCalled();
 });

@@ -21,6 +21,9 @@ LIMITATION = 'Notes do not prove which candles were viewed. Displayed local surf
 
 def initialize(db):
     db.executescript('''
+        CREATE TABLE IF NOT EXISTS observation_save_requests(
+            id TEXT PRIMARY KEY, request_hash TEXT NOT NULL, state TEXT NOT NULL,
+            observation_id TEXT, revision INTEGER, error TEXT);
         CREATE TABLE IF NOT EXISTS observations(
             id TEXT PRIMARY KEY, created_at TEXT NOT NULL, revision INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS observation_revisions(
@@ -65,36 +68,13 @@ class Observations:
         step=manifest.get('interval_seconds',60)
         if (end-start)//step>PAGE_CANDLES:raise ValueError('Local chart page exceeds 500 source candles')
         path=self.datasets.root/dataset_id/'trade.parquet'
-        # Constant-memory integrity verification. No DatasetStore.load/read_table or
-        # full-file byte buffer: chart paging must not materialize years of bars.
-        with path.open('rb') as stream:
-            parquet,_=source_limits.checked_parquet(stream,'trade',manifest['files_sha256']['trade'],
-                max_file_bytes=MAX_FILE_BYTES,max_rows=MAX_ROWS,limit_message=SOURCE_LIMIT,
-                checksum_message='Local trade history checksum mismatch; source cannot be displayed')
-            rows=[];previous=None;decoded=0
-            for batch in parquet.iter_batches(batch_size=256,columns=['time','open','high','low','close','volume']):
-                decoded+=batch.num_rows
-                if decoded>MAX_ROWS:raise ValueError(SOURCE_LIMIT)
-                done=False
-                for row in batch.to_pylist():
-                    t=row['time']
-                    if type(t) is not int or (previous is not None and t<=previous) or t%step:
-                        raise ValueError('Local history contains invalid candle order or boundaries')
-                    previous=t
-                    if t>=end:done=True;break
-                    if t<start:continue
-                    if not all(isinstance(row[k],(int,float)) and math.isfinite(row[k]) for k in ('open','high','low','close','volume')):
-                        raise ValueError('Local history contains invalid candle values')
-                    if row['low']>min(row['open'],row['close']) or row['high']<max(row['open'],row['close']) or row['low']<=0 or row['volume']<0:
-                        raise ValueError('Local history contains invalid OHLC candles')
-                    rows.append(row)
-                if done:break
-        present={r['time'] for r in rows}
-        missing=[t for t in range(start,end,step) if t not in present]
+        from terminal.verified_chart import candle_window
+        rows,missing,_=candle_window(path,manifest,start,end,max_file_bytes=MAX_FILE_BYTES,
+            max_rows=MAX_ROWS,limit_message=SOURCE_LIMIT)
         return dict(source=source_identity(manifest),start=start,end=end,candles=rows,missing=missing,
                     limitation=LIMITATION,note='Local prepared trade candles. Candle times are opening UTC timestamps; no live requests or strategy execution.')
 
-    def save(self, observation_id, expected_revision, dataset_id, start, end, hypothesis, falsification):
+    def save(self, observation_id, expected_revision, dataset_id, start, end, hypothesis, falsification, *, verified_source=None, save_request=None):
         if type(expected_revision) is not int or expected_revision<0:raise ValueError('Invalid observation revision')
         if not isinstance(hypothesis,str) or not hypothesis.strip() or len(hypothesis)>2000:
             raise ValueError('Enter a hypothesis of 1–2000 characters')
@@ -103,12 +83,15 @@ class Observations:
         manifest=self.datasets.describe(dataset_id);validate_window(manifest,start,end)
         identity=source_identity(manifest)
         # A note must refer to available verified local bytes, not just a manifest.
-        verified=self.window(dataset_id,start,min(end,start+manifest.get('interval_seconds',60)))
-        if verified['source']!=identity:raise ValueError('Source changed while saving; reopen the exact local history')
+        verified_source=verified_source if verified_source is not None else self.window(dataset_id,start,min(end,start+manifest.get('interval_seconds',60)))['source']
+        if verified_source!=identity:raise ValueError('Source changed while saving; reopen the exact local history')
         ident=identifier(observation_id) if observation_id is not None else uuid.uuid4().hex
         now=datetime.now(timezone.utc).isoformat()
-        with self.store.connect() as db:
+        with self.store.connect(timeout=.05 if save_request else 15) as db:
             db.execute('BEGIN IMMEDIATE')
+            if save_request:
+                receipt=db.execute('SELECT state FROM observation_save_requests WHERE id=?',(save_request,)).fetchone()
+                if not receipt or receipt['state']!='pending':raise ValueError('Observation save is no longer pending')
             current=db.execute('SELECT revision FROM observations WHERE id=?',(ident,)).fetchone()
             if observation_id is None:
                 if expected_revision!=0:raise ValueError('New observations require revision zero')
@@ -123,6 +106,8 @@ class Observations:
             revision=expected_revision+1
             db.execute('INSERT INTO observation_revisions VALUES(?,?,?,?,?,?,?,?)',
                        (ident,revision,now,canonical(identity).decode(),start,end,hypothesis.strip(),falsification.strip()))
+            if save_request:
+                db.execute("UPDATE observation_save_requests SET state='completed',observation_id=?,revision=? WHERE id=? AND state='pending'",(ident,revision,save_request))
         return self.get(ident,revision)
 
     def get(self, observation_id, revision=None):

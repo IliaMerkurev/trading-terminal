@@ -322,7 +322,7 @@ it('keeps manual observation identity and selected tests through closed setup an
  expect((screen.getByLabelText('Evaluation end, exclusive (UTC)') as HTMLInputElement).value).toBe('1970-01-03T01:00');
  expect((screen.getByLabelText('Batch dataset') as HTMLSelectElement).value).toBe('hourly');
  expect((screen.getByLabelText('Evaluation start (UTC)') as HTMLInputElement).disabled).toBe(true);
- expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|resume|prepare|market_open/.test(c))).toBe(false);
+ expect(vi.mocked(api).mock.calls.some(([c])=>c!=='observation_save_history'&&/save|start|preview|resume|prepare|market_open/.test(c))).toBe(false);
 });
 
 it('recovers saved observations after tab changes without replacing the unsaved period, notes or Lab selection',async()=>{
@@ -369,7 +369,7 @@ it('recovers saved observations after tab changes without replacing the unsaved 
  expect(screen.getByRole('heading',{name:'New observation'})).toBeTruthy();
  expect((screen.getByLabelText('Go to UTC date') as HTMLInputElement).value).toBe('Pending invalid browse draft');
  expect((screen.getByLabelText('Saved-history display interval') as HTMLSelectElement).value).toBe('14400');
- expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:data.id,start:781200,end:2581200});
+ expect(api).toHaveBeenCalledWith('local_history_window',{dataset_id:data.id,start:781200,end:2581200},expect.objectContaining({signal:expect.any(AbortSignal),viewId:expect.any(String),generation:expect.any(Number)}));
  expect(vi.mocked(api).mock.calls.filter(([c])=>c==='local_history_window')).toHaveLength(2);
  expect(vi.mocked(api).mock.calls.filter(([c])=>c==='observation_get')).toHaveLength(0);
  fireEvent.click(screen.getByRole('button',{name:'Discard note edits'}));
@@ -378,5 +378,5 @@ it('recovers saved observations after tab changes without replacing the unsaved 
  fireEvent.click(screen.getByRole('button',{name:'Lab'}));
  expect((screen.getByLabelText('Include Test trend') as HTMLInputElement).checked).toBe(true);
  expect(reads).toBe(2);
- expect(vi.mocked(api).mock.calls.some(([c])=>/save|start|preview|resume|prepare|market_open/.test(c))).toBe(false);
+ expect(vi.mocked(api).mock.calls.some(([c])=>c!=='observation_save_history'&&/save|start|preview|resume|prepare|market_open/.test(c))).toBe(false);
 });

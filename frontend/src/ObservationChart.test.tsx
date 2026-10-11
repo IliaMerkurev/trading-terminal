@@ -345,7 +345,7 @@ it('records only the genuinely visible replacement page after exact navigation a
  expect(screen.queryByRole('img')).toBeNull();expect(first.chart.remove).toHaveBeenCalledOnce();act(flush);
  expect(vi.mocked(api).mock.calls.filter(([c])=>c==='research_displayed')).toHaveLength(0);
  await act(async()=>reject(Error('Controlled local read failure')));expect(screen.queryByRole('img')).toBeNull();
- fireEvent.change(screen.getByLabelText('Go to UTC date'),{target:{value:'invalid pending text'}});fireEvent.click(screen.getByRole('button',{name:'Retry saved-history page'}));
+ fireEvent.change(screen.getByLabelText('Go to UTC date'),{target:{value:'invalid pending text'}});fireEvent.click(screen.getByRole('button',{name:'Retry reading'}));
  await waitFor(()=>expect(charts).toHaveLength(2));expect(screen.getByText('No candle selected')).toBeTruthy();
  fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'14400'}});
  act(()=>{intersect(surface());flush();});await finishDisplayWrites();

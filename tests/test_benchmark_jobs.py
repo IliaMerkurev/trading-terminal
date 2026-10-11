@@ -24,7 +24,7 @@ class BenchmarkJobTests(unittest.TestCase):
                     limit=time.monotonic()+20
                     while time.monotonic()<limit:
                         state=jobs.status(ident)
-                        if state['status'] in ('completed','failed'):return state
+                        if state['status'] in ('completed','failed') and not state.get('worker_active'):return state
                         time.sleep(.03)
                     self.fail('Benchmark worker exceeded bounded deadline')
                 first=start_or_reuse(jobs,profile,dataset['id'],0,180,'once')

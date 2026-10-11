@@ -55,3 +55,13 @@ it.each(['archive:','export:'])('warns for a %s reservation discovered after rel
  expect(leave().defaultPrevented).toBe(true);expect(stopLocalService).not.toHaveBeenCalled();
  expect(vi.mocked(api).mock.calls.some(([command])=>['archive_import_cancel','archive_export_cancel'].includes(command))).toBe(false);
 });
+
+it('warns before stopping a pending verified chart or note-save reader',async()=>{
+ vi.mocked(api).mockImplementation(async command=>command==='scheduler_status'?{verified_reads:[{request_id:'read',kind:'save',status:'running'}]}:['list_runs','list_experiments','library_batches'].includes(command)?[]:{status:'idle'});
+ const confirm=vi.spyOn(window,'confirm').mockReturnValue(false);
+ render(<BrowserServiceControls active={false} onStopped={()=>{}}/>);
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('scheduler_status'));
+ expect(leave().defaultPrevented).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Stop local service'}));
+ expect(confirm).toHaveBeenCalledWith(expect.stringContaining('pending verified reads and note saves'));expect(stopLocalService).not.toHaveBeenCalled();
+});

@@ -6,6 +6,31 @@ new local-finalization surface has parent-led production-browser coverage. This 
 packaged release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
 product specification; [STATUS.md](STATUS.md) owns detailed test evidence.
 
+## Current TT13 verified-read checkpoint
+
+Both saved chart routes and observation-save verification use the independent
+managed read lane in [ADR 0038](adr/0038-verified-background-chart-reads.md).
+Full same-descriptor integrity, full-stream value/order/gap checks, bounded pages,
+stale generation guards and separate durable note-save outcomes are retained.
+
+The exact-source Linux/browser gate passed on `9a9c3e9`: all six admitted rows
+at 2,000,000 modeled source candles executed once, with 3,672,046 exact normalized
+rows verified. Both charts and note verification remained usable during actual
+calculation/finalization. Maximum ordinary request was 1.998035 seconds (little
+margin); maximum cancellation-to-terminal was 0.571451 seconds. Report READY
+peaked at 1.667432 seconds and observation READY at 2.164473 seconds; READY is
+separate from the ordinary-request target. Sampled summed process RSS peaked at
+4.35 GB, excluding browser and postmeasurement full verification. See STATUS for
+full scope, timing, memory caveats and aggregate tests.
+
+Parent-led corrected-control browser checks passed Cancel/Retry, actual READY,
+neutral note cancellation and report reopening. Lab review close/reopen is
+verified automatically; its GUI preview was blocked by fixture metadata. The
+bounded TT13 Linux/browser chart-read and combined campaign gate is complete.
+Windows/native, live and the separate remaining research plan stay pending; this
+is not whole-plan acceptance or a release. Current checkpoint changes are docs-only
+and preserve measured runtime/build bytes.
+
 ## Current TT13 local finalization checkpoint
 
 Local calculation output now enters an observable managed `finalizing` phase;
@@ -33,8 +58,8 @@ The frontend-only correction passed 37 focused tests and the build; corrected
 browser spot checking passed active-history navigation, separated progress,
 cancellation copy and existing completed-report selection. A final text-only
 pre-poll loading fallback passed all 9 progress tests, TypeScript and build;
-that last branch was not browser-rerun. Backend load evidence is unchanged. Asynchronous
-verified chart reads and combined final TT13 acceptance remain unfinished;
+that last branch was not browser-rerun. Backend load evidence is unchanged. Verified chart-read
+and combined Linux/browser acceptance are recorded above;
 Windows/native, live exchange work and later research are separate gates. No
 whole-plan completion is claimed.
 
@@ -57,8 +82,8 @@ RSS/heap/Blob peak remains unmeasured because Chrome process roots were not
 observable through the available process-resource interfaces; no zero-memory
 claim is made. Windows/native and live exchange work remain deferred. Import GUI
 acceptance below remains valid. The newer local-finalization checkpoint above
-supersedes that pending path; asynchronous verified chart reads and combined
-acceptance still prevent full TT13 completion. No new financial
+supersedes that pending path; verified chart-read combined
+Linux/browser acceptance is recorded above. No new financial
 calculation or source trust was introduced.
 
 ## Current TT13 import checkpoint
@@ -82,8 +107,8 @@ shutdown. Query-only post-close reconciliation preserved exact source/reservatio
 identity, artifacts, normalized values and both attempt outcomes with zero trust.
 This import checkpoint was published before the export slice; see STATUS.md for the bounded GUI evidence.
 
-TT13 chart-integrity reads and combined acceptance remain
-unfinished, as do the separate remaining bounded research requirements. Keep the
+TT13 chart-read combined Linux/browser acceptance is recorded above;
+the separate remaining bounded research requirements remain unfinished. Keep the
 accepted independent baseline and do not reopen TT10 accounting/contracts merely
 because this import slice changes storage/lifecycle code. Product stays
 `0.6.0-dev`; no whole-plan completion is claimed.

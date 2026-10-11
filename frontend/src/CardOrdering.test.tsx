@@ -115,7 +115,7 @@ it('keeps drafts, selection and reviewed catalog-order Test all payloads through
  expect((screen.getByLabelText('Card order direction') as HTMLSelectElement).value).toBe('asc');
  fireEvent.change(screen.getByLabelText('Search strategies'),{target:{value:''}});
  fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
- expect(screen.getByRole('button',{name:'Start 1 tests'})).toBeTruthy();
+ expect(await screen.findByRole('button',{name:'Start 1 tests'})).toBeTruthy();
  expect(vi.mocked(api).mock.calls.filter(([command])=>command==='library_batch_preview')).toHaveLength(1);
  expect(vi.mocked(api).mock.calls.some(([command])=>/start|trust|library_copy/.test(command))).toBe(false);
 });

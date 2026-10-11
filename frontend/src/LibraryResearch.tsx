@@ -91,7 +91,8 @@ export default function LibraryResearch({selections,datasets,profile,onActive,on
  const requestKey=canonical(request),stale=!!report&&canonical(report.snapshot.inputs)!==requestKey;
  const reviewKey=canonical([requestKey,spotDraft?.key,setupOpen,suspendSetup,view,setupRequest]);
  const reviewRef=useRef(reviewKey);reviewRef.current=reviewKey;
- useEffect(()=>{setPreview(null);},[reviewKey]);
+ // Modal visibility invalidates in-flight delivery, but preserves a completed review of unchanged inputs.
+ useEffect(()=>{setPreview(null);},[requestKey,spotDraft?.key,suspendSetup,view,setupRequest]);
  async function review(){const key=reviewRef.current;setPreview(null);try{const result=await api('library_batch_preview',request);if(reviewRef.current===key)setPreview(result);}catch(e){if(reviewRef.current===key)throw e;}}
  useEffect(()=>{if(error&&setupVisible){setupError.current?.focus({preventScroll:true});setupError.current?.scrollIntoView?.({block:'nearest'});}},[error,setupVisible]);
  const active=report?.active_id??(starting?selected:null),holdout=report?.snapshot.phase==='out_of_sample';

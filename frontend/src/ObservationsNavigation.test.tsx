@@ -44,7 +44,7 @@ it('keeps typing and invalid submission local, then loads the exact arbitrary op
  fireEvent.click(button('Later candles'));await ready(S+1113*H);expect(chart().end).toBe(S+1200*H);
  fireEvent.click(button('Earlier candles'));await ready(S+613*H);
  expect(input('Observation start (UTC)').value).toBe(target(0));expect(input('Observation end, exclusive (UTC)').value).toBe(target(1200));
- expect(vi.mocked(api).mock.calls.every(([c])=>['observation_history','local_history_window'].includes(c))).toBe(true);
+ expect(vi.mocked(api).mock.calls.every(([c])=>['observation_save_history','observation_history','local_history_window'].includes(c))).toBe(true);
 });
 
 it('anchors Latest independently of arbitrary windows reaching the end and leaves First/Latest independent of invalid input',async()=>{
@@ -78,7 +78,7 @@ it('browses a dirty unsaved note despite invalid observation dates, then saves o
  expect(input('Observation start (UTC)').value).toBe(target(20));expect(input('Observation hypothesis').value).toBe('Keep unsaved hypothesis');
  fireEvent.change(input('Observation end, exclusive (UTC)'),{target:{value:target(30)}});fireEvent.click(button('Return to observation start'));await ready(S+20*H);
  await go(800);fireEvent.click(button('Save observation'));await screen.findByRole('heading',{name:'Observation · revision 3'});
- expect(api).toHaveBeenCalledWith('observation_save',expect.objectContaining({start:S+20*H,end:S+30*H,hypothesis:'Keep unsaved hypothesis'}));expect(chart().start).toBe(S+800*H);
+ expect(api).toHaveBeenCalledWith('observation_save',expect.objectContaining({start:S+20*H,end:S+30*H,hypothesis:'Keep unsaved hypothesis'}),expect.objectContaining({onRequest:expect.any(Function),onPhase:expect.any(Function)}));expect(chart().start).toBe(S+800*H);
 });
 
 it('preserves saved revision, dirty text, original range and display during browsing and explicit save',async()=>{
@@ -88,7 +88,7 @@ it('preserves saved revision, dirty text, original range and display during brow
  await go(613);expect(chart().display).toBe(14400);expect(input('Observation start (UTC)').value).toBe(target(600));expect(input('Observation end, exclusive (UTC)').value).toBe(target(624));
  type('invalid browse date');fireEvent.click(button('Return to observation start'));await ready(note.start);expect(input().value).toBe(target(600));
  const count=calls().length;fireEvent.click(button('Save note revision'));await screen.findByRole('heading',{name:'Observation · revision 3'});expect(calls()).toHaveLength(count);
- expect(api).toHaveBeenCalledWith('observation_save',{observation_id:'note',expected_revision:2,dataset_id:source.id,start:note.start,end:note.end,hypothesis:'New unsaved wording',falsification:'Keep this too'});
+ expect(api).toHaveBeenCalledWith('observation_save',expect.objectContaining({observation_id:'note',expected_revision:2,dataset_id:source.id,start:note.start,end:note.end,hypothesis:'New unsaved wording',falsification:'Keep this too'}),expect.objectContaining({onRequest:expect.any(Function),onPhase:expect.any(Function)}));
  fireEvent.click(button('Test observation in Lab'));expect(props.onTest).toHaveBeenCalledWith({id:'note',revision:3,source,start:note.start,end:note.end});
 });
 
@@ -104,8 +104,8 @@ it('retries the immutable failed first window even after invalid typing, preserv
  const pending=deferred();let reads=0;mock(p=>{if(++reads<3)throw Error(`Read failure ${reads}`);return pending.promise;});
  render(<Observations {...props} request={{dataset:source.id,request:1}}/>);
  await screen.findByText('Could not read saved history: Read failure 1');expect(screen.queryByTestId('navigation-chart')).toBeNull();expect(screen.getByText(`Snapshot: ${source.id}`,{exact:false})).toBeTruthy();
- type('invalid retry draft');fireEvent.click(button('Retry saved-history page'));await screen.findByText('Could not read saved history: Read failure 2');
- const retry=button('Retry saved-history page');act(()=>{fireEvent.click(retry);fireEvent.click(retry);fireEvent.submit(input().closest('form')!);});
+ type('invalid retry draft');fireEvent.click(button('Retry reading'));await screen.findByText('Could not read saved history: Read failure 2');
+ const retry=button('Retry reading');act(()=>{fireEvent.click(retry);fireEvent.click(retry);fireEvent.submit(input().closest('form')!);});
  expect(calls()).toHaveLength(3);expect(calls().every(([,p])=>JSON.stringify(p)===JSON.stringify({dataset_id:source.id,start:S,end:S+500*H}))).toBe(true);
  await act(async()=>pending.resolve(page({start:S,end:S+500*H})));await ready();expect(input().value).toBe('invalid retry draft');expect(input().getAttribute('aria-invalid')).toBe('true');expect(screen.queryByText(/Could not read saved history/)).toBeNull();
 });
@@ -117,7 +117,7 @@ it('removes a prior chart on later failure, retains dirty notes/display and sepa
  fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'86400'}});fireEvent.change(input('Observation hypothesis'),{target:{value:'Still dirty'}});
  fireEvent.click(button('First saved page'));await screen.findByText('Could not read saved history: Page unavailable');expect(screen.queryByTestId('navigation-chart')).toBeNull();
  expect(button('Earlier candles').disabled).toBe(true);expect(button('Later candles').disabled).toBe(true);expect(input('Observation hypothesis').value).toBe('Still dirty');
- type('invalid');fireEvent.click(button('Retry saved-history page'));await ready();expect(chart().display).toBe(86400);expect(screen.getByText(/Could not load saved observations: List unavailable/)).toBeTruthy();expect(input().value).toBe('invalid');
+ type('invalid');fireEvent.click(button('Retry reading'));await ready();expect(chart().display).toBe(86400);expect(screen.getByText(/Could not load saved observations: List unavailable/)).toBeTruthy();expect(input().value).toBe('invalid');
  fireEvent.click(button('Latest saved page'));await ready(S+1000*H);expect(input('Observation hypothesis').value).toBe('Still dirty');
 });
 
@@ -154,7 +154,7 @@ it('fails closed on a same-ID declaration change and retains the dirty note inst
 it('rejects changed verified identity during ordinary paging but permits an explicit same-ID reselection with Source display',async()=>{
  let identity='immutable-a';mock(p=>page(p,{...source,content_sha256:identity}));const view=render(<Observations {...props} request={{dataset:source.id,request:1}}/>);await ready();
  fireEvent.change(screen.getByLabelText('Saved-history display interval'),{target:{value:'86400'}});identity='immutable-replacement';fireEvent.click(button('Latest saved page'));
- await screen.findByText(/Could not read saved history: Exact saved source changed/);expect(screen.queryByTestId('navigation-chart')).toBeNull();expect(button('Retry saved-history page').disabled).toBe(true);
+ await screen.findByText(/Could not read saved history: Exact saved source changed/);expect(screen.queryByTestId('navigation-chart')).toBeNull();expect(button('Retry reading').disabled).toBe(true);
  view.rerender(<Observations {...props} request={{dataset:source.id,request:2}}/>);await ready();expect(chart().display).toBe(H);expect(input().value).toBe(target(0));
 });
 

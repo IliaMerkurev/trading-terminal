@@ -32,7 +32,7 @@ def _request(selector, lifetime_fd):
                 if remainder:
                     raise ValueError('Worker accepts exactly one bootstrap request')
                 request = json.loads(line)
-                if not isinstance(request, dict) or request.get('version') != 1 or request.get('command') not in ('run', 'replay', 'archive_import', 'archive_export', 'finalize_run'):
+                if not isinstance(request, dict) or request.get('version') != 1 or request.get('command') not in ('run', 'replay', 'archive_import', 'archive_export', 'finalize_run', 'chart_read'):
                     raise ValueError('Invalid worker command')
                 return bytes(line) + b'\n'
 

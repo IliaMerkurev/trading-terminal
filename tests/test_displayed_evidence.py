@@ -23,6 +23,8 @@ class DisplayedEvidenceTests(unittest.TestCase):
         jobs=JobManager(self.tmp.name);self.addCleanup(jobs.close)
         batches=LibraryBatchManager(jobs);self.addCleanup(batches.close)
         self.service=SimpleNamespace(jobs=jobs,store=jobs.store,datasets=jobs.datasets,library_batches=batches,observations=Observations(jobs.store,jobs.datasets))
+        from terminal.chart_reads import ChartReads
+        self.service.chart_reads=ChartReads(self.service);self.addCleanup(self.service.chart_reads.close)
         self.dataset=jobs.datasets.save('spot','BTCUSDT',0,3600,[Candle(i*60,100+i,102+i,99+i,101+i,10) for i in range(60) if i!=12],[],{},metadata={'synthetic':True},provenance=[],source='Synthetic display evidence')
         self.presentation='a'*32
         self.reference=dict(surface='observation_chart',dataset_id=self.dataset['id'],start=600,end=900)
@@ -136,7 +138,14 @@ class DisplayedEvidenceTests(unittest.TestCase):
         from terminal.service import AppService
         def request(command,params):
             return AppService.handle(self.service,dict(version=1,id='synthetic-request',command=command,params=params))
-        page=request('local_history_window',{k:self.reference[k] for k in ('dataset_id','start','end')})
+        import time
+        operation=request('chart_read_start',dict(request_id='c'*32,view_id='d'*32,generation=1,surface='observation',query={k:self.reference[k] for k in ('dataset_id','start','end')}))
+        self.assertEqual(operation['type'],'result')
+        deadline=time.monotonic()+10
+        while operation['result']['status'] not in ('ready','failed') and time.monotonic()<deadline:
+            time.sleep(.02);operation=request('chart_read_status',dict(request_id='c'*32))
+        self.assertEqual(operation['result']['status'],'ready',operation)
+        page={**operation,'result':operation['result']['result']}
         self.assertEqual(page['type'],'result');self.assertEqual(self.rows(),[])
         result=request('research_displayed',dict(presentation_id=self.presentation,reference=page['result']['display_reference'],viewport=[600,840]))
         self.assertEqual(result['type'],'result');self.assertEqual(result['result']['recorded'],2)
