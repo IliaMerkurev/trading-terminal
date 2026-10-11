@@ -616,3 +616,19 @@ contract and existing 10,000 input / 1,800 viewport, 64 MiB serialized / estimat
 and [third-party notices](THIRD_PARTY_NOTICES.md) for the file-level MPL-2.0
 exception, source availability and exact scope. No strategy/trading, dependency,
 provider, product-version, release or main-merge change is authorized here.
+
+### Later authorized named indicator presets — 2026-10-11
+
+Provide a local workspace preset library with Save current, staged selection,
+explicit Apply, Duplicate/Save as, Rename and recoverable Trash/Restore. The
+library is reusable across chart namespaces, but Apply affects only the current
+source/market/symbol. Save current captures the applied revision, not unapplied
+edits; never silently overwrite existing preset content or discard dirty work.
+Preserve all typed parameters, hidden instances, colors and placement. Empty
+presets are valid. Keep atomic revision guards, resource-bounded paged transport
+and no fixed preset/indicator count quota. Never transplant calculation origins,
+history, alerts or execution state. Retain a versioned extension seam for later
+pane layouts without implementing panes or alerts in this slice. See
+[ADR 0053](docs/adr/0053-named-indicator-presets.md). Current Windows/native,
+live-provider and owner-led acceptance are deferred; development does not imply
+publication, release or acceptance.

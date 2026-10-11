@@ -246,3 +246,9 @@
 .vmc-parameter-group>label{display:flex;flex-direction:column;gap:4px;max-width:100%;font-size:12px}
 .vmc-parameter-group select{max-width:100%}
 .vmc-parameter-group input[type=checkbox]{align-self:flex-start}
+
+.indicator-presets { min-width: 0; margin: 6px 0; }
+.indicator-preset-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.indicator-preset-actions label { display: flex; flex-direction: column; min-width: 0; max-width: 100%; }
+.indicator-preset-actions select, .indicator-preset-actions input { max-width: 100%; }
+.indicator-preset-preview { max-height: 180px; overflow: auto; overflow-wrap: anywhere; }

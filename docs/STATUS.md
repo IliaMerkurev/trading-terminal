@@ -1,5 +1,74 @@
 # Implementation status
 
+## Named indicator preset candidate — 2026-10-11
+
+Implemented a workspace-local, versioned library with Save current, preview,
+staged replacement and explicit Apply, Duplicate/Save as, Rename and durable
+Trash/Restore. Presets capture applied indicator settings at an expected revision;
+they never capture origins, candles, events, alerts or execution state. Dirty
+editor changes retain their original settings revision, and source changes reject
+obsolete replies synchronously. Unknown future preset extensions cannot be staged
+by this client; metadata changes and duplication preserve them. No preset-count
+or indicator-count quota is introduced. See [ADR 0053](adr/0053-named-indicator-presets.md).
+
+Focused backend verification covers 11 new preset tests and 19 existing display/
+transport regressions. The initial paging fixture was below the actual 800 KiB
+inline threshold; it was corrected to 13,000 instances, after which exact paged
+content, length and checksum checks passed. A final affected service test passed
+after adding the metadata count to get responses. Thirty distinct backend tests
+pass; this is not a complete product-suite run. Coverage includes restart,
+source/workspace isolation, empty content, VMC/hidden/placement fidelity,
+corruption, optimistic conflicts, persisted trash and restore-name collision,
+transactional capture against a competing writer, destination-origin retention
+and bounded transport.
+
+Frontend verification passed 115 distinct tests across six files: ChartIndicators
+32, IndicatorPresets 13, API 25, LiveChart 8, MarketChartNavigation 27 and
+AppChartFocus 10. The first pass ran 76 tests; the final lifecycle pass ran 82,
+with overlapping files counted only once and unchanged API/LiveChart evidence
+reused. The frozen integrated TypeScript and production build pass; the existing
+large-chunk advisory remains. These are component/transport checks, not actual
+browser geometry or Windows acceptance. Independent review and actual-App
+browser interaction are separate gates. Windows/native, live-provider and
+owner-led unaided acceptance remain deferred. No publication, merge, release,
+provider connection, dependency or product-version change is implied.
+
+Actual-App offline browser checks on preset code `8ddf97c` passed Save current
+for all three VMC types, read-only preview, duplicate/rename/Trash/Restore,
+stage without changing a hidden applied instance, Cancel retaining the applied
+hidden state, explicit stage+Apply restoring visibility, and browser reload
+retaining both preset entries and the applied visible state. The fixture used
+isolated synthetic cached history with exchange acquisition and PAPER actions
+disabled. Independent review then reproduced a pre-existing context-remount
+edge that discarded unapplied drafts when switching source. The correction retains session-only drafts in the mounted Market owner,
+scoped to source/market/symbol and the original expected revision. It also retains
+staged names, selected instances and expanded/collapsed state. Cancel or
+authoritatively acknowledged Apply clears the draft; a new terminal owner starts
+clean. The correction passed 86 distinct focused tests: an 85-test pass plus one
+additional delayed uncertain-empty-Apply regression. This adds 23 LiveTerminal
+and eight IndicatorDraftLifecycle checks to the earlier evidence, for 146 distinct
+frontend tests overall. The corrected integrated TypeScript/production build
+passes with the same chunk-size advisory. This initial GUI pass does not claim
+the corrected context-switch edge passed. Library mutations currently reset selection, requiring explicit
+reselection for subsequent actions; this is a known nonblocking ergonomic limit.
+
+Independent read-only review on corrected code `b25d5f3` passes five backend
+assertions and eight UI lifecycle assertions. The original source-switch draft
+loss reproduction now passes through the actual session-provider boundary:
+returning to authoritative revision 8 retains the draft's original revision 3,
+edited parameters remain, other namespaces stay clean, Cancel removes the
+retained draft, and a new workspace owner inherits none. No material blocker
+remains in this focused review; this is separate from actual chart geometry and
+platform acceptance.
+
+Corrected actual-App offline browser QA on `b25d5f3` passed an unsaved Cipher B
+channel edit from 9 to 10, Bybit → OKX → Bybit restoration of 10 with a visible
+pending-edits notice, and Lab → Market restoration of the same edit. Cancel
+followed by another source roundtrip restored saved value 9 with no pending
+notice. Earlier CRUD, stage/cancel/apply and reload results remain valid for the
+unchanged paths. These bounded synthetic browser checks do not establish
+Windows/native, live-provider or owner-led unaided acceptance.
+
 ## Integrated 33-type VuManChu candidate — 2026-10-11
 
 Cipher B Core + confirmed divergences, Cipher A and Swing Free are integrated

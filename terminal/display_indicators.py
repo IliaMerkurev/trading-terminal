@@ -66,6 +66,24 @@ def validate_instances(instances):
             item.setdefault('placement', 'overlay')
     return valid
 
+def default_settings():
+    return dict(version=1, revision=0, instances=[dict(id='default_volume', type='volume', params={}, color='#42cda8', visible=True, placement='overlay')], origins={})
+
+
+def parse_settings_document(raw):
+    """Strict stored-state parser; callers decide whether fallback is appropriate."""
+    doc = json.loads(raw)
+    if type(doc.get('version')) is not int or doc['version'] != 1 or type(doc.get('revision')) is not int or (doc['revision'] < 0):
+        raise ValueError()
+    doc['instances'] = validate_instances(doc['instances'])
+    if not isinstance(doc.get('origins'), dict) or len(doc['origins']) > 6:
+        raise ValueError()
+    for interval, origin in doc['origins'].items():
+        if interval not in map(str, INTERVALS) or set(origin) != {'time', 'generation', 'contract'} or origin['contract'] != CONTRACT or (type(origin['time']) is not int) or (origin['time'] < 0) or origin['time'] % (int(interval) * 60) or (type(origin['generation']) is not int) or (origin['generation'] < 1):
+            raise ValueError()
+    return doc
+
+
 class NativeDisplayState:
     """Independent display-only additions; existing engine seeds are untouched."""
     def __init__(self, item):
@@ -290,19 +308,10 @@ class DisplayIndicators:
         key = self.key(market, symbol, source)
         with self.store.connect() as db:
             row = db.execute('SELECT document FROM chart_presentation_v1 WHERE market=? AND symbol=?', key).fetchone()
-        fallback = dict(version=1, revision=0, instances=[dict(id='default_volume', type='volume', params={}, color='#42cda8', visible=True, placement='overlay')], origins={})
+        fallback = default_settings()
         if row:
             try:
-                doc = json.loads(row[0])
-                if type(doc.get('version')) is not int or doc['version'] != 1 or type(doc.get('revision')) is not int or (doc['revision'] < 0):
-                    raise ValueError()
-                doc['instances'] = validate_instances(doc['instances'])
-                if not isinstance(doc.get('origins'), dict) or len(doc['origins']) > 6:
-                    raise ValueError()
-                for interval, origin in doc['origins'].items():
-                    if interval not in map(str, INTERVALS) or set(origin) != {'time', 'generation', 'contract'} or origin['contract'] != CONTRACT or (type(origin['time']) is not int) or (origin['time'] < 0) or origin['time'] % (int(interval) * 60) or (type(origin['generation']) is not int) or (origin['generation'] < 1):
-                        raise ValueError()
-                return doc
+                return parse_settings_document(row[0])
             except (ValueError, TypeError, KeyError, AttributeError):
                 fallback['warning'] = 'Saved indicator settings are invalid or unsupported; use Apply to replace them.'
         return fallback

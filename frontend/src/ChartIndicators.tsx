@@ -1,5 +1,7 @@
 import {isVmcKind, vmcDefaults, vmcParameterOrder, validateVmcParams, VmcFields, type VmcKind, type VmcParams} from './vmcSettings';
-import {useEffect, useId, useRef, useState} from 'react';
+import {useContext, useEffect, useId, useLayoutEffect, useRef, useState} from 'react';
+import {IndicatorDraftContext} from './IndicatorDrafts';
+import IndicatorPresets, {type IndicatorNamespace} from './IndicatorPresets';
 import {isTypingTarget} from './chartDrawings';
 import {indicatorCatalog, indicatorShortLabel, indicatorCategories, favoritesKey, parseIndicatorFavorites} from './indicatorCatalog';
 
@@ -161,29 +163,41 @@ export function indicatorName(item: ChartIndicator) {
   return label + (parameters.length ? ' (' + parameters.join(', ') + ')' : '');
 }
 
+// Backend canonical JSON ordering is not a semantic settings change.
+const indicatorSignature = (items: ChartIndicator[]) => JSON.stringify(items, (_key, value) =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b))) : value);
+
 type Props = {
+  namespace?: IndicatorNamespace;
   focusMode?: boolean;
   toolbar?: React.ReactNode;
   toolbarActions?: React.ReactNode;
   settings: IndicatorSettings;
-  onApply: (items: ChartIndicator[]) => void;
+  onApply: (items: ChartIndicator[], revision?: number) => void;
   busy: boolean;
   error: string;
   volumeUnit?: string;
   minutes?: number;
 };
 
-export default function ChartIndicators({settings, onApply, busy, error, volumeUnit, toolbar, toolbarActions, minutes = 1}: Props) {
-  const [open, setOpen] = useState(false);
-  const [catalogOpen, setCatalogOpen] = useState(true);
+export default function ChartIndicators({namespace, settings, onApply, busy, error, volumeUnit, toolbar, toolbarActions, minutes = 1}: Props) {
+  const retainedDrafts = useContext(IndicatorDraftContext);
+  const namespaceKey = namespace ? JSON.stringify([namespace.source, namespace.market, namespace.symbol]) : '';
+  const retained = useRef(namespaceKey ? retainedDrafts?.get(namespaceKey) : undefined).current;
+  const [open, setOpen] = useState(retained?.open ?? false);
+  const [catalogOpen, setCatalogOpen] = useState(retained?.catalogOpen ?? true);
   const panelId = useId();
   const toggle = useRef<HTMLButtonElement>(null);
   const initiator = useRef<HTMLElement | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const editor = useRef<HTMLFieldSetElement>(null);
   const [target, setTarget] = useState<'search' | 'editor' | null>(null);
-  const [selected, setSelected] = useState<string | null>(settings.instances[0]?.id ?? null);
-  const [draft, setDraft] = useState<ChartIndicator[]>(settings.instances);
+  const [selected, setSelected] = useState<string | null>(retained?.selected ?? settings.instances[0]?.id ?? null);
+  const [draft, setDraft] = useState<ChartIndicator[]>(retained?.draft ?? settings.instances);
+  const [base, setBase] = useState(retained?.base ?? settings);
+  const [stagedName, setStagedName] = useState(retained?.stagedName ?? '');
+  const submitted = useRef<ChartIndicator[] | null>(retained?.submitted ?? null);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [page, setPage] = useState(0);
@@ -193,8 +207,13 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
   });
   const [favoriteNotice, setFavoriteNotice] = useState('');
   useEffect(() => {
-    setDraft(settings.instances);
-    setSelected(previous => settings.instances.some(item => item.id === previous) ? previous : settings.instances[0]?.id ?? null);
+    // A settings refresh cannot silently discard edits or advance their revision.
+    // Only a successful acknowledgement of this submitted draft adopts a new base.
+    const acknowledged = settings.revision > base.revision && submitted.current && indicatorSignature(submitted.current) === indicatorSignature(settings.instances);
+    if ((!stagedName && indicatorSignature(draft) === indicatorSignature(base.instances)) || acknowledged) {
+      setDraft(settings.instances); setBase(settings); setStagedName(''); submitted.current = null;
+      setSelected(previous => settings.instances.some(item => item.id === previous) ? previous : settings.instances[0]?.id ?? null);
+    }
   }, [settings]);
   useEffect(() => {
     if (!open || !target) return;
@@ -207,7 +226,12 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
   const lastPage = Math.max(0, Math.ceil(matches.length / pageSize) - 1);
   const currentPage = Math.min(page, lastPage);
   const invalid = validateIndicators(draft, minutes);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(settings.instances);
+  const dirty = !!stagedName || indicatorSignature(draft) !== indicatorSignature(base.instances);
+  useLayoutEffect(() => {
+    if (!retainedDrafts || !namespaceKey) return;
+    if (dirty) retainedDrafts.set(namespaceKey, {draft, base, stagedName, selected, submitted: submitted.current, open, catalogOpen});
+    else retainedDrafts.delete(namespaceKey);
+  });
   const edit = (id: string, change: Partial<ChartIndicator>) => {
     setDraft(rows => rows.map(row => row.id === id ? {...row, ...change} as ChartIndicator : row));
   };
@@ -230,7 +254,7 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
     setOpen(false); setTarget(null);
     (initiator.current?.isConnected && !initiator.current.matches(':disabled') ? initiator.current : toggle.current)?.focus({preventScroll:true});
   };
-  const cancel = () => {setDraft(settings.instances); setSelected(settings.instances[0]?.id ?? null); collapse();};
+  const cancel = () => {setBase(settings); setStagedName(''); submitted.current = null; setDraft(settings.instances); setSelected(settings.instances[0]?.id ?? null); collapse();};
   const selectedItem = draft.find(item => item.id === selected) ?? draft[0];
   return <div className="chart-indicator-manager" onKeyDown={event=>{
     if(open && event.key==='Escape' && !event.isDefaultPrevented() && !event.nativeEvent.isComposing && !isTypingTarget(event.target)){
@@ -244,6 +268,13 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
       }}>Indicators ({settings.instances.length})</button>
       {toolbarActions}
     </div>
+    {namespace && <IndicatorPresets key={JSON.stringify(namespace)} namespace={namespace} revision={settings.revision} dirty={dirty} busy={busy} onStage={preset => {
+      setDraft(structuredClone(preset.content.instances)); setBase(settings); setStagedName(preset.name);
+      setSelected(preset.content.instances[0]?.id ?? null); setCatalogOpen(false); setOpen(true); setTarget('editor');
+    }}/>}
+    {dirty && <small className="indicator-draft-note">Pending edits are retained for this source, market and symbol during this session. Apply or Cancel before reloading the app.</small>}
+    {stagedName && <p role="status">Staged preset: {stagedName} · pending changes. Apply indicators to save this replacement.</p>}
+    {!open && error && <p role="alert">{error}</p>}
     {!open && dirty && <small className="indicator-draft-note">Unapplied edits retained. Open Indicators to apply or cancel.</small>}
     {settings.instances.length > 0 && <ul className="chart-indicator-legend" aria-label="Chart indicator legend">
       {settings.instances.map((item, index) => <li key={item.id} className={item.visible ? '' : 'indicator-hidden'}>
@@ -324,7 +355,7 @@ export default function ChartIndicators({settings, onApply, busy, error, volumeU
       </section>
       </div>
       {(invalid || error) && <p role="alert">{invalid || error}</p>}
-      <button disabled={busy || !!invalid} onClick={() => onApply(draft)}>{busy ? 'Saving…' : 'Apply indicators'}</button>
+      <button disabled={busy || !!invalid} onClick={() => {submitted.current = draft; onApply(draft, base.revision);}}>{busy ? 'Saving…' : 'Apply indicators'}</button>
       <button disabled={busy} onClick={cancel}>Cancel edits</button>
       <small>Display only · confirmed native-timeframe closes. More visible instances increase calculation and rendering work; hidden instances are not calculated. Apply saves all valid edits together in this source workspace. Cancel discards edits; Collapse retains them. Recorded IR and trading settings are separate. Defaults are examples, not trading recommendations.</small>
     </div>}

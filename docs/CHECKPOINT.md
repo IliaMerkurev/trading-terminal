@@ -1,5 +1,18 @@
 # Current engineering checkpoint
 
+## Named indicator presets — 2026-10-11
+
+The current local candidate adds revision-guarded named presets, staged Apply and
+durable Trash/Restore. See [ADR 0053](adr/0053-named-indicator-presets.md) and the
+[current verification record](STATUS.md#named-indicator-preset-candidate--2026-10-11).
+Thirty distinct focused backend tests, 146 distinct focused frontend tests and the
+integrated TypeScript/production build pass. Independent focused review and
+bounded actual-App offline browser checks pass, including corrected dirty-draft
+context retention. Windows/native, live-provider and owner acceptance remain
+separate, deferred gates.
+User-controlled pane layouts and indicator alerts remain subsequent slices; no
+release or publication is authorized by this development checkpoint.
+
 ## Integrated 33-type VuManChu candidate — 2026-10-11
 
 Cipher B Core + confirmed divergences, Cipher A and Swing Free are integrated

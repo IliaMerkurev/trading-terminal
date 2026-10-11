@@ -553,3 +553,15 @@ it('adds the 129th instance, preserves search and atomically applies every insta
  expect(apply.mock.calls[0][0]).toHaveLength(129);
  expect(apply.mock.calls[0][0].filter((entry:any)=>entry.visible)).toHaveLength(1);
 });
+
+it('blocks old source settings synchronously before effects load the new namespace',async()=>{
+ const doc={...emptySettings,revision:9,instances:[item('ema')]};
+ mock.api.mockImplementation(async(command:string,p:any)=>command==='chart_indicator_settings'&&p.source!=='okx'?doc:new Promise(()=>{}));
+ const observed:{source:string;loaded:boolean;count:number}[]=[];
+ const {result,rerender}=renderHook(({source})=>{const state=useChartIndicators('spot','BTCUSDT',1,false,{current:[]},source);observed.push({source,loaded:state.loaded,count:state.settings.instances.length});return state;},{initialProps:{source:'bybit'}});
+ await waitFor(()=>expect(result.current.loaded).toBe(true));
+ rerender({source:'okx'});
+ expect(observed.find(value=>value.source==='okx')).toEqual({source:'okx',loaded:false,count:0});
+ await act(async()=>{await result.current.apply([item('rsi')],9);});
+ expect(mock.api.mock.calls.some(call=>call[0]==='chart_indicator_save')).toBe(false);
+});

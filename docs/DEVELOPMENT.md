@@ -1,5 +1,49 @@
 # Development guide
 
+## Named indicator presets (ADR 0053)
+
+The preset library belongs to the selected local data root. Preserve its SQLite
+database in ordinary workspace backups, including trash. Project strategy
+archives do not promise to export this workspace-level chart library. Do not
+merge synthetic fixture databases into ordinary user data.
+
+Save current captures the applied indicator revision. To save edited parameters,
+first use Apply indicators, then Save current under a new name. Preset selection
+is read-only; Stage preset previews a replacement, and Apply indicators commits
+it only to the current source/market/symbol. Cancel edits returns to the applied
+set. During the mounted Market workspace session, unapplied edits are retained
+per source/market/symbol when switching contexts. Returning restores the draft
+and its original revision; a newer applied set therefore conflicts rather than
+being overwritten. Session drafts are not persisted across application reloads. Renaming or trashing a preset never removes indicators already on a chart.
+Refresh the library after an uncertain library write rather than replaying it.
+An uncertain active-set save continues to require an authoritative chart reload.
+
+For an isolated actual-App review, use a new synthetic data root with exchange
+transports disabled. Check save/restart/reopen, duplicate and rename, stage/cancel
+and stage/apply, empty and hidden/VMC-rich content, retained dirty edits, trash
+and restore after restart, source isolation, pending source switches and a name
+collision on restore. Inspect both chart state and stored settings; a visible
+success notice alone does not prove persistence. Review normal, narrow and focused
+layouts without replacing the actual chart library with a DOM mock. Record
+browser results separately from Windows/native, live-provider and owner checks.
+
+Focused reproducible checks (reuse unchanged evidence instead of repeating broad
+suites):
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest tests.test_chart_presets tests.test_display_indicators tests.test_indicator_transport
+node node_modules/vitest/vitest.mjs run frontend/src/IndicatorDraftLifecycle.test.tsx frontend/src/IndicatorPresets.test.tsx frontend/src/ChartIndicators.test.tsx frontend/src/LiveTerminal.test.tsx frontend/src/AppChartFocus.test.tsx
+node scripts/frontend.mjs build
+```
+
+The earlier API, LiveChart and MarketChartNavigation checks cover unchanged
+transport/rendering surfaces. See STATUS for exactly executed passes and overlaps.
+
+No pane-layout or alert implementation belongs to this slice. Future declarative
+layout data belongs in the versioned content extension; an older client must
+refuse to stage unsupported extensions rather than silently drop them. See
+[ADR 0053](adr/0053-named-indicator-presets.md).
+
 Read [PROJECT.md](../PROJECT.md), [architecture](ARCHITECTURE.md), [status](STATUS.md) and [AGENTS.md](../AGENTS.md). Preserve existing changes. Windows x64 remains the desktop target; historical native evidence does not establish acceptance of the current candidate. Linux/browser research has separate verified coverage. See the [current checkpoint](CHECKPOINT.md) for navigation, priorities and platform limits; a conventional installer remains deferred.
 
 ## Product versions and working branches

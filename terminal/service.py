@@ -34,6 +34,8 @@ class AppService:
         self.indicator_transport=IndicatorTransport()
         from terminal.chart_drawings import ChartDrawings
         self.chart_drawings=ChartDrawings(self.store)
+        from terminal.chart_presets import ChartPresets
+        self.chart_presets=ChartPresets(self.display_indicators)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -68,6 +70,10 @@ class AppService:
             fields.update(live_start_terminal={'strategy_id','profile','paper','channels','execution_source'},
                           live_chart={'session_id'},paper_manual={'session_id','action','request_id'})
             fields.update(chart_drawing_settings={'market','symbol','source'},chart_drawing_save={'market','symbol','source','drawings','revision'})
+            fields.update(chart_preset_list={'trashed'},chart_preset_get={'preset_id','revision'},
+                          chart_preset_save_current={'name','source','market','symbol','revision'},
+                          chart_preset_duplicate={'preset_id','revision','name'},chart_preset_rename={'preset_id','revision','name'},
+                          chart_preset_trash={'preset_id','revision'},chart_preset_restore={'preset_id','revision'})
             fields.update(chart_indicator_page={'snapshot_id','index'}, chart_indicator_upload_begin={'size','sha256'}, chart_indicator_upload_append={'upload_id','offset','text'}, chart_indicator_upload_finish={'upload_id'})
             fields.update(chart_indicator_settings={'market','symbol','source'},chart_indicator_save={'market','symbol','instances','revision','source'},chart_indicator_read={'market','symbol','minutes','start','end','revision','reanchor','source'})
             fields.update(market_preferences=set(),market_open={'market','symbol','source'},market_close=set(),market_chart={'market','symbol','minutes','before','source'})
@@ -115,6 +121,13 @@ class AppService:
             elif command=='market_close':result=self.live.market_close()
             elif command=='chart_drawing_settings':result=self.chart_drawings.settings(**p)
             elif command=='chart_drawing_save':result=self.chart_drawings.save(**p)
+            elif command=='chart_preset_list':result=self.chart_presets.list(**p)
+            elif command=='chart_preset_get':result=self.chart_presets.get(**p)
+            elif command=='chart_preset_save_current':result=self.chart_presets.save_current(**p)
+            elif command=='chart_preset_duplicate':result=self.chart_presets.duplicate(**p)
+            elif command=='chart_preset_rename':result=self.chart_presets.rename(**p)
+            elif command=='chart_preset_trash':result=self.chart_presets.trash(**p)
+            elif command=='chart_preset_restore':result=self.chart_presets.restore(**p)
             elif command=='chart_indicator_settings':result=self.display_indicators.settings(**p)
             elif command=='chart_indicator_save':result=self.display_indicators.save(**p)
             elif command=='chart_indicator_read':result=self.display_indicators.read(**p)
@@ -245,7 +258,7 @@ class AppService:
                     from terminal.library import native_window_document
                     strategy=native_window_document(strategy,window['start'])
                 result={'run_id':self.jobs.start(strategy,p['profile'],p['dataset_id'],research={'window':window})}
-            if command in ('chart_indicator_settings','chart_indicator_save','chart_indicator_read','chart_indicator_upload_finish'):
+            if command in ('chart_indicator_settings','chart_indicator_save','chart_indicator_read','chart_indicator_upload_finish','chart_preset_list','chart_preset_get'):
                 result=self.indicator_transport.pack(result)
             response={"version":1,"id":request_id,"type":"result","result":result}
             if len(canonical(response))>1024*1024: raise ValueError("Response exceeds IPC budget; request a smaller page")

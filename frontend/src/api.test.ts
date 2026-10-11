@@ -221,6 +221,12 @@ describe('indicator snapshot transport',()=>{
   const {api}=await import('./api');expect(await api('chart_indicator_read')).toEqual(result);
   expect(invoke).toHaveBeenCalledTimes(d.pages+1);
  });
+ it.each(['chart_preset_list','chart_preset_get'])('verifies complete preset snapshots for %s',async(command)=>{
+  const {result,d,page}=await fixture();
+  vi.mocked(invoke).mockImplementation(async(_command,args:any)=>({type:'result',result:args.message.command==='chart_indicator_page'?page(args.message.params.index):d}));
+  const {api}=await import('./api');expect(await api(command)).toEqual(result);
+  expect(invoke).toHaveBeenCalledTimes(d.pages+1);
+ });
  it('rejects mixed, corrupted, and cancelled pages instead of partial results',async()=>{
   const {d,page}=await fixture();const {api}=await import('./api');
   vi.mocked(invoke).mockImplementation(async(_command,args:any)=>({type:'result',result:args.message.command==='chart_indicator_page'?{...page(args.message.params.index),snapshot_id:'b'.repeat(32)}:d}));

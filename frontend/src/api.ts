@@ -124,7 +124,7 @@ export async function api<T = any>(command: string, params: Record<string, unkno
     throw new Error('Local service response does not match this request.');
   }
   if (response.type !== 'result') throw Object.assign(new Error(response.error?.message ?? 'Research service failed'),{definiteRejection:true});
-  if (['chart_indicator_read','chart_indicator_settings','chart_indicator_save','chart_indicator_upload_finish'].includes(command) && response.result?.status === 'paged') {
+  if (['chart_indicator_read','chart_indicator_settings','chart_indicator_save','chart_indicator_upload_finish','chart_preset_list','chart_preset_get'].includes(command) && response.result?.status === 'paged') {
     return await readIndicatorSnapshot<T>(response.result, options);
   }
   return response.result as T;

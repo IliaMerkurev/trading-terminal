@@ -19,6 +19,9 @@ export function useChartIndicators(
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const namespaceKey = JSON.stringify([source, market, symbol]);
+  const [loadedNamespace, setLoadedNamespace] = useState('');
+  const namespaceLoaded = loaded && loadedNamespace === namespaceKey;
   const generation = useRef(0);
   const settingsRef = useRef(settings);
   const anchor = useRef(false);
@@ -49,6 +52,7 @@ export function useChartIndicators(
       }
       setSettings(doc);
       setError(doc.warning ?? '');
+      setLoadedNamespace(namespaceKey);
       setLoaded(true);
     }).catch(() => {
       if (token === generation.current) {
@@ -62,7 +66,7 @@ export function useChartIndicators(
     setResult(null);
     anchor.current = false;
     ++calculationEpoch.current;
-    if (!active || !loaded || saving || uncertainSave.current || (!settings.instances.some(item => item.visible) && priceStyle !== 'heikin_ashi')) return;
+    if (!active || !namespaceLoaded || saving || uncertainSave.current || (!settings.instances.some(item => item.visible) && priceStyle !== 'heikin_ashi')) return;
     let stopped = false;
     const controller = new AbortController();
     const cancel = poll(async () => {
@@ -102,8 +106,8 @@ export function useChartIndicators(
     };
   }, [source, market, symbol, minutes, active, loaded, saving, settings, windowEpoch, priceStyle]);
 
-  const apply = async (instances: ChartIndicator[]) => {
-    if (!loaded || writeInFlight.current || uncertainSave.current) return;
+  const apply = async (instances: ChartIndicator[], expectedRevision?: number) => {
+    if (!namespaceLoaded || writeInFlight.current || uncertainSave.current) return;
     const token = generation.current;
     writeInFlight.current = true;
     ++calculationEpoch.current;
@@ -112,7 +116,7 @@ export function useChartIndicators(
     setError('');
     try {
       const doc = await api<IndicatorSettings>('chart_indicator_save', {
-        market, symbol, ...(source==='bybit'?{}:{source}), instances, revision: settingsRef.current.revision,
+        market, symbol, ...(source==='bybit'?{}:{source}), instances, revision: expectedRevision ?? settingsRef.current.revision,
       });
       if (token === generation.current) {
         setSettings(doc);
@@ -132,13 +136,13 @@ export function useChartIndicators(
   };
 
   const reanchor = () => {
-    if (!loaded || writeInFlight.current || uncertainSave.current) return;
+    if (!namespaceLoaded || writeInFlight.current || uncertainSave.current) return;
     ++calculationEpoch.current;
     anchor.current = true;
     setResult(null);
   };
   const projectionCurrent = resultRows.current === JSON.stringify(rows.current);
-  const accepted = loaded && !writeInFlight.current && !uncertainSave.current && projectionCurrent
+  const accepted = namespaceLoaded && !writeInFlight.current && !uncertainSave.current && projectionCurrent
     && resultWindow.current === windowEpoch && resultKey.current === requestKey;
-  return {settings, projectionCurrent, rawSnapshotKey: resultRows.current, result: accepted ? result : null, error, saving, loaded, apply, reanchor};
+  return {settings: loadedNamespace === namespaceKey ? settings : emptySettings, projectionCurrent, rawSnapshotKey: resultRows.current, result: accepted ? result : null, error: loadedNamespace === namespaceKey || !loaded ? error : '', saving, loaded: namespaceLoaded, apply, reanchor};
 }
