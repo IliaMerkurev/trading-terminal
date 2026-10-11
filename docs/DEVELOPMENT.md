@@ -729,9 +729,14 @@ drawing/indicator drafts. Mocked range assertions do not prove browser geometry
 or native acceptance. No broad/backend rerun is needed solely for this frontend
 slice; reuse unchanged evidence and report each gate separately.
 
-The retained oldest-first 1,800-bar policy can leave a viewport over discarded
-newest candles mostly empty after loading older history. Pan or Return to latest
-restores a populated window; do not silently change retention to hide this
-existing limitation. See STATUS.md for the bounded offline acceptance on
-9847b51, including its separate held-acquisition versus delayed-HTTP evidence
-and unmeasured exact manual-price bounds/narrow-layout matrix.
+On successful nonempty older-page application, preserve the timestamp-translated
+logical range whenever it overlaps the retained oldest-first 1,800-bar window.
+Only a wholly out-of-window range moves, at unchanged width, to the nearest
+retained boundary; no shared timestamp uses the right boundary. Do not clamp
+partial overlap, pre-translation left whitespace, ordinary recent polling or
+Return. Keep history mode, price options, exclusive cursor and acquisition/cache
+behavior unchanged. The focused correction uses chartWindow, MarketChartNavigation
+and LiveChart tests plus the frontend build; no backend/full-suite rerun is needed.
+See STATUS.md for exact evidence and the separate bounded offline acceptance on
+9847b51, including its held-acquisition versus delayed-HTTP evidence and unmeasured
+exact manual-price bounds/narrow-layout matrix.

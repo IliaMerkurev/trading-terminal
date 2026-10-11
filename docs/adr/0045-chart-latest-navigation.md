@@ -2,7 +2,8 @@
 
 Date: 2026-10-11. Status: implemented candidate; focused component/unit checks,
 TypeScript, production build and independent source review passed. Bounded
-offline browser acceptance passed on frozen source 9847b51; exact evidence and
+offline browser acceptance passed on frozen source 9847b51 and later older-page
+correction 8568f16; exact evidence and
 full-app/live-provider/native/Windows limits are recorded in STATUS.md.
 
 ## Decision
@@ -28,6 +29,15 @@ policy. A successful older page makes the buffer historical, even when its right
 edge happens to contain the newest candle. Ordinary overlapping recent updates
 may refresh that buffer under the same oldest-first cap; disjoint recent pages
 cannot replace it. Its right edge and Fit remain history browsing.
+
+The older-page viewport correction retains that cap and first translates the
+visible logical range by a shared candle timestamp, never by elapsed-time
+estimates across gaps. Preserve any overlap, including partial retention and
+intentional whitespace. If the translated viewport is wholly beyond a retained
+boundary, move it to that boundary at the same width. If no timestamp is shared,
+use the retained right boundary at the same width. Apply this rule only to a
+successful nonempty older page; normal polling, Return, loading/error/empty
+responses, price-scale state and following rules remain unchanged.
 
 Return from a historical buffer starts an ordinary recent market_chart request.
 Keep the visible history and zoom while loading. Only a nonempty response without
@@ -66,9 +76,10 @@ attribution remain unchanged.
 A preserved wide zoom can include blank space when the recent response contains
 fewer candles than the previous historical buffer. Return preserves width rather
 than silently fetching extra pages or fitting. Fit explicitly changes that zoom
-and restores automatic price scaling. The unchanged oldest-first cap can also
-leave mostly whitespace when older acquisition discards the newest candles the
-user was viewing; pan or Return to latest restores a populated view. No
+and restores automatic price scaling. The older-page correction prevents the
+wholly evicted viewport from being left beyond the unchanged oldest-first cap;
+partial overlap and a zoom wider than retained data may still include whitespace.
+No
 backend/provider/schema/key, formula, strategy/accounting/trading, release,
 version or deployment changes are included.
 
@@ -97,3 +108,18 @@ Return did not reclaim the view; this is not an actual delayed HTTP race test.
 Exact numeric manual price bounds and a narrow-layout matrix were not measured.
 See STATUS.md for measurements, limitations and independent review evidence.
 No source changes or additional suite runs were made for the acceptance record.
+
+The later older-page viewport correction passed one focused run of **44 tests**
+across chartWindow, MarketChartNavigation and LiveChart, plus TypeScript and the
+production build. Independent read-only review found no blockers. New expectations
+cover translated/evicted/partial/whitespace ranges, fractional and gapped anchors,
+wide/disjoint/empty/single windows, automatic left-edge paging, failed/empty/loading
+responses and ordinary-poll/Return isolation. No backend or full-suite rerun was
+needed. Independent source/scope review and later parent-led actual-chart browser
+acceptance passed on frozen correction source 8568f16. The synthetic component
+wrapper verified two consecutive newest-edge evictions at unchanged approximately
+110-bar zoom, Return, intentional partial-retention whitespace and anchored
+automatic left-edge paging after a held older acquisition. Exact measurements
+and full-application/live-provider/native/Windows/narrow-layout limits are in
+STATUS.md. Source stayed unchanged; no extra tests or build were run to record
+this acceptance.

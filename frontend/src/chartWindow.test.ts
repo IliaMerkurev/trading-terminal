@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {mergeChartWindow,prependShift,CHART_WINDOW_LIMIT} from './chartWindow';
+import {mergeChartWindow,prependShift,olderChartRange,CHART_WINDOW_LIMIT} from './chartWindow';
 const candle=(time:number,close=100)=>({time,open:100,high:110,low:90,close,volume:1});
 it('prepends chronological overlap once and preserves the visible logical anchor',()=>{
  const old=[candle(600),candle(900),candle(1200)];
@@ -19,6 +19,44 @@ it('bounds distant history and recent windows separately without changing source
  expect(older.length).toBe(CHART_WINDOW_LIMIT);expect(older[0].time).toBe(0);
  const recent=mergeChartWindow([],all);expect(recent.length).toBe(CHART_WINDOW_LIMIT);expect(recent.at(-1)?.time).toBe(2399*60);
  expect(all.length).toBe(2400);
+});
+
+it.each([
+ ['evicted newest window',1699,1799,1699,1799],
+ ['retained fractional anchor',100.25,180.25,400.25,480.25],
+ ['partly blank left edge',-20,80,280,380],
+ ['left whitespace that becomes populated',-100,-20,200,280],
+ ['partly evicted right edge',1450,1550,1750,1850],
+ ['wide evicted window',1900,4900,-1201,1799],
+ ['wide overlapping window',-500,2500,-200,2800],
+ ['wholly blank left edge',-1000,-900,0,100],
+ ['touching the last retained candle',1499,1599,1799,1899],
+ ['touching the first retained candle',-400,-300,-100,0],
+] as const)('preserves older-page zoom for %s',(_label,from,to,expectedFrom,expectedTo)=>{
+ const previous=Array.from({length:1800},(_,i)=>candle((i+300)*60));
+ const next=mergeChartWindow(previous,Array.from({length:300},(_,i)=>candle(i*60)),true);
+ expect(olderChartRange(previous,next,{from,to})).toEqual({from:expectedFrom,to:expectedTo});
+ expect(next).toHaveLength(1800);expect(next[0].time).toBe(0);expect(next.at(-1)?.time).toBe(1799*60);
+});
+
+it('anchors older pages by retained timestamps across gaps and falls back at the right edge for disjoint data',()=>{
+ const previous=[1000,2000,10000,30000].map(time=>candle(time));
+ const next=mergeChartWindow(previous,[candle(1),candle(5)],true);
+ expect(olderChartRange(previous,next,{from:1.25,to:2.25})).toEqual({from:3.25,to:4.25});
+ const disjoint=Array.from({length:300},(_,i)=>candle(i));
+ expect(olderChartRange(previous,disjoint,{from:50,to:130})).toEqual({from:219,to:299});
+});
+
+it('handles empty and single-candle older windows without inventing a zoom',()=>{
+ const range={from:50,to:130};
+ expect(olderChartRange([candle(1000)],[],range)).toBe(range);
+ expect(olderChartRange([],[],range)).toBe(range);
+ expect(olderChartRange([], [candle(0)],range)).toEqual({from:-80,to:0});
+ expect(olderChartRange([candle(1000)],[candle(0)],{from:5,to:5})).toEqual({from:0,to:0});
+ expect(olderChartRange([candle(0)],[candle(0)],{from:0,to:0})).toEqual({from:0,to:0});
+ const reversed={from:80,to:50},invalid={from:0,to:Infinity};
+ expect(olderChartRange([], [candle(0)],reversed)).toBe(reversed);
+ expect(olderChartRange([], [candle(0)],invalid)).toBe(invalid);
 });
 
 it('keeps an independent 80-bar return width and maps trimmed browsing anchors backwards',async()=>{

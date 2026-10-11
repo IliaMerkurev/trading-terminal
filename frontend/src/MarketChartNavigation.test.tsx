@@ -81,6 +81,44 @@ it('keeps oldest history capped, never follows its right edge, then replaces it 
  expect(mock.ranges.at(-1).domain[0]).toBe(5001*60);expect(mock.ranges.at(-1).domain.at(-1)).toBe(5300*60);
 });
 
+it('keeps a fully evicted older-page viewport populated at the same zoom without following, fitting or resetting price scales',async()=>{
+ marketRead=p=>ready(p.before==null?bars(3000,1800):bars(2700,300));
+ render(<MarketChart fresh/>);await flush();pan(1699,1799);
+ fireEvent.click(screen.getByRole('button',{name:'Log scale'}));fireEvent.click(screen.getByRole('button',{name:'Auto scale'}));
+ await older();expect(candles()).toEqual(plotted(2700,1800));expect(mock.range).toEqual({from:1699,to:1799});
+ expect(mock.ranges.at(-1).domain).toEqual(Array.from({length:1800},(_,i)=>(2701+i)*60));
+ expect(mock.api).toHaveBeenCalledWith('market_chart',{market:'spot',symbol:'BTCUSDT',minutes:1,before:3000*60});
+ expect(mode()).toContain('Browsing history');expect(mock.fits).toBe(1);expect(mock.price).toMatchObject({mode:1,autoScale:false});
+ await tick();expect(mock.range).toEqual({from:1699,to:1799});expect(candles()).toEqual(plotted(2700,1800));
+ // An ordinary overlapping recent poll must not apply the older-page fallback.
+ pan(1900,2000);await tick();expect(mock.range).toEqual({from:1900,to:2000});
+ goLatest();await flush();expect(candles()).toEqual(plotted(3000,1800));expect(mock.range).toEqual({from:1701,to:1801});
+ expect(mode()).toContain('Following latest');expect(mock.fits).toBe(1);expect(mock.price).toMatchObject({mode:1,autoScale:false});
+});
+
+it.each([[20,100,320,400],[-100,-20,200,280]])('keeps left-edge automatic paging anchored from %s to %s',async(from,to,expectedFrom,expectedTo)=>{
+ marketRead=p=>ready(p.before==null?bars(3000,1800):bars(2700,300));
+ render(<MarketChart fresh/>);await flush();pan(40,140);pan(from,to);await tick();
+ expect(mock.range).toEqual({from:expectedFrom,to:expectedTo});expect(candles()).toEqual(plotted(2700,1800));
+ expect(mode()).toContain('Browsing history');expect(mock.fits).toBe(1);
+ const reads=mock.api.mock.calls.filter(c=>c[0]==='market_chart'&&c[1].before!=null);
+ expect(reads).toHaveLength(1);expect(reads[0][1].before).toBe(3000*60);
+ await tick();expect(mock.range).toEqual({from:expectedFrom,to:expectedTo});
+ expect(mock.api.mock.calls.filter(c=>c[0]==='market_chart'&&c[1].before!=null)).toHaveLength(1);
+});
+
+it('leaves the current range alone for loading, failed and empty older pages',async()=>{
+ let page:any={...ready(bars(2700,300)),loading:true,page_status:'loading'};
+ marketRead=p=>p.before==null?ready(bars(3000,1800)):page;
+ render(<MarketChart fresh/>);await flush();pan(1900,2000);const old=candles(),ranges=mock.ranges.length;
+ await older();expect(candles()).toEqual(old);expect(mock.ranges).toHaveLength(ranges);
+ page={candles:[],loading:false,page_status:'error',error:'Temporary older failure'};await tick();
+ expect(candles()).toEqual(old);expect(mock.range).toEqual({from:1900,to:2000});expect(mock.ranges).toHaveLength(ranges);
+ page=ready([]);fireEvent.click(screen.getByRole('button',{name:'Retry older history'}));await tick();
+ expect(candles()).toEqual(old);expect(mock.range).toEqual({from:1900,to:2000});expect(mock.ranges).toHaveLength(ranges);
+ expect(screen.queryByText(/Available history boundary reached/)).toBeNull();expect(mock.fits).toBe(1);
+});
+
 it('preserves history through loading, errors and empty return pages; repeated clicks do not restart a request',async()=>{
  render(<MarketChart fresh/>);await flush();await older();pan(100,180);const old=candles();
  let recent:any={...ready(bars(5000,300)),loading:true,page_status:'loading'};marketRead=()=>recent;

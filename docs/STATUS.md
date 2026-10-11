@@ -6,6 +6,61 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Older-page viewport retention correction — 2026-10-11
+
+The successful older-page path now keeps the same logical zoom when the
+oldest-first 1,800-bar cap discards the entire visible window. First translate
+by a shared candle timestamp, preserving gaps, fractional anchors, partial
+overlap and intentional whitespace. Only a wholly out-of-window result moves
+to the nearest retained boundary; disjoint buffers without a shared timestamp
+use the retained right boundary. Empty, loading and failed older responses do
+not apply the correction. Browsing history stays active; no Fit, price-scale
+reset, extra fetch or persistent state is introduced. Ordinary recent polling
+and Return retain their existing navigation rules. This supersedes the discarded-
+newest-edge limitation recorded for the earlier ADR 0045 browser pass below.
+
+One focused verification pass passed **44 tests across three files** in
+**5.65 seconds**: chartWindow, MarketChartNavigation and LiveChart. Independent
+expected ranges cover a fully evicted 100-bar viewport, fractional retained
+anchors, left whitespace, partial overlap, exact boundary contact, wide zoom,
+gapped/disjoint/single/empty windows and invalid range guards. Component checks
+cover successful older-page integration, automatic left-edge paging without
+extra requests, loading/error/empty preservation, the exact exclusive cursor,
+unchanged 1,800-bar retention, recent-poll and Return isolation, retained
+log/manual scale modes and the existing settings/drawing/race regressions.
+`node scripts/frontend.mjs build` passed TypeScript `--noEmit` and production
+Vite build; the existing >500 kB bundle advisory remains non-failing.
+Independent read-only review of frozen commit
+`8568f1649f0c34529d740a5092ae280f70c96ced` found no blockers in source or the
+documented scope. No backend or complete regression suite was rerun for this
+narrowly scoped frontend change. Simulated-DOM assertions alone do not establish
+browser geometry, native/Windows or owner acceptance. No backend, schema,
+provider, cache/acquisition, dependency, formula or trading behavior changed.
+
+Parent-led actual-chart browser acceptance passed on that exact frozen source
+using an isolated, synthetic component wrapper and the pinned chart library.
+At approximately 110-bar zoom, 15-minute tick spacing stayed approximately
+108 px. The initial newest candle was January 2 16:00. The first Older page
+moved the retained newest candle to 11:00 and the second moved it to 06:00.
+Both kept a useful full viewport at the same zoom, Browsing history and the
+correct exhaustion state. Return restored the 16:00 newest edge.
+
+A partial-retention view spanning approximately 10:45–12:30 preserved the 10:45
+and 11:00 labels at approximately x=100/208 px when Older retained data only
+through 11:00; the remaining right whitespace was intentional. Automatic
+left-edge paging was exercised after Fit and manual panning with the older
+acquisition held. Releasing the held page filled the left side while the
+06:00/09:00/12:00 labels stayed at approximately x=213/303/394 px, without a
+rightward jump. History mode and the available-history boundary stayed correct.
+This is held-acquisition evidence, not a delayed HTTP response race test.
+
+The frozen source remained unchanged throughout acceptance. This establishes
+the listed real-library viewport interactions in the synthetic component wrapper,
+not full-application, live-provider, native/Windows, narrow-layout or owner
+unaided acceptance. No additional tests or build were rerun for this documentation-
+only acceptance record; the focused evidence above remains the source gate.
+
+
 
 ## Explicit latest-chart navigation candidate — 2026-10-11
 

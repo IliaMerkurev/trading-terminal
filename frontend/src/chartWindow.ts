@@ -19,13 +19,28 @@ export function latestChartRange(range:ChartRange,count:number):ChartRange{
  const to=Math.max(0,count-1)+Math.min(2,Math.max(0,width/4));
  return {from:to-width,to};
 }
-export function preserveChartRange(previous:LiveCandle[],next:LiveCandle[],range:ChartRange):ChartRange{
+function chartRangeShift(previous:LiveCandle[],next:LiveCandle[]):number|null{
  const indexes=new Map(next.map((row,index)=>[row.time,index]));
  for(let index=0;index<previous.length;index++){
   const nextIndex=indexes.get(previous[index].time);
-  if(nextIndex!==undefined){const shift=nextIndex-index;return {from:range.from+shift,to:range.to+shift};}
+  if(nextIndex!==undefined)return nextIndex-index;
  }
- return range;
+ return null;
+}
+export function preserveChartRange(previous:LiveCandle[],next:LiveCandle[],range:ChartRange):ChartRange{
+ const shift=chartRangeShift(previous,next);
+ return shift===null?range:{from:range.from+shift,to:range.to+shift};
+}
+// Older-page retention may evict the entire visible window. Preserve timestamp
+// anchors and intentional whitespace whenever any of that window still overlaps.
+export function olderChartRange(previous:LiveCandle[],next:LiveCandle[],range:ChartRange):ChartRange{
+ const width=range.to-range.from;
+ if(!next.length||!Number.isFinite(range.from)||!Number.isFinite(width)||width<0)return range;
+ const shift=chartRangeShift(previous,next),last=next.length-1;
+ const mapped=shift===null?range:{from:range.from+shift,to:range.to+shift};
+ if(shift===null||mapped.from>last)return {from:last-width,to:last};
+ if(mapped.to<0)return {from:0,to:width};
+ return mapped;
 }
 // The chart's shared logical domain must contain only the current candles,
 // including when an asynchronous display result still describes an older page.

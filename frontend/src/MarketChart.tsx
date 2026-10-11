@@ -3,7 +3,7 @@ import {createChart,CandlestickSeries,LineSeries,createSeriesMarkers,ColorType} 
 import {api} from './api';
 import {poll} from './poll';
 import {displayIndicator,displayIntervals,liveMarkers,type LiveCandle} from './liveChartData';
-import {mergeChartWindow,preserveChartRange,latestChartRange,chartShowsLatest,indicatorWindow} from './chartWindow';
+import {mergeChartWindow,preserveChartRange,olderChartRange,latestChartRange,chartShowsLatest,indicatorWindow} from './chartWindow';
 import ChartDrawings from './ChartDrawings';
 import ChartIndicators,{indicatorName} from './ChartIndicators';
 import {useChartIndicators} from './useChartIndicators';
@@ -30,7 +30,7 @@ export default function MarketChart({source='bybit',sessionId,market='spot',symb
   updateIndicatorSeries(owned.current,null);
   chartRef.current?.clearCrosshairPosition?.();setHoverTime(null);
  };
- const apply=(next:LiveCandle[],replace=false)=>{
+ const apply=(next:LiveCandle[],{replace=false,older=false}:{replace?:boolean;older?:boolean}={})=>{
   const series=candleRef.current,chart=chartRef.current;if(!series||!chart)return;
   const previous=current.current,range=chart.timeScale().getVisibleLogicalRange?.();
   applying.current=true;userNavigation.current=false;
@@ -53,6 +53,7 @@ export default function MarketChart({source='bybit',sessionId,market='spot',symb
   else if(range){
    const nextRange=replace?latestChartRange(range,next.length)
     :follows.current?{from:range.from+next.length-previous.length,to:range.to+next.length-previous.length}
+    :older?olderChartRange(previous,next,range)
     :preserveChartRange(previous,next,range);
    if(nextRange)chart.timeScale().setVisibleLogicalRange?.(nextRange);
   }
@@ -135,7 +136,7 @@ export default function MarketChart({source='bybit',sessionId,market='spot',symb
     }
     if(page.loading)return;
     historical.current=false;pendingReturn.current=false;setReturning(false);setReturnError('');setError('');setExhausted(false);atBoundary.current=false;follow(true);
-    apply(mergeChartWindow([],page.candles),true);return;
+    apply(mergeChartWindow([],page.candles),{replace:true});return;
    }
    setError(page.error??'');
    if(before!=null){if(!page.loading){
@@ -145,7 +146,7 @@ export default function MarketChart({source='bybit',sessionId,market='spot',symb
     // Empty cached data is not proof of completion while a page awaits fetching.
     if(page.page_status!=='ready'&&page.page_status!=='end')return;
     const incoming=(page.candles??[]).filter((c:LiveCandle)=>c.time<before);
-    if(incoming.length){historical.current=true;follow(false);apply(mergeChartWindow(current.current,incoming,true));}
+    if(incoming.length){historical.current=true;follow(false);apply(mergeChartWindow(current.current,incoming,true),{older:true});}
     if(page.page_status==='end'&&page.exhausted){setExhausted(true);atBoundary.current=true;}
     paging.current=null;
    }}else{
