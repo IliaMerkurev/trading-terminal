@@ -6,6 +6,151 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Observation-to-Lab resolution correction and browser evidence — 2026-10-11
+
+Parent-led production-browser checks on `d9f9640` completed both daily strategy
+runs and their passive controls: six completed reports in two completed batches.
+C12 fills 115.5/118.5, quantity 0.8, fees 0.1872 and net PnL 2.2128; C13
+fills 113.5/128.5, quantity 0.8, fees 0.1936 and net PnL 11.8064 matched independent
+expectations. These GUI runs used **10% allocation of initial 1000 USDT**, not
+the automated fixed 100 USDT profile. Their one-entry quantities coincide; this
+is not general sizing-model equivalence. All data remained synthetic/local.
+
+The browser found that transferring a daily observation updated source execution
+to 1440 minutes but retained the shared draft's hidden primary 60. Backend profile
+validation correctly rejected that incompatible pair before applying selected
+card timeframes. Explicitly toggling resolution repaired the draft for the above
+runs. The narrow frontend correction now preserves an already compatible shared
+primary or adopts source resolution when incompatible. It changes no strategy
+rules, backend validation, financial execution or saved report.
+
+An App-to-real-Lab request regression covers 15/60/240/1440-minute observations,
+including direct daily Review without the workaround, unchanged source/dates,
+costs/capital and supported per-card signal timeframe. Independent read-only
+review approved the correction. Focused 44 frontend tests passed; the first
+attempt had only a text-matcher mismatch against the preview's checkmark prefix,
+corrected without changing expected request values. Final aggregate: **485 frontend tests / 54 files** passed, followed by successful
+TypeScript and production Vite build. The existing chunk-size warning remains
+nonfatal. Staged diff/privacy review and pinned secret scans cover this change.
+
+Read-only closed-workspace reconciliation verified all six raw result hashes,
+matching snapshots/summaries, **195 exact normalized rows across all eight
+series**, two completed batch snapshots, SQLite integrity/foreign keys and zero
+native trust. Existing run artifacts were preserved; no financial reruns were
+performed for this frontend-only correction. The earlier 454-test backend result
+is retained for unchanged Python source, not represented as a new backend run.
+
+The same browser pass verified that a reviewed three-test setup survived modal
+close, Z–A card order and search changes, and reopened Start worked. An R2 copy
+created from Lab settings rejected lag 1001 for Save/Run; restoring 2 saved it.
+Final parent browser checks on `ef8f29c` reopened the saved R2 copy with its
+SMA200, RSI2 and lag1/lag2 graph, and a fresh app state transferred the daily
+observation directly to a successful three-row Review without toggling resolution.
+No financial rerun was needed. Test all retained both 4h and 1d selections; this
+daily-only GUI fixture correctly blocked mixed-resolution review with an explicit
+4h-versus-1d source message. Candidate-specific unavailable-row rendering remains
+automated coverage rather than a claimed full GUI preview on H4 history. Actual
+card screenshots were inspected, and the service stopped cleanly. No Windows/
+native, narrow-screen or empirical profitability acceptance follows.
+
+## C12/C13 daily reversion engineering slice — 2026-10-11
+
+Added **Double 7's daily reversion (C12)** and **Improved R2 daily reversion
+(C13)** as daily spot long/flat clean-room graph templates. Current-inclusive
+rolling minimum/maximum and completed-primary-bar lag nodes have bounded typed
+parameters, null-slot retention, clone/commit causality, editor support and
+experiment warmup. Catalog copies/research enforce closed evaluation, rejected
+gaps and no position-management overlay. Existing seven templates/defaults and
+old archives remain unchanged. Full-catalog 4h/1d defaults retain explicit
+unavailable daily-candidate 4h rows; local card timeframe edits still work after
+closing batch setup. See [ADR 0039](adr/0039-daily-reversion-candidates.md).
+
+Source cards disclose primary author/URL/publication/review date, source versus
+local settings, execution/RSI adaptations, exact project-authored rule-summary
+hash scope and implementation evidence. Their status is **Synthetic implementation
+verified; empirical validation not performed**. Referenced articles retain their
+own rights. No source profitability claim, copied external code or private
+market history is included.
+
+Final-source automated verification on Linux:
+
+- `.venv/bin/python -m unittest discover -s tests -v`: **454 tests**, **8 expected
+  platform skips**, zero failures/errors, 191.842 seconds.
+- `node node_modules/vitest/vitest.mjs run`: **481 tests / 53 files**, all passed.
+- `node scripts/frontend.mjs build`: TypeScript and production Vite build passed.
+- Runtime validation confirms Python 3.12.14 / NautilusTrader 1.231.0;
+  `python -m pip check` reports no broken requirements.
+- Independent read-only financial/source review approved the final rules,
+  numerical fixtures, gap admission, catalog compatibility and card-state fixes.
+  Pinned Gitleaks 8.30.1 staged-diff scan found no secrets; privacy/license and
+  diff-whitespace review passed.
+
+The new 12-test backend module independently checks rational RSI, exact source
+boundaries, extrema/lag arithmetic and null slots, repeated forming updates,
+future invariance, costed fills/fees/final flatten, no same-step reentry, prefix
+exclusion, one-short/full/gapped admission, managed worker execution, copy/reopen,
+archive preservation and the full 20-row catalog/default compatibility matrix.
+Final focused compatibility gates also passed 17 backend and 10 frontend tests.
+The fixture generator produced two synthetic/local histories, two graph copies
+and observations, with zero initial runs/batches/native trust.
+
+Initial failures are retained in local verification evidence: test fixtures
+incorrectly assumed an absent profile field, supplied an overly broad archive
+descriptor and included a legitimate later reentry day. A later prefix-stage
+test expected a downstream error while public coverage admission correctly
+rejected earlier; its isolation was corrected. The first aggregate therefore
+reported one test-harness error (453 tests, 8 skips). An extended UI regression
+needed a complete preview mock. No expected financial values were changed to
+fit production output. Independent review additionally identified and closed
+skip-gap profile and stale shared-timeframe UI edges before final acceptance.
+The final aggregate above supersedes those failed gates. Existing upstream
+Pandas timestamp deprecation and Vite chunk-size warnings remain nonfatal.
+
+Parent-led real-browser workflow is prepared but not claimed by this automated
+slice; no shared browser was used. Windows/native, owner interpretation, original
+M1/untouched-holdout limitations and empirical C12/C13 validation remain separate.
+No Supertrend, chart-display indicator controls, exchange acquisition, live
+orders, merge or release is delivered here. The prior TT13 exact six-row load
+and completed TT17/TT18 evidence below retain their original source identities;
+this slice does not rerun or rewrite those frozen programs.
+
+## Bounded TT17/TT18 research completed — 2026-10-11
+
+The predeclared H4 research remainder is complete: all 291 observations finished and passed the independent saved-result reopening gate, comprising 228 TT17 neighbor/reference/control observations and 63 TT18 own-adaptation/control observations. No failed/canceled rows, financial retries, extra parameter variants, altered windows or post-result candidate selection were introduced. The original seven-batch campaign remains closed and unchanged.
+
+Execution and verification used commit `1b532796707aa3cf39af681f64148bfabf4b1c86`. Subsequent branch alignment to published commit `9239d53de8ab973d171f6b8e4a2a6d76e9def997` occurred only after the complete campaign, sweep and report finished. Both commits have the identical tested tree `fe6d86fc5709aa70f4b201b7ba5c7bdc0f930ccf`; frozen research identities and saved results were not rewritten.
+
+The fixed model uses retained native H4 BTC-USDT spot history, confirmed H4/UTC D1 signals, independent 1,000 USDT accounts, long/flat graphs, declared fees/slippage and terminal liquidation. Precision, limits and cost rates are explicit manual assumptions, not verified historical venue rules. Graph profile 2 observed-close execution and passive profile 1 scheduled-open execution are disclosed as unmatched execution/risk-capital alternatives.
+
+- **TT17:** six strategy families, two signal intervals and one-axis reference/neighbor settings across the fixed splits and cost scenarios. Ten of twelve family/timeframe robustness conclusions are inconclusive under the fixed observation-count criterion; one is sensitive and one locally consistent. Nine exhibit descriptive screen/PnL-sign sensitivity. The locally consistent historical-return H4 group is consistently loss-making across its 18 reference/neighbor cells. No neighbor is promoted by this program.
+- **TT18:** the six independently authored slow-ROC/deadband graphs passed the implementation gate. None qualifies for retrospective promotion; all remain sparse/inconclusive under the fixed candidate rule. The paired 1% deadband descriptive turnover/cost criterion is supported at lookback 180, but not at 30 or 90; that limited observation does not satisfy the overall candidate gate or establish profitability.
+- **Path check:** all nine A18 OLHC/OHLC pairs have identical fills and reported metrics. Their H4-close account states and within-H4 equity-value multisets agree; raw equity ordering differs with the modeled intrabar path. This does not substitute for native M1 or tick evidence.
+
+Negative and sparse conclusions are valid completion outcomes. No strategy was adopted for production/live orders and no additional strategy family was opened after these results. The twenty-position screen remains a descriptive heuristic, not statistical significance or a profitability guarantee.
+
+### Exact-source verification
+
+The independent TT18 fixture gate covered all six graphs and twelve required check categories, including selected-bar warmup, fractional ROC and exact threshold ties, deadband retention/no pyramiding, UTC D1 aggregation from heterogeneous H4 inputs, incomplete-day suppression, future-data perturbation, zero-denominator failure, independent costed fills/terminal close and h=0 control parity.
+
+After all empirical panels ended and workspace ownership closed, an independent read-only sweep reopened all 291 unique saved results and verified:
+
+- complete planned-row/admission/run mapping, immutable strategy/profile/dataset/runtime identity and raw result/snapshot checksums;
+- every saved summary field and all eight normalized series, including exact indexes/order/counts/content and saved candles against source history;
+- terminal finalization ownership, receipt sequence/content hashes/chains, byte/row totals and bounded staging rules;
+- independent signed-fill cash/fee reconciliation, final flat inventory, trade PnL/count/win rate, equity-derived drawdown, fill rounding/timing, warmup exclusion, passive schedules and annualization conventions;
+- dataset source/file/content identities, SQLite integrity, and exactly 291 new freezes/admissions/completions, separately from retained prior research evidence.
+
+No raw source data or full fill/equity outputs are included in the repository or release. Saved-result verification is distinct from UI display evidence and unaided owner interpretation.
+
+### Remaining conditional or deferred acceptance
+
+- **M1 detail probe:** not executed. The required complete native-minute history prefix is unavailable. The original fixed window remains unchanged; no shortening, synthetic repair or higher-timeframe substitution is treated as a pass.
+- **Untouched/prospective holdout:** none established. All historical windows were previously exposed. A later genuinely prospective study would require a separately frozen observation/release rule; no qualifying candidate was promoted or future program scheduled here.
+- **Windows:** native Windows runtime/lifecycle/transport acceptance remains deferred and is not established by Linux/browser or research measurements.
+- **Owner interpretation:** automated execution/report reopening does not replace the separately retained unaided-owner acceptance task.
+
+This closes the bounded H4 TT17 neighbor deliverable and the single predeclared TT18 own-adaptation program. Conditional M1/future-data gaps and deferred platform/owner acceptance must remain explicitly labeled; they are not silently marked passed.
+
 
 ## TT13 exact-source combined acceptance — 2026-10-11
 

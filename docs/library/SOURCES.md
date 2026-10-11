@@ -36,3 +36,18 @@ No external code was copied, installed or executed. The Donchian source is an
 indicator reference, not an upstream complete strategy. The EMA graph expands
 spot/coarse access to an existing family. Seven templates cover four families;
 this does not imply seven unrelated investment ideas.
+
+## Later daily rule candidates — 2026-10-11
+
+C12 Double 7's and C13 Improved R2 add daily spot long/flat rule adaptations,
+separately from the original seven templates and completed frozen research.
+Primary sources are [Cesar Alvarez's Double 7's exposition (2016-02-10)](https://alvarezquanttrading.com/blog/double-7s-strategy/)
+and [Larry Connors' Improved R2 rules (2007-02-21)](https://tradingmarkets.com/recent/the_improved_r2_strategy_84_correct_with_just_6_rules_-674361),
+independently reviewed on 2026-10-11. No source code or article text is copied;
+referenced articles retain their own rights. Source commit is not applicable.
+Catalog SHA256 hashes identify exact project-authored UTF-8 bounded rule strings
+in terminal/daily_rules.py, including final newline, not upstream page content.
+See [ADR 0039](../adr/0039-daily-reversion-candidates.md) for exact rules, source
+versus local parameters, RSI/execution adaptations and independent fixtures.
+Both are synthetic implementation-verified; empirical validation is not performed.
+No source return claim transfers to these implementations.

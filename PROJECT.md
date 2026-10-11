@@ -440,3 +440,19 @@ This import slice does not close TT13: export/download, chart-integrity reads an
 local result finalization retain their separately recorded remaining work. TT10
 modeled/source budgets and independent spot contracts are unchanged. Windows,
 native, new exchange/live and remaining bounded research acceptance stay separate.
+
+### Later authorized bounded catalog additions — 2026-10-11
+
+After the original bounded TT17/TT18 program completed, add C12 Double 7's and
+C13 Improved R2 as independently authored daily spot long/flat graph candidates.
+Use generic current-inclusive numeric rolling minimum/maximum and completed-bar
+lag nodes with editor support. Preserve all existing templates/defaults and
+archives. Both candidates initially support historical closed daily execution,
+strict gaps, configured profile-2 costs/sizing and no position-management overlay.
+Separate synthetic implementation verification from empirical validation, which
+has not been performed for these additions; do not count them as satisfying an
+unperformed cached-market acceptance gate. Source rules, adaptations, authored
+rule-summary hashes and limitations are explicit in ADR 0039 and catalog cards.
+Test all strategies retains its 4h/1d default and unavailable rows; individual new
+cards offer daily only. No optional Supertrend, chart-display indicator controls,
+new source acquisition, live orders, main merge or release belongs to this slice.

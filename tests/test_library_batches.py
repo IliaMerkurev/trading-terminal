@@ -119,7 +119,7 @@ class LibraryBatchTests(unittest.TestCase):
 
     def test_all_catalog_matrix_shared_contract_and_durable_unavailable_rows(self):
         from terminal.library import catalog, MAX_LIBRARY_ROWS
-        entries=catalog()
+        entries=[e for e in catalog() if not e.get('candidate_id')]  # Original seven-entry matrix stays frozen.
         params=copy.deepcopy(self.params)
         params['selections']=[dict(entry_id=e['id'],version=e['version'],minutes=m,parameters={}) for e in entries for m in (1,3)]
         # Small independent history needs a later window for all default warmups.

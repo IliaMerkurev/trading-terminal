@@ -6,6 +6,51 @@ new local-finalization surface has parent-led production-browser coverage. This 
 packaged release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
 product specification; [STATUS.md](STATUS.md) owns detailed test evidence.
 
+## Current daily reversion checkpoint
+
+The latest narrow frontend correction keeps the shared Lab profile compatible
+when transferring a saved observation into daily/H4 research. Parent-led browser
+runs on the preceding source completed both synthetic candidate lifecycles and
+passive controls with exact costs; they used Lab percentage sizing and an explicit
+resolution-toggle workaround. Read-only reconciliation preserved all six reports
+and 195 normalized rows. Straight observation transfer and editor-copy reopen on
+the corrected build passed parent browser checks. Full-catalog 4h/1d choices were
+retained; mixed-resolution review was correctly blocked by the daily-only fixture.
+Candidate-specific unavailable rows have automated coverage. See newest STATUS.
+
+C12 Double 7's and C13 Improved R2 are available as daily spot long/flat
+clean-room graph candidates with editable rolling extrema/closed-bar lag nodes.
+Source and authored-rule hash disclosures explicitly distinguish synthetic
+implementation verification from empirical validation, which is not performed.
+Existing defaults/archive contracts remain intact, including the 4h/1d full-
+catalog selection with unsupported daily-candidate rows shown unavailable.
+See [ADR 0039](adr/0039-daily-reversion-candidates.md) and STATUS for exact rules,
+independent arithmetic, costed execution, prefix/gap and persistence evidence.
+
+Final Linux aggregate: 454 backend tests (8 expected platform skips), 481
+frontend tests (485 after the narrow observation-transfer correction), TypeScript/production build and runtime/dependency verification
+passed. Independent financial/source/UI-state review approved the final source.
+The new-only synthetic/local fixture and manual workflow are in DEVELOPMENT.md.
+Parent-led bounded browser acceptance is recorded above; Windows/native, owner acceptance and
+empirical C12/C13 work are not implied. No extra strategy, chart-indicator, live,
+exchange-acquisition, merge or release scope is included. Product stays 0.6.0-dev.
+
+## Bounded original research completion
+
+All 291 predeclared TT17/TT18 observations completed and passed independent saved-result
+reopening: 228 neighbor/reference/control observations and 63 own-adaptation/control
+observations. No failed/cancelled rows, financial retries, changed windows or post-result
+selection. Six slow-ROC/deadband variants passed implementation checks; none qualified
+for promotion. Sparse, sensitive and loss-making conclusions are retained.
+
+Execution used `1b532796707aa3cf39af681f64148bfabf4b1c86`; subsequent alignment to
+`9239d53de8ab973d171f6b8e4a2a6d76e9def997` retained identical tested tree
+`fe6d86fc5709aa70f4b201b7ba5c7bdc0f930ccf`. Saved identities remain unchanged.
+See STATUS for aggregate evidence and limits. Required native-minute prefix is
+unavailable, no untouched holdout exists, and Windows/native and unaided-owner
+acceptance remain deferred. The later C12/C13 additions are a separate engineering
+slice, not new variants of this completed frozen campaign.
+
 ## Current TT13 verified-read checkpoint
 
 Both saved chart routes and observation-save verification use the independent

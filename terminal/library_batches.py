@@ -52,14 +52,16 @@ class LibraryBatchManager(ExperimentManager):
                 prepared = library.for_window(library.prepare(**selection),start)
             except (ValueError,OSError,PackageNotFoundError) as exc:
                 entry=next((e for e in library.catalog() if e['id']==selection.get('entry_id') and e['version']==selection.get('version')),None)
-                if entry is None or entry['kind']!='Native':raise
+                unsupported=entry is not None and type(selection.get('minutes')) is int and selection['minutes'] in library.TIMEFRAMES and selection['minutes'] not in entry['timeframes']
+                if entry is None or (entry['kind']!='Native' and not unsupported):raise
+                # Keep incompatible timeframe rows visible in full-catalog comparisons.
                 # A missing/changed optional native source cannot hide graph results.
                 key=digest(selection)
                 if key in seen:raise ValueError('Duplicate strategy/version/parameter/timeframe row')
                 seen.add(key)
-                rows.append(dict(kind='native',name=entry['name'],selection=selection,contract=None,document=None,
+                rows.append(dict(kind='native' if entry['kind']=='Native' else 'graph',name=entry['name'],selection=selection,contract=None,document=None,
                     profile={**profile.snapshot(),'primary_minutes':selection['minutes']},dataset=self._dataset(manifest),
-                    error=f'Native preparation unavailable: {exc}',source_default_minutes=entry['source_default_minutes'],
+                    error=(f'Strategy timeframe unavailable: supports {entry["timeframes"]} minutes only' if unsupported else f'Native preparation unavailable: {exc}'),source_default_minutes=entry['source_default_minutes'],
                     author_recommended_minutes=entry['author_recommended_minutes']))
                 continue
             key = digest(prepared['contract'])
@@ -71,6 +73,8 @@ class LibraryBatchManager(ExperimentManager):
             try:row_profile=Profile(**row_profile).snapshot()
             except ValueError as exc:error=str(exc)
             if profile.market not in entry['markets']:error = 'Strategy does not support this market'
+            elif entry.get('candidate_id') in ('C12','C13') and (profile.position_management is not None or profile.gap_policy!='reject'):
+                error = 'Daily candidate research requires rejected gaps and no position-management overlay'
             elif prepared['kind']=='native':
                 report = native_preview(prepared['document'])
                 if profile.execution_minutes!=1:error = 'Native Python requires detailed M1 execution history'
@@ -147,7 +151,8 @@ class LibraryBatchManager(ExperimentManager):
             try:prepared=library.prepare(**selection)
             except (ValueError,OSError,PackageNotFoundError):
                 entry=next((e for e in library.catalog() if e['id']==selection.get('entry_id') and e['version']==selection.get('version')),None)
-                if entry is None or entry['kind']!='Native':raise
+                unsupported=entry is not None and type(selection.get('minutes')) is int and selection['minutes'] in library.TIMEFRAMES and selection['minutes'] not in entry['timeframes']
+                if entry is None or (entry['kind']!='Native' and not unsupported):raise
                 continue  # Preview retains this unavailable row and its reason.
             step=selection['minutes']*60
             required=max(required,((manifest['range'][0]+step-1)//step+prepared['contract']['warmup_bars'])*step)
@@ -311,6 +316,11 @@ class LibraryBatchManager(ExperimentManager):
                     aggregate.update(bar)
                 if len(aggregate.closed)<row['contract']['warmup_bars']:
                     raise ValueError('History gaps leave insufficient complete warmup bars')
+                if row['contract'].get('candidate_id') in ('C12','C13'):
+                    step=row['profile']['primary_minutes']*60
+                    expected=range(frozen['start']-row['contract']['warmup_bars']*step,frozen['start'],step)
+                    if [bar.time for bar in aggregate.closed] != list(expected):
+                        raise ValueError('Daily candidate requires contiguous complete preceding warmup bars')
 
         return unavailable
 

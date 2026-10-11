@@ -173,3 +173,39 @@ it('batches every catalog card despite filters with shared settings and fixed pe
  await vi.waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({dataset_id:'history',start:86400,end:172800,profile:expect.objectContaining({capital:defaultProfile.capital,fee_rate:defaultProfile.fee_rate}),selections:entries.flatMap((e,i)=>[60,240,1440].map(minutes=>({entry_id:e.id,version:1,minutes,parameters:{period:i===0?7:14}})))})));
  expect(vi.mocked(api).mock.calls.some(([command])=>/start|trust|library_copy/.test(command))).toBe(false);
 });
+
+it('discloses daily candidate authored-rule provenance and separates synthetic from empirical verification',async()=>{
+ const daily={...entry,id:'double-seven-reversion',name:"Double 7's daily reversion",candidate_id:'C12',availability:'implementation_verified',timeframes:[1440],
+  source_version_date:'2016-02-10',source_retrieved_date:'2026-10-11',source_sha256:'a'.repeat(64),rule_summary_version:1,
+  source_hash_basis:'Exact authored UTF-8 rule bytes, not upstream page content.',empirical_validation:'not_performed',verification_artifact:'tests/test_daily_reversion.py',
+  verification:'Synthetic independent fixtures only. No profitability claim.'};
+ vi.mocked(api).mockClear().mockImplementation(async command=>command==='library_catalog'?[daily]:command==='library_batch_history'?{rows:[],next:null}:{});
+ render(<StrategyLibrary onCopy={vi.fn()}/>);const card=await screen.findByRole('article',{name:daily.name});
+ expect(within(card).getByText('Synthetic implementation verified')).toBeTruthy();
+ expect(within(card).getByText('Empirical validation: not performed.')).toBeTruthy();
+ expect(within(card).getByText(daily.source_hash_basis)).toBeTruthy();
+ expect(within(card).getByRole('link',{name:'Inspect primary rule source ↗'}).getAttribute('href')).toBe(daily.source_url);
+ expect(within(card).getByLabelText(`${daily.name} timeframe`).querySelectorAll('option')).toHaveLength(1);
+});
+
+it('retains all-strategy 4h and 1d defaults when a new card supports only daily',async()=>{
+ const existing={...entry,timeframes:[60,240,1440]},daily={...entry,id:'improved-r2-reversion',name:'Improved R2 daily reversion',timeframes:[1440]};
+ vi.mocked(api).mockClear().mockImplementation(async command=>command==='library_catalog'?[existing,daily]:command==='library_batch_history'?{rows:[],next:null}:command==='library_warmup'?{start:86400,end:172800,available:true}:command==='library_batch_preview'?{rows:[],contract_sha256:'f'.repeat(64)}:{});
+ render(<StrategyLibrary onCopy={vi.fn()} profile={{...defaultProfile,execution_minutes:60}} datasets={[{id:'history',market:'spot',symbol:'BTCUSDT',interval_seconds:3600,range:[0,172800],source:'Synthetic'}]}/>);
+ const card=await screen.findByRole('article',{name:daily.name});
+ expect(within(card).getByLabelText(`${daily.name} timeframe`).querySelectorAll('option')).toHaveLength(1);
+ fireEvent.click(screen.getByRole('button',{name:'Test all strategies'}));
+ expect((screen.getByLabelText('Batch timeframe 4h') as HTMLInputElement).checked).toBe(true);
+ expect((screen.getByLabelText('Batch timeframe 1d') as HTMLInputElement).checked).toBe(true);
+ expect(screen.getByText('4 selected tests · 2 strategies · 2 timeframes',{selector:'summary'})).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Batch dataset'),{target:{value:'history'}});
+ await vi.waitFor(()=>expect((screen.getByRole('button',{name:'Review test'}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole('button',{name:'Review test'}));
+ await vi.waitFor(()=>expect(api).toHaveBeenCalledWith('library_batch_preview',expect.objectContaining({selections:[existing,daily].flatMap(e=>[240,1440].map(minutes=>({entry_id:e.id,version:1,minutes,parameters:{period:14}})))})));
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
+ fireEvent.change(screen.getByLabelText(`${existing.name} timeframe`),{target:{value:'60'}});
+ await vi.waitFor(()=>expect(api).toHaveBeenCalledWith('library_warmup',expect.objectContaining({selections:[...([60,1440].map(minutes=>({entry_id:existing.id,version:1,minutes,parameters:{period:14}}))),...([240,1440].map(minutes=>({entry_id:daily.id,version:1,minutes,parameters:{period:14}})))]})));
+ fireEvent.click(screen.getByLabelText(`${existing.name} compare 1d`));
+ await vi.waitFor(()=>expect(api).toHaveBeenCalledWith('library_warmup',expect.objectContaining({selections:[{entry_id:existing.id,version:1,minutes:60,parameters:{period:14}},...([240,1440].map(minutes=>({entry_id:daily.id,version:1,minutes,parameters:{period:14}})))]})));
+
+});

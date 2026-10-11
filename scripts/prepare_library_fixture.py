@@ -31,7 +31,8 @@ def create_fixture(root):
     root.mkdir(parents=True, exist_ok=False)
     store = DatasetStore(root / 'datasets')
     selections = [dict(entry_id=entry['id'], version=entry['version'], minutes=minutes, parameters={})
-                  for entry in catalog() for minutes in (240, 1440)]
+                  for entry in catalog() if entry['id'] in ('donchian-breakout','ema-trend','historical-return',
+                      'macd-tolerance','bb-rsi-reversion','native-ema-cross','rsi-threshold') for minutes in (240, 1440)]
     warmup_seconds = max(prepare(**selection)['contract']['warmup_bars'] * selection['minutes'] * 60
                          for selection in selections)
     metadata = dict(instrument=dict(symbol='BTCUSDT', baseCoin='BTC', quoteCoin='USDT',

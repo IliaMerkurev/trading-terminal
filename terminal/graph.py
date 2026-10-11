@@ -14,6 +14,7 @@ BOOLEAN = "boolean"
 POSITION_FIELDS = ('position_side','position_size','position_avg_entry','position_unrealized_pnl_pct','bars_since_entry')
 PORTS = {
     "price":{"value":NUMBER}, "constant":{"value":NUMBER}, "multiply":{"value":NUMBER},
+    "rolling_min":{"value":NUMBER}, "rolling_max":{"value":NUMBER}, "lag":{"value":NUMBER},
     "roc":{"value":NUMBER}, "sma":{"value":NUMBER}, "ema":{"value":NUMBER}, "rsi":{"value":NUMBER},
     "bb":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
     "donchian":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
@@ -23,15 +24,16 @@ PORTS = {
 }
 INPUTS = {k:{} for k in ("price","constant","atr","donchian")}
 INPUTS.update({k:{} for k in POSITION_FIELDS})
-INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd","roc")})
+INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd","roc","rolling_min","rolling_max","lag")})
 INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below","multiply")})
 INPUTS.update({k:{"left":BOOLEAN,"right":BOOLEAN} for k in ("and","or")})
 INPUTS["not"] = {"source":BOOLEAN}
 PARAMS = {"price":{"field"}, "constant":{"value"}, "compare":{"operator"},
           "bb":{"period","deviations"}, "macd":{"fast","slow","signal"},
-          **{k:{"period"} for k in ("sma","ema","rsi","atr","roc")},
+          **{k:{"period"} for k in ("sma","ema","rsi","atr","roc","rolling_min","rolling_max")},
           **{k:set() for k in ("cross_above","cross_below","and","or","not","multiply")}}
 PARAMS.update({k:set() for k in POSITION_FIELDS})
+PARAMS['lag']={'bars'}
 PARAMS['donchian']={'upper_period','lower_period'}
 
 
@@ -70,6 +72,10 @@ def validate_graph(graph,allow_incomplete=False):
         for key in ("period","fast","slow","signal","upper_period","lower_period"):
             if key in params and (type(params[key]) is not int or not 1 <= params[key] <= 10000):
                 raise GraphError("Indicator periods must be integers from 1 to 10000")
+        if kind in ("rolling_min","rolling_max","lag"):
+            length = params["bars" if kind == "lag" else "period"]
+            if type(length) is not int or not 1 <= length <= 1000:
+                raise GraphError("Rolling windows and lags must be integers from 1 to 1000")
         if kind == "macd" and params["fast"] >= params["slow"]:
             raise GraphError("MACD fast period must be below slow period")
         if kind == "constant":
@@ -116,6 +122,8 @@ def validate_graph(graph,allow_incomplete=False):
 def indicator_for(node):
     p, kind = node["params"], node["type"]
     if kind == 'donchian':return (deque(maxlen=p['upper_period']),deque(maxlen=p['lower_period']))
+    if kind == "lag": return deque(maxlen=p["bars"])
+    if kind in ("rolling_min","rolling_max"): return deque(maxlen=p["period"])
     if kind == "roc": return deque(maxlen=p["period"]+1)
     if kind == "sma": return SimpleMovingAverage(p["period"])
     if kind == "ema": return ExponentialMovingAverage(p["period"])
@@ -177,6 +185,19 @@ class GraphEvaluator:
                     result={'upper':upper,'lower':lower,'middle':(upper+lower)/2}
                 highs.append(candle.high);lows.append(candle.low)
                 states[ident]=state
+            elif kind == "lag":
+                # Read BEFORE appending: only completed primary-bar slots count.
+                # Null occupies a slot; forming calls clone and never advance it.
+                if len(state) == params['bars']:
+                    result['value'] = state[0]
+                state.append(inputs['source'])
+                states[ident] = state
+            elif kind in ("rolling_min","rolling_max"):
+                # Current-inclusive window, preserving missing observations.
+                state.append(inputs['source'])
+                if len(state) == params['period'] and all(v is not None for v in state):
+                    result['value'] = (min if kind == 'rolling_min' else max)(state)
+                states[ident] = state
             elif kind == "roc":
                 source=inputs['source']
                 if source is not None:

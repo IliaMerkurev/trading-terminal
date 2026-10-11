@@ -64,7 +64,10 @@ export default function App(){
   const [observationRequest,setObservationRequest]=useState<{dataset?:string;id?:string;revision?:number;request:number}>({request:0});
   const [preferredBatch,setPreferredBatch]=useState({id:'',request:0});
   function observe(id:string,revision?:number,dataset?:string){setObservationsVisited(true);setMarketView('saved');setObservationRequest(v=>({id:id||undefined,revision,dataset,request:v.request+1}));setTab('Live');}
-  function testObservation(o:ObservationContext){setResearchProfile(p=>({...p,market:o.source.market,symbol:o.source.symbol,execution_minutes:o.source.interval_seconds/60}));setResearchDataset(v=>({id:o.source.id,request:v.request+1,observation:o}));setTab('Library');}
+  function testObservation(o:ObservationContext){const minutes=o.source.interval_seconds/60;
+    // The shared profile is validated before each selected card supplies its own timeframe.
+    setResearchProfile(p=>({...p,market:o.source.market,symbol:o.source.symbol,execution_minutes:minutes,
+      primary_minutes:p.primary_minutes%minutes===0?p.primary_minutes:minutes}));setResearchDataset(v=>({id:o.source.id,request:v.request+1,observation:o}));setTab('Library');}
   function navigate(destination:string){if(destination==='Live'&&marketView==='live')setMarketVisited(true);if(destination==='History'){setHistoryContext(null);setHistoryLater(false);setHistoryOrigin(['Strategy','Backtest','Experiments'].includes(tab)?'Backtest':tab==='Comparisons'?'Comparisons':'Library');}setTab(destination);}
   const [name,setName]=useState('SMA research example'),[strategyId,setStrategyId]=useState<string|null>(null),[kind,setKind]=useState<'graph'|'native'>('graph');
   const [native,setNative]=useState<any>(nativeExample),[nativeConfig,setNativeConfig]=useState(JSON.stringify(nativeExample().config,null,2)),[preview,setPreview]=useState<any>(null),[trust,setTrust]=useState(false);

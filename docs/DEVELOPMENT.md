@@ -578,3 +578,38 @@ the serialized HTTP service and exact output on a new isolated workspace. With
 one normal graph calculation is executed; otherwise the input contains an
 independently authored snapshot/result pair and proves persistence only. The
 script refuses an existing destination and records measured scope explicitly.
+
+## Synthetic daily reversion acceptance
+
+Create a new isolated fixture root (refuses any existing destination):
+
+```sh
+.venv/bin/python scripts/prepare_daily_reversion_fixture.py /absolute/new/daily-reversion-fixture
+node scripts/frontend.mjs build
+.venv/bin/python scripts/browser.py --data-root /absolute/new/daily-reversion-fixture --port 8771
+```
+
+Use the printed numeric loopback URL. No network acquisition, exchange session or
+live orders are needed. Both history labels explicitly say Synthetic/local;
+all prices/cost constraints are invented. The fixture contains two saved graph
+copies and observations but no runs or batches.
+
+In Lab find Double 7's and Improved R2, inspect their rule sources/hash basis and
+synthetic-versus-empirical verification status. Only daily timeframe is offered.
+Customize/save/reopen in Pro; inspect Rolling Minimum/Maximum and Closed-bar Lag
+nodes and parameter validation. Keep the unchanged fixture graphs for arithmetic
+checks. In Data open each matching Synthetic/local observation and test only its
+matching candidate with daily execution, capital 1000 and Lab allocation 10%,
+fee0.1%, slippage1%, tick0.5 and quantity step0.1. Lab exposes percentage sizing;
+the automated fixture uses fixed allocation 100. Both produce the same 100 USDT
+first entry in these one-entry cases, but their sizing contracts remain distinct. Review first, then explicitly
+Start. Expected single strategy lifecycle: C12 fills115.5/118.5, fees0.1872,
+net2.2128; C13 fills113.5/128.5, fees0.1936, net11.8064. Passive comparison rows
+are separate calculations and not these strategy expectations.
+
+Check saved report reopening and recorded indicator outputs. An attempted
+one-day-earlier evaluation must disclose insufficient 200-day prefix. Export and
+reimport preserves graph and saved result bytes; imports do not grant native
+trust. Stop the host before rebuilding, and retain fixture versus ordinary
+research data separation. Browser, Windows and owner acceptance are separately
+reported; synthetic values are never presented as market profitability.

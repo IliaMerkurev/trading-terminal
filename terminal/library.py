@@ -4,6 +4,7 @@ import hashlib
 import importlib.metadata
 from pathlib import Path
 
+from terminal.daily_rules import RULES
 from terminal.data import digest
 from terminal.graph import validate_graph
 from terminal.native import preview
@@ -111,6 +112,35 @@ ENTRIES = [
 ]
 
 
+# These hashes identify our reviewed rule summaries, never the full upstream pages.
+for candidate, ident, name, author, url, published, parameters, adaptation in [
+    ('C12','double-seven-reversion',"Double 7's daily reversion",'Cesar Alvarez (reviewed rule exposition)',
+     'https://alvarezquanttrading.com/blog/double-7s-strategy/','2016-02-10',
+     {'trend_period':dict(type='integer',default=200,min=2,max=1000),'window':dict(type='integer',default=7,min=1,max=1000)},
+     'Current-inclusive rolling CLOSE minima/maxima with ties. Entry close > SMA and close equals rolling minimum; exit at rolling maximum. Daily spot long/flat adaptation of published ETF rules; not the later next-open experiment.'),
+    ('C13','improved-r2-reversion','Improved R2 daily reversion','Larry Connors',
+     'https://tradingmarkets.com/recent/the_improved_r2_strategy_84_correct_with_just_6_rules_-674361','2007-02-21',
+     {'trend_period':dict(type='integer',default=200,min=5,max=1000),'rsi_period':dict(type='integer',default=2,min=2,max=997),
+      'first_threshold':dict(type='number',default=65,min=0,max=100),'exit_threshold':dict(type='number',default=75,min=0,max=100)},
+     'Entry-day close > SMA, RSI[t-2] < first threshold, RSI[t-1] < RSI[t-2], RSI[t] < RSI[t-1]; exit RSI > exit threshold. Strict inequalities; no RSI<5 condition. Daily spot adaptation of SPX/derivatives rules with existing Nautilus zero-difference-seeded Wilder RSI; no source-platform numerical parity claimed.'),
+]:
+    ENTRIES.append(dict(id=ident,version=1,name=name,family='mean_reversion',kind='Adapted',candidate_id=candidate,
+        author=author,license='MIT (project-authored implementation); referenced article retains its own rights',
+        source_url=url,source_commit=None,source_version_date=published,source_retrieved_date='2026-10-11',
+        source_sha256=hashlib.sha256(RULES[candidate].encode('utf-8')).hexdigest(),rule_summary_version=1,
+        source_hash_basis=f'Exact UTF-8 bytes of terminal.daily_rules.RULES["{candidate}"] including final newline; project-authored bounded rule summary, not upstream page content.',
+        source_default_minutes=1440,author_recommended_minutes=None,local_default_minutes=1440,
+        timeframe_evidence='Daily and displayed default parameters come from the reviewed rules. Editable bounds are local research choices, not author recommendations.',
+        markets=['spot'],directions=['long'],modes=['historical_closed'],timeframes=[1440],parameters=parameters,
+        dependencies={'nautilus_trader':'1.231.0'},
+        adaptation=adaptation+' Terminal profile v2 observed-close execution, configured costs and sizing. Default local profile: fixed 100 USDT allocation, 0.1% fees, zero slippage, no stop/take, no position-management overlay. No pyramiding or shorts; final flatten uses engine costs.',
+        review='Primary article reviewed; mathematical rules independently authored. No external code, copied article text, new dependency, network access or dynamic execution. Rule-summary hash scope is explicit.',
+        compatibility='Historical closed daily spot only. Complete preceding warmup is required; gaps fail visibly. Existing engine initialization/execution differs from the source instrument and platform.',
+        availability='implementation_verified',empirical_validation='not_performed',
+        verification='Implementation verified on independently authored synthetic arithmetic, costed engine, causality, prefix and archive/editor fixtures. Empirical validation not performed. No profitability claim.',
+        verification_artifact='tests/test_daily_reversion.py; docs/adr/0039-daily-reversion-candidates.md'))
+
+
 def catalog():
     return copy.deepcopy(ENTRIES)
 
@@ -148,6 +178,38 @@ def prepare(entry_id, version, minutes, parameters):
             warmup=max(values['upper_period'],values['lower_period'])+1
         nodes.extend([dict(id='entry',type='compare',inputs={'left':entry_left,'right':entry_right},params={'operator':'>'}),
                       dict(id='exit',type='compare',inputs={'left':exit_left,'right':exit_right},params={'operator':'<'})])
+        graph=dict(version=1,nodes=nodes,outputs=dict(entry_long='entry.value',exit_long='exit.value',entry_short=None,exit_short=None))
+        validate_graph(graph);document={'graph':graph,'layout':{}}
+        profile=Profile(primary_minutes=minutes,version=2).snapshot();kind='graph'
+    elif entry_id in ('double-seven-reversion','improved-r2-reversion'):
+        nodes=[dict(id='close',type='price',inputs={},params={'field':'close'}),
+               dict(id='trend',type='sma',inputs={'source':'close.value'},params={'period':values['trend_period']}),
+               dict(id='aboveTrend',type='compare',inputs={'left':'close.value','right':'trend.value'},params={'operator':'>'})]
+        if entry_id == 'double-seven-reversion':
+            nodes.extend([
+                dict(id='minimum',type='rolling_min',inputs={'source':'close.value'},params={'period':values['window']}),
+                dict(id='maximum',type='rolling_max',inputs={'source':'close.value'},params={'period':values['window']}),
+                dict(id='atMinimum',type='compare',inputs={'left':'close.value','right':'minimum.value'},params={'operator':'=='}),
+                dict(id='entry',type='and',inputs={'left':'aboveTrend.value','right':'atMinimum.value'},params={}),
+                dict(id='exit',type='compare',inputs={'left':'close.value','right':'maximum.value'},params={'operator':'=='})])
+            warmup=max(values['trend_period'],values['window'])
+        else:
+            if values['trend_period'] < values['rsi_period']+3:
+                raise ValueError('Trend period must be at least RSI period + 3')
+            nodes.extend([
+                dict(id='rsi',type='rsi',inputs={'source':'close.value'},params={'period':values['rsi_period']}),
+                dict(id='previousRsi',type='lag',inputs={'source':'rsi.value'},params={'bars':1}),
+                dict(id='firstRsi',type='lag',inputs={'source':'rsi.value'},params={'bars':2}),
+                dict(id='firstThreshold',type='constant',inputs={},params={'value':values['first_threshold']}),
+                dict(id='exitThreshold',type='constant',inputs={},params={'value':values['exit_threshold']}),
+                dict(id='firstBelow',type='compare',inputs={'left':'firstRsi.value','right':'firstThreshold.value'},params={'operator':'<'}),
+                dict(id='previousDecline',type='compare',inputs={'left':'previousRsi.value','right':'firstRsi.value'},params={'operator':'<'}),
+                dict(id='currentDecline',type='compare',inputs={'left':'rsi.value','right':'previousRsi.value'},params={'operator':'<'}),
+                dict(id='descending',type='and',inputs={'left':'previousDecline.value','right':'currentDecline.value'},params={}),
+                dict(id='sequence',type='and',inputs={'left':'firstBelow.value','right':'descending.value'},params={}),
+                dict(id='entry',type='and',inputs={'left':'aboveTrend.value','right':'sequence.value'},params={}),
+                dict(id='exit',type='compare',inputs={'left':'rsi.value','right':'exitThreshold.value'},params={'operator':'>'})])
+            warmup=max(values['trend_period'],values['rsi_period']+3)
         graph=dict(version=1,nodes=nodes,outputs=dict(entry_long='entry.value',exit_long='exit.value',entry_short=None,exit_short=None))
         validate_graph(graph);document={'graph':graph,'layout':{}}
         profile=Profile(primary_minutes=minutes,version=2).snapshot();kind='graph'
@@ -224,6 +286,9 @@ def prepare(entry_id, version, minutes, parameters):
         kind = 'graph'; warmup = values['period'] + 1
     contract = dict(entry_id=entry_id,version=version,source_sha256=entry['source_sha256'],minutes=minutes,parameters=values,
                     document_sha256=digest(document),warmup_bars=warmup)
+    if 'candidate_id' in entry:
+        contract.update(candidate_id=entry['candidate_id'],rule_summary_version=entry['rule_summary_version'],
+                        source_hash_basis=entry['source_hash_basis'])
     return dict(name=entry['name'],kind=kind,document=document,profile=profile,contract=contract)
 
 
@@ -261,6 +326,8 @@ def create_copy(store, profile=None, **request):
         chosen = Profile(**{**profile, 'primary_minutes':prepared['profile']['primary_minutes'],
                             'version':prepared['profile']['version']}).snapshot()
         entry = next(e for e in catalog() if e['id']==request['entry_id'])
+        if entry.get('candidate_id') in ('C12','C13') and (chosen['evaluation']!='closed' or chosen.get('position_management') is not None or chosen['gap_policy']!='reject'):
+            raise ValueError('Daily candidate copies require closed evaluation, rejected gaps and no position-management overlay')
         if chosen['market'] not in entry['markets']:
             raise ValueError('Strategy does not support this market')
     ident = store.save_strategy(prepared['name']+' copy',prepared['kind'],prepared['document'],None,profile=chosen)

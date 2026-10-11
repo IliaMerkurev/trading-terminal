@@ -71,3 +71,10 @@ MovingAverageCrossAlgorithm, and the prior-bar Donchian breakout references its
 DonchianChannel indicator (QuantConnect Corporation, Apache-2.0). No Lean runtime
 or original source module is bundled. Exact source hashes, prior-bar adaptation
 and local research defaults are in docs/adr/0026-research-workspace-and-trend-candidates.md.
+
+The independently authored C12 Double 7's and C13 Improved R2 daily spot graphs
+reference rule articles by Cesar Alvarez (2016-02-10) and Larry Connors
+(2007-02-21), respectively. Those articles retain their authors' rights and are
+not relicensed as MIT. No article text or external source code is bundled.
+Catalog SHA256 values explicitly identify project-authored bounded rule summaries,
+not complete upstream webpages. See docs/adr/0039-daily-reversion-candidates.md.
