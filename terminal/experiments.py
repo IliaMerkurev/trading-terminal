@@ -183,7 +183,8 @@ class ExperimentManager:
             monitor.join(timeout=.1)
             if active['stop'].is_set():
                 with self.jobs.lock:
-                    if self.jobs.active and self.jobs.active['id']==run_id and not self.jobs.active['cancelled']:self.jobs.cancel(run_id)
+                    cancel=bool(self.jobs.active and self.jobs.active['id']==run_id and not self.jobs.active['cancelled'])
+                if cancel:self.jobs.cancel(run_id)
         self.jobs.require_storage_ready()
         return self.store.get(run_id)
 
@@ -236,6 +237,10 @@ class ExperimentManager:
             rows=db.execute('SELECT e.*,r.summary FROM experiment_rows e LEFT JOIN runs r ON r.id=e.run_id WHERE experiment_id=? ORDER BY ordinal',(experiment_id,)).fetchall()
             validations=db.execute('SELECT * FROM validations WHERE experiment_id=? ORDER BY created_at',(experiment_id,)).fetchall()
         result=dict(record);result['snapshot']=json.loads(result['snapshot']);result['rows']=[{**dict(r),'parameters':json.loads(r['parameters']),'summary':json.loads(r['summary']) if r['summary'] else None} for r in rows]
+        for row in result['rows']:
+            if row['status']=='running' and row['run_id']:
+                live=self.jobs.status(row['run_id']);row['progress']=live.get('progress');row['finalization']=live.get('finalization');row['worker_active']=live.get('worker_active')
+                if live['status'] in ('finalizing','cancel_requested'):row['status']=live['status']
         result['validations']=[{**dict(r),'snapshot':json.loads(r['snapshot']),'storage_failure':self.jobs.storage_diagnostic(),'summary':self.store.get(r['run_id'])['summary'] if r['run_id'] else None} for r in validations]
         with self.store.connect() as db:
             for validation in result['validations']:
@@ -249,7 +254,8 @@ class ExperimentManager:
         with self.jobs.lock:
             if not self.active or self.active['id']!=active_id:raise ValueError('That experiment or validation is not active')
             self.active['stop'].set()
-            if self.jobs.active:self.jobs.cancel(self.jobs.active['id'])
+            run_id=self.jobs.active['id'] if self.jobs.active else None
+        if run_id:self.jobs.cancel(run_id)
         return {'status':'cancel_requested'}
 
     def freeze(self,experiment_id,ordinal):
@@ -311,12 +317,10 @@ class ExperimentManager:
 
     def close(self):
         errors=[]
-        with self.jobs.lock:
-            active=self.active
-            if active:
-                try:self.cancel(active['id'])
-                except Exception as exc:errors.append(exc)
+        with self.jobs.lock:active=self.active
         if active:
+            try:self.cancel(active['id'])
+            except Exception as exc:errors.append(exc)
             active['thread'].join(timeout=15)
             if active['thread'].is_alive():errors.append(RuntimeError('Experiment shutdown has not completed'))
         if errors:raise ExceptionGroup('Experiment shutdown cleanup failed',errors)

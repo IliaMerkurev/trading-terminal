@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {api,stopLocalService} from './api';
 import {poll} from './poll';
 
-export const hasActiveWork = (value: any) => ['starting','pending','running','cancel_requested'].includes(value?.status);
+export const hasActiveWork = (value: any) => value?.worker_active===true||['starting','pending','running','finalizing','cancel_requested'].includes(value?.status);
 
 export default function BrowserServiceControls({active,onStopped}:{active:boolean;onStopped:()=>void}) {
   const [background,setBackground]=useState<boolean|null>(null),[statusError,setStatusError]=useState('');

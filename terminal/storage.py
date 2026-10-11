@@ -39,6 +39,8 @@ class RunStore:
                     document TEXT NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS native_trust(identity TEXT PRIMARY KEY, granted_at TEXT NOT NULL);
             """)
+            from terminal.result_finalization import initialize as initialize_local_finalization
+            initialize_local_finalization(db)
             from terminal.archive_receipts import initialize as initialize_archive_receipts
             initialize_archive_receipts(db)
             from terminal.archive_execution import initialize as initialize_archive_execution
@@ -52,8 +54,8 @@ class RunStore:
                 db.execute('ALTER TABLE strategies ADD COLUMN profile TEXT')
 
     @contextmanager
-    def connect(self):
-        db=sqlite3.connect(self.database,timeout=15)
+    def connect(self,*,timeout=15):
+        db=sqlite3.connect(self.database,timeout=timeout)
         db.row_factory=sqlite3.Row
         try:
             with db:
@@ -64,7 +66,7 @@ class RunStore:
     def directory(self,run_id):
         return self.root/"runs"/identifier(run_id)
 
-    def create(self,manifest,*,evidence=None):
+    def create(self,manifest,*,evidence=None,local_generation=None):
         run_id=uuid.uuid4().hex
         write_new(self.directory(run_id)/"snapshot.json",canonical(manifest))
         with self.connect() as db:
@@ -73,10 +75,14 @@ class RunStore:
             if evidence is not None:
                 from terminal.research_evidence import append
                 append(db,'started:'+run_id,'started',evidence,run_id)
+            if local_generation is not None:
+                if evidence is None:raise ValueError('Local worker admission evidence is required')
+                from terminal.result_finalization import register
+                register(db,run_id,local_generation,manifest['snapshot_sha256'])
         return run_id
 
     def status(self,run_id,status,error=None):
-        if status not in ("created","running","cancel_requested","cancelled","failed","interrupted","importing"):
+        if status not in ("created","running","finalizing","cancel_requested","cancelled","failed","interrupted","importing"):
             raise ValueError("Invalid worker status")
         with self.connect() as db:
             changed=db.execute("UPDATE runs SET status=?,error=? WHERE id=? AND status!='completed'",
@@ -235,7 +241,10 @@ class RunStore:
 
     def recover(self):
         with self.connect() as db:
-            db.execute("UPDATE runs SET status='interrupted',error='Application exited before worker or import completion' WHERE status IN ('created','running','cancel_requested','importing')")
+            db.execute("UPDATE runs SET status='interrupted',error='Application exited before worker or import completion' WHERE status IN ('created','running','finalizing','cancel_requested','importing')")
+
+            from terminal.result_finalization import recover
+            recover(db)
 
     def trust_native(self,identity):
         if not isinstance(identity,str) or not re.fullmatch(r"[a-f0-9]{64}",identity): raise ValueError("Invalid native trust identity")

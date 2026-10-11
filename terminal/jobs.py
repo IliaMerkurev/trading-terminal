@@ -14,6 +14,10 @@ from terminal.storage import RunStore
 from terminal.process_lifecycle import lock_workspace,unlock_workspace,worker_job,worker_options,require_native_execution
 
 
+class FinalizerBootstrapError(Exception):
+    pass
+
+
 class JobManager:
     def __init__(self,root):
         workspace=Path(root).resolve()
@@ -57,7 +61,7 @@ class JobManager:
         with self.lock:
             if self.storage_failure is None:
                 self.storage_failure={'id':ident,'kind':kind,'durable':False,
-                    'message':('New calculations and archive imports blocked by storage finalization failure. Inspect the archive operation and saved work, check available storage, and restart the application. Other active work may still be running. No automatic retry.' if kind=='archive_import' else 'Calculations blocked by storage finalization failure. The worker has stopped; saved status may be unfinished. Check available storage and restart the application. No automatic retry.')}
+                    'message':('New calculations and archive imports blocked by storage finalization failure. Inspect the archive operation and saved work, check available storage, and restart the application. Other active work may still be running. No automatic retry.' if kind=='archive_import' else 'Calculations blocked by storage finalization failure. Saved status may be unfinished; owned work may still need cleanup. Check available storage and restart the application. No automatic retry.')}
 
     def storage_diagnostic(self):
         with self.lock:
@@ -196,7 +200,8 @@ class JobManager:
             if self.active is not None: raise ValueError("One backtest is already active")
             from terminal.research_evidence import admission
             try:
-                run_id=self.store.create(snapshot,evidence=admission(snapshot,manifest,owner))
+                generation=uuid.uuid4().hex
+                run_id=self.store.create(snapshot,evidence=admission(snapshot,manifest,owner),local_generation=generation)
             except (OSError,sqlite3.Error):
                 self.latch_storage_failure(owner or 'admission','research_admission')
                 raise
@@ -206,7 +211,7 @@ class JobManager:
                 process=subprocess.Popen([sys.executable,"-m","terminal.worker"],cwd=Path(__file__).resolve().parents[1],
                     stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,**worker_options(job))
                 job.assign(process)
-                self.active={"id":run_id,"process":process,"job":job,"cancelled":False}
+                self.active={"id":run_id,"generation":generation,"process":process,"job":job,"cancelled":False,"phase":"computing"}
                 self.store.status(run_id,"running")
                 reader=threading.Thread(target=self._drain,args=(run_id,process.stdout),daemon=True)
                 reader.start()
@@ -238,41 +243,140 @@ class JobManager:
         stream.close()
 
     def _monitor(self,run_id,process,job,reader):
-        code=process.wait()
-        job.close()  # Also stop any child that outlived the worker.
-        reader.join(timeout=5)
+        from terminal import result_finalization as finalization
         with self.lock:
             active=self.active
-            if active is None or active["id"]!=run_id: return
-            try:
-                if active["cancelled"]:
-                    self.store.status(run_id,"cancelled")
-                elif code==0:
-                    file=self.store.directory(run_id)/"worker-result.json"
-                    self.store.complete(run_id,json.loads(file.read_bytes()))
-                else:
-                    error_file=self.store.directory(run_id)/"worker-error.json"
-                    message=json.loads(error_file.read_bytes())["message"] if error_file.exists() else f"Worker exited with code {code}"
-                    self.store.status(run_id,"failed",message)
-            except (OSError,sqlite3.Error):
+            if active is None or active['id']!=run_id:return
+        anchor=None;cleanup=False;owned_cleanup=False;code=0;error=None
+        try:
+            code=process.wait();job.close();reader.join(timeout=5)
+            if reader.is_alive():raise RuntimeError('Worker log cleanup is incomplete')
+            owned_cleanup=True
+            with self.lock:pending=active.get('cancel_pending')
+            if pending:pending.wait()
+            with self.lock:cancelled=active['cancelled']
+            if not cancelled and code==0:
+                finalization.claim(self.store,run_id,active['generation'])
+                # Keep WAL lifetime in the service while a cancellable finalizer
+                # owns a DB connection; required by the retained Windows path.
+                anchor=sqlite3.connect(self.store.database,timeout=15,check_same_thread=False)
+                anchor.execute('SELECT count(*) FROM sqlite_master').fetchone()
+                new_job=worker_job(self.instance_file);candidate=None;owned_cleanup=False
+                try:
+                    candidate=subprocess.Popen([sys.executable,'-m','terminal.worker'],cwd=Path(__file__).resolve().parents[1],
+                        stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,**worker_options(new_job))
+                    # Retain the same active record and monitor captured by batch
+                    # waiters. GO follows attachment and platform assignment.
+                    with self.lock:
+                        active.update(process=candidate,job=new_job,phase='finalizing')
+                    process=candidate;job=new_job
+                    new_job.assign(candidate)
+                    with self.lock:cancelled=active['cancelled']
+                    if cancelled:new_job.terminate()
+                    else:
+                        candidate.stdin.write(canonical({'version':1,'command':'finalize_run','root':str(self.store.root),
+                            'run_id':run_id,'generation':active['generation']})+b'\n')
+                    candidate.stdin.close()
+                except Exception as exc:
+                    cleanup_error=None
+                    try:new_job.close()
+                    except Exception as failure:cleanup_error=failure
+                    if candidate:
+                        try:
+                            if candidate.stdin and not candidate.stdin.closed:candidate.stdin.close()
+                        except BrokenPipeError:pass
+                        except Exception as failure:cleanup_error=cleanup_error or failure
+                        candidate.wait()  # Never release ownership on uncertain reaping.
+                    if cleanup_error:raise cleanup_error
+                    owned_cleanup=True
+                    raise FinalizerBootstrapError('Result finalizer could not start') from exc
+                code=candidate.wait();new_job.close();owned_cleanup=True
+            elif code and not cancelled:
+                error_file=self.store.directory(run_id)/'worker-error.json'
+                error=json.loads(error_file.read_bytes())['message'] if error_file.exists() else f'Worker exited with code {code}'
+            cleanup=True
+        except finalization.Stopped:
+            cleanup=owned_cleanup
+        except (OSError,sqlite3.Error):
+            self.latch_storage_failure(run_id,'run');code=finalization.STORAGE_EXIT
+            cleanup=owned_cleanup
+        except Exception as exc:
+            error=str(exc)[:2000]
+            cleanup=owned_cleanup
+            if not cleanup:self.latch_storage_failure(run_id,'run')
+        if not cleanup:
+            self.latch_storage_failure(run_id,'run')
+            # Anchor/active ownership retained; close() must report this honestly.
+            active['anchor']=anchor
+            return
+        with self.lock:pending=active.get('cancel_pending')
+        if pending:pending.wait()
+        try:
+            control=finalization.status(self.store,run_id)
+            if active.get('storage_failed') or code==finalization.STORAGE_EXIT or control and control['error_code']=='storage_failure':
                 self.latch_storage_failure(run_id,'run')
-            except Exception as exc:
-                try:self.store.status(run_id,"failed",str(exc)[:2000])
-                except Exception:self.latch_storage_failure(run_id,'run')
-            finally:
-                self.active=None
+            else:
+                if active['cancelled']:finalization.cancel(self.store,run_id,active['generation'])
+                finalization.settle(self.store,run_id,active['generation'],code=code,error=error)
+        except Exception:
+            self.latch_storage_failure(run_id,'run')
+        finally:
+            try:
+                if anchor:anchor.close()
+            except Exception:
+                self.latch_storage_failure(run_id,'run');active['anchor']=anchor
+                return
+            with self.lock:
+                if self.active is active:self.active=None
 
     def cancel(self,run_id):
+        from terminal import result_finalization as finalization
         with self.lock:
-            if self.active is None or self.active.get('kind')=='replay' or self.active["id"]!=run_id: raise ValueError("That run is not active")
-            self.active["cancelled"]=True
-            try:self.store.status(run_id,"cancel_requested")
-            finally:self.active["job"].terminate()
-        return {"status":"cancel_requested"}
+            active=self.active
+            if active is None or active.get('kind')=='replay' or active['id']!=run_id:
+                # A completed result can win just before a delayed cancel call.
+                active=None
+            else:
+                active['cancelled']=True
+                if 'cancel_pending' not in active:active['cancel_pending']=threading.Event()
+        if active is None:
+            if self.store.get(run_id)['status']=='completed':return {'status':'too_late'}
+            raise ValueError('That run is not active')
+        try:
+            status=finalization.cancel(self.store,run_id,active['generation'],timeout=.25)
+        except sqlite3.OperationalError as exc:
+            if (getattr(exc,'sqlite_errorcode',0)&255) not in (sqlite3.SQLITE_BUSY,sqlite3.SQLITE_LOCKED):
+                self.latch_storage_failure(run_id,'run')
+                with self.lock:
+                    active['storage_failed']=True
+                    if self.active is active:active['job'].terminate()
+                raise
+            # A stalled write owner cannot monopolize foreground dispatch. The
+            # request is pending, not terminal; reap then persist the cutoff.
+            status='cancel_requested'
+        except Exception:
+            self.latch_storage_failure(run_id,'run')
+            with self.lock:
+                active['storage_failed']=True
+                if self.active is active:active['job'].terminate()
+            raise
+        finally:active['cancel_pending'].set()
+        if status=='cancel_requested':
+            with self.lock:
+                if self.active is active:active['job'].terminate()
+        return {'status':status}
 
     def status(self,run_id):
+        from terminal.result_finalization import status as finalization_status
         record=self.store.get(run_id)
-        return {"id":run_id,"status":record["status"],"error":record["error"],"progress":self._progress(self.store.directory(run_id)),"summary":record["summary"],"storage_failure":self.storage_diagnostic()}
+        with self.lock:
+            worker_active=bool(self.active and self.active['id']==run_id)
+            pending_cancel=bool(worker_active and self.active['cancelled'])
+        displayed='cancel_requested' if pending_cancel and record['status'] in ('running','finalizing') else record['status']
+        return {'id':run_id,'status':displayed,'durable_status':record['status'],'error':record['error'],
+                'progress':self._progress(self.store.directory(run_id)),
+                'finalization':finalization_status(self.store,run_id),'worker_active':worker_active,
+                'summary':record['summary'],'storage_failure':self.storage_diagnostic()}
 
     @staticmethod
     def _progress(directory):
@@ -299,18 +403,15 @@ class JobManager:
 
     def close(self,*,release_workspace=True):
         errors=[]
-        with self.lock:
-            active=self.active
-            if active:
-                try:
-                    if active.get('kind')=='replay':self.cancel_replay(active['id'])
-                    else:self.cancel(active["id"])
-                except Exception as exc:errors.append(exc)
-                monitor=active["monitor"]
+        with self.lock:active=self.active
         if active:
-            monitor.join(timeout=10)
-            if monitor.is_alive() or active['process'].poll() is None:
-                errors.append(RuntimeError("Worker shutdown has not completed; workspace ownership is retained"))
+            try:
+                if active.get('kind')=='replay':self.cancel_replay(active['id'])
+                else:self.cancel(active['id'])
+            except Exception as exc:errors.append(exc)
+            monitor=active['monitor'];monitor.join(timeout=10)
+            if monitor.is_alive() or active['process'].poll() is None or self.active is active:
+                errors.append(RuntimeError('Worker shutdown has not completed; workspace ownership is retained'))
                 raise ExceptionGroup('Worker shutdown failed',errors)
         if release_workspace and not self.instance_file.closed:
             self.instance_file.seek(0)

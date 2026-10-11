@@ -6,6 +6,153 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+## Original-plan TT13: managed local result finalization — 2026-10-11
+
+Based on published `1ac84faa677a9185bc3aae788812bf66bcf391bd`; product remains
+`0.6.0-dev`, MIT licensed. The frozen measured runtime implementation hash is
+`e28c6758e5394798fa4e363a3cbf0b6a339cfd6af5d78cc4a2b4f3a793a7f3a7`.
+Managed finalization, local generation authority, preencoded normalized staging,
+independent ordered verification, mutation-epoch publication, requested-versus-
+reaped cancellation, restart interruption and quarantine are implemented. The
+original monitor remains alive through finalizer cleanup, including for batch
+waiters. Engine progress and finalization rows/bytes are separate in the UI.
+See [ADR 0037](adr/0037-managed-local-result-finalization.md).
+
+The original published monitor was measured in a separate exact-source checkout
+against the independently authored 67,036,481-byte normalized fixture. Its
+lock-held completion after releasing the test gate took **2.599 s**; queued
+scheduler and ordinary save requests took **2.631 s** and **2.604 s**. These waits
+exclude the initial worker JSON decode, which had already occurred. This is a
+blocking-path comparison, not a comparison of total financial runtime.
+
+Verification with the same retained Linux/runtime toolchain as the export slice:
+
+- Frozen-source `.venv/bin/python -m unittest tests.test_result_finalization
+  tests.test_experiments tests.test_archive_async tests.test_archive_receipts -q`
+  passed **80 tests**. A separate serialized-HTTP gate and strengthened composed
+  closed-copy restore passed; two overlapping cancellation cases were repeated
+  only to retain exact latency measurements. Earlier nearest regression checks
+  covered jobs, storage resilience, legacy closed copies and Linux lifetime
+  ownership. An intermediate wider run had one failed solo-run comparison while
+  implementation files were still changing; the subsequent frozen-source
+  experiment suite passed. That intermediate run is not a clean acceptance pass.
+- Deterministic coverage includes first/middle/last staging gates, artifact and
+  final cutoff, exact values/order/counts, old valid non-object/oversized rows,
+  foreign/imported/orphan ownership, row relocation, receipt damage, mutations
+  after verification, bootstrap cancellation, postcommit exit-74 faults,
+  storage-marker/cancellation exit-130 races, failed fault-marker persistence,
+  no fallback writes after cancellation persistence failure, reaped terminal
+  acknowledgement, retained cleanup ownership and restart without promotion.
+- Additive legacy migration and composed closed-copy restore preserve historical
+  local/imported rows, import attempts/reserved IDs, snapshots/result hashes,
+  normalized content and new local receipt tables. The copied pending local run
+  becomes interrupted; completed local/imported content and original admission
+  evidence remain unchanged. Integrity and foreign-key checks pass; trust remains
+  empty. No import continuation capability grants local provenance.
+- `node node_modules/vitest/vitest.mjs run frontend/src/RunProgress.test.tsx
+  frontend/src/BrowserServiceControls.test.tsx frontend/src/AppStorageSafety.test.tsx
+  frontend/src/App.test.tsx frontend/src/Experiments.test.tsx
+  frontend/src/LibraryResearch.test.tsx --reporter=dot` passed **55 tests**.
+  TypeScript and `node scripts/frontend.mjs build` passed, retaining the existing
+  bundle-size advisory. Component tests are not production-browser acceptance.
+
+Supported-load evidence uses only independently invented synthetic data and new
+isolated workspaces. No limits were changed:
+
+- Actual full eager loading passed for linear **440,000 trade + 440,000 mark +
+  917 funding rows**, in **4.446 s**, single-child high-water **726.74 MiB**;
+  independent spot **440,000 rows** in **2.241 s**, **414.18 MiB**. The linear
+  metadata estimate remains **1,032,313,706 bytes**, 96.14% of the unchanged 1-GiB
+  source guard. That guard is not a whole-engine memory limit.
+- Refreshed six-row preview is exactly **2,000,000 modeled source candles** with
+  all six errors null. One actual Donchian M1 graph row was then admitted through
+  the ordinary `start_window_run` service route: 320,000 prefix + 120,000 evaluation
+  candles. Its real engine-to-finalizer path completed in **306.659 s**, with
+  finalization observable for approximately **16 s**. It published **720,274
+  normalized rows / 126,100,809 result bytes** across 5,630 bounded staging batches.
+  Worker-result and published hashes match exactly; a separate postmeasurement
+  pass independently compared every normalized kind/index/value and count.
+  This is one real row, not execution of the complete six-row/2M batch.
+- During that M1 run, 1,499 samples each of run status, scheduler and ordinary
+  `save_graph` writes had maxima **11.55 ms**, **3.90 ms**, **35.85 ms** and p95
+  **3.53 ms**, **0.76 ms**, **1.95 ms**. Start returned in **18.97 ms**. Maximum
+  measured ownership critical section was **2.79 ms**; maximum write attempt
+  was **5.00 ms**. Sampled parent/client plus managed descendants peaked at
+  **4,124,823,552 bytes**. RSS is summed at 50-ms cadence, may double-count shared
+  pages and can miss shorter peaks; later full verification is excluded.
+- The independent normalized-entry fixture completed **62,344 rows /
+  67,036,481 bytes** in **5.319 s**; ordinary request maximum **3.15 ms**,
+  maximum write attempt **4.32 ms**, sampled combined RSS **734,568,448 bytes**.
+- The compatible oversized-row fixture retained its **67,034,893-byte** single
+  numeric indicator row (three total normalized rows, 67,035,994 result bytes).
+  Completion took **5.638 s**; the explicitly isolated oversized write attempt
+  took **292.25 ms**, maximum ordinary HTTP write **330.75 ms**, sampled combined
+  RSS **1,247,031,296 bytes**. This is a measured single-row exception to the
+  ordinary 256-KiB batch byte target, not a narrowed schema or a hard byte bound.
+  Both independent fixtures received exact artifact and full normalized-content
+  comparison. They prove persistence load, not financial engine behavior.
+- A managed finalizer paused while holding a real SQLite write transaction
+  acknowledged cancellation in **251.57 ms** and reached verified quiescence in
+  **259.51 ms**. The serialized HTTP gate with a separate 250-ms writer returned
+  status/cancel/ordinary-write requests within **255.99 ms**. A deliberately
+  stopped supervisor retained ownership; after explicit release, cleanup took
+  **26.49 ms**. No terminal cancellation was claimed during the forced stall.
+
+All ordinary request samples satisfy the predeclared 2-second goal and ordinary
+cancellation satisfies 5 seconds. Write-attempt timings include connection,
+lock acquisition and commit, rather than only write-lock holding time. Financial
+values, original local/synthetic admission and result hashes are unchanged;
+no native trust or viewed evidence was created by verification. Every measured
+host closed and released ownership. The separate GUI scaffold passed direct
+HTTP pending/release/completion/shutdown checks. Parent-led production-browser
+finalization acceptance, current Windows/native verification, asynchronous
+verified chart reads, combined full TT13 acceptance and later research remain
+separate gates. No live exchange acquisition or financial conclusion is claimed.
+
+
+### Initial finalization browser checks and narrow correction — 2026-10-11
+
+Parent-led production-browser inspection on `68503bf` verified the gated
+synthetic finalizer at `artifact`, 0/1,202 rows and 0 staged bytes, with no invented
+completion percentage. Test running opened Backtest; an ordinary named strategy
+save succeeded while finalization remained active. Cancellation settled without
+a completed report and released the worker. A separate success path survived
+reload, showed the active-work shutdown warning, then automatically opened the
+saved zero-trade fixture only after gate release, durable publication and cleanup.
+The fixture deliberately represents normalized persistence, not market execution.
+
+That inspection found adjacent status/progress text, a misleading preparation
+fallback after cancellation, and active history selection collapsing into an
+empty report. The narrow frontend correction separates the status paragraph,
+provides terminal outcome/cleanup-specific copy and routes only active history
+entries to Backtest/status polling. Completed report selection is unchanged.
+The corrected focused pass of RunProgress, AppFinalization, App,
+AppStorageSafety and BrowserServiceControls passed **37 tests across five files**;
+TypeScript/production build passed. Initial new history tests used an unsuitable
+accessible-name match; using the established run-list button selector corrected
+the fixture without changing behavior. Existing mocked App duplicate-key warnings
+and the bundle-size advisory remain non-failing.
+
+Query-only post-browser reconciliation confirmed the cancellation and completion
+outcomes, the completed fixture artifact hash, and an unowned workspace. The
+original actual M1 run's complete record, all three artifact hashes, all **720,274
+normalized rows** and its original admission evidence remain unchanged; integrity
+and foreign-key checks pass and native trust remains empty. Backend/runtime
+sources are byte-identical to the measured finalization checkpoint, so no heavy
+calculation was repeated.
+
+Parent-led corrected-build browser spot checking on `ff6da73` passed: selecting
+active finalizing history opened Backtest directly, detailed progress occupied a
+separate paragraph, cancellation displayed its terminal outcome without a running
+indicator, and selecting the completed fixture still opened Saved report. The
+host was stopped normally. One transient before the first detailed poll still
+said “Worker preparation”; the subsequent text-only fallback now says “Loading
+finalization status…”. The focused `RunProgress.test.tsx` pass covers this branch
+and all eight existing progress cases (**9 tests**); TypeScript and production
+build passed. This final loading-copy branch has automated coverage, not another
+browser campaign. No backend, fixture or load campaign was repeated.
+
+
 ## Original-plan TT13: background export and bounded verified transfer — 2026-10-10
 
 Based on published `d350be914356be9e115ded113a509646c5d89919`, on

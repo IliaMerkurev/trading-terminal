@@ -110,10 +110,10 @@ class StorageFinalizationTests(unittest.TestCase):
         self.ident=self.store.create({'snapshot_sha256':'fixture'})
         self.store.status(self.ident,'running')
         (self.store.directory(self.ident)/'worker-result.json').write_text('{}')
-        self.jobs.active={'id':self.ident,'cancelled':False}
-        with patch.object(self.store,'complete',side_effect=OSError('disk full /private/path')) as complete, \
+        self.jobs.active={'id':self.ident,'generation':'d'*32,'cancelled':False}
+        with patch('terminal.result_finalization.claim',side_effect=OSError('disk full /private/path')) as complete, \
              patch.object(self.store,'status',wraps=self.store.status) as status:
-            self.jobs._monitor(self.ident,Mock(wait=Mock(return_value=0)),Mock(),Mock())
+            self.jobs._monitor(self.ident,Mock(wait=Mock(return_value=0)),Mock(),Mock(is_alive=Mock(return_value=False)))
         complete.assert_called_once();status.assert_not_called()
         self.assert_blocked('run')
         report=self.jobs.status(self.ident)
@@ -124,10 +124,10 @@ class StorageFinalizationTests(unittest.TestCase):
     def test_invalid_worker_output_then_failed_error_persistence_is_quarantined(self):
         self.ident=self.store.create({'snapshot_sha256':'fixture'});self.store.status(self.ident,'running')
         (self.store.directory(self.ident)/'worker-result.json').write_text('{}')
-        self.jobs.active={'id':self.ident,'cancelled':False}
-        with patch.object(self.store,'complete',side_effect=ValueError('invalid result')), \
-             patch.object(self.store,'status',side_effect=sqlite3.OperationalError('read only')) as status:
-            self.jobs._monitor(self.ident,Mock(wait=Mock(return_value=0)),Mock(),Mock())
+        self.jobs.active={'id':self.ident,'generation':'d'*32,'cancelled':False}
+        with patch('terminal.result_finalization.claim',side_effect=ValueError('invalid result')), \
+             patch('terminal.result_finalization.settle',side_effect=sqlite3.OperationalError('read only')) as status:
+            self.jobs._monitor(self.ident,Mock(wait=Mock(return_value=0)),Mock(),Mock(is_alive=Mock(return_value=False)))
         status.assert_called_once()
         self.assert_blocked('run')
 

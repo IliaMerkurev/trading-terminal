@@ -554,3 +554,27 @@ HTTP status, cancellation, SQLite foreground writes and chunk transfer on a new
 isolated workspace. Its `--workspace` input must be a closed synthetic workspace
 and is copied before use. See [ADR 0036](adr/0036-background-project-export.md)
 and [STATUS](STATUS.md); direct HTTP RSS excludes browser/WebCrypto/Blob copies.
+
+
+## Managed local result finalization (TT13)
+
+A completed computation enters `finalizing` while a separate managed process
+verifies and publishes the immutable result. Status reports actual phase, staged
+rows/bytes and `worker_active`; a completed durable record can precede worker
+cleanup. Wait for cleanup before assuming the calculation slot is free. Batch
+waiters do this automatically. Cancellation is requested first; completion may
+win the guarded cutoff. Interrupted local finalization never resumes on restart.
+
+Normal normalized writes use preencoded 128-row/256-KiB batches; a previously
+valid oversized row remains a measured single-row exception. No result schema
+limit or financial output changed. Storage failures quarantine new calculations
+until restart and uncertain cleanup retains workspace ownership. Keep the whole
+closed data root when backing up, including incomplete artifacts and additive
+local control/receipt tables. See [ADR 0037](adr/0037-managed-local-result-finalization.md).
+
+`scripts/measure_result_finalization.py NEW_DESTINATION SYNTHETIC_INPUT` measures
+the serialized HTTP service and exact output on a new isolated workspace. With
+`--engine`, the input is the prepared synthetic M1 source/preview directory and
+one normal graph calculation is executed; otherwise the input contains an
+independently authored snapshot/result pair and proves persistence only. The
+script refuses an existing destination and records measured scope explicitly.

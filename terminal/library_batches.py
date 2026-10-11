@@ -363,7 +363,11 @@ class LibraryBatchManager(ExperimentManager):
         for saved in rows:
             row=dict(saved);summary=json.loads(row.pop('summary')) if saved['summary'] else None
             row['metrics']=benchmarks.metrics({'status':'completed',**summary},result['snapshot']['start'],result['snapshot']['end']) if row['status']=='completed' and summary else None
-            row['progress']=self.jobs.status(row['run_id']).get('progress') if row['status']=='running' and row['run_id'] else None
+            live=self.jobs.status(row['run_id']) if row['status']=='running' and row['run_id'] else None
+            row['progress']=live.get('progress') if live else None
+            row['finalization']=live.get('finalization') if live else None
+            row['worker_active']=live.get('worker_active') if live else False
+            if live and live['status'] in ('finalizing','cancel_requested'):row['status']=live['status']
             result['rows'].append(row)
         with self.store.connect() as db:result['research_evidence']=research_evidence.frozen_review(db,'library',batch_id)
         result['active_id']=self.active['id'] if self.active else None

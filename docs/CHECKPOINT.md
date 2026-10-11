@@ -1,9 +1,42 @@
 # Current engineering checkpoint
 
-Updated 2026-10-10. Working branch: `codex/terminal-mvp`; product remains
-`0.6.0-dev`. This is a browser-verified development candidate, not a packaged
-release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
+Updated 2026-10-11. Working branch: `codex/terminal-mvp`; product remains
+`0.6.0-dev`. Earlier surfaces have browser-verified development evidence; the
+new local-finalization surface has parent-led production-browser coverage. This is not a
+packaged release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
 product specification; [STATUS.md](STATUS.md) owns detailed test evidence.
+
+## Current TT13 local finalization checkpoint
+
+Local calculation output now enters an observable managed `finalizing` phase;
+JSON/artifact/normalized work is outside scheduler ownership locks. Local-only
+generation authority, bounded ordinary batches, compatible isolated oversized
+rows, independent full-content verification and a short mutation-epoch-guarded
+commit preserve exact financial output and provenance. The same monitor retains
+batch/worker ownership through cleanup. Cancellation remains requested until
+reaping; completion-winning races, persistence quarantine and restart without
+automatic promotion are explicit. See [ADR 0037](adr/0037-managed-local-result-finalization.md).
+
+The frozen-source focused backend gate passed 80 tests, with additional narrow
+HTTP/composed-restore/cancellation measurements; 55 frontend tests and the
+TypeScript/production build passed. Actual admitted 440k-source M1 execution
+published 720,274 normalized rows with exact worker/result hashes and independent
+full-row comparison. Ordinary HTTP writes stayed below 36 ms in that case;
+the preserved 67-MB single-row exception stayed below 331 ms. Combined sampled
+M1 memory peaked at about 4.12 GB, distinct from the 1-GiB source-estimate guard.
+The six-row 2M workload was previewed, not all executed by this slice. See STATUS
+for exact commands, chronology, latency/memory scope and synthetic-only limits.
+
+Initial parent-led production-browser checks passed pending/cancel/reload/save
+and success-after-cleanup paths, then identified small status/history UX issues.
+The frontend-only correction passed 37 focused tests and the build; corrected
+browser spot checking passed active-history navigation, separated progress,
+cancellation copy and existing completed-report selection. A final text-only
+pre-poll loading fallback passed all 9 progress tests, TypeScript and build;
+that last branch was not browser-rerun. Backend load evidence is unchanged. Asynchronous
+verified chart reads and combined final TT13 acceptance remain unfinished;
+Windows/native, live exchange work and later research are separate gates. No
+whole-plan completion is claimed.
 
 ## Current TT13 export checkpoint
 
@@ -23,8 +56,9 @@ preserved exact results/snapshots, normalized rows and import receipts. Browser
 RSS/heap/Blob peak remains unmeasured because Chrome process roots were not
 observable through the available process-resource interfaces; no zero-memory
 claim is made. Windows/native and live exchange work remain deferred. Import GUI
-acceptance below remains valid. Local result finalization and asynchronous
-verified chart reads still prevent full TT13 completion. No new financial
+acceptance below remains valid. The newer local-finalization checkpoint above
+supersedes that pending path; asynchronous verified chart reads and combined
+acceptance still prevent full TT13 completion. No new financial
 calculation or source trust was introduced.
 
 ## Current TT13 import checkpoint
@@ -48,7 +82,7 @@ shutdown. Query-only post-close reconciliation preserved exact source/reservatio
 identity, artifacts, normalized values and both attempt outcomes with zero trust.
 This import checkpoint was published before the export slice; see STATUS.md for the bounded GUI evidence.
 
-TT13 chart-integrity reads and local result finalization remain
+TT13 chart-integrity reads and combined acceptance remain
 unfinished, as do the separate remaining bounded research requirements. Keep the
 accepted independent baseline and do not reopen TT10 accounting/contracts merely
 because this import slice changes storage/lifecycle code. Product stays
