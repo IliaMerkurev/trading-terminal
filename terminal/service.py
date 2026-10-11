@@ -30,6 +30,8 @@ class AppService:
         self.live=LiveManager(self.store)
         from terminal.display_indicators import DisplayIndicators
         self.display_indicators=DisplayIndicators(self.live.chart_history)
+        from terminal.chart_drawings import ChartDrawings
+        self.chart_drawings=ChartDrawings(self.store)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -63,6 +65,7 @@ class AppService:
                           notification_test={'channel'},telegram_configure={'token','chat_id'},telegram_clear=set())
             fields.update(live_start_terminal={'strategy_id','profile','paper','channels','execution_source'},
                           live_chart={'session_id'},paper_manual={'session_id','action','request_id'})
+            fields.update(chart_drawing_settings={'market','symbol','source'},chart_drawing_save={'market','symbol','source','drawings','revision'})
             fields.update(chart_indicator_settings={'market','symbol','source'},chart_indicator_save={'market','symbol','instances','revision','source'},chart_indicator_read={'market','symbol','minutes','start','end','revision','reanchor','source'})
             fields.update(market_preferences=set(),market_open={'market','symbol','source'},market_close=set(),market_chart={'market','symbol','minutes','before','source'})
             fields.update(managed_experiment_fields={'strategy_id','profile'})
@@ -91,7 +94,7 @@ class AppService:
             fields.update(library_batch_metadata={'batch_id'},library_batch_save_metadata={'batch_id','name','notes','expected_revision'})
             if command=='library_batch_history' and 'query' in p:fields[command].add('query')
             if command=='library_copy' and 'profile' in p:fields['library_copy'].add('profile')
-            if command in ('market_open','market_chart','chart_indicator_settings','chart_indicator_save','chart_indicator_read') and 'source' not in p:
+            if command in ('market_open','market_chart','chart_indicator_settings','chart_indicator_save','chart_indicator_read','chart_drawing_settings','chart_drawing_save') and 'source' not in p:
                 fields[command].discard('source')
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
@@ -106,6 +109,8 @@ class AppService:
             elif command=='market_preferences':result=self.live.market_preferences()
             elif command=='market_open':result=self.live.market_open(**p)
             elif command=='market_close':result=self.live.market_close()
+            elif command=='chart_drawing_settings':result=self.chart_drawings.settings(**p)
+            elif command=='chart_drawing_save':result=self.chart_drawings.save(**p)
             elif command=='chart_indicator_settings':result=self.display_indicators.settings(**p)
             elif command=='chart_indicator_save':result=self.display_indicators.save(**p)
             elif command=='chart_indicator_read':result=self.display_indicators.read(**p)

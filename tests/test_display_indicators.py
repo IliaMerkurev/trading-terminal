@@ -222,3 +222,22 @@ class DisplayCacheTests(unittest.TestCase):
             self.assertIsNone(result['columns']['bb'][port][gap])
         self.assertEqual(result['columns']['sma']['value'][gap-1],10)
         self.assertEqual(result['columns']['sma']['value'][gap+1],10)
+
+class VolumePlacementTests(unittest.TestCase):
+    setUp = DisplayCacheTests.setUp
+    tearDown = DisplayCacheTests.tearDown
+    def test_default_overlay_migration_explicit_pane_and_hidden_roundtrip(self):
+        initial=self.display.settings('spot','BTCUSDT')
+        self.assertEqual(initial['instances'][0]['type'],'volume')
+        self.assertEqual(initial['instances'][0]['placement'],'overlay')
+        old=instance('volume');other=copy.deepcopy(old);other['id']='second';other.update(placement='pane',visible=False)
+        saved=self.display.save('spot','BTCUSDT',[old,other],0)
+        self.assertEqual([i['placement'] for i in saved['instances']],['overlay','pane'])
+        self.assertEqual(self.display.settings('spot','BTCUSDT'),saved)
+        self.assertEqual(self.display.settings('spot','BTCUSDT',source='okx')['revision'],0)
+        saved=self.display.save('spot','BTCUSDT',[],1)
+        self.assertEqual(self.display.settings('spot','BTCUSDT')['instances'],[])
+        invalid=instance('ema',period=2);invalid['placement']='overlay'
+        with self.assertRaises(ValueError):validate_instances([invalid])
+        invalid=instance('volume');invalid['placement']='anything'
+        with self.assertRaises(ValueError):validate_instances([invalid])

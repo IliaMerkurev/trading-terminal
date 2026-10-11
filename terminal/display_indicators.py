@@ -23,11 +23,13 @@ def validate_instances(instances):
         raise ValueError('Use at most 8 indicators')
     seen = set()
     for item in instances:
-        if not isinstance(item, dict) or set(item) != {'id', 'type', 'params', 'color', 'visible'}:
+        if not isinstance(item, dict) or set(item) - {'placement'} != {'id', 'type', 'params', 'color', 'visible'}:
             raise ValueError('Invalid indicator settings')
         ident = item['id']
         kind = item['type']
         params = item['params']
+        if 'placement' in item and (kind != 'volume' or item['placement'] not in ('overlay', 'pane')):
+            raise ValueError('Invalid volume placement')
         if not isinstance(ident, str) or not re.fullmatch('[a-zA-Z][a-zA-Z0-9_-]{0,63}', ident) or ident in seen:
             raise ValueError('Indicator IDs must be unique')
         seen.add(ident)
@@ -43,7 +45,11 @@ def validate_instances(instances):
                 raise ValueError('Periods must be whole numbers from 1 to 1000')
         if kind == 'macd' and params['fast'] >= params['slow']:
             raise ValueError('MACD fast must be less than slow')
-    return copy.deepcopy(instances)
+    valid = copy.deepcopy(instances)
+    for item in valid:
+        if item['type'] == 'volume':
+            item.setdefault('placement', 'overlay')
+    return valid
 
 def calculate(candles, instances, minutes, start, end, cancel=None):
     """One streaming replay; viewport is an output filter, never the seed."""
@@ -159,13 +165,13 @@ class DisplayIndicators:
         key = self.key(market, symbol, source)
         with self.store.connect() as db:
             row = db.execute('SELECT document FROM chart_presentation_v1 WHERE market=? AND symbol=?', key).fetchone()
-        fallback = dict(version=1, revision=0, instances=[], origins={})
+        fallback = dict(version=1, revision=0, instances=[dict(id='default_volume', type='volume', params={}, color='#42cda8', visible=True, placement='overlay')], origins={})
         if row:
             try:
                 doc = json.loads(row[0])
                 if type(doc.get('version')) is not int or doc['version'] != 1 or type(doc.get('revision')) is not int or (doc['revision'] < 0):
                     raise ValueError()
-                validate_instances(doc['instances'])
+                doc['instances'] = validate_instances(doc['instances'])
                 if not isinstance(doc.get('origins'), dict) or len(doc['origins']) > 6:
                     raise ValueError()
                 for interval, origin in doc['origins'].items():

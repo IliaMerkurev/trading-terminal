@@ -12,7 +12,7 @@ it('chart interval updates only presentation, maintains recorded values and clea
  fireEvent.change(screen.getByLabelText('Chart display timeframe'),{target:{value:'60'}});
  fireEvent.change(screen.getByLabelText('Live chart indicator'),{target:{value:'ema'}});
  await waitFor(()=>expect(mock.setData).toHaveBeenCalledWith([{time:3600,value:102.5,observed:60}]));
- expect(mock.api.mock.calls.every(call=>['live_chart','market_chart','chart_indicator_settings'].includes(call[0]))).toBe(true);
+ expect(mock.api.mock.calls.every(call=>['live_chart','market_chart','chart_indicator_settings','chart_drawing_settings'].includes(call[0]))).toBe(true);
  expect(mock.api).toHaveBeenCalledWith('market_chart',{market:'spot',symbol:'BTCUSDT',minutes:60,before:null});
  unmount();expect(mock.remove).toHaveBeenCalledOnce();
 });
@@ -101,7 +101,7 @@ it('retains display interval, candles and viewport across hidden navigation with
  rerender(<LiveChart fresh active/>);
  await waitFor(()=>expect(mock.api.mock.calls.length).toBeGreaterThan(count));
  expect(mock.fit).toHaveBeenCalledTimes(fits);
- expect(mock.api.mock.calls.every(c=>['market_chart','chart_indicator_settings'].includes(c[0]))).toBe(true);
+ expect(mock.api.mock.calls.every(c=>['market_chart','chart_indicator_settings','chart_drawing_settings'].includes(c[0]))).toBe(true);
 });
 
 it('drops old-source chart replies and requests separate settings after a source switch',async()=>{

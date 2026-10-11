@@ -661,3 +661,27 @@ node scripts/frontend.mjs build
 Use a separate fixture workspace and blocked exchange transports for synthetic
 GUI checks. Keep source-labelled fixture values distinct from real public data.
 Actual connectivity and Windows/native acceptance are separate gates.
+
+## Research-chart workspace (ADR 0042)
+
+`ChartDrawings` owns only annotations over MarketChart price pane 0. The source,
+market and symbol namespace intentionally excludes display timeframe. Store
+UTC interval-end times and prices; use the pinned chart conversion APIs for
+projection, never persisted bar indexes or screen coordinates. Drawing IPC is
+strictly bounded and uses transactional optimistic revisions. Keep save failures
+visible and do not turn a failed save into an apparent success. Source switches
+must invalidate load/save replies and transient edit/history state.
+
+Native-volume `placement` is optional on incoming legacy instances, normalized
+to overlay and persisted on subsequent writes. No row gets automatic volume
+re-insertion after explicit removal. Preserve primary scale options when v5
+auxiliary-pane setup mutates future right-scale defaults. Price log/manual mode
+must not leak into volume/RSI/MACD/recorded-IR scales. Keep the original native
+volume units and unavailable-versus-recorded-zero semantics.
+
+Focused verification: Python `tests.test_chart_drawings` and
+`tests.test_display_indicators`; frontend `ChartDrawings.test.tsx`,
+`chartDrawings.test.ts`, `ChartIndicators.test.tsx` and `LiveChart.test.tsx`.
+Run final aggregates only after source is genuinely frozen: immutable runtime
+hashes are part of backtest/research contracts. Browser interaction and native
+Windows acceptance remain distinct from these mocked component checks.

@@ -7,6 +7,70 @@ gates, not unrelated platform or owner acceptance.
 
 
 
+## Research-chart workspace candidate — 2026-10-11
+
+Implemented the bounded ADR 0042 slice: native volume defaults to an independent
+bottom price overlay with persisted separate-pane choice; quick native intervals,
+OHLC/volume hover, fit/auto/log price controls and searchable bounded indicator
+settings. Seven independently authored persistent drawing tools and a temporary
+ruler add time/price anchors, selection/body/endpoints, properties, magnet,
+hide/lock/delete, 50-step undo/redo and transactional source-scoped SQLite saves.
+All six indicator formulas, origin provenance and financial behavior remain
+unchanged. Existing MIT application and Apache-2.0 attribution are preserved;
+there is no new dependency or TradingView proprietary runtime.
+
+Focused final checks before freeze: **17 Python tests passed in 3.139 seconds**;
+**27 frontend tests across four files passed in 5.69 seconds**; TypeScript/Vite
+production build passed with the existing non-failing bundle-size advisory.
+Tests cover strict drawing bounds, persisted reopen/source/revision isolation,
+all seven tool gestures, endpoints/body, snap, lock/hide/history, transient ruler,
+Escape/pointer cancellation, interrupted-save namespace changes, typing guards,
+legacy volume placement, repeated overlays and independent/log-safe scales.
+Independent review identified ruler navigation, gesture/history races and v5
+auxiliary-scale inheritance; all were corrected and covered by focused checks.
+
+The complete backend aggregate ran against clean, unchanged source `adf1bb9`:
+**483 tests in 205.132 seconds, 475 passed and eight expected Windows-only skips**.
+The complete frontend aggregate at that freeze passed **513 tests across 57
+files in 20.50 seconds**. After it finished, a narrowly scoped frontend-only
+selection guard prevented unchanged clicks from generating save/undo entries;
+its added regression and the final full frontend aggregate passed **514 tests
+across 57 files in 16.87 seconds**, with TypeScript/Vite passing again. Backend
+runtime files remained identical to the aggregate-tested source. Gitleaks
+8.30.1 staged/outgoing scans found no secrets. No source changed during either
+aggregate. Existing Pandas deprecation and bundle-size advisories are non-failing.
+
+Parent-managed browser review then found that choosing a new drawing tool left
+the previous object selected, so property edits targeted it. A frontend-only
+correction clears selection when activating a non-pointer tool. Its regression
+verifies that new-tool color/text do not mutate the previous object. Focused
+component **8/8** and final full frontend **515/515 across 57 files in 17.16s**,
+plus TypeScript/Vite, passed. Backend remains identical to the clean aggregate.
+
+Browser acceptance used a private, offline saved-H4-history harness, with the
+final corrections rechecked at `41e9dc7`. Real mouse gestures created all seven
+persistent tools; body movement, endpoint editing, lock, selected hide/show and
+Ctrl+Z / Ctrl+Shift+Z worked. The transient ruler left the seven-object document
+unchanged and restored panning. Drawings followed pan, resize and Fit. Volume
+started overlaid, moved to a separate pane and returned; primary log scale with
+new RSI/MACD panes retained normal auxiliary scales and negative MACD bars.
+
+Reload restored all seven drawings and Volume overlay / RSI / MACD settings.
+Selecting an unchanged horizontal line left database revision 9 unchanged and
+created no undo entry. Choosing Text cleared the old selection and showed Text
+properties without an Apply-to-old-object action. At 703px viewport width,
+document scroll width remained 703px, controls/settings wrapped, and indicator
+search for RSI and Cancel worked. Resizing back and Fit preserved anchors.
+
+This establishes the listed browser interactions on retained H4 data, not live
+provider acquisition, Windows/native acceptance or owner acceptance. Cross-
+timeframe and older-page drawing continuity were not exercised in this GUI
+pass; coordinate/component/API tests establish their separate contracts and
+source/revision isolation, not substitute browser evidence. No publication,
+main merge or release is implied. Optional ATR/Stochastic/OBV remain deferred.
+See ADR 0042 for bounded exclusions.
+
+
 ## Public-source final frozen checks and browser acceptance — 2026-10-11
 
 After all production/test edits were committed, source `3a2c0ce` remained

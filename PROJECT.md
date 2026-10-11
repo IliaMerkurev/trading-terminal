@@ -473,3 +473,34 @@ Require explicit confirmed provenance, deterministic persisted calculation origi
 gap/warmup disclosure, bounded cancellable off-dispatch replay and independently
 verified engine seed conventions. See [ADR 0040](docs/adr/0040-cache-only-chart-indicators.md).
 No new data acquisition, real orders, release, version change or Windows claim.
+
+### Later authorized chart workspace convenience — 2026-10-11
+
+Deliver a bounded research-chart workspace using the existing open-source
+Lightweight Charts 5.2.1, while retaining MIT application source and Apache-2.0
+attribution. This is not TradingView product parity or a Pine runtime. Native
+volume defaults to a bottom-of-price overlay on an independent zero-based scale;
+explicit per-instance separate-pane placement remains available and persistent.
+Legacy volume entries lacking placement migrate additively to overlay. Existing
+hidden or removed instances stay hidden or removed. Large volume cannot enter
+price autoscaling. Retain the six existing display formulas and source-specific
+origins without modifying strategies, execution, signals or immutable results.
+
+Provide quick native timeframes, OHLC/volume hover readout, fit, automatic/manual
+and logarithmic price scale controls, and searchable indicator selection with a
+bounded settings panel. Provide independently authored horizontal/vertical line,
+trend/ray, rectangle, Fibonacci retracement and text tools, plus a transient ruler.
+Support selection, body/endpoint movement, color/width/style, candle-OHLC snapping,
+hide/lock, deletion and bounded undo/redo. Gestures commit atomically; Escape or
+pointer cancellation discards an unfinished gesture. Shortcuts belong only to
+the drawing workspace and must not capture typing in inputs.
+
+Persist at most 100 drawings in existing workspace SQLite by source, market and
+instrument, shared across native timeframes. Store UTC interval-end time and
+price anchors, never screen pixels or mutable bar indexes. Require strict
+finite/range/schema/text bounds, optimistic revisions, atomic writes, visible
+save errors and stale-response rejection. Drawings remain visual annotations;
+there is no execution/trading meaning or new data acquisition. Optional new
+indicator formulas are deferred in this first slice. See ADR 0042 for rendering,
+acceptance boundaries and implementation limits. No release, main merge,
+version bump, subscription, proprietary chart product or dependency installation.

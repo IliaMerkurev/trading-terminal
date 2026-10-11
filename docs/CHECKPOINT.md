@@ -7,6 +7,26 @@ chart display tools. This is a development source checkpoint, not a packaged
 release, main merge or final owner acceptance. [PROJECT.md](../PROJECT.md) remains
 the specification; [STATUS.md](STATUS.md) records exact-source evidence.
 
+## Current chart-workspace candidate
+
+ADR 0042 implements independent default volume overlays and optional separate
+panes, convenient native/time/price controls, and seven bounded, persisted MIT
+drawing tools plus a transient ruler. Source+market+instrument annotations share
+absolute UTC interval-end time/price anchors across native timeframes. No
+financial or six-indicator formula changes and no new dependency. Focused final
+checks: 17 Python / 27 frontend tests plus TypeScript/build passed. Clean frozen
+backend `adf1bb9`: 483 tests, 475 passed and eight Windows-only skips (205.132s).
+Final frontend-only no-op and new-tool selection-context corrections: full
+515/515 across 57 files (17.16s), TypeScript/build passed; backend runtime unchanged.
+Private offline saved-H4 browser acceptance at final source `41e9dc7` verified
+all seven tools, body/endpoints, lock/hide, history, transient ruler/pan, volume
+placement, log/auxiliary scales, reload, corrected selection behavior and 703px
+layout. GUI cross-timeframe/older-page continuity was not exercised; tests cover
+those contracts separately. Windows/native and live connectivity remain
+unverified. This later candidate supersedes the older six-tool-only boundary,
+not its recorded evidence. No optional indicator expansion, release or version bump.
+
+
 ## Public-source chart addition
 
 The current Market UI adds an explicit persisted Bybit / OKX source selector.

@@ -14,7 +14,8 @@ export function installIndicatorSeries(
   let next = 1;
   for (const [index, item] of instances.entries()) {
     if (!item.visible) continue;
-    const group = ['rsi', 'macd', 'volume'].includes(item.type) ? item.type : 'price';
+    const volumeOverlay = item.type === 'volume' && item.placement !== 'pane';
+    const group = ['rsi', 'macd', 'volume'].includes(item.type) && !volumeOverlay ? item.type : 'price';
     if (group !== 'price' && !panes.has(group)) panes.set(group, next++);
     const pane = panes.get(group) ?? 0;
     const ports = item.type === 'bb' ? ['upper', 'middle', 'lower']
@@ -33,15 +34,23 @@ export function installIndicatorSeries(
       if (item.type === 'rsi') {
         options.autoscaleInfoProvider = () => ({priceRange: {minValue: 0, maxValue: 100}});
       }
-      if (item.type === 'volume') options.priceFormat = {type: 'volume'};
+      if (item.type === 'volume') {
+        options.priceFormat = {type: 'volume'};
+        if (volumeOverlay) {options.priceScaleId = `volume-${item.id}`; options.lastValueVisible = false;}
+      }
       const series = chart.addSeries(histogram ? HistogramSeries : LineSeries, options, pane);
-      if (item.type === 'rsi') {
-        // v5.2 also changes defaults for future right scales. Restore the
-        // primary pane's unchanged margins immediately so only RSI loses padding.
+      if (volumeOverlay) series.priceScale().applyOptions({mode: 0, autoScale: true, scaleMargins: {top: 0.80, bottom: 0}, visible: false});
+      if (pane !== 0) {
+        // v5 updates defaults for future right scales. Normalize auxiliary
+        // panes, then restore the primary options (including log/manual mode).
         const primaryScale = chart.priceScale('right', 0);
-        const primaryMargins = {...primaryScale.options().scaleMargins};
-        series.priceScale().applyOptions({scaleMargins: {top: 0, bottom: 0}});
-        primaryScale.applyOptions({scaleMargins: primaryMargins});
+        const original = primaryScale.options();
+        const margins = {...original.scaleMargins};
+        series.priceScale().applyOptions({mode: 0, autoScale: true,
+          scaleMargins: item.type === 'rsi' ? {top: 0, bottom: 0} : {top: 0.2, bottom: 0.1}});
+        primaryScale.applyOptions({mode: original.mode ?? 0, autoScale: original.autoScale ?? true, scaleMargins: margins});
+      }
+      if (item.type === 'rsi') {
         for (const price of [30, 70]) {
           series.createPriceLine({price, color: '#879bb5', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: String(price)});
         }
@@ -53,6 +62,11 @@ export function installIndicatorSeries(
     }
   }
   recorded?.moveToPane(recordedVisible ? next : 0);
+  if (recordedVisible && recorded?.priceScale) {
+    const primary = chart.priceScale('right', 0), original = primary.options();
+    recorded.priceScale().applyOptions({mode: 0, autoScale: true, scaleMargins: {top: 0.2, bottom: 0.1}});
+    primary.applyOptions({mode: original.mode, autoScale: original.autoScale, scaleMargins: {...original.scaleMargins}});
+  }
   // Pixel-height setters redistribute neighboring panes. Relative weights
   // survive the final ResizeObserver layout without squeezing earlier panes.
   chart.panes?.().forEach((pane: any, index: number) => {

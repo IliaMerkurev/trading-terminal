@@ -7,6 +7,7 @@ export type ChartIndicator = {
   params: Record<string, number>;
   color: string;
   visible: boolean;
+  placement?: 'overlay' | 'pane';
 };
 export type IndicatorSettings = {
   version: 1;
@@ -70,19 +71,25 @@ type Props = {
 export default function ChartIndicators({settings, onApply, busy, error}: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<ChartIndicator[]>(settings.instances);
+  const [search, setSearch] = useState('');
   const [kind, setKind] = useState<IndicatorKind>('ema');
   useEffect(() => { setDraft(settings.instances); }, [settings]);
+  const matches = (Object.keys(defaults) as IndicatorKind[]).filter(type => (type + ' ' + ({sma:'Simple moving average',ema:'Exponential moving average',bb:'Bollinger Bands',rsi:'Relative strength index',macd:'Moving average convergence divergence',volume:'Volume'}[type])).toLowerCase().includes(search.toLowerCase()));
+  const selectedKind = matches.includes(kind) ? kind : matches[0];
   const invalid = validateIndicators(draft);
   const edit = (id: string, change: Partial<ChartIndicator>) => {
     setDraft(rows => rows.map(row => row.id === id ? {...row, ...change} : row));
   };
   const add = () => {
+    if (!selectedKind) return;
+    const kind = selectedKind;
     setDraft(rows => [...rows, {
       id: 'i' + crypto.randomUUID().replaceAll('-', ''),
       type: kind,
       params: {...defaults[kind]},
       color: kind === 'volume' ? '#42cda8' : '#7eabff',
       visible: true,
+      ...(kind === 'volume' ? {placement: 'overlay' as const} : {}),
     }]);
   };
 
@@ -91,12 +98,13 @@ export default function ChartIndicators({settings, onApply, busy, error}: Props)
     {open && <div className="chart-indicator-controls" aria-label="Chart indicator settings">
       <p>Display only · selected native chart timeframe · confirmed closes. Recorded IR and trading settings are separate.</p>
       <div className="chart-indicator-add">
+        <label>Search indicators<input aria-label="Search indicators" value={search} onChange={event => setSearch(event.target.value)} placeholder="EMA, volume…"/></label>
         <label>Indicator type
-          <select aria-label="Add indicator type" value={kind} onChange={event => setKind(event.target.value as IndicatorKind)}>
-            {Object.keys(defaults).map(type => <option key={type} value={type}>{type === 'bb' ? 'Bollinger Bands' : type.toUpperCase()}</option>)}
+          <select aria-label="Add indicator type" value={selectedKind ?? ''} onChange={event => setKind(event.target.value as IndicatorKind)}>
+            {matches.map(type => <option key={type} value={type}>{type === 'bb' ? 'Bollinger Bands' : type.toUpperCase()}</option>)}
           </select>
         </label>
-        <button disabled={draft.length >= 8 || busy} onClick={add}>Add indicator</button>
+        <button disabled={draft.length >= 8 || busy || !selectedKind} onClick={add}>Add indicator</button>
         <small>{draft.length}/8</small>
       </div>
       {draft.map((item, index) => <fieldset key={item.id}>
@@ -116,6 +124,7 @@ export default function ChartIndicators({settings, onApply, busy, error}: Props)
               }})}
             />
           </label>)}
+          {item.type === 'volume' && <label>Placement<select aria-label={`${index + 1} VOLUME placement`} value={item.placement ?? 'overlay'} onChange={event => edit(item.id, {placement: event.target.value as 'overlay' | 'pane'})}><option value="overlay">Price overlay</option><option value="pane">Separate pane</option></select></label>}
           <label>Color
             <input aria-label={`${index + 1} ${item.type.toUpperCase()} color`} type="color" value={item.color}
               onChange={event => edit(item.id, {color: event.target.value})}/>

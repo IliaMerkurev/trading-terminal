@@ -8,7 +8,7 @@ import {useChartIndicators} from './useChartIndicators';
 const mock=vi.hoisted(()=>({api:vi.fn()}));
 vi.mock('./api',()=>({api:mock.api}));
 const primaryScale = () => ({options: () => ({scaleMargins: {top: 0.2, bottom: 0.1}}), applyOptions: vi.fn()});
-const item=(type:ChartIndicator['type'],id:string=type):ChartIndicator=>({id,type,params:{...defaults[type]},color:'#7eabff',visible:true});
+const item=(type:ChartIndicator['type'],id:string=type):ChartIndicator=>({id,type,params:{...defaults[type]},color:'#7eabff',visible:true,...(type==='volume'?{placement:'pane' as const}:{})});
 beforeEach(()=>{mock.api.mockReset();});
 
 it('adds duplicate EMA instances and applies parameters, visibility and removal atomically',()=>{
@@ -200,4 +200,27 @@ it('rejects delayed settings, calculation and save replies from the previous exc
  await act(async()=>{oldSettings(doc('bb'));oldRead({status:'ready',times:[60],columns:{ema:{value:[999]}}});oldSave(doc('rsi'));await save;});
  expect(result.current.settings.instances[0].type).toBe('volume');
  expect(result.current.result.columns.volume.value).toEqual([10]);expect(result.current.saving).toBe(false);
+});
+
+
+it('defaults volume to a hidden independent overlay scale and preserves explicit pane instances',()=>{
+ const scales:any[]=[];const added:any[]=[];const chart={priceScale:primaryScale,addSeries:vi.fn((_kind,options,pane)=>{const scale={applyOptions:vi.fn()};scales.push(scale);added.push({options,pane});return {priceScale:()=>scale};}),panes:()=>[]};
+ const overlay={...item('volume'),placement:undefined};
+ const second={...item('volume','second'),placement:'overlay' as const};
+ installIndicatorSeries(chart,null,[overlay,second,item('volume','pane'),{...item('volume','hidden'),visible:false}],false);
+ expect(added.map(s=>s.pane)).toEqual([0,0,1]);
+ expect(added[0].options.priceScaleId).toBe('volume-volume');expect(added[1].options.priceScaleId).toBe('volume-second');
+ expect(added[2].options.priceScaleId).toBeUndefined();
+ expect(scales[0].applyOptions).toHaveBeenCalledWith({mode:0,autoScale:true,visible:false,scaleMargins:{top:0.8,bottom:0}});
+ expect(added[0].options.lastValueVisible).toBe(false);
+});
+
+it('keeps logarithmic/manual price choices out of newly created auxiliary scales',()=>{
+ let defaults={mode:1,autoScale:false,scaleMargins:{top:0.3,bottom:0.1}};
+ const scales:any[]=[];
+ const primary={options:()=>({...defaults}),applyOptions:vi.fn(options=>{defaults={...defaults,...options};})};
+ const chart={priceScale:()=>primary,panes:()=>[],addSeries:vi.fn(()=>{const scale={options:{...defaults},applyOptions:vi.fn((options:any)=>{scale.options={...scale.options,...options};defaults={...defaults,...options};})};scales.push(scale);return {priceScale:()=>scale,createPriceLine:vi.fn()};})};
+ installIndicatorSeries(chart,null,[item('rsi'),item('macd'),item('volume')],false);
+ expect(scales.every(scale=>scale.options.mode===0&&scale.options.autoScale===true)).toBe(true);
+ expect(primary.options().mode).toBe(1);expect(primary.options().autoScale).toBe(false);
 });
