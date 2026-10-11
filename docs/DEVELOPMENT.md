@@ -4,7 +4,8 @@ Read [PROJECT.md](../PROJECT.md), [architecture](ARCHITECTURE.md), [status](STAT
 
 ## Product versions and working branches
 
-Current work is the Market/Lab UX continuation on `codex/terminal-mvp`, following the Research workspace extension originally developed on `codex/research-studio` from merged 0.6-dev main (`a5bb197`). No new product version is introduced. Owner-led unaided usability and current Windows/native acceptance remain pending. Product 0.1 was the first working milestone; 0.2 added research workflows; accepted 0.3 added live/paper monitoring. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
+Current work is the completed bounded Market/Lab engineering/research continuation
+and later daily-candidate/cache-only-chart additions on `codex/terminal-mvp`, following the Research workspace extension originally developed on `codex/research-studio` from merged 0.6-dev main (`a5bb197`). No new product version is introduced. Owner-led unaided usability and current Windows/native acceptance remain pending. Product 0.1 was the first working milestone; 0.2 added research workflows; accepted 0.3 added live/paper monitoring. Version 1.0 is reserved for a mature stable release. Internal protocol/schema/profile versions and ADR numbers are independent of product versions.
 
 `src-tauri/Cargo.toml` package version is the single product-version source (`0.6.0-dev` in SemVer for this branch). Tauri uses it when its configuration omits a version override; the existing UI badge reads Tauri app metadata. The private frontend package does not declare another product version. Update the root package entry in Cargo.lock alongside a version bump; do not change dependency versions. Window title and executable name stay `Trading Terminal` and `trading-terminal.exe`.
 
@@ -74,7 +75,9 @@ See [the 0.4 demonstration](DEMO_04.md) and retained [0.3 demonstration](DEMO_03
 
 Reconnect and account goldens run offline in the Python suite. A successful toast API/mock call does not prove a visible toast; sound audibility and owner-configured Telegram delivery are separate acceptance checks. Native notification settings are respected, never changed by the application. Ordinary shutdown stops monitoring; this is not a background service.
 
-For 0.4, one `PublicStream` owns all four public topics; widgets must not open independent connections. Display timeframe state stays in `LiveChart` and never enters `live_start_terminal`. Recorded IR samples are the only indicator source. Manual PAPER requests use unique IDs, a next-observed-quote rule and the existing account engine; see [ADR 0016](adr/0016-shared-market-terminal.md) and [ADR 0017](adr/0017-manual-paper-source.md).
+For 0.4, one `PublicStream` owns all four public topics; widgets must not open independent connections. Display timeframe state stays in `LiveChart` and never enters `live_start_terminal`. For that historical 0.4 contract, recorded IR samples were the only indicator
+source. The later presentation-only cache-based tools in ADR 0040 are an explicit
+addition; recorded IR itself remains separate and is never recomputed. Manual PAPER requests use unique IDs, a next-observed-quote rule and the existing account engine; see [ADR 0016](adr/0016-shared-market-terminal.md) and [ADR 0017](adr/0017-manual-paper-source.md).
 
 The required long-run check uses the compiled Windows application, an isolated public session and at least 30 minutes of wall time. Record start/end, per-topic counters, process/memory samples, UI interactions, reconnects and errors. Do not substitute a headless probe, claim a natural disconnect from a simulated one or infer Telegram delivery from a mocked transport. Bounded UI arrays do not imply unlimited disk retention; paper input/order safety budgets remain explicit.
 

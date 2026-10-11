@@ -17,19 +17,65 @@ function upload(){fireEvent.change(screen.getByLabelText('Import project archive
 function transport(command:string){if(command==='archive_begin')return {operation_id:op,upload_id:op,chunk_bytes:3};if(command==='archive_append')return {offset:1};}
 const mutations=()=>vi.mocked(api).mock.calls.filter(([command])=>['archive_begin','archive_append','archive_import_start','archive_cancel','archive_import_cancel','trust_native','start_run','save_graph','save_native'].includes(command));
 
-it('inspects a discarded finish response without cancel, repeat finish, or another upload',async()=>{
- const imported=vi.fn();vi.mocked(api).mockImplementation(async command=>{if(command==='archive_import_start')throw Error('Lost response');if(command==='archive_import_status')return receipt();return transport(command);});
- mount({onImported:imported});upload();await screen.findByText(/start response is uncertain/);
- expect(screen.getByText(`Current operation: ${op}`)).toBeTruthy();
- const writes=mutations().length;fireEvent.click(screen.getByRole('button',{name:/this import/}));
- expect(await screen.findByRole('heading',{name:'Import completed'})).toBeTruthy();
- expect(screen.getByText('Saved receipt confirms completed. Inspection did not retry the import.')).toBeTruthy();
- expect(screen.queryByText(/start response is uncertain/)).toBeNull();expect(screen.queryByText('Error: Lost response')).toBeNull();
- fireEvent.click(screen.getByRole('button',{name:'Refresh this import'}));await waitFor(()=>expect(vi.mocked(api).mock.calls.filter(([c])=>c==='archive_import_status').length).toBeGreaterThanOrEqual(2));
- expect(mutations()).toHaveLength(writes);expect(imported).not.toHaveBeenCalled();
- expect(vi.mocked(api).mock.calls.filter(([c])=>c==='archive_import_start')).toHaveLength(1);
- expect(screen.getByText(/Artifact verification: not checked/)).toBeTruthy();
-});
+it.each(['poll first', 'inspection first'] as const)(
+ 'inspects a discarded start response without cancel, repeat start, or another upload (%s)',
+ async order => {
+  const imported = vi.fn();
+  const statusReads: Array<(value: ImportReceipt) => void> = [];
+  vi.mocked(api).mockImplementation(async command => {
+   if (command === 'archive_import_start') throw Error('Lost response');
+   if (command === 'archive_import_status') {
+    return new Promise<ImportReceipt>(resolve => { statusReads.push(resolve); });
+   }
+   return transport(command);
+  });
+  mount({onImported: imported});
+  await act(async () => upload());
+  expect(screen.getByText(/start response is uncertain/)).toBeTruthy();
+  expect(screen.getByText(`Current operation: ${op}`)).toBeTruthy();
+  expect(statusReads).toHaveLength(1);
+  const writes = mutations().length;
+
+  fireEvent.click(screen.getByRole('button', {name: 'Inspect this import'}));
+  // Inspection invalidates the original poll and starts a fresh subscription
+  // while its own read is pending. Control both legitimate response orders.
+  expect(statusReads).toHaveLength(3);
+  expect(screen.getByText('Inspecting saved receipt…')).toBeTruthy();
+  if (order === 'poll first') {
+   await act(async () => statusReads[2](receipt()));
+   expect(screen.getByRole('heading', {name: 'Import completed'})).toBeTruthy();
+   expect(screen.getByText('Saved receipt confirms completed. Published reports are retained.')).toBeTruthy();
+   expect(screen.getByText('Inspecting saved receipt…')).toBeTruthy();
+  }
+
+  await act(async () => statusReads[1](receipt()));
+  const notice = 'Saved receipt confirms completed. Inspection did not retry the import.';
+  expect(screen.getByRole('heading', {name: 'Import completed'})).toBeTruthy();
+  expect(screen.getByText(notice)).toBeTruthy();
+  expect(screen.queryByText('Inspecting saved receipt…')).toBeNull();
+  expect(screen.queryByText(/start response is uncertain/)).toBeNull();
+  expect(screen.queryByText('Error: Lost response')).toBeNull();
+
+  // Disposed polling responses must not replace the inspected terminal receipt.
+  await act(async () => {
+   statusReads[0](receipt(op, 'partial'));
+   if (order === 'inspection first') statusReads[2](receipt(op, 'partial'));
+  });
+  expect(screen.getByText(notice)).toBeTruthy();
+  expect(screen.queryByRole('heading', {name: 'Import partial'})).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', {name: 'Refresh this import'}));
+  expect(statusReads).toHaveLength(4);
+  await act(async () => statusReads[3](receipt()));
+  expect(screen.getByText(notice)).toBeTruthy();
+  expect(screen.getByRole('heading', {name: 'Import completed'})).toBeTruthy();
+  expect(mutations()).toHaveLength(writes);
+  expect(imported).not.toHaveBeenCalled();
+  expect(vi.mocked(api).mock.calls.filter(([command]) => command !== 'archive_import_status')
+   .map(([command]) => command)).toEqual(['archive_begin', 'archive_append', 'archive_import_start']);
+  expect(screen.getByText(/Artifact verification: not checked/)).toBeTruthy();
+ }
+);
 
 it('recovers after reload through recent receipts and opens only a published member explicitly',async()=>{
  const open=vi.fn(async()=>{}),strategy=vi.fn(async()=>{});

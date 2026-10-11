@@ -23,7 +23,7 @@ scope when account remaining usage falls below 10 percent.
 
 Product 0.5.1-dev was accepted through the owner-authorized conditional squash merge of PR #6. Product 0.6-dev is authorized for development, not accepted. Section 23 defines this extension; earlier behavior and immutable results remain supported.
 
-Current accepted product: 0.5 development build (`0.5-dev`). Sections 1–20 retain the historical 0.1–0.4 contracts; section 21 defines the 0.5 extension and supersedes their scope exclusions only for explicitly listed features. Stored results retain their original versioned execution assumptions. Owner manual acceptance permits the 0.5 merge with remaining UI/UX issues deferred; it does not retroactively establish unperformed automated native measurements. Telegram delivery remains unverified and outside acceptance. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
+Historical accepted 0.5 baseline: `0.5-dev`; the accepted 0.5.1 maintenance checkpoint is recorded above. Current 0.6 development is not owner-accepted. Sections 1–20 retain the historical 0.1–0.4 contracts; section 21 defines the 0.5 extension and supersedes their scope exclusions only for explicitly listed features. Stored results retain their original versioned execution assumptions. Owner manual acceptance permits the 0.5 merge with remaining UI/UX issues deferred; it does not retroactively establish unperformed automated native measurements. Telegram delivery remains unverified and outside acceptance. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
 
 ## 1. Purpose and delivery target
 
@@ -404,8 +404,9 @@ content verification. State materialization estimates honestly; they are not a
 peak-memory guarantee. Freeze additive workload version/breakdown and source-load
 policy for new contracts; retain the old alias and unchanged historical reports.
 See [development guidance](docs/DEVELOPMENT.md#modeled-work-and-independent-full-source-admission-tt10--a4).
-This completes this bounded A4 scope only; independent linear-origin spot
-benchmark settings, TT13 and remaining original research work stay separate.
+Historical A4 slice boundary: independent linear-origin spot contracts, TT13
+and bounded research were separate then; subsequent completed evidence is in
+[the current checkpoint](docs/CHECKPOINT.md).
 
 ### Original-plan independent passive contract — 2026-10-10
 
@@ -421,8 +422,9 @@ Ordinary spot legacy documents remain unchanged when the field is absent.
 Later-period verification retains original costs/precision against new history;
 current metadata never retroactively changes a frozen result. Manual historical
 modeling requires explicit review and a note. Preserve separate risk cohorts and
-all TT10/A4 modeled-work/source-loading guards. TT13 and remaining research are
-outside this bounded implementation; Windows/native/live acceptance stays separate.
+all TT10/A4 modeled-work/source-loading guards. TT13 and bounded research were
+outside this historical A2 slice and are now recorded as completed in the current
+checkpoint; Windows/native/live acceptance stays separate.
 
 
 ### Original-plan TT13: recoverable background import slice
@@ -436,10 +438,11 @@ retries or grants source trust. Legacy synchronous finish remains compatibility
 only; archive and receipt schema 1 remain readable through additive controls.
 See [ADR 0035](docs/adr/0035-asynchronous-recoverable-import.md).
 
-This import slice does not close TT13: export/download, chart-integrity reads and
-local result finalization retain their separately recorded remaining work. TT10
-modeled/source budgets and independent spot contracts are unchanged. Windows,
-native, new exchange/live and remaining bounded research acceptance stay separate.
+The historical import slice alone did not close TT13. Subsequent export/download,
+local finalization and verified-read work is complete under ADRs 0036–0038 and
+current STATUS evidence, along with the bounded research program. TT10 modeled/
+source budgets and independent spot contracts are unchanged. Windows/native,
+new exchange/live and the explicitly conditional data/owner gates remain separate.
 
 ### Later authorized bounded catalog additions — 2026-10-11
 
@@ -450,8 +453,10 @@ lag nodes with editor support. Preserve all existing templates/defaults and
 archives. Both candidates initially support historical closed daily execution,
 strict gaps, configured profile-2 costs/sizing and no position-management overlay.
 Separate synthetic implementation verification from empirical validation, which
-has not been performed for these additions; do not count them as satisfying an
-unperformed cached-market acceptance gate. Source rules, adaptations, authored
+has not been established for these additions. Their separately recorded finite
+cached-public-data gate is now complete with explicit technical recovery, four
+verified outputs and one retained cancelled attempt; it establishes integration
+only, not profitable or robust behavior. Source rules, adaptations, authored
 rule-summary hashes and limitations are explicit in ADR 0039 and catalog cards.
 Test all strategies retains its 4h/1d default and unavailable rows; individual new
 cards offer daily only. No optional Supertrend, chart-display indicator controls,

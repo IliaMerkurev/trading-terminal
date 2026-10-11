@@ -6,6 +6,79 @@ dated evidence: later checks supersede only the corresponding earlier pending
 gates, not unrelated platform or owner acceptance.
 
 
+
+## C12/C13 cached-data integration acceptance — 2026-10-11
+
+The unchanged daily C12 Double 7's and C13 Improved R2 graph defaults now have
+finite cached-public-data integration evidence on source checkpoint `f8ffe1c2`.
+The predeclared, previously exposed 31-day window used 213 complete warmup days,
+closed UTC daily signals over native H4 spot history, strict gaps, profile-2
+manual cost/precision assumptions and no position-management overlay. The
+original four-row Library contract retained 3,300 modeled source candles and a
+separate full-source loading guard.
+
+This was **an explicitly recovered gate, not a pristine four-row batch**. An
+external audit helper incorrectly expected embedded candles where the supported
+Library worker stores an immutable shared-candle reference. The stop preserved
+completed C12 and cancelled the already-admitted C13 attempt. An approved recovery
+used the existing pending-only resume for two unadmitted passive rows, then one
+separately linked C13 job with identical financial inputs. A second external
+status-poll assertion stopped before that C13 admission; a separately recorded
+continuation completed the same still-unattempted authorized admission. Neither
+completed C12 nor either passive was rerun. The original batch remains
+`completed_with_errors`, and its original C13 row remains `cancelled`.
+
+Final evidence comprises **five admissions: four completed, independently
+verified outputs and one retained cancelled technical attempt**. C12 produced one
+completed position lifecycle; C13 produced no trades with unchanged capital and
+null win rate. Both outcomes are valid technical integration observations. The
+two passive spot alternatives are not execution/risk-equivalent strategies.
+
+Read-only reopening verified all four raw result/snapshot identities, every saved
+summary, all 3,433 normalized rows and finalization receipts, source references,
+independent fees/cash/inventory, and daily close alignment. All 971 prior
+non-coverage research-evidence rows remain byte-for-byte equivalent; conservative
+unknown provenance and existing exposure were preserved. No displayed/viewed
+records were fabricated. SQLite integrity/foreign keys and exclusive workspace
+ownership/shutdown checks passed, with no native trust, replay, live or paper
+records. Source/runtime were frozen throughout, and no production repository
+files were changed for the gate.
+
+This closes the finite cached-market integration requirement for these two daily
+candidates alongside their separately retained synthetic implementation evidence.
+It does not establish untouched holdout validation, profitability, robustness,
+verified historical exchange precision, M1/tick execution, current Windows/native
+acceptance, live trading, owner UI acceptance, or release/merge approval. Private
+raw history, detailed fills/equity and execution artifacts are excluded.
+
+
+## Import receipt regression synchronization — 2026-10-11
+
+The final aggregate on published source `c3772d4` retained one failure in
+`ImportRecovery.test.tsx`: **494 passed, one failed across 55 files**. Its
+completion-heading wait could be satisfied by the legitimate background status
+poll before the explicit inspection read had settled. The polling notice said
+"Published reports are retained" while the assertion required the distinct
+"Inspection did not retry the import" notice. This was an uncontrolled test
+response order, not evidence of another upload, start, cancellation or publication.
+
+The regression now resolves each status read explicitly and covers poll-first
+and inspection-first orders. It retains the exact inspection notice, asserts that
+late disposed-poll responses cannot replace the inspected completed receipt, and
+settles the explicit refresh before checking the full mutation sequence: exactly
+one begin, one append and one start, with no cancellation, legacy finish, retry,
+additional upload, execution, trust grant or automatic opening callback. No sleeps,
+timeout increases, polling mocks, skipped tests or production changes were added.
+
+The focused command `node node_modules/vitest/vitest.mjs run
+frontend/src/ImportRecovery.test.tsx frontend/src/ProjectTransfer.test.tsx
+frontend/src/poll.test.ts` passed **22 tests across three files**. The single final
+`node node_modules/vitest/vitest.mjs run` aggregate passed **496 tests across
+55 files** in 16.06 seconds. The earlier failed aggregate is retained separately.
+Production TypeScript/build, backend and financial evidence are unchanged and
+were not rerun for this test-only correction. Simulated-DOM evidence does not
+establish Windows/native or owner acceptance.
+
 ## Chart indicator browser acceptance — 2026-10-11
 
 The final Linux/browser source checkpoint `ce7e3fd` was exercised against three

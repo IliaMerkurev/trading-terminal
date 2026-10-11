@@ -1,10 +1,43 @@
 # Current engineering checkpoint
 
 Updated 2026-10-11. Working branch: `codex/terminal-mvp`; product remains
-`0.6.0-dev`. Earlier surfaces have browser-verified development evidence; the
-new local-finalization surface has parent-led production-browser coverage. This is not a
-packaged release or owner-accepted final UX. [PROJECT.md](../PROJECT.md) remains the
-product specification; [STATUS.md](STATUS.md) owns detailed test evidence.
+`0.6.0-dev`, licensed MIT. The original bounded Linux/browser engineering and
+research continuation is complete, along with the later daily candidates and six
+chart display tools. This is a development source checkpoint, not a packaged
+release, main merge or final owner acceptance. [PROJECT.md](../PROJECT.md) remains
+the specification; [STATUS.md](STATUS.md) records exact-source evidence.
+
+## Current closeout
+
+- TT10 modeled-work/full-source admission and independent spot benchmark
+  contracts are implemented. TT13 background operations, explicit same-operation
+  import continuation, finalization and verified reads passed supported-load
+  Linux acceptance with the documented latency/memory limits.
+- The 291 fixed TT17/TT18 observations completed and reopened independently.
+  None of the six adaptation variants qualified for promotion; negative and
+  inconclusive outcomes remain final rather than restarting a search.
+- C12 Double 7's and C13 Improved R2 have both independent synthetic evidence
+  and a finite cached-public-data integration on `f8ffe1c2`. The latter was an
+  explicitly recovered gate: four verified completed outputs plus one retained
+  cancelled technical attempt. The original Library batch remains
+  `completed_with_errors`; see STATUS for the harness failures and recovery.
+  C12 had one completed position; C13 had no trades. Neither is a profitability
+  or robustness claim.
+- SMA, EMA, Bollinger Bands, RSI, MACD and source-native volume are separate
+  cache-only display tools with persisted settings, independent instances,
+  confirmed-input provenance and bounded stable-origin replay. Synthetic browser
+  checks cover arithmetic, forming inputs, over-budget refusal, normal/narrow
+  layout and retained settings without exchange or trading activity.
+- Published application checkpoint `c3772d4` was followed by a production-
+  unchanged test synchronization fix at `f8ffe1c2`: final frontend aggregate
+  **496/496 across 55 files**. Backend aggregate, focused corrections, build and
+  browser evidence retain their individual recorded identities; no new full
+  backend run is implied by this documentation-only closeout.
+
+The dated sections below preserve earlier slice boundaries. Their statements
+about then-pending TT10/TT13/research or excluded later features are historical;
+this closeout and the matching later STATUS evidence supersede them, without
+rewriting old financial results or broadening platform acceptance.
 
 ## Current daily reversion checkpoint
 
@@ -416,35 +449,30 @@ before changing a surface; do not move financial calculations into the UI.
 
 ## Prioritized continuation
 
-1. Continue from the verified UX series rather than rebuilding its controls.
-   Inspect both connected journeys in the built browser at ordinary and narrow
-   widths, using existing synthetic work where possible. Identify a concrete
-   remaining usability gap before editing; do not restart a general redesign.
-2. Address one evidenced friction point per small slice: clear next action,
-   retained source/selection/return context, result readability, scrolling,
-   keyboard focus and dialog dismissal. Verify the changed surface and nearest
-   regression risk. Record actual outcomes and limits in STATUS before the next
-   milestone checkpoint on `codex/terminal-mvp`.
-3. Finish owner-led unaided usability acceptance of both journeys and the
-   supporting later-period Data/review/cancel route. Earlier layout direction
-   approval and automated/browser checks do not establish this acceptance.
-4. Keep Windows/native acceptance separate: installed source/build identity,
-   startup diagnostics, file pickers, lifecycle/Job Objects and 100/125/150%
-   scaling. Current live-feed/reconnect and actual native notification behavior
-   also require their own evidence; offline history cannot establish them.
-
-No new strategies before the two journeys are UX-ready. Broader strategy
-research, new venues, universal exposure tracking, richer journals, benchmark
-warmup efficiency, packaging and release work are outside this UX continuation.
-No new product/schema/dependency version is implied by an internal milestone.
+1. Preserve the separate candidate branch and its documentation; do not repeat
+   the completed financial programs or add an arbitrary new strategy family.
+2. Owner-led unaided Market→observation→test, Lab→compare→reopen, and later-period
+   Data/review/cancel journeys remain distinct acceptance. Correct interpretation
+   of market, dates, costs and execution model matters as much as navigation.
+3. Current Windows/native startup, lifecycle/Job Objects, pickers, transport and
+   scaling remain deferred, as do actual live-feed/reconnect checks. Existing
+   Linux/browser evidence must not be relabelled as native acceptance.
+4. The conditional M1 detail probe is blocked by its incomplete required prefix.
+   No untouched/future holdout is established and no candidate was promoted.
+   Do not shorten history, fabricate inputs, bypass denied acquisition or launch
+   a future study solely to mark this conditional row complete.
+5. Further feature development follows owner priorities or an evidenced defect.
+   Main integration, release, packaging and deployment remain separate decisions.
 
 ## Capability limits to preserve
 
 - Linux research supports graph tests and saved reports; native Python execution,
   Windows notifications/sound and protected Telegram storage are unavailable.
-- Archive-wide imports remain sequential and non-atomic, with durable status-only
-  receipts and atomic per-run publication. Cancel does not undo records. No
-  automatic retry/resume, rollback or in-flight responsiveness is promised.
+- Archive-wide imports remain sequential and non-atomic, with durable receipts,
+  explicit checksum-bound same-operation continuation and atomic per-run
+  publication. Background status/cancel and bounded responsiveness have measured
+  evidence. Cancel does not undo records; automatic retry/resume and rollback
+  are not promised.
   Inspection/ordinary report opening does not verify artifact files.
 - Research admission/freeze/display evidence is bounded. It does not prove human
   reading or complete legacy/imported, live/replay or outside-app exposure.
