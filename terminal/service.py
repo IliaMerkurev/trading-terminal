@@ -63,8 +63,8 @@ class AppService:
                           notification_test={'channel'},telegram_configure={'token','chat_id'},telegram_clear=set())
             fields.update(live_start_terminal={'strategy_id','profile','paper','channels','execution_source'},
                           live_chart={'session_id'},paper_manual={'session_id','action','request_id'})
-            fields.update(chart_indicator_settings={'market','symbol'},chart_indicator_save={'market','symbol','instances','revision'},chart_indicator_read={'market','symbol','minutes','start','end','revision','reanchor'})
-            fields.update(market_open={'market','symbol'},market_close=set(),market_chart={'market','symbol','minutes','before'})
+            fields.update(chart_indicator_settings={'market','symbol','source'},chart_indicator_save={'market','symbol','instances','revision','source'},chart_indicator_read={'market','symbol','minutes','start','end','revision','reanchor','source'})
+            fields.update(market_preferences=set(),market_open={'market','symbol','source'},market_close=set(),market_chart={'market','symbol','minutes','before','source'})
             fields.update(managed_experiment_fields={'strategy_id','profile'})
             fields.update(paper_start_manual={'profile'})
             fields.update(paper_lifecycle={'session_id','before','limit'})
@@ -91,6 +91,8 @@ class AppService:
             fields.update(library_batch_metadata={'batch_id'},library_batch_save_metadata={'batch_id','name','notes','expected_revision'})
             if command=='library_batch_history' and 'query' in p:fields[command].add('query')
             if command=='library_copy' and 'profile' in p:fields['library_copy'].add('profile')
+            if command in ('market_open','market_chart','chart_indicator_settings','chart_indicator_save','chart_indicator_read') and 'source' not in p:
+                fields[command].discard('source')
             if not isinstance(command,str) or command not in fields or set(p)!=fields[command]:
                 raise ValueError("Unknown command or unexpected parameters")
             if command in ('library_validation_freeze','experiment_freeze'):
@@ -101,6 +103,7 @@ class AppService:
                 result=platform_capabilities()
             elif command=='scheduler_status':result={**self.jobs.scheduler_status(),'verified_reads':self.chart_reads.activity()}
             elif command in ('live_start','live_start_terminal'):result=self.live.start(**p)
+            elif command=='market_preferences':result=self.live.market_preferences()
             elif command=='market_open':result=self.live.market_open(**p)
             elif command=='market_close':result=self.live.market_close()
             elif command=='chart_indicator_settings':result=self.display_indicators.settings(**p)

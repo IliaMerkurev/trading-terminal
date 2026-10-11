@@ -103,3 +103,21 @@ it('retains display interval, candles and viewport across hidden navigation with
  expect(mock.fit).toHaveBeenCalledTimes(fits);
  expect(mock.api.mock.calls.every(c=>['market_chart','chart_indicator_settings'].includes(c[0]))).toBe(true);
 });
+
+it('drops old-source chart replies and requests separate settings after a source switch',async()=>{
+ mock.api.mockClear();mock.candles.mockClear();let finishOld:(v:any)=>void=()=>{};
+ const old=new Promise(resolve=>{finishOld=resolve;});
+ const candle=(close:number)=>({time:0,open:close,high:close+1,low:close-1,close,volume:1});
+ mock.api.mockImplementation((command:string,p:any)=>{
+  if(command==='chart_indicator_settings')return Promise.resolve({version:1,revision:0,instances:[],origins:{}});
+  if(command==='market_chart')return p.source==='okx'?Promise.resolve({candles:[candle(200)],source:'okx'}):old;
+  return Promise.resolve({});
+ });
+ const {rerender}=render(<LiveChart fresh source="bybit"/>);
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_chart',expect.objectContaining({symbol:'BTCUSDT'})));
+ rerender(<LiveChart fresh source="okx"/>);
+ await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([{...candle(200),time:60}]));
+ finishOld({candles:[candle(10)],source:'bybit'});
+ await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([{...candle(200),time:60}]));
+ expect(mock.api).toHaveBeenCalledWith('chart_indicator_settings',{market:'spot',symbol:'BTCUSDT',source:'okx'});
+});

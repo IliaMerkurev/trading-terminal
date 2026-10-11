@@ -7,6 +7,109 @@ gates, not unrelated platform or owner acceptance.
 
 
 
+## Public-source final frozen checks and browser acceptance — 2026-10-11
+
+After all production/test edits were committed, source `3a2c0ce` remained
+unchanged for the complete backend aggregate: **479 tests, 471 passed and eight
+expected Windows-only skips**, in 193.751 seconds. The worktree was clean before
+and after. This supersedes the non-frozen aggregate described below without
+claiming its missing row error was retrospectively recovered. Final frontend
+aggregate remains **503 passed across 55 files**; TypeScript/production build,
+independent review and pinned secret scanning passed. No financial formula changed.
+
+Linux browser acceptance used an explicitly synthetic, network-blocked fixture.
+The visible source selector switched price, chart, book/tape and volume together;
+rapid Bybit → OKX → Bybit settled on the selected source. OKX showed 240 confirmed
+and one forming candle; EMA/SMA/RSI displayed 949.78/949.90/49.50, matching the
+independent fixture oracle. Forming derived values remained unavailable while
+native volume remained visible. Bybit EMA period 30 and OKX period 20 stayed
+separate. Leaving Market for Lab and returning retained OKX. Service-restart
+preference persistence was checked separately through the real service API,
+not claimed as a second browser restart. Quantity/source labels were visible;
+clean shutdown retained zero external attempts and zero trading/run/trust records.
+
+A separate real-provider attempt on the final diagnostic source selected OKX
+explicitly. Both public WebSocket and REST chart history reported
+**network unreachable (errno 101)**. No exchange quotes, candles or HTTP response
+were obtained. This establishes an environment transport failure, not HTTP 403,
+a proved regional restriction or a successful live feed. No proxy, VPN, alternate
+regional host or security bypass was attempted. Actual live-provider operation,
+sustained runtime performance and current Windows/native acceptance remain
+unverified. Synthetic display evidence is never represented as real market data.
+
+
+## Safe public-network error categories — 2026-10-11
+
+A subsequent live-connection attempt exposed a generic `OSError` with no useful
+category in the original safe display. The backend diagnostic classifier now
+preserves only allowlisted local errno/winerror categories, DNS/timeout/TLS
+categories and available HTTP status. Bounded nested causes, URL errors and
+exception groups are inspected; collapsed dual-stack failures contribute only
+known numeric errno tokens, never their raw addresses or text. This does not
+identify the observed environmental failure until the host is restarted and a
+fresh failure is classified. No transport bypass, new endpoint or dependency.
+
+Eighteen focused protocol/source/lifecycle tests passed. Additional portable
+errno assertions passed in the twelve-test adapter suite. Existing aggregate,
+UI/build and Windows limitations remain unchanged; this backend diagnostic-only
+correction is not a new full-suite or successful-live-connectivity claim.
+
+
+## Explicit Bybit / OKX public chart sources — 2026-10-11
+
+Market now exposes a persisted source selector alongside market/instrument.
+The added credential-free OKX adapter supplies native confirmed/forming candles,
+public ticker, five-level snapshot book and recent trades. Its public and business
+WebSocket lanes are drained fairly without blocking one behind the other. Display
+history uses native exchange intervals including UTC daily bars. Spot size/volume
+and perpetual-contract units are explicit. No price/provider substitution occurs.
+
+Legacy omitted-source IPC continues to mean Bybit. Source-qualified cache keys
+separate prices, confirmations, page boundaries, settings, stable replay origins
+and calculation hashes without rewriting legacy rows. Source switching cancels
+queued acquisition and suppresses obsolete in-flight publication/error/throttle
+state; delayed chart/settings/read/save responses cannot replace the new view.
+Retained Bybit quotes, paper levels and recorded overlays are hidden on OKX.
+Strategy/paper starts and recovery are guarded as Bybit-only in UI and backend.
+Safe error diagnostics retain exception category and available HTTP status while
+excluding response bodies, URLs, headers and tracebacks.
+
+Independent review found and corrected legacy exact-IPC validation, a retained
+Bybit-price fallback, asymmetric socket draining, late preference initialization
+and acquisition cancellation races. Offline fixtures exercise those boundaries,
+REST cursor/confirmation/error handling, subscription acknowledgements, partial
+socket cleanup, heartbeat expiry, malformed OHLCV rejection and independent
+source-origin indicator outputs. No additional package or financial formula changed.
+
+The first aggregate attempts retained two test-contract failures: the new IPC
+test incorrectly expected an `ok` field rather than the existing `type` envelope;
+and an App test expected synchronous close rather than the new serialized close.
+Both assertions were corrected without weakening their outcome/count checks.
+The first backend aggregate ran 474 tests with one failure and eight expected
+Windows-only skips; the first frontend aggregate was 499 passed / one failed.
+The corrected final frontend aggregate passed **503 tests across 55 files**.
+The next backend aggregate ran **478 tests: 469 passed, eight expected
+Windows-only skips and one error** in the future-holdout experiment ranking
+test (a missing result summary). Its single unchanged focused retry passed.
+Subsequent diagnosis established that a display-unit source edit occurred during
+that aggregate. Runtime identity hashes every `terminal/*.py` file, so this was
+**not a frozen-source aggregate**. Runtime mismatch is a plausible explanation,
+not proven because the failed row's status/error was not retained. It must not
+be classified as an unrelated flaky test or clean acceptance. A later diagnostic
+assertion checks all four rows completed before ranking and includes their
+statuses/errors on failure; financial expectations are unchanged. Unit-label refinements additionally passed
+**30 backend-focused** tests, **33 frontend-focused** tests and
+TypeScript/production build. The existing bundle-size warning remains.
+
+This implementation evidence is offline/Linux. Live OKX connectivity, sustained
+provider operation, GUI acceptance and current Windows/native acceptance remain
+separate gates. Applicable OKX API Agreement acceptance belongs to the owner;
+public-data access does not grant redistribution rights. No strategy, research,
+paper or real-order run was added. Future authenticated exchange adapters must
+keep API keys in local isolated encrypted storage only; this slice adds no keys
+or credential storage. See [ADR 0041](adr/0041-explicit-public-chart-sources.md).
+
+
 ## C12/C13 cached-data integration acceptance — 2026-10-11
 
 The unchanged daily C12 Double 7's and C13 Improved R2 graph defaults now have

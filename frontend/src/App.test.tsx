@@ -226,7 +226,7 @@ it('round trips Market and Lab without resetting view state or changing the test
  await waitFor(()=>expect(api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT'}));
  fireEvent.click(screen.getByRole('button',{name:'Lab'}));
  expect(screen.getByText('2222 USDT')).toBeTruthy();
- expect(vi.mocked(api).mock.calls.filter(([command])=>command==='market_close')).toHaveLength(1);
+ await waitFor(()=>expect(vi.mocked(api).mock.calls.filter(([command])=>command==='market_close')).toHaveLength(1));
  fireEvent.click(screen.getByRole('button',{name:'Market'}));
  expect((screen.getByLabelText('Chart display timeframe') as HTMLSelectElement).value).toBe('240');
  await waitFor(()=>expect(vi.mocked(api).mock.calls.filter(([command])=>command==='market_open')).toHaveLength(2));

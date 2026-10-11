@@ -177,3 +177,27 @@ it('isolates RSI padding from shared-scale defaults and rebuilt non-RSI panes', 
  expect(added.find(series => series.options.title.startsWith('RSI'))!.options.autoscaleInfoProvider()).toEqual({priceRange: {minValue: 0, maxValue: 100}});
  expect(defaults).toEqual(normalMargins);
 });
+
+it('rejects delayed settings, calculation and save replies from the previous exchange',async()=>{
+ let oldSettings:(v:any)=>void=()=>{},oldRead:(v:any)=>void=()=>{},oldSave:(v:any)=>void=()=>{};let bybitLoads=0;
+ const doc=(type:ChartIndicator['type'])=>({...emptySettings,revision:1,instances:[item(type)]});
+ mock.api.mockImplementation((command:string,p:any)=>{
+  if(command==='chart_indicator_settings'){
+   if(p.source==='okx')return Promise.resolve(doc('ema'));
+   return ++bybitLoads===1?new Promise(resolve=>{oldSettings=resolve;}):Promise.resolve(doc('volume'));
+  }
+  if(command==='chart_indicator_read')return p.source==='okx'?new Promise(resolve=>{oldRead=resolve;}):Promise.resolve({status:'ready',times:[60],columns:{volume:{value:[10]}}});
+  if(command==='chart_indicator_save')return new Promise(resolve=>{oldSave=resolve;});
+ });
+ const rows={current:[{time:0,open:10,high:12,low:9,close:11,volume:10}]};
+ const {result,rerender}=renderHook(({source})=>useChartIndicators('spot','BTCUSDT',1,true,rows,source),{initialProps:{source:'bybit'}});
+ rerender({source:'okx'});
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('chart_indicator_read',expect.objectContaining({source:'okx'})));
+ let save:Promise<void>;act(()=>{save=result.current.apply([item('rsi')]);});
+ expect(result.current.saving).toBe(true);
+ rerender({source:'bybit'});
+ await waitFor(()=>expect(result.current.result?.columns.volume.value).toEqual([10]));
+ await act(async()=>{oldSettings(doc('bb'));oldRead({status:'ready',times:[60],columns:{ema:{value:[999]}}});oldSave(doc('rsi'));await save;});
+ expect(result.current.settings.instances[0].type).toBe('volume');
+ expect(result.current.result.columns.volume.value).toEqual([10]);expect(result.current.saving).toBe(false);
+});

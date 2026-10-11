@@ -7,6 +7,22 @@ chart display tools. This is a development source checkpoint, not a packaged
 release, main merge or final owner acceptance. [PROJECT.md](../PROJECT.md) remains
 the specification; [STATUS.md](STATUS.md) records exact-source evidence.
 
+## Public-source chart addition
+
+The current Market UI adds an explicit persisted Bybit / OKX source selector.
+OKX is public-data, display-only; strategy/paper monitoring remains Bybit-only.
+Native confirmations, caches, indicator settings and replay origins are strictly
+source-separated, and rapid switches discard obsolete responses. Legacy Bybit
+IPC and data retain their meanings. See the newest STATUS entry and ADR 0041 for
+verification, units, protocol sources and remaining live/Windows acceptance gates.
+Final frozen source `3a2c0ce`: backend 479 tests, 471 passed and eight platform
+skips; frontend 503 passed. TypeScript/build, independent review and source-switch
+synthetic browser checks passed. Real OKX activation encountered network
+unreachable (errno 101) for both WebSocket and REST, with no exchange data or HTTP
+response. Live connectivity and current Windows acceptance remain unverified.
+Earlier failed/non-frozen aggregates and their limitations are retained in STATUS.
+No new credentials, strategy, research run, execution support or product version.
+
 ## Current closeout
 
 - TT10 modeled-work/full-source admission and independent spot benchmark

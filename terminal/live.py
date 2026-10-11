@@ -19,6 +19,7 @@ from terminal.market_state import MarketState
 from terminal.market_hub import MarketHub, MarketFeed
 from terminal.chart_history import ChartHistory
 from terminal.storage import identifier
+from terminal.market_sources import validate_source
 
 
 class PendingSignals:
@@ -54,6 +55,7 @@ class LiveManager:
         self.paper_revalidate=threading.Event()
         with store.connect() as db:
             db.executescript('''
+                CREATE TABLE IF NOT EXISTS market_preferences(key TEXT PRIMARY KEY,value TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS live_options(session_id TEXT PRIMARY KEY,options TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS paper_observations(session_id TEXT NOT NULL,sequence INTEGER NOT NULL,
                     observation TEXT NOT NULL,result TEXT NOT NULL,PRIMARY KEY(session_id,sequence));
@@ -84,6 +86,7 @@ class LiveManager:
                 raise NotificationError(f'{channel.title()} notifications are unavailable on this platform')
 
     def start(self,strategy_id,profile,paper,channels,execution_source='strategy'):
+        self._bybit_execution()
         if self.thread and self.thread.is_alive():raise ValueError('Only one live session may run at a time')
         if type(paper) is not bool or not isinstance(channels,list) or len(set(channels))!=len(channels) or any(c not in ('windows','sound','telegram') for c in channels):
             raise ValueError('Invalid paper mode or notification channels')
@@ -107,6 +110,7 @@ class LiveManager:
         return {'session_id':sid}
 
     def start_manual(self,profile):
+        self._bybit_execution()
         if self.thread and self.thread.is_alive():raise ValueError('Only one live/paper session may run at a time')
         profile=Profile(**profile)
         if profile.execution_minutes!=1:raise ValueError("Live/Paper requires M1 execution resolution")
@@ -124,6 +128,7 @@ class LiveManager:
         return {'session_id':sid}
 
     def resume(self,session_id,revalidate_paper):
+        self._bybit_execution()
         if type(revalidate_paper) is not bool:raise ValueError('Paper revalidation acknowledgement must be explicit')
         if self.thread and self.thread.is_alive():
             if session_id!=self.session_id:raise ValueError('Another live session is active')
@@ -172,6 +177,7 @@ class LiveManager:
                 trades=db.execute("SELECT result FROM paper_observations WHERE session_id=? AND json_array_length(json_extract(result,'$.fills'))>0 ORDER BY sequence DESC LIMIT 50",(self.session_id,)).fetchall()
                 view['paper_history']=[json.loads(r['result']) for r in trades]
         view['active']=bool(self.thread and self.thread.is_alive() and not self.stop.is_set())
+        view['display_source']=self.market_preferences()['source']
         view['market']=self.hub.snapshot() if self.hub.started is not None else self.market.snapshot()
         status=view.get('session',{}).get('status','PAUSED')
         view['terminal_state']='DEGRADED' if status=='CONNECTED' and not view['market']['fresh'] else status
@@ -185,14 +191,27 @@ class LiveManager:
         view['telegram']=self.telegram.status()
         return view
 
-    def market_open(self,market,symbol):
+    def market_preferences(self):
+        with self.store.connect() as db:
+            row=db.execute("SELECT value FROM market_preferences WHERE key='source'").fetchone()
+        return {'source':row[0] if row and row[0] in ('bybit','okx') else 'bybit'}
+
+    def _bybit_execution(self):
+        if self.market_preferences()['source']!='bybit':
+            raise ValueError('OKX is chart-only. Select Bybit before starting or resuming strategy/paper monitoring.')
+
+    def market_open(self,market,symbol,source='bybit'):
+        validate_source(source)
         if self.thread and self.thread.is_alive():
             profile=self.journal.get(self.session_id)['snapshot']['profile']
-            if (market,symbol)!=(profile['market'],profile['symbol']):raise ValueError('Pause monitoring before changing the market')
-        self.hub.open(market,symbol);self.market=self.hub.state
+            if source!='bybit' or (market,symbol)!=(profile['market'],profile['symbol']):raise ValueError('Pause monitoring before changing the market')
+        if (source,market,symbol)!=(self.hub.source,self.hub.market,self.hub.symbol):self.chart_history.supersede()
+        self.hub.open(market,symbol,source);self.market=self.hub.state
+        with self.store.connect() as db:db.execute("INSERT OR REPLACE INTO market_preferences VALUES('source',?)",(source,))
         return self.hub.snapshot()
 
     def market_close(self):
+        self.chart_history.supersede()
         # Leaving Live does not stop an explicitly active strategy session.
         if not (self.thread and self.thread.is_alive()):self.hub.close()
         return {'active':self.hub.snapshot()['active']}

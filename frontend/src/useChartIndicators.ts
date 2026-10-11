@@ -10,6 +10,7 @@ export function useChartIndicators(
   minutes: number,
   active: boolean,
   rows: React.MutableRefObject<LiveCandle[]>,
+  source = 'bybit',
 ) {
   const [settings, setSettings] = useState<IndicatorSettings>(emptySettings);
   const [result, setResult] = useState<any>(null);
@@ -30,7 +31,7 @@ export function useChartIndicators(
     setError('');
     setSaving(false);
     anchor.current = false;
-    api<IndicatorSettings>('chart_indicator_settings', {market, symbol}).then(doc => {
+    api<IndicatorSettings>('chart_indicator_settings', {market, symbol, ...(source==='bybit'?{}:{source})}).then(doc => {
       if (token !== generation.current) return;
       if (doc.version !== 1 || !Array.isArray(doc.instances)) {
         throw new Error('Settings unavailable');
@@ -44,7 +45,7 @@ export function useChartIndicators(
       }
     });
     return () => { ++generation.current; };
-  }, [market, symbol]);
+  }, [source, market, symbol]);
 
   useEffect(() => {
     setResult(null);
@@ -62,7 +63,7 @@ export function useChartIndicators(
       const reanchor = anchor.current;
       anchor.current = false;
       const value = await api<any>('chart_indicator_read', {
-        market, symbol, minutes, start, end, revision: settings.revision, reanchor,
+        market, symbol, ...(source==='bybit'?{}:{source}), minutes, start, end, revision: settings.revision, reanchor,
       });
       return {key, epoch, value};
     }, reply => {
@@ -82,7 +83,7 @@ export function useChartIndicators(
       stopped = true;
       cancel();
     };
-  }, [market, symbol, minutes, active, loaded, settings]);
+  }, [source, market, symbol, minutes, active, loaded, settings]);
 
   const apply = async (instances: ChartIndicator[]) => {
     const token = generation.current;
@@ -90,7 +91,7 @@ export function useChartIndicators(
     setError('');
     try {
       const doc = await api<IndicatorSettings>('chart_indicator_save', {
-        market, symbol, instances, revision: settingsRef.current.revision,
+        market, symbol, ...(source==='bybit'?{}:{source}), instances, revision: settingsRef.current.revision,
       });
       if (token === generation.current) {
         setSettings(doc);

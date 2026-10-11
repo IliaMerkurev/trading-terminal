@@ -633,3 +633,31 @@ frontend/src/ChartIndicators.test.tsx frontend/src/LiveChart.test.tsx`. Run with
 matching pinned project environment. Validate actual pane layout and source/
 timeframe switching in an isolated synthetic browser workspace; never relabel
 synthetic values as a live feed or merge its journal into ordinary data.
+
+## Explicit public chart source
+
+Market → Data source selects Bybit or OKX and retains the selection in the
+workspace. Existing workspaces default to Bybit. OKX supports USDT spot and
+USDT perpetual display, with native 1m/5m/15m/1H/4H/UTC-1D candles and public
+quotes, five-level book and trade tape. The optional strategy/paper controls
+remain Bybit-only. Changing source never starts an execution or research run.
+
+Source caches, confirmations, indicator settings and calculation origins are
+independent. Add indicators separately per source; switching does not copy
+settings or prices. Provider errors display a safe exception category and an
+HTTP status when available. Do not infer a particular access restriction from
+a reconnect label alone. No automatic provider or regional-host fallback exists.
+Before actual OKX activation, personally review/accept the applicable API terms;
+offline UI/protocol tests do not constitute that acceptance. See ADR 0041.
+
+Offline focused commands:
+
+```sh
+.venv/bin/python -W ignore -m unittest tests.test_okx_market tests.test_market_lifecycle tests.test_display_indicators -q
+node node_modules/vitest/vitest.mjs run frontend/src/LiveTerminal.test.tsx frontend/src/LiveChart.test.tsx frontend/src/ChartIndicators.test.tsx
+node scripts/frontend.mjs build
+```
+
+Use a separate fixture workspace and blocked exchange transports for synthetic
+GUI checks. Keep source-labelled fixture values distinct from real public data.
+Actual connectivity and Windows/native acceptance are separate gates.

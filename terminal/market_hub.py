@@ -7,6 +7,8 @@ import time
 from terminal.data import validate_symbol
 from terminal.live_data import PublicStream, reconnect_delay
 from terminal.market_state import MarketState
+from terminal.market_sources import validate_source, safe_error
+from terminal.okx_market import OKXPublicStream
 
 
 class MarketFeed:
@@ -35,19 +37,20 @@ class MarketHub:
     def __init__(self,stream_factory=PublicStream):
         self.stream_factory=stream_factory;self.state=MarketState()
         self.lock=threading.RLock();self.stop=threading.Event();self.thread=None
-        self.market=None;self.symbol=None;self.consumers=set();self.subscribed=False
+        self.source='bybit';self.market=None;self.symbol=None;self.consumers=set();self.subscribed=False
         self.phase='PAUSED';self.detail='Market view is not open'
         self.candles={};self.started=None;self.first={};self.errors=deque(maxlen=50)
 
-    def open(self,market,symbol):
+    def open(self,market,symbol,source='bybit'):
+        validate_source(source)
         if market not in ('spot','linear'):raise ValueError('Unsupported public market')
         validate_symbol(symbol)
         if self.thread and self.thread.is_alive():
-            if (market,symbol)==(self.market,self.symbol):return
+            if (source,market,symbol)==(self.source,self.market,self.symbol):return
             with self.lock:
                 if self.consumers:raise ValueError('Pause strategy monitoring before changing the market')
             self.close()
-        self.market,self.symbol=market,symbol;self.stop.clear()
+        self.source=source;self.market,self.symbol=market,symbol;self.stop.clear()
         self.state=MarketState();self.candles={};self.first={};self.started=time.monotonic()
         self.phase='CONNECTING';self.detail='Opening public market data'
         self.thread=threading.Thread(target=self._run,daemon=True,name='public-market')
@@ -62,7 +65,7 @@ class MarketHub:
         with self.lock:
             active=bool(self.thread and self.thread.is_alive() and not self.stop.is_set())
             phase=('CONNECTED' if result['fresh'] else 'DEGRADED') if self.phase=='CONNECTED' else self.phase
-            return {**result,'market':self.market,'symbol':self.symbol,'active':active,
+            return {**result,'source':self.source,'market':self.market,'symbol':self.symbol,'active':active,
                     'status':phase,'detail':self.detail,'first':self.first.copy(),
                     'errors':list(self.errors)}
 
@@ -87,7 +90,7 @@ class MarketHub:
         while not self.stop.is_set():
             stream=None
             try:
-                stream=self.stream_factory(self.market,self.symbol)
+                stream=(OKXPublicStream if self.source=='okx' else self.stream_factory)(self.market,self.symbol)
                 stream.intervals=('1','5','15','60','240','D')
                 stream.state=self.state;stream.open();connected=time.monotonic()
                 last_price=connected
@@ -111,10 +114,10 @@ class MarketHub:
                         if self.subscribed:self.phase='CONNECTED';self.detail='Public market subscribed; strategy readiness is separate'
                     if time.monotonic()-last_price>30:raise ConnectionError('Public ticker stale')
                     if time.monotonic()-connected>60 and current['fresh']:attempts=0
-            except Exception:
+            except Exception as exc:
                 if self.stop.is_set():break
                 with self.lock:
-                    self.subscribed=False;self.phase='RECONNECTING';self.detail='Public connection interrupted; waiting for new snapshots'
+                    self.subscribed=False;self.phase='RECONNECTING';self.detail=f'{self.source.upper()} public connection interrupted ({safe_error(exc)}); waiting for new snapshots'
                     self.errors.append({'time':int(time.time()),'message':self.detail})
                     for feed in self.consumers:feed.failed=True
                     self.candles={};self.state.reset()

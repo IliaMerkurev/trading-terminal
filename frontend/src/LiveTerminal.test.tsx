@@ -139,14 +139,14 @@ it('keeps one visible market owner and releases viewing while preserving active 
  expect(screen.getByText('Strategy & paper controls').closest('details')?.open).toBe(false);
  expect(screen.getByText('Paper account, signals & diagnostics').closest('details')?.open).toBe(false);
  rerender(<Live strategyId={null} profile={defaultProfile} visible={false}/>);
- expect(mock.api.mock.calls.filter(c=>c[0]==='market_close')).toHaveLength(1);
+ await waitFor(()=>expect(mock.api.mock.calls.filter(c=>c[0]==='market_close')).toHaveLength(1));
  const count=mock.api.mock.calls.filter(c=>c[0]==='live_status').length;
  await new Promise(resolve=>setTimeout(resolve,550));
  expect(mock.api.mock.calls.filter(c=>c[0]==='live_status')).toHaveLength(count);
  rerender(<Live strategyId={null} profile={defaultProfile} visible/>);
  await waitFor(()=>expect(mock.api.mock.calls.filter(c=>c[0]==='market_open')).toHaveLength(2));
  expect(mock.api.mock.calls.some(c=>['live_pause','live_start_terminal','paper_start_manual','start_run'].includes(c[0]))).toBe(false);
- unmount();expect(mock.api.mock.calls.filter(c=>c[0]==='market_close')).toHaveLength(2);
+ unmount();await waitFor(()=>expect(mock.api.mock.calls.filter(c=>c[0]==='market_close')).toHaveLength(2));
 });
 it('displays the frozen active session instrument and disables market switching',async()=>{
  const s:any=state();s.session.snapshot.profile.symbol='ETHUSDT';s.market.symbol='ETHUSDT';s.market.market='spot';
@@ -165,4 +165,58 @@ it('allows keyboard focus on the scrollable market workspace',()=>{
  expect(workspace.tabIndex).toBe(0);
  workspace.focus();
  expect(document.activeElement).toBe(workspace);
+});
+
+it('serializes source switches, hides mismatched quotes and keeps OKX display-only',async()=>{
+ mock.api.mockClear();let finishFirst:(v:any)=>void=()=>{};
+ const first=new Promise(resolve=>{finishFirst=resolve;});let opens=0;
+ mock.api.mockImplementation((command:string)=>{
+  if(command==='market_open')return ++opens===1?first:Promise.resolve({});
+  if(command==='market_preferences')return Promise.resolve({source:'bybit'});
+  if(command==='live_status')return Promise.resolve({active:false,terminal_state:'CONNECTED',market:{source:'bybit',symbol:'BTCUSDT',market:'spot',active:true,fresh:true,ticker:{lastPrice:'12345'}}});
+  return Promise.resolve({});
+ });
+ render(<Live strategyId="s" profile={defaultProfile}/>);
+ await waitFor(()=>expect(opens).toBe(1));expect(await screen.findByText('12345')).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Market data source'),{target:{value:'okx'}});
+ expect(screen.queryByText('12345')).toBeNull();
+ expect((screen.getByRole('button',{name:'Start manual paper account',hidden:true}) as HTMLButtonElement).disabled).toBe(true);
+ expect(opens).toBe(1);finishFirst({});
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT',source:'okx'}));
+ expect(mock.api.mock.calls.some(c=>['live_start_terminal','paper_start_manual','start_run'].includes(c[0]))).toBe(false);
+});
+
+it('restores the explicit source preference before opening any feed',async()=>{
+ mock.api.mockClear();mock.api.mockImplementation(async(command:string)=>command==='market_preferences'?{source:'okx'}:command==='live_status'?{active:false,market:{}}:{});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT',source:'okx'}));
+ expect((screen.getByLabelText('Market data source') as HTMLSelectElement).value).toBe('okx');
+ expect(mock.api.mock.calls.filter(c=>c[0]==='market_open')).toHaveLength(1);
+});
+
+
+it('never labels a retained Bybit session price as an OKX quote',async()=>{
+ mock.api.mockClear();mock.api.mockImplementation(async(command:string)=>command==='market_preferences'?{source:'okx'}:command==='live_status'?{active:false,price:'98765',terminal_state:'CONNECTING',market:{source:'okx',symbol:'BTCUSDT',market:'spot',ticker:{},active:true,fresh:false}}:{});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Market data source') as HTMLSelectElement).value).toBe('okx'));
+ expect(screen.queryByText('98765')).toBeNull();
+});
+
+it('does not let a late saved preference overwrite an explicit source choice',async()=>{
+ mock.api.mockClear();let finishPreference:(v:any)=>void=()=>{};
+ mock.api.mockImplementation((command:string)=>command==='market_preferences'?new Promise(resolve=>{finishPreference=resolve;}):Promise.resolve({active:false,market:{}}));
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ fireEvent.change(screen.getByLabelText('Market data source'),{target:{value:'okx'}});
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT',source:'okx'}));
+ finishPreference({source:'bybit'});
+ await waitFor(()=>expect((screen.getByLabelText('Market data source') as HTMLSelectElement).value).toBe('okx'));
+ expect(mock.api.mock.calls.filter(c=>c[0]==='market_open')).toHaveLength(1);
+});
+
+it('labels OKX perpetual volume, book and tape in contracts without converting them',async()=>{
+ mock.api.mockImplementation(async(command:string)=>command==='market_preferences'?{source:'okx'}:command==='live_status'?{active:false,market:{}}:{});
+ render(<Live strategyId={null} profile={{...defaultProfile,market:'linear'}}/>);
+ expect(await screen.findByText('24h volume (contracts)')).toBeTruthy();
+ expect(screen.getByText('Size (contracts)')).toBeTruthy();
+ expect(screen.getByText(/Size: contracts/)).toBeTruthy();
 });

@@ -12,6 +12,7 @@ import threading
 from terminal.chart_history import INTERVALS
 from terminal.data import canonical, digest, validate_symbol
 from terminal.graph import indicator_for
+from terminal.market_sources import cache_market
 CONTRACT = 'native-close-engine-seeds-v1'
 MAX_BARS = 10000
 MAX_INSTANCES = 8
@@ -148,14 +149,14 @@ class DisplayIndicators:
         self.thread = threading.Thread(target=self._run, daemon=True, name='chart-display')
         self.thread.start()
 
-    def key(self, market, symbol):
+    def key(self, market, symbol, source='bybit'):
         if market not in ('spot', 'linear'):
             raise ValueError('Unsupported chart market')
         validate_symbol(symbol)
-        return (market, symbol)
+        return (cache_market(market,source), symbol)
 
-    def settings(self, market, symbol):
-        key = self.key(market, symbol)
+    def settings(self, market, symbol, source='bybit'):
+        key = self.key(market, symbol, source)
         with self.store.connect() as db:
             row = db.execute('SELECT document FROM chart_presentation_v1 WHERE market=? AND symbol=?', key).fetchone()
         fallback = dict(version=1, revision=0, instances=[], origins={})
@@ -175,16 +176,16 @@ class DisplayIndicators:
                 fallback['warning'] = 'Saved indicator settings are invalid or unsupported; use Apply to replace them.'
         return fallback
 
-    def save(self, market, symbol, instances, revision):
+    def save(self, market, symbol, instances, revision, source='bybit'):
         valid = validate_instances(instances)
         if type(revision) is not int:
             raise ValueError('Invalid settings revision')
         with self.lock:
-            doc = self.settings(market, symbol)
+            doc = self.settings(market, symbol, source)
             if doc['revision'] != revision:
                 raise ValueError('Indicator settings changed; reopen Indicators before applying')
             doc = dict(version=1, revision=revision + 1, instances=valid, origins=doc['origins'])
-            self._write(market, symbol, doc)
+            self._write(cache_market(market,source), symbol, doc)
             self.cache.clear()
             if self.running:
                 self.running[1].set()
@@ -195,8 +196,8 @@ class DisplayIndicators:
         with self.store.connect() as db:
             db.execute('INSERT OR REPLACE INTO chart_presentation_v1 VALUES(?,?,?)', (market, symbol, canonical(doc).decode()))
 
-    def read(self, market, symbol, minutes, start, end, revision, reanchor=False):
-        self.key(market, symbol)
+    def read(self, market, symbol, minutes, start, end, revision, reanchor=False, source='bybit'):
+        self.key(market, symbol, source)
         if type(minutes) is not int or minutes not in INTERVALS:
             raise ValueError('Unsupported native interval')
         if type(start) is not int or type(end) is not int or start < 0 or (end < start) or start % (minutes * 60) or end % (minutes * 60):
@@ -204,12 +205,12 @@ class DisplayIndicators:
         if type(reanchor) is not bool or type(revision) is not int:
             raise ValueError('Invalid calculation request')
         with self.lock:
-            doc = self.settings(market, symbol)
+            doc = self.settings(market, symbol, source)
             if doc['revision'] != revision:
                 raise ValueError('Settings changed; calculation superseded')
-            self.history.capture_hub(market, symbol, minutes)
+            self.history.capture_hub(market, symbol, minutes, source)
             with self.store.connect() as db:
-                key = (market, symbol, minutes)
+                key = (cache_market(market,source), symbol, minutes)
                 origin = doc['origins'].get(str(minutes))
                 if origin is None or reanchor:
                     first = db.execute('SELECT MIN(time) FROM (SELECT time FROM chart_candles_v1 WHERE market=? AND symbol=? AND minutes=? ORDER BY time DESC LIMIT ?)', (*key, MAX_BARS)).fetchone()[0]
@@ -238,11 +239,11 @@ class DisplayIndicators:
                 raise ValueError('Indicator output exceeds the 1,800-bar viewport budget')
             if candidate != origin:
                 doc['origins'][str(minutes)] = candidate
-                self._write(market, symbol, doc)
+                self._write(cache_market(market,source), symbol, doc)
             # Forming volume is projected after replay, so ticks cannot
             # cancel or reseed unchanged confirmed calculations.
             transient = []
-            if (market, symbol) == (self.history.hub.market, self.history.hub.symbol):
+            if (source,market, symbol) == (getattr(self.history.hub,'source','bybit'),self.history.hub.market, self.history.hub.symbol):
                 known = {c['time'] for c in candles}
                 transient = [self.history.payload(r) for r in self.history.hub.latest(INTERVALS[minutes]) if start <= r['time'] <= end and r['time'] not in known and (r.get('confirmed') is not True)]
             if sum((start <= c['time'] <= end for c in candles)) + sum((start <= json.loads(r['candle'])['time'] <= end for r in prefix)) + len(transient) > 1800:
@@ -270,7 +271,7 @@ class DisplayIndicators:
                             ports[port] = earlier['columns'].get(ident, {}).get(port, [None] * len(earlier['times'])) + values
                     output['times'] = earlier['times'] + output['times']
                     output['directions'] = earlier['directions'] + output['directions']
-                output.update(status='ready', settings=doc, origin=candidate, revision=cache_key, before_origin=start < candidate['time'], volume_unit='source-native units (unverified); up = close ≥ open, down = close < open')
+                output.update(status='ready', settings=doc, origin=candidate, revision=cache_key, before_origin=start < candidate['time'], volume_unit=('contracts' if market=='linear' else 'base currency')+' (OKX native); up = close ≥ open, down = close < open' if source=='okx' else 'source-native units (unverified); up = close ≥ open, down = close < open')
                 if len(canonical(output)) > 900 * 1024:
                     raise ValueError('Indicator output exceeds transport budget; hide or remove some indicators')
                 return output
