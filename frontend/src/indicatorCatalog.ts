@@ -34,6 +34,9 @@ export const indicatorCatalog: {kind: IndicatorKind; name: string; category: Ind
   {kind:'vwap', name:'Volume weighted average price', category:'Volume', description:'HLC3 · exact UTC-day or fixed-anchor coverage'},
   {kind:'sar', name:'Parabolic SAR', category:'Trend', description:'Local causal SAR contract · dots · no platform parity claim'},
   {kind:'ichimoku', name:'Ichimoku cloud', category:'Trend', description:'Tenkan / Kijun · causal raw-bar shifted cloud and later-known Chikou'},
+  {kind:'vmc_cipher_b', name:'VMC Cipher B Core + confirmed divergences', category:'Momentum', description:'WaveTrend waves · Fast WT (not VWAP) · candle-body flow (no volume) · RSI / Stoch RSI'},
+  {kind:'vmc_cipher_a', name:'VMC Cipher A ribbon', category:'Trend', description:'Eight EMA ribbon · confirmed raw-price events · vumanchu'},
+  {kind:'vmc_swing', name:'Swing Range Filter', category:'Trend', description:'Jazal / DonovanWall · filtered raw price and bands · confirmed direction events'},
 ];
 export const favoritesKey = 'trading-terminal.indicator-favorites.v1';
 export function parseIndicatorFavorites(raw: string | null): IndicatorKind[] {
@@ -43,4 +46,9 @@ export function parseIndicatorFavorites(raw: string | null): IndicatorKind[] {
     if (!Array.isArray(value) || value.length > 64) return [];
     return indicatorCatalog.filter(entry => value.includes(entry.kind)).map(entry => entry.kind);
   } catch { return []; }
+}
+
+
+export function indicatorShortLabel(kind: IndicatorKind): string {
+  return ({vmc_cipher_b: 'VMC B', vmc_cipher_a: 'VMC A', vmc_swing: 'Swing'} as Partial<Record<IndicatorKind, string>>)[kind] ?? kind.toUpperCase();
 }

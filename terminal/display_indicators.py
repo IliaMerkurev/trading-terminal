@@ -14,6 +14,8 @@ from terminal.chart_history import INTERVALS
 from terminal.data import canonical, digest, validate_symbol
 from terminal.graph import indicator_for
 from terminal import display_formula_catalog as formulas
+from terminal import vumanchu_indicators as vmc
+from terminal.display_events import EventCollector, FORMULA_CONTRACT
 from terminal import chart_presentation as prices
 from terminal.display_projection import ProjectionCollector, MAX_DISPLACEMENT
 from terminal.market_sources import cache_market
@@ -23,6 +25,7 @@ MAX_BARS = 10000
 FIELDS = {'sma': ('period',), 'ema': ('period',), 'bb': ('period', 'deviations'), 'rsi': ('period',), 'macd': ('fast', 'slow', 'signal'), 'volume': (), 'atr': ('period',), 'stochastic': ('period', 'smooth', 'signal'), 'obv': ()}
 
 FIELDS.update(formulas.ALL_FIELDS)
+FIELDS.update(vmc.FIELDS)
 
 def validate_instances(instances):
     if not isinstance(instances, list):
@@ -45,7 +48,9 @@ def validate_instances(instances):
             raise ValueError('Invalid indicator type or parameters')
         if type(item['visible']) is not bool or not isinstance(item['color'], str) or (not re.fullmatch('#[0-9a-fA-F]{6}', item['color'])):
             raise ValueError('Invalid visibility or color')
-        for name, value in ({} if kind in formulas.BOUNDARY_FIELDS else params).items():
+        if kind in vmc.FIELDS:
+            vmc.validate_params(kind, params)
+        for name, value in ({} if kind in formulas.BOUNDARY_FIELDS or kind in vmc.FIELDS else params).items():
             if name in ('deviations', 'multiplier'):
                 if type(value) not in (int, float) or not math.isfinite(value) or (not 0 < value <= 10):
                     raise ValueError('BB deviations must be greater than 0 and at most 10' if name == 'deviations' else 'Band multiplier must be greater than 0 and at most 10')
@@ -120,8 +125,13 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
     estimated = 0
     for item in instances:
         kind = item['type']
-        ports = len(formulas.ports(kind)) if kind in formulas.ALL_FIELDS else 3 if kind in ('bb','macd') else 2 if kind == 'stochastic' else 1
-        cells = output_rows * ports
+        ports = len(vmc.ports(kind)) if kind in vmc.FIELDS else len(formulas.ports(kind)) if kind in formulas.ALL_FIELDS else 3 if kind in ('bb','macd') else 2 if kind == 'stochastic' else 1
+        cells = output_rows * (ports + (1 if kind in ('vmc_cipher_a', 'vmc_swing') else 0))
+        # Worst-case retained event dictionaries/identities per visible candle.
+        # This is a memory estimate, not an indicator-count restriction.
+        if kind in vmc.FIELDS:
+            event_slots = 12 if kind == 'vmc_cipher_b' else 8 if kind == 'vmc_cipher_a' else 1
+            estimated += (output_rows // 2) * event_slots * 1024
         if kind == 'ichimoku':
             cells += (output_rows + MAX_DISPLACEMENT) * 9
         state_slots = sum(value for name, value in item['params'].items() if name not in ('anchor','mode','deviations','multiplier','step','max') and type(value) is int)
@@ -130,6 +140,9 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
             raise ValueError('Indicator calculation exceeds the estimated 256 MiB working resource budget; use a smaller chart window. Settings are not truncated.')
     projection = ProjectionCollector(projection_axis if projection_axis is not None else candles, instances, minutes, start, end)
     segment = 0
+    segment_start = None
+    events = EventCollector(instances, minutes, start, end)
+    regimes = {i['id']: [] for i in instances if i['type'] in ('vmc_cipher_a', 'vmc_swing')}
     states = {}
     count = 0
     previous = None
@@ -137,7 +150,9 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
     unknown = 0
     columns = {i['id']: {p: [] for p in ('upper', 'middle', 'lower') if i['type'] == 'bb'} for i in instances}
     for i in instances:
-        if i['type'] in formulas.ALL_FIELDS:
+        if i['type'] in vmc.FIELDS:
+            columns[i['id']] = {p: [] for p in vmc.ports(i['type'])}
+        elif i['type'] in formulas.ALL_FIELDS:
             columns[i['id']] = {p: [] for p in (('tenkan', 'kijun') if i['type'] == 'ichimoku' else formulas.ports(i['type']))}
         elif i['type'] == 'stochastic':
             columns[i['id']] = {'k': [], 'd': []}
@@ -155,7 +170,7 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
             if index % 32 == 0 and cancel and cancel.is_set():
                 raise InterruptedError('Display calculation superseded')
             if i['type'] != 'volume':
-                fresh[i['id']] = formulas.FormulaState(i) if i['type'] in formulas.ALL_FIELDS else NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i)
+                fresh[i['id']] = vmc.VumanchuState(i) if i['type'] in vmc.FIELDS else formulas.FormulaState(i) if i['type'] in formulas.ALL_FIELDS else NativeDisplayState(i) if i['type'] in ('atr', 'stochastic', 'obv') else indicator_for(i)
         # VWAP coverage is session-scoped, never restarted by a gap/unknown row.
         fresh.update({i['id']: states[i['id']] for i in instances if i['type'] == 'vwap' and i['id'] in states})
         return fresh
@@ -173,12 +188,15 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
         gap = previous is not None and stamp != previous + width
         if gap or not closed:
             segment += 1
+            segment_start = None
             states = reset()
             count = 0
             if gap:
                 gaps += 1
         previous = stamp
         if closed:
+            if segment_start is None:
+                segment_start = stamp
             count += 1
             confirmed += 1
         else:
@@ -189,6 +207,8 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
             if gap and times and (times[-1] < stamp):
                 times.append(stamp)
                 directions.append(0)
+                for values in regimes.values():
+                    values.append(None)
                 for ports in columns.values():
                     for values in ports.values():
                         values.append(None)
@@ -209,7 +229,7 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
             elif closed:
                 state = states[ident]
                 source = row['close']
-                if kind in formulas.ALL_FIELDS or kind in ('atr', 'stochastic', 'obv'):
+                if kind in vmc.FIELDS or kind in formulas.ALL_FIELDS or kind in ('atr', 'stochastic', 'obv'):
                     values = state.update(row)
                 elif kind == 'macd':
                     line, signal = state
@@ -229,6 +249,10 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
                             values = {p: getattr(state, p) for p in values}
                         else:
                             values['value'] = state.value * (100 if kind == 'rsi' else 1)
+            if kind in vmc.FIELDS and closed:
+                events.observe(ident, states[ident].events, segment_start)
+            if visible and ident in regimes:
+                regimes[ident].append(states[ident].regime if closed else None)
             if kind == 'ichimoku' and closed:
                 projection.observe(ident, stamp, segment, values)
             if visible:
@@ -237,7 +261,7 @@ def calculate(candles, instances, minutes, start, end, cancel=None, projection_a
                     if value is not None and (not math.isfinite(value)):
                         raise ValueError('Non-finite display indicator value')
                     columns[ident][port].append(value)
-    return dict(projections=projection.result(), times=times, columns=columns, directions=directions, confirmed=confirmed, unknown=unknown, gaps=gaps, segment_bars=count,
+    return dict(projections=projection.result(), indicator_events=events.result(), regimes=regimes, times=times, columns=columns, directions=directions, confirmed=confirmed, unknown=unknown, gaps=gaps, segment_bars=count,
                 formula_status={i['id']: states[i['id']].status() for i in instances if i['type'] == 'vwap'})
 
 class DisplayIndicators:
@@ -375,11 +399,12 @@ class DisplayIndicators:
             if len(candles) + len(prefix) + len(transient) > MAX_BARS:
                 raise ValueError('Combined cached and forming inputs exceed the 10,000-bar work budget')
             projection_axis = [self.history.annotate(r) for r in prefix] + candles + transient
-            cache_key = digest([key, candidate, doc['instances'], candles, [dict(r) for r in prefix], start, end, price_style, price_info['price_contract'], sorted(r['time'] for r in transient)])
+            cache_key = digest([FORMULA_CONTRACT, key, candidate, doc['instances'], candles, [dict(r) for r in prefix], start, end, price_style, price_info['price_contract'], sorted(r['time'] for r in transient)])
 
             def compute(cancel):
                 output = calculate(candles, [i for i in doc['instances'] if i['visible']], minutes, start, end, cancel, projection_axis=projection_axis)
                 output['projections']['context'] = dict(source=source, market=market, symbol=symbol, minutes=minutes, start=start, end=end, generation=candidate['generation'], origin=candidate['time'], settings_revision=doc['revision'])
+                output['indicator_events']['context'] = dict(output['projections']['context'])
                 if prefix:
                     volume_only = [i for i in doc['instances'] if i['type'] in ('volume', 'sma', 'bb') and i['visible']]
                     earlier = calculate([self.history.annotate(r) for r in prefix], volume_only, minutes, start, end, cancel)
@@ -389,12 +414,16 @@ class DisplayIndicators:
                     if earlier['times'] and output['times'] and output['times'][0] > earlier['times'][-1] + minutes * 60:
                         output['times'].insert(0, output['times'][0] - minutes * 60)
                         output['directions'].insert(0, 0)
+                        for values in output['regimes'].values():
+                            values.insert(0, None)
                         for ports in output['columns'].values():
                             for values in ports.values():
                                 values.insert(0, None)
                     for ident, ports in output['columns'].items():
                         for port, values in ports.items():
                             ports[port] = earlier['columns'].get(ident, {}).get(port, [None] * len(earlier['times'])) + values
+                    for ident, values in output['regimes'].items():
+                        output['regimes'][ident] = [None] * len(earlier['times']) + values
                     output['times'] = earlier['times'] + output['times']
                     output['directions'] = earlier['directions'] + output['directions']
                 output['price_candles'], price_state = [], None
@@ -404,7 +433,7 @@ class DisplayIndicators:
                         earlier_prices, _ = prices.replay([self.history.annotate(r) for r in prefix], price_style, minutes, start, end, cancel, before_origin=True)
                         output['price_candles'] = earlier_prices + output['price_candles']
                 output.update(price_info)
-                output['formula_metadata'] = {i['id']: formulas.metadata(i) for i in doc['instances'] if i['type'] in formulas.ALL_FIELDS}
+                output['formula_metadata'] = {i['id']: dict(vmc.metadata(i), event_clock='UTC interval-END; confirmed_at is availability, pivot_time is geometry only', regime='readout-only aligned direction; not a price port') if i['type'] in vmc.FIELDS else formulas.metadata(i) for i in doc['instances'] if i['type'] in formulas.ALL_FIELDS or i['type'] in vmc.FIELDS}
                 output.update(status='ready', settings=doc, origin=candidate, revision=cache_key, before_origin=start < candidate['time'], volume_unit=('contracts' if market=='linear' else 'base currency')+' (OKX native); up = close ≥ open, down = close < open' if source=='okx' else 'source-native units (unverified); up = close ≥ open, down = close < open')
                 check_result_budget(output)
                 output['_price_state'] = price_state
@@ -422,6 +451,8 @@ class DisplayIndicators:
                             continue
                         output['times'].append(stamp)
                         output['directions'].append(1 if row['close'] >= row['open'] else -1)
+                        for values in output['regimes'].values():
+                            values.append(None)
                         for item in doc['instances']:
                             if item['id'] in output['columns']:
                                 for port, values in output['columns'][item['id']].items():

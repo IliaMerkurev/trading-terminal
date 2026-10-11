@@ -50,6 +50,7 @@ export function indicatorWindow(result:any,rows:LiveCandle[],minutes:number){
  const indexes:number[]=[];
  (result.times??[]).forEach((time:number,index:number)=>{if(allowed.has(time))indexes.push(index);});
  return {...result,...(Array.isArray(result.price_candles)?{price_candles:result.price_candles.filter((bar:any)=>allowed.has(bar.time))}:{}),times:indexes.map(index=>result.times[index]),
+  ...(result.regimes?{regimes:Object.fromEntries(Object.entries(result.regimes).map(([id,values])=>[id,indexes.map(index=>(values as any[])[index])]))}:{}),
   directions:indexes.map(index=>result.directions?.[index]),
   columns:Object.fromEntries(Object.entries(result.columns??{}).map(([id,ports])=>[id,
    Object.fromEntries(Object.entries(ports as Record<string,any[]>).map(([port,values])=>[port,indexes.map(index=>values[index])]))]))};

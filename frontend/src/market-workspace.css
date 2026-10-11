@@ -240,3 +240,9 @@
 .indicator-instance-editor{min-width:0;max-width:100%}
 .indicator-instance-editor>label{display:flex;min-width:0;max-width:100%;align-items:center;gap:6px}
 .indicator-instance-editor>label select{min-width:0;max-width:100%;flex:1}
+
+/* VMC groups remain in the ordinary scroll surface at narrow/short sizes. */
+.chart-indicator-fields>.vmc-parameter-group{flex:1 1 240px;display:flex;flex-wrap:wrap;align-items:end;gap:8px;max-width:100%}
+.vmc-parameter-group>label{display:flex;flex-direction:column;gap:4px;max-width:100%;font-size:12px}
+.vmc-parameter-group select{max-width:100%}
+.vmc-parameter-group input[type=checkbox]{align-self:flex-start}

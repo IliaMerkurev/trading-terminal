@@ -107,7 +107,7 @@ class BoundaryArithmeticTests(unittest.TestCase):
         self.assertIsNone(out['columns']['vwap']['value'][-1])
 
     def test_validation_boundaries_no_rounding_and_no_coercion(self):
-        self.assertEqual(len(FIELDS),30)
+        self.assertEqual(len(FIELDS),33)
         for params in ({},dict(step=.02),dict(step=.02,max=.2,extra=1),dict(step=True,max=.2),dict(step=0,max=.2),dict(step=.3,max=.2),dict(step=.1,max=1.1),dict(step=float('nan'),max=.2),dict(step=.02,max=float('inf')),dict(step=10**1000,max=.2)):
             with self.subTest(params=params), self.assertRaises(ValueError): validate_instances([instance('sar',**params)])
         for params in ({},dict(mode=0),dict(mode=True,anchor=0),dict(mode=1,anchor=True),dict(mode=1.,anchor=0),dict(mode=2,anchor=0),dict(mode=0,anchor=60),dict(mode=1,anchor=-1),dict(mode=1,anchor=253402300800),dict(mode=1,anchor=1.5),dict(mode=1,anchor=float('inf')),dict(mode=1,anchor=0,extra=1)):

@@ -1,6 +1,7 @@
 # Third-party dependencies
 
-Trading Terminal project code is covered by the [MIT License](LICENSE).
+Trading Terminal original project code is covered by the [MIT License](LICENSE),
+except the explicitly identified MPL-2.0 derived formula module below.
 Dependencies remain covered by their own licenses; the project license does not
 relicense third-party components or market data. Data provider terms still apply.
 Package locks identify exact versions; dependency source is not vendored in this
@@ -78,3 +79,55 @@ reference rule articles by Cesar Alvarez (2016-02-10) and Larry Connors
 not relicensed as MIT. No article text or external source code is bundled.
 Catalog SHA256 values explicitly identify project-authored bounded rule summaries,
 not complete upstream webpages. See docs/adr/0039-daily-reversion-candidates.md.
+
+
+## VuManChu display formulas: MPL-2.0 exception
+
+The readable corresponding source `terminal/vumanchu_indicators.py`, including
+its translated/modified formulas, is covered by Mozilla Public License 2.0,
+not the root MIT license. [Full MPL-2.0 text](licences/MPL-2.0.txt) is included
+unchanged from <https://www.mozilla.org/media/MPL/2.0/index.txt>. The original
+terminal adapters, event transport, UI and unrelated files remain MIT. Any
+binary distribution containing this module must identify and provide this
+corresponding source under MPL-2.0 at the same distributed version. This source
+checkout includes it directly; local builds are not a distribution approval.
+
+Original public Pine sources retrieved 2026-10-11:
+
+- **Cipher B + Divergences**, author **vumanchu**, publication **v17**:
+  <https://www.tradingview.com/script/Msm4SjwI-VuManChu-Cipher-B-Divergences/>.
+  Exact source <https://pine-facade.tradingview.com/pine-facade/get/PUB%3BuA35GeckoTA2EfgI63SD2WCSmca4njxp/17>.
+  Original Pine byte SHA-256: `6d372e03a0856e3fa757e60aeb22d276cf63922b6160c1526b77616664eaf767`.
+- **Cipher A**, author **vumanchu**, publication **v1**:
+  <https://www.tradingview.com/script/9hWqVcG9-VuManChu-Cipher-A/>.
+  Exact source <https://pine-facade.tradingview.com/pine-facade/get/PUB%3BvrOJcNRPULteowIsuP6iHn3GIxBJdXwT/1>.
+  Original Pine byte SHA-256: `160c6bdfd4d07dc1868e98b47fbcc41704c46bad2d0209463d83aa3df66c9f72`.
+- **VuManChu Swing Free**, author **Jazal**, publication **v1**, explicitly
+  crediting **DonovanWall** for Range Filter:
+  <https://www.tradingview.com/script/q23anHmP-VuManChu-Swing-Free/>.
+  Exact source <https://pine-facade.tradingview.com/pine-facade/get/PUB%3BeCVFctFlqpt475hG8Qw7yYA89NxMtSGa/1>.
+  Original Pine byte SHA-256: `d961f644fed2df2e0ec7ecb428fdf55ff2db444831eff712096e854f7b8887a9`.
+- Underlying reference **Range Filter [DW]**, author **DonovanWall**, **v3**:
+  <https://www.tradingview.com/script/lut7sBgG-Range-Filter-DW/>.
+  Exact source <https://pine-facade.tradingview.com/pine-facade/get/PUB%3BpshyCmQSqlUKsVQ4FrNUAuGkurQPg3ty/3>.
+  Original Pine byte SHA-256: `c2c487ca1d6ca1cc66f1d6f909070c2265caf1ae470071a488711abd68728886`.
+
+Cipher A/B source credits retained: **dynausmaux** (A spells Dynausmaux),
+**falconCoin**, **LazyBear** (WaveTrend), **RicardoSantos** (divergences),
+**LucemAnb** (Stochastic divergence), **andreholanda73** (flow area), and
+**TradingView**. A/B originals have no alternate source license; TradingView's
+[open-source publishing policy](https://www.tradingview.com/pine-script-docs/writing/publishing/#open)
+assigns MPL-2.0 by default. Swing/Range Filter originals explicitly state MPL-2.0.
+No GitHub conversion with additional noncommercial/integration restrictions was
+used. Original webpages, connector responses and downloaded datasets are not
+included in this repository.
+
+The adaptation is display-only and native-timeframe, with events committed at
+confirmation close. B is **Core + confirmed divergences**, not full platform
+parity: Sommi flags/diamonds, lookahead HTF candles, HTF MACD colors and optional
+Schaff are omitted. **Fast WT (WT1−WT2)** is not volume-weighted VWAP;
+**VMC flow (candle-body proxy)** uses neither volume nor standard MFI. Divergence
+pivot geometry is disclosed separately from its two-bar-later confirmation.
+A's eight EMA ribbon and Swing's transparent Range Filter do not claim parity
+with proprietary Market Cipher, Morpheus or Scalper. These annotations do not
+create strategy signals, alerts, orders or profitability promises.

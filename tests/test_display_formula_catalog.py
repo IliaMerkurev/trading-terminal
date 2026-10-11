@@ -1,10 +1,13 @@
 """Independent arithmetic and presentation boundaries for the chart-only catalog."""
 import copy
+import hashlib
+import json
 import math
 import threading
 import unittest
 from terminal import display_formula_catalog as formulas
 from terminal.data import canonical
+from terminal.indicator_transport import IndicatorTransport
 from terminal.display_indicators import calculate, validate_instances, DisplayIndicators
 from tests.test_display_indicators import instance, candles
 from tests import test_display_indicators as infrastructure
@@ -13,7 +16,7 @@ ITEMS = [instance(kind, **({'period': 3, 'atr_period': 2, 'multiplier': 2} if ki
 
 
 def replay(rows, items=ITEMS):
-    # Production admission limits eight instances; test all kinds in two requests.
+    # Keep the original independent arithmetic batches; instance count is uncapped.
     columns = {}
     for offset in range(0, len(items), 8):
         columns.update(calculate(rows, items[offset:offset+8], 1, 0, rows[-1]['time'])['columns'])
@@ -155,7 +158,7 @@ class FormulaArithmeticTests(unittest.TestCase):
                 params=dict(period=3,atr_period=2,multiplier=2);params[key]=bad
                 with self.assertRaises(ValueError):validate_instances([instance('keltner',**params)])
         for multiplier in (.01,10):validate_instances([instance('keltner',period=1,atr_period=1,multiplier=multiplier)])
-        with self.assertRaises(ValueError):validate_instances(ITEMS[:9])
+        self.assertEqual(validate_instances(ITEMS[:9]), ITEMS[:9])
 
 
 class FormulaTransportTests(unittest.TestCase):
@@ -195,8 +198,20 @@ class FormulaTransportTests(unittest.TestCase):
         self.settings=self.display.save('spot','BTCUSDT',items,0)
         with self.assertRaisesRegex(ValueError,'1,800'):self.read(0,1800*60)
         result=self.read(0,1799*60)
-        self.assertEqual(result['status'],'error')
-        # Establish actual byte-boundary cause independently of the worker's safe error envelope.
+        self.assertEqual(result['status'],'ready')
+        self.assertEqual(set(result['columns']), {item['id'] for item in items})
+        transport = IndicatorTransport()
+        try:
+            descriptor = transport.pack(result)
+            self.assertEqual(descriptor['status'], 'paged')
+            pages = [transport.page(descriptor['snapshot_id'], i) for i in range(descriptor['pages'])]
+            self.assertTrue(all(len(canonical(page)) < 900*1024 for page in pages))
+            encoded = ''.join(page['text'] for page in pages).encode()
+            self.assertEqual(hashlib.sha256(encoded).hexdigest(), descriptor['sha256'])
+            self.assertEqual(json.loads(encoded), result)
+        finally:
+            transport.close()
+        # The unchanged 900 KiB message boundary requires paging, not result loss.
         raw=calculate(rows[:1800],items,1,0,1799*60)
         self.assertGreater(len(canonical(raw)),900*1024)
         self.assertEqual(self.display.settings('spot','BTCUSDT')['origins']['1']['time'],0)

@@ -232,7 +232,7 @@ describe('indicator snapshot transport',()=>{
   await expect(api('chart_indicator_read',{}, {signal:controller.signal})).rejects.toThrow('cancelled');
  });
  it('uploads large settings in ordered chunks and commits exactly once',async()=>{
-  const {webcrypto}=await vi.importActual<{webcrypto: Crypto}>('node:crypto');vi.stubGlobal('crypto',webcrypto);(window as any).__TAURI_INTERNALS__={};
+  const {webcrypto}=await vi.importActual<any>('node:crypto');vi.stubGlobal('crypto',webcrypto);(window as any).__TAURI_INTERNALS__={};
   const chunks:string[]=[];const ident='c'.repeat(32);let offset=0;let finish=0;
   vi.mocked(invoke).mockImplementation(async(_command,args:any)=>{
    const {command,params}=args.message;

@@ -602,3 +602,17 @@ Explicit byte/work safety guards remain and must never truncate settings or
 claim unlimited hardware. ADR 0051 supersedes earlier eight-instance references;
 unchanged historical bar/origin, strategy/trading and provider boundaries apply.
 See [ADR 0051](docs/adr/0051-uncapped-indicator-instances.md).
+
+### Later authorized VuManChu display extension — 2026-10-11
+
+The chart catalog now contains 33 implemented types, adding Cipher B Core +
+confirmed divergences, Cipher A and Swing Free. Preserve raw-price inputs,
+confirmed native-timeframe causality, two-bar divergence confirmation delay,
+atomic numeric/event snapshots, source namespaces and saved origins. Use accurate
+Fast WT and candle-body-proxy flow labels; omit Sommi/MTF/Schaff features and do
+not claim Pine or proprietary-product parity. ADR 0051's no-fixed-instance-limit
+contract and existing 10,000 input / 1,800 viewport, 64 MiB serialized / estimated
+256 MiB working-resource guards remain unchanged. See [ADR 0052](docs/adr/0052-vumanchu-display-events.md)
+and [third-party notices](THIRD_PARTY_NOTICES.md) for the file-level MPL-2.0
+exception, source availability and exact scope. No strategy/trading, dependency,
+provider, product-version, release or main-merge change is authorized here.

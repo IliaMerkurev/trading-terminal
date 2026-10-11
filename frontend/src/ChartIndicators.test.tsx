@@ -9,7 +9,7 @@ import {favoritesKey,parseIndicatorFavorites,indicatorCatalog} from './indicator
 const mock=vi.hoisted(()=>({api:vi.fn()}));
 vi.mock('./api',()=>({api:mock.api}));
 const primaryScale = () => ({options: () => ({scaleMargins: {top: 0.2, bottom: 0.1}}), applyOptions: vi.fn()});
-const item=(type:ChartIndicator['type'],id:string=type):ChartIndicator=>({id,type,params:{...defaults[type]},color:'#7eabff',visible:true,...(type==='volume'?{placement:'pane' as const}:{})});
+const item=(type:ChartIndicator['type'],id:string=type):ChartIndicator=>({id,type,params:{...defaults[type]},color:'#7eabff',visible:true,...(type==='volume'?{placement:'pane' as const}:{})} as ChartIndicator);
 beforeEach(()=>{mock.api.mockReset();localStorage.clear();});
 
 it('adds duplicate EMA instances and applies parameters, visibility and removal atomically',()=>{
@@ -55,14 +55,14 @@ it('ignores stale settings and calculations after source/timeframe switches and 
  expect(mock.api.mock.calls.every(c=>['chart_indicator_settings','chart_indicator_read'].includes(c[0]))).toBe(true);unmount();
 });
 
-it('storage failures are nonfatal and valid Apply preserves old state until save succeeds',async()=>{
+it('uncertain storage failures preserve saved settings and block retry until authoritative reload',async()=>{
  const doc={...emptySettings,revision:1,instances:[item('ema')]};
  mock.api.mockImplementation(async(command:string)=>{if(command==='chart_indicator_settings')return doc;throw new Error('Storage denied');});
  const rows={current:[]};
  function Harness(){const state=useChartIndicators('spot','BTCUSDT',1,true,rows);return <><button disabled={!state.loaded||state.saving} onClick={()=>{void state.apply([item('rsi')]);}}>Save fixture</button><span>{state.settings.instances[0]?.type}</span>{state.error&&<p role="alert">{state.error}</p>}</>;}
  render(<Harness/>);await waitFor(()=>expect((screen.getByRole('button',{name:'Save fixture'}) as HTMLButtonElement).disabled).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Save fixture'}));expect((await screen.findByRole('alert')).textContent).toContain('Settings save could not be confirmed');
- expect(screen.getByText('ema')).toBeTruthy();expect(screen.queryByText('rsi')).toBeNull();expect((screen.getByRole('button',{name:'Save fixture'}) as HTMLButtonElement).disabled).toBe(false);
+ expect(screen.getByText('ema')).toBeTruthy();expect(screen.queryByText('rsi')).toBeNull();expect((screen.getByRole('button',{name:'Save fixture'}) as HTMLButtonElement).disabled).toBe(true);
 });
 
 
@@ -321,7 +321,7 @@ it('offers only implemented kinds with search, categories and persistent type-on
  expect(JSON.parse(localStorage.getItem(favoritesKey)!)).toEqual(['bb']);expect(apply).not.toHaveBeenCalled();
  fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:''}});
  fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Momentum'}});
- expect(screen.getAllByRole('button',{name:/^Add /}).map(button=>button.getAttribute('aria-label'))).toEqual(['Add RSI','Add MACD','Add STOCHASTIC','Add ROC','Add MOMENTUM','Add CCI','Add WILLIAMSR','Add STOCHRSI']);
+ expect(screen.getAllByRole('button',{name:/^Add /}).map(button=>button.getAttribute('aria-label'))).toEqual(['Add RSI','Add MACD','Add STOCHASTIC','Add ROC','Add MOMENTUM','Add CCI','Add WILLIAMSR','Add STOCHRSI','Add VMC B']);
  fireEvent.change(screen.getByLabelText('Indicator category'),{target:{value:'Favorites'}});
  expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(1);
  view.unmount();render(<ChartIndicators settings={emptySettings} onApply={apply} busy={false} error=""/>);
@@ -344,12 +344,13 @@ it('bounds favorites to recognized identifiers and falls back safely on malforme
  } finally {read.mockRestore();write.mockRestore();}
 });
 
-it('allows additional hidden instances and validates the entire draft behind a single editor',()=>{
+it('allows unlimited hidden instances and validates the entire draft behind a single editor',()=>{
  const settings={...emptySettings,instances:Array.from({length:8},(_,index)=>({...item('ema',String(index)),visible:false}))};
  const apply=vi.fn();render(<ChartIndicators settings={settings} onApply={apply} busy={false} error=""/>);
  fireEvent.click(screen.getByRole('button',{name:'Indicators (8)'}));
  expect(screen.getAllByRole('group')).toHaveLength(1);
  expect(screen.getAllByRole('button',{name:/^Add /}).every(button=>(button as HTMLButtonElement).disabled)).toBe(false);
+ expect(screen.queryByText(/Limit reached/)).toBeNull();
  fireEvent.change(screen.getByLabelText('1 EMA period'),{target:{value:'0'}});
  fireEvent.change(screen.getByLabelText('Selected indicator instance'),{target:{value:'7'}});
  expect(screen.queryByLabelText('1 EMA period')).toBeNull();expect(screen.getByLabelText('8 EMA period')).toBeTruthy();
@@ -415,9 +416,9 @@ it('restores an enabled toolbar initiator when saving disables the legend and pe
  fireEvent.click(screen.getByRole('button',{name:'Add EMA'}));expect(apply).not.toHaveBeenCalled();
 });
 
-it('exposes exactly 30 validated types with bounded pages and resets pagination on filtering',()=>{
- expect(indicatorCatalog).toHaveLength(30);
- expect(new Set(indicatorCatalog.map(entry=>entry.kind)).size).toBe(30);
+it('exposes exactly 33 validated types with bounded pages and resets pagination on filtering',()=>{
+ expect(indicatorCatalog).toHaveLength(33);
+ expect(new Set(indicatorCatalog.map(entry=>entry.kind)).size).toBe(33);
  render(<ChartIndicators settings={emptySettings} onApply={vi.fn()} busy={false} error=""/>);
  fireEvent.click(screen.getByRole('button',{name:'Indicators (0)'}));
  expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(9);
@@ -426,7 +427,7 @@ it('exposes exactly 30 validated types with bounded pages and resets pagination 
  fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
  expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(9);
  fireEvent.click(screen.getByRole('button',{name:'Next indicators'}));
- expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(3);
+ expect(screen.getAllByRole('button',{name:/^Add /})).toHaveLength(6);
  fireEvent.change(screen.getByLabelText('Search indicators'),{target:{value:'keltner'}});
  fireEvent.click(screen.getByRole('button',{name:'Add KELTNER'}));
  expect(screen.getAllByRole('spinbutton').map(input=>input.getAttribute('aria-label'))).toEqual(['1 KELTNER period','1 KELTNER atr_period','1 KELTNER multiplier']);
@@ -538,6 +539,7 @@ it('keeps native UTC picker editing independent from numeric draft and accepts i
  fireEvent.click(screen.getByRole('button',{name:'Apply indicators'}));
  expect(apply.mock.calls[0][0][0].params.anchor).toBe(Date.parse('2010-01-01T00:00:00Z')/1000);
 });
+
 
 it('adds the 129th instance, preserves search and atomically applies every instance',()=>{
  const settings={...emptySettings,instances:Array.from({length:128},(_,index)=>({...item('ema','i'+index),visible:false}))};

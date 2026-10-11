@@ -112,7 +112,7 @@ class AdvancedArithmeticTests(unittest.TestCase):
                 else: changed['params']['extra']=1
                 with self.assertRaises(ValueError): validate_instances([changed])
         items=[dict(ITEMS[0],id='i'+str(i)) for i in range(9)]
-        with self.assertRaises(ValueError): validate_instances(items)
+        self.assertEqual(len(validate_instances(items)),9)
         tiny=instance('stochrsi',period=1,stochastic_period=1,smooth=1,signal=1)
         self.assertEqual(replay(candles([10,11]),[tiny])['stochrsi'],dict(k=[None,0],d=[None,0]))
         large=instance('stochrsi',period=1000,stochastic_period=1000,smooth=1000,signal=1000)
@@ -159,7 +159,7 @@ class AdvancedTransportTests(unittest.TestCase):
     read=infrastructure.DisplayCacheTests.read
 
     def test_metadata_origin_reopen_and_raw_ha_independence(self):
-        self.assertEqual(len(FIELDS),30)
+        self.assertEqual(len(FIELDS),33)
         rows=candles([10+i%7 for i in range(40)])
         self.seed(rows[10:])
         self.settings=self.display.save('spot','BTCUSDT',ITEMS,0)

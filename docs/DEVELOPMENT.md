@@ -817,3 +817,22 @@ Verify exact large snapshots and corruption/cancellation instead of claiming
 page completion from count alone. Settings uploads commit only at finish and
 must retain original-revision conflict checks. Actual resource errors must be
 visible; never replace the removed limit with another count cap.
+
+## VuManChu display integration verification
+
+The current catalog has 33 types and no fixed indicator-instance count limit.
+Use [ADR 0052](adr/0052-vumanchu-display-events.md) for confirmed event timestamps,
+source licensing and deliberate scope limits. Keep the existing bar and byte/work
+resource guards; do not infer additional input-history scope from uncapped count.
+
+Focused integration command (the tests directory is needed by existing fixture imports):
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest tests.test_vumanchu_indicators tests.test_vumanchu_display_events tests.test_vumanchu_display_integration tests.test_vumanchu_display_service tests.test_display_indicators tests.test_display_indicator_additions tests.test_display_formula_catalog tests.test_advanced_display_formulas tests.test_boundary_display_formulas tests.test_indicator_transport
+node node_modules/vitest/vitest.mjs run frontend/src/ChartIndicators.test.tsx frontend/src/MarketChartNavigation.test.tsx frontend/src/LiveChart.test.tsx frontend/src/chartIndicatorEvents.test.ts frontend/src/indicatorReadout.test.ts frontend/src/vmcSettings.test.tsx frontend/src/api.test.ts frontend/src/indicatorAtomicSnapshot.test.tsx
+node scripts/frontend.mjs build
+```
+
+Reuse valid passing evidence rather than rerunning the suite after docs changes.
+Offline real-formula actual-App geometry checks, native/Windows verification and
+live-provider checks are separate gates; do not present DOM mocks as those gates.

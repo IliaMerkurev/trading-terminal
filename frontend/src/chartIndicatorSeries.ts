@@ -1,7 +1,8 @@
-import {LineSeries, HistogramSeries} from 'lightweight-charts';
+import {LineSeries, HistogramSeries, BaselineSeries} from 'lightweight-charts';
 import {type ChartIndicator} from './ChartIndicators';
+import {isVmcKind} from './vmcSettings';
 
-export const auxiliaryKinds = ['rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv', 'roc', 'momentum', 'cci', 'williamsr', 'mfi', 'cmf', 'stddev', 'dmi', 'stochrsi', 'bbpercentb', 'bbwidth'];
+export const auxiliaryKinds = ['vmc_cipher_b', 'rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv', 'roc', 'momentum', 'cci', 'williamsr', 'mfi', 'cmf', 'stddev', 'dmi', 'stochrsi', 'bbpercentb', 'bbwidth'];
 
 // Rebuild only owned display series. Derive pane indexes from visible kinds,
 // then move the separate recorded IR series to the last pane.
@@ -20,10 +21,10 @@ export function installIndicatorSeries(
     const group = auxiliaryKinds.includes(item.type) && !volumeOverlay ? item.type : 'price';
     if (group !== 'price' && !panes.has(group)) panes.set(group, next++);
     const pane = panes.get(group) ?? 0;
-    const ports = item.type === 'ichimoku' ? ['tenkan', 'kijun'] : ['bb', 'donchian', 'keltner'].includes(item.type) ? ['upper', 'middle', 'lower']
+    const ports = item.type === 'vmc_cipher_b' ? ['flow','wt1','wt2','fast_wave','rsi','stoch_k','stoch_d'] : item.type === 'vmc_cipher_a' ? Array.from({length:8},(_,i)=>`ema${i+1}`) : item.type === 'vmc_swing' ? ['filter','upper','lower'] : item.type === 'ichimoku' ? ['tenkan', 'kijun'] : ['bb', 'donchian', 'keltner'].includes(item.type) ? ['upper', 'middle', 'lower']
       : item.type === 'macd' ? ['macd', 'signal', 'histogram'] : ['stochastic', 'stochrsi'].includes(item.type) ? ['k', 'd'] : item.type === 'dmi' ? ['plus_di', 'minus_di', 'adx'] : item.type === 'supertrend' ? ['up', 'down'] : ['value'];
     for (const port of ports) {
-      const histogram = item.type === 'volume' || port === 'histogram';
+      const histogram = item.type === 'volume' || port === 'histogram' || item.type === 'vmc_cipher_b' && port === 'flow';
       const options: any = {
         color: item.color,
         // Full names/parameters live in the accessible outside-plot legend.
@@ -33,6 +34,13 @@ export function installIndicatorSeries(
         lastValueVisible: true,
         crosshairMarkerVisible: !histogram,
       };
+      const wave = item.type === 'vmc_cipher_b' && ['wt1','wt2'].includes(port);
+      if (isVmcKind(item.type)) {
+        options.color = vmcPortColor(item.type, port, item.color);
+        if (item.type === 'vmc_cipher_b') options.priceFormat = {type:'price',precision:2,minMove:0.01};
+        if (wave) Object.assign(options, {baseValue:{type:'price',price:0}, topLineColor:options.color,bottomLineColor:options.color,
+          topFillColor1:options.color+'50',topFillColor2:options.color+'18',bottomFillColor1:options.color+'18',bottomFillColor2:options.color+'50'});
+      }
       if (item.type === 'sar') Object.assign(options, {lineVisible: false, pointMarkersVisible: true, pointMarkersRadius: 3});
       if (item.type === 'supertrend' && port === 'down') options.color = '#ed7e86';
       if (['signal', 'upper', 'lower', 'd', 'minus_di', 'adx'].includes(port)) options.lineStyle = 2;
@@ -46,7 +54,7 @@ export function installIndicatorSeries(
         options.priceFormat = {type: 'volume'};
         if (volumeOverlay) {options.priceScaleId = `volume-${item.id}`; options.lastValueVisible = false;}
       }
-      const series = chart.addSeries(histogram ? HistogramSeries : LineSeries, options, pane);
+      const series = chart.addSeries(histogram ? HistogramSeries : wave ? BaselineSeries : LineSeries, options, pane);
       if (volumeOverlay) series.priceScale().applyOptions({mode: 0, autoScale: true, scaleMargins: {top: 0.80, bottom: 0}, visible: false});
       if (pane !== 0) {
         // v5 updates defaults for future right scales. Normalize auxiliary
@@ -63,10 +71,13 @@ export function installIndicatorSeries(
           series.createPriceLine({price, color: '#879bb5', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: String(price)});
         }
       }
+      if (item.type === 'vmc_cipher_b' && port === 'wt1') {
+        for (const price of [0, Number(item.params.overbought), Number(item.params.oversold)]) series.createPriceLine({price,color:'#879bb5',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:price===0?'Zero':'WT'});
+      }
       if (item.type === 'macd' && port === 'macd') {
         series.createPriceLine({price: 0, color: '#879bb5', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Zero'});
       }
-      owned.push({id: item.id, port, kind: item.type, series, color: item.color});
+      owned.push({id: item.id, port, kind: item.type, series, color: options.color});
     }
   }
   recorded?.moveToPane(recordedVisible ? next : 0);
@@ -83,6 +94,12 @@ export function installIndicatorSeries(
   return owned;
 }
 
+export function vmcPortColor(kind: string, port: string, accent: string) {
+ if (kind === 'vmc_cipher_b') return ({wt1:accent,wt2:'#936be8',fast_wave:'#c2edf5',flow:'#39b990',rsi:'#df8ac7',stoch_k:'#e7be65',stoch_d:'#71d5d0'} as Record<string,string>)[port];
+ if (kind === 'vmc_cipher_a') return ['#99dcff','#81caff','#69b6f5','#52a0e6','#4287d2','#376fbb','#315ca3',accent][Number(port.slice(3))-1];
+ return port === 'filter' ? accent : '#91a4bb';
+}
+
 export function updateIndicatorSeries(owned: ReturnType<typeof installIndicatorSeries>, result: any, minutes = 1) {
   for (const item of owned) {
     const column = result?.columns?.[item.id]?.[item.port] ?? [];
@@ -96,6 +113,18 @@ export function updateIndicatorSeries(owned: ReturnType<typeof installIndicatorS
         : item.kind === 'volume'
         ? (result.directions[index] >= 0 ? item.color : '#ed7e86')
         : item.port === 'histogram' ? (value >= 0 ? item.color : '#ed7e86') : undefined;
+      if (isVmcKind(item.kind)) {
+        const direction=result?.regimes?.[item.id]?.[index];
+        const semantic = item.port === 'flow' ? (value >= 0 ? '#39b990' : '#e78389')
+          : item.kind === 'vmc_swing' ? (direction === 1 ? '#39b990' : direction === -1 ? '#e78389' : item.color)
+          : item.kind === 'vmc_cipher_a' && direction === -1 ? '#65748a'
+          : item.port === 'rsi' ? (value >= 60 ? '#e78389' : value <= 30 ? '#39b990' : item.color) : item.color;
+        const gap = index+1<column.length && (column[index+1] == null || result.times[index+1]-time !== minutes*60);
+        const outgoing = gap && item.port !== 'flow' ? 'transparent' : semantic;
+        if (['wt1','wt2'].includes(item.port)) return {time,value,topLineColor:outgoing,bottomLineColor:outgoing,
+          ...(gap ? {topFillColor1:'transparent',topFillColor2:'transparent',bottomFillColor1:'transparent',bottomFillColor2:'transparent'} : {})};
+        return {time,value,color:outgoing};
+      }
       return {time, value, ...(color ? {color} : {})};
     }));
   }

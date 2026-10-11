@@ -26,12 +26,16 @@ export function useChartIndicators(
   const resultWindow = useRef(windowEpoch);
   const resultKey = useRef('');
   const resultRows = useRef('');
+  const writeInFlight = useRef(false);
+  const uncertainSave = useRef(false);
   const requestKey = JSON.stringify([source, market, symbol, minutes, priceStyle]);
   settingsRef.current = settings;
 
   useEffect(() => {
     const token = ++generation.current;
     const controller = new AbortController();
+    writeInFlight.current = false;
+    uncertainSave.current = false;
     setLoaded(false);
     setSettings(emptySettings);
     setResult(null);
@@ -58,10 +62,11 @@ export function useChartIndicators(
     setResult(null);
     anchor.current = false;
     ++calculationEpoch.current;
-    if (!active || !loaded || (!settings.instances.some(item => item.visible) && priceStyle !== 'heikin_ashi')) return;
+    if (!active || !loaded || saving || uncertainSave.current || (!settings.instances.some(item => item.visible) && priceStyle !== 'heikin_ashi')) return;
     let stopped = false;
     const controller = new AbortController();
     const cancel = poll(async () => {
+      if (writeInFlight.current || uncertainSave.current) return null;
       const current = rows.current;
       if (!current.length) return null;
       const start = current[0].time;
@@ -75,7 +80,7 @@ export function useChartIndicators(
       }, {signal: controller.signal});
       return {key, epoch, value};
     }, reply => {
-      if (!reply || stopped) return;
+      if (!reply || stopped || writeInFlight.current || uncertainSave.current) return;
       if (reply.key !== JSON.stringify(rows.current) || reply.epoch !== calculationEpoch.current) return;
       resultRows.current = reply.key;
       resultWindow.current = windowEpoch;
@@ -83,7 +88,7 @@ export function useChartIndicators(
       setResult(reply.value);
       setError(reply.value.error ?? reply.value.settings?.warning ?? '');
     }, reason => {
-      if (!stopped) {
+      if (!stopped && !writeInFlight.current && !uncertainSave.current) {
         setResult(null);
         setError(String(reason instanceof Error
           ? reason.message
@@ -95,10 +100,14 @@ export function useChartIndicators(
       controller.abort();
       cancel();
     };
-  }, [source, market, symbol, minutes, active, loaded, settings, windowEpoch, priceStyle]);
+  }, [source, market, symbol, minutes, active, loaded, saving, settings, windowEpoch, priceStyle]);
 
   const apply = async (instances: ChartIndicator[]) => {
+    if (!loaded || writeInFlight.current || uncertainSave.current) return;
     const token = generation.current;
+    writeInFlight.current = true;
+    ++calculationEpoch.current;
+    setResult(null);
     setSaving(true);
     setError('');
     try {
@@ -111,17 +120,25 @@ export function useChartIndicators(
       }
     } catch (cause) {
       if (token === generation.current) {
+        uncertainSave.current = true;
+        ++calculationEpoch.current;
+        setResult(null);
+        setLoaded(false);
         setError('Settings save could not be confirmed. Reload the chart before retrying. ' + (cause instanceof Error ? cause.message : 'Try again.'));
       }
     } finally {
-      if (token === generation.current) setSaving(false);
+      if (token === generation.current) {writeInFlight.current = false; setSaving(false);}
     }
   };
 
   const reanchor = () => {
+    if (!loaded || writeInFlight.current || uncertainSave.current) return;
     ++calculationEpoch.current;
     anchor.current = true;
     setResult(null);
   };
-  return {settings, projectionCurrent: resultRows.current === JSON.stringify(rows.current), result: resultWindow.current === windowEpoch && resultKey.current === requestKey ? result : null, error, saving, loaded, apply, reanchor};
+  const projectionCurrent = resultRows.current === JSON.stringify(rows.current);
+  const accepted = loaded && !writeInFlight.current && !uncertainSave.current && projectionCurrent
+    && resultWindow.current === windowEpoch && resultKey.current === requestKey;
+  return {settings, projectionCurrent, rawSnapshotKey: resultRows.current, result: accepted ? result : null, error, saving, loaded, apply, reanchor};
 }

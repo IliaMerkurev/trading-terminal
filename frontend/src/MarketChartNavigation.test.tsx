@@ -1,10 +1,12 @@
 import {beforeEach,afterEach,it,expect,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import MarketChart from './MarketChart';
+import {defaults} from './ChartIndicators';
+import {IndicatorEventsPrimitive} from './chartIndicatorEvents';
 
 const mock=vi.hoisted(()=>({api:vi.fn(),chart:null as any,series:[] as any[],range:null as any,rangeChanged:(_r:any)=>{},crosshair:(_r:any)=>{},fits:0,ranges:[] as any[],markers:vi.fn(),markerTargets:[] as any[],price:{mode:0,autoScale:true,scaleMargins:{top:.2,bottom:.1}},removed:0}));
 vi.mock('./api',()=>({api:mock.api}));
-vi.mock('lightweight-charts',()=>({CandlestickSeries:'candle',LineSeries:'line',HistogramSeries:'histogram',ColorType:{Solid:'solid'},createSeriesMarkers:(series:any)=>{mock.markerTargets.push(series);return {setMarkers:mock.markers,detach:vi.fn()};},createChart:()=>{
+vi.mock('lightweight-charts',()=>({CandlestickSeries:'candle',LineSeries:'line',HistogramSeries:'histogram',BaselineSeries:'baseline',ColorType:{Solid:'solid'},createSeriesMarkers:(series:any)=>{mock.markerTargets.push(series);return {setMarkers:mock.markers,detach:vi.fn()};},createChart:()=>{
  const domain=()=>[...new Set(mock.series.flatMap(s=>s.data.map((row:any)=>row.time)))].sort((a:any,b:any)=>a-b);
  const scale={options:()=>({...mock.price}),applyOptions:(options:any)=>Object.assign(mock.price,options)};
  const timeScale={getVisibleLogicalRange:()=>mock.range,setVisibleLogicalRange:(range:any)=>{mock.range={...range};mock.ranges.push({range:{...range},domain:domain()});mock.rangeChanged(range);},fitContent:()=>{mock.fits++;mock.range={from:0,to:domain().length-1};mock.rangeChanged(mock.range);},subscribeVisibleLogicalRangeChange:(listener:any)=>{mock.rangeChanged=listener;},unsubscribeVisibleLogicalRangeChange:vi.fn()};
@@ -356,4 +358,39 @@ it('mounts Ichimoku on raw coordinates, Fits cloud without adding times, Returns
  const pendingRead=pending();indicatorRead=()=>pendingRead.promise;
  marketRead=()=>ready(bars(3001,300));await tick();expect(cloud.extent()).toBeNull();
  view.unmount();expect(carrier.detachPrimitive).toHaveBeenCalled();
+});
+
+
+
+it('keeps VMC events in owned panes, exposes both clocks, and clears stale geometry under price styles and hiding',async()=>{
+ const rows=bars(0,8), vmc={id:'vmc',type:'vmc_cipher_b',params:{...defaults.vmc_cipher_b},color:'#7eabff',visible:true};
+ const vmcSettings={...settings,instances:[vmc]};
+ const base=mock.api.getMockImplementation()!;
+ let pendingStyle=false;
+ mock.api.mockImplementation(async(command:string,p:any)=>{
+  if(command==='chart_indicator_settings')return vmcSettings;
+  if(command==='market_chart')return ready(rows);
+  if(command==='chart_indicator_read'){
+   if(pendingStyle)return new Promise(()=>{});
+   return {status:'ready',times:rows.map(r=>r.time+60),columns:{vmc:{wt1:rows.map(()=>-30),wt2:rows.map(()=>-40)}},origin:{time:0,generation:3},indicator_events:{version:1,contract:'confirmed-vmc-events-v1',horizon:480,context:{source:'bybit',market:'spot',symbol:'BTCUSDT',minutes:1,start:0,end:420,generation:3,origin:0,settings_revision:7},instances:{vmc:[{id:'regular',kind:'regular_bullish',oscillator:'wt',confirmed_at:480,pivot_time:360,previous_pivot_time:120,value:-40,previous_value:-60,segment:0},{id:'gold',kind:'gold_buy_dot',oscillator:'wt',confirmed_at:480,pivot_time:360,value:-40,segment:0}]}}};
+  }
+  return base(command,p);
+ });
+ const writes=vi.spyOn(IndicatorEventsPrimitive.prototype,'setData');
+ const view=render(<MarketChart fresh/>);await flush();await tick();
+ expect(writes.mock.calls.some(([events])=>events.length===2)).toBe(true);
+ const wave=mock.series.find(s=>s.kind==='baseline');expect(wave.attachPrimitive).toHaveBeenCalled();
+ expect(mock.series.filter(s=>s.kind==='candle').every(s=>s.attachPrimitive.mock.calls.length===0)).toBe(true);
+ act(()=>mock.crosshair({time:480,logical:7}));
+ const details=screen.getByLabelText('Confirmed VMC event details').textContent!;
+ expect(details).toContain('2 confirmed events');expect(details).toContain('1970-01-01T00:06:00.000Z');expect(details).toContain('1970-01-01T00:08:00.000Z');
+ const domain=mock.series.flatMap(s=>s.data.map((r:any)=>r.time));expect(domain.every(time=>rows.some(row=>row.time+60===time))).toBe(true);
+ pendingStyle=true;rows[7]={...rows[7],close:99};await tick();
+ expect(wave.data).toEqual([]);expect(writes.mock.calls.at(-1)![0]).toEqual([]);
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'heikin_ashi'}});await flush();
+ expect(writes.mock.calls.at(-1)![0]).toEqual([]);expect(screen.getByLabelText('Confirmed VMC event details').textContent).not.toContain('regular bullish');
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'line'}});await flush();
+ expect(writes.mock.calls.at(-1)![0]).toEqual([]);
+ view.rerender(<MarketChart fresh active={false}/>);await flush();expect(wave.detachPrimitive).toHaveBeenCalled();
+ view.unmount();writes.mockRestore();
 });

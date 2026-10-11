@@ -1,5 +1,47 @@
 # Current engineering checkpoint
 
+## Integrated 33-type VuManChu candidate — 2026-10-11
+
+Cipher B Core + confirmed divergences, Cipher A and Swing Free are integrated
+with typed controls, event/regime geometry and atomic raw/numeric/event acceptance.
+The catalog has 33 implemented types; no fixed visible/hidden instance-count
+limit returns. Existing 10,000 input / 1,800 viewport, 64 MiB serialized and
+estimated 256 MiB working-resource guards remain. Read [ADR 0052](adr/0052-vumanchu-display-events.md)
+for exact confirmation clocks, two-bar divergence delay, omissions and the
+MPL-2.0 formula-file exception to the root MIT license.
+
+Integrated targeted frontend verification passed 116 tests across eight files;
+TypeScript and production build passed with the existing large-chunk advisory.
+The first Python invocation ran 83 entries: 79 passed, two failed because older
+catalog tests still expected an eight-instance cap and 900 KiB total-result
+rejection, and two imports failed because the tests directory was absent from
+PYTHONPATH. No numerical expectations changed. The corrective pass ran 10 tests
+and all passed: positive uncapped validation, complete checksum-verified paging,
+and the previously unimported VMC service/transport modules. Together this gives
+89 distinct passing targeted Python tests; no complete product suite is claimed.
+Independent backend/frontend reviews cover the frozen implementation; two
+review-discovered frontend snapshot defects were fixed before assembly.
+
+Actual-App offline browser QA rendered all three VMC types, confirmed readable
+labels, checked a regular bullish divergence from 19:29 pivot to 19:31
+confirmation with a 19:11 previous pivot, preserved raw indicator values under
+Heikin Ashi, and cleared prior Bybit events while switching to OKX before
+showing correct source-specific values. Initial inspection identified
+public-label and near-zero readout polish.
+The correction uses VMC B / VMC A / Swing labels and compact display-only
+number formatting; 39 focused frontend tests, TypeScript and build passed.
+Outgoing diff review also restored the baseline hidden-VWAP timeframe exemption
+and resource-cost note; four focused readout/validation tests and the final
+TypeScript/build passed. A further four-test formatting check preserves tiny
+price-denominated values in scientific notation while rounding only VMC Stoch
+RSI residue. Final-build actual-App restart smoke passed: all three types render,
+the signed B pane has filled waves/events, A Hide/Show works, invalid B channel 0
+blocks Apply with a 1–1000 diagnostic and Cancel restores 9, Line preserves
+raw-close overlays, and Stoch K/D residue displays compact 0. The browser host
+inventories static assets at startup and must restart after rebuilding. Native
+Windows, external-provider, TradingView runtime parity and owner-led unaided
+acceptance remain unverified. No release, deployment or main merge is implied.
+
 ## Uncapped indicator-instance continuation — 2026-10-11
 
 The fixed indicator-instance limit is removed with no replacement count quota.
