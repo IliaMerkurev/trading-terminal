@@ -41,11 +41,13 @@ configuration is not a successful CI result.
 
 ## Current status
 
-The pane checkpoint has passed fresh focused, independent and actual-browser
-synthetic verification as recorded below. Publication is verified separately.
-The isolated frozen-alert core is restored as a partial second-stage checkpoint;
-its runtime and user interface remain pending. Historical research and agreement
-features are not yet restored. This is not full product or owner acceptance.
+Pane layout passed focused, independent and actual-browser synthetic checks.
+The frozen alert core, passive runtime/Service, pure agreement evaluator and
+cache-only historical backend are independently checked and remotely published.
+The alert interface has passed focused/component and actual-browser synthetic
+acceptance; its remote publication is being verified separately. Historical research UI, current-agreement
+panel and frozen agreement conditions/full group history remain in progress.
+This is not full product or owner acceptance.
 
 
 ## Pane reconstruction: independent acceptance checkpoint
@@ -372,3 +374,80 @@ not additional coverage.
 | HISTORY-05, REGRESSION safety | Deliberately blocked shutdown retains dependent services and worker ownership, marks the scan interrupted and preserves that state after restart without automatic resume. | Tests use bounded controlled worker delays. |
 
 All provider, PAPER/order and external-notification guards remained zero in these independent Service tests. This backend checkpoint does not complete historical date-field behavior, compact hit-list layout, detached chart rendering, or agreement-history integration. No original-byte or old-database compatibility claim is made.
+
+
+## Local alert interface reconstruction
+
+The reconstructed interface uses the published runtime without changing its
+formula/storage/MarketHub contracts. App-level session fencing, exact applied
+context previews, explicit reviewed async Arm/Pause, paged rule CRUD and journal,
+paused rebind and durable uncertain-write recovery are implemented. The complete
+workflow and recovery limits are in [ALERT_UI](ALERT_UI.md). Historical alert
+research and agreement integration remain separate milestones.
+
+Author verification: 66 first-pass frontend checks and a final 23-check focused
+correction pass, with 68 distinct checks after overlap is removed. TypeScript
+and production build pass; the existing bundle-size advisory remains. Tests
+include unknown-create persistence/reload, post-commit error readback, exact-retry
+quarantine, absent-Arm fence recovery, stale previews, same-value filters, selected
+rebind polling, claim-page traversal, immutable unknown evidence and read state.
+Nearest regressions preserve chart navigation, focus and indicator/preset drafts.
+Independent review and actual-App GUI outcomes must be attached to the immutable
+checkpoint separately; these author tests do not substitute for them. No old
+source byte identity, unavailable database schema compatibility, native Windows,
+live provider, full-product suite, remote CI or owner acceptance is claimed.
+## Reconstructed alert controls and journal: independent acceptance
+
+Source checkpoint: `85a6db533f8a6696daf03ee41e808b6c8d9c43e7`; tree `0870397c5868dbeda7d642682692f34cd7d24d31`. Independent frozen run: **9/9 passed** in 3.09 seconds, with no tracked source changes. Portable tests: `frontend/src/alertUiIndependent.test.tsx`. Run with `pnpm exec vitest run frontend/src/alertUiIndependent.test.tsx` from the repository root.
+
+| Criteria | Independently challenged behavior | Limit |
+| --- | --- | --- |
+| ALERT-09–12 | A→B→A uses increasing context revisions; stale capabilities cannot return. Reviewed checkbox is required, and Arm is not sent before Pause acknowledges. | Mocked frontend transport; real Service/Hub lifecycle evidence remains in the earlier runtime checkpoint. |
+| ALERT-11 | Original uncertain create survives provider remount and context change, with its exact identity/content retained. No second create is inferred from an absent readback. | Actual browser reload acceptance remains pending. |
+| ALERT-11 | An absent uncertain Arm has an explicit recovery path: newer acknowledged context fence, Pause, readback, then fresh review; old Arm is never replayed. | Source review additionally checks that rejected retries do not settle an earlier unknown create. |
+| ALERT-11 | A post-commit Service error resolves through original request-ID readback instead of treating the envelope as proof of failure. | The fault is injected at the frontend API boundary. |
+| ALERT-01, 11 | Late preview from an older applied-settings revision is discarded; selected-rule polling still exposes durable rebind-required state after applied revision changes. | Actual indicator drafts and navigation require integrated GUI acceptance. |
+| ALERT-13 | Same-value Saved selector preserves loaded rows and selected rule. | Archived/restore routes also have author tests; they are not additional independent scenarios here. |
+| ALERT-07, 14 | Banner polling traverses twenty already-claimed events to reach the next unclaimed event; only that event is claimed and its current name is labelled. | Visual banner presentation and journal paging require actual GUI acceptance. |
+
+This checkpoint does not complete detached event charts, historical research UI, current agreement UI or agreement alerts/history. Original source byte identity and authentic old-database compatibility remain unverified.
+
+### Integrated alert interface build
+
+The alert implementation is unchanged from its reviewed source above; integration
+preserves the published agreement evaluator and historical backend. The retained
+nine UI challenges passed their portability run. The initial integrated build
+identified browser-TypeScript-incompatible Node imports in the previously
+retained independent agreement test harness. That test-only setup now uses the
+existing Vitest module loader, JSON fixture import and platform-local pinned
+Python path. Its expected vectors and evaluator source are unchanged; all 55
+cases passed again, followed by TypeScript and production build. The existing
+large-bundle advisory remains. Actual-browser alert acceptance is still pending.
+
+
+### Actual alert browser acceptance — 2026-10-12
+
+The integrated production source `4e13977a2b23053c347e4604a444635ea7170e8a`
+passed a guarded actual-App synthetic workflow. A reviewed SMA(3) cross-above-12
+rule was saved paused, then explicitly armed with a 10:50 UTC baseline. Hiding
+the source SMA did not rewrite or stop the frozen rule. A genuinely observed
+10:52 close produced one local banner and one journal event: previous SMA 10,
+current SMA 14, raw candle open 10:51, confirmed close 10:52 UTC. No event was
+manually inserted and no historical backlog was delivered.
+
+Mark-read, rename, archive/restore and leaving Market for Lab were checked;
+metadata actions remained paused. Changing the surviving hidden SMA from period
+3 to 4 required explicit rebind. The displayed paused reason initially lagged
+the settings change; an attempted reviewed Arm was authoritatively rejected
+with rebind-required, which then became visible. Reviewed rebind saved definition
+revision 2/settings revision 11 paused. Full Service restart and page reload
+retained the rule, current name, read flag and original event (definition revision
+1/settings revision 7), without another banner or automatic Arm.
+
+An independent fixture oracle confirmed the event evidence hash stayed
+`e735a0fec27d0f0f0c1a0456d87ab08104a7901603cd97d05133a4186e76dd0f`
+through rename/archive/restore/rebind/restart. Service stopped cleanly at
+10:56:18 UTC; all six forbidden side-effect guards remained zero. This establishes
+one real observed crossing, not a second-cross GUI scenario. Uncertain-network,
+overflow and delayed-response behavior remain automated/component evidence.
+Windows, live providers and owner unaided acceptance remain unverified.

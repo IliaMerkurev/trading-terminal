@@ -11,6 +11,41 @@ acceptance record. Remote publication remains a separate verified operation.
 
 # Implementation status
 
+## Local indicator-alert UI reconstruction — 2026-10-12
+
+The local interface now provides authoritative-catalog condition composition,
+reviewed frozen previews, paused create/rebind/restore, paged rule and event
+libraries, separate reviewed async Arm/Pause, immutable event detail, durable
+read state and at-most-once local banner attempts. The App-level session and
+context controller remains active above source-keyed chart remounts and panel
+collapse. New App sessions pause the former context before a fresh Arm. Exact
+write identities/content survive reload for read-only reconciliation; absent
+Arm recovery establishes a newer fence and Pause without replaying Arm.
+See [ALERT_UI](ALERT_UI.md) for workflow, uncertainty and browser-storage limits.
+
+Focused synthetic frontend evidence:
+
+- First pass: 66/66 tests across IndicatorAlerts (21), IndicatorDraftLifecycle,
+  AppChartFocus and MarketChartNavigation passed in 11.78 seconds.
+- Early independent review found an absent-Arm recovery deadlock, stale selected
+  rule polling after settings/context changes, and post-commit Service-error
+  ambiguity. These were corrected without changing backend contracts.
+- Final focused corrective pass: 23/23 alert tests passed in 2.93 seconds,
+  including post-commit request readback and an earlier unknown create remaining
+  quarantined after a rejected exact retry. Reusing the unchanged 45 nearest
+  regressions yields 68 distinct author tests; reruns are not added twice.
+- TypeScript no-emit and production build passed. The existing >500 kB bundle
+  advisory remains (approximately 991 kB JavaScript before compression).
+
+Tests use independently expected synthetic values with mocked transport; no
+external provider, order, PAPER or notification command is invoked by this UI.
+Unchanged backend runtime evidence is reused, not relabeled as a fresh run.
+Independent immutable-checkpoint tests, actual-App synthetic browser acceptance
+and remote publication are separately recorded operations. This record does
+not establish historical scans/agreement UI, old-alert database compatibility,
+Windows/native, live-provider, full-product regression, remote CI or owner
+acceptance. No dependency, formula or product-version change is included.
+
 ## Passive local indicator-alert runtime and Service — 2026-10-12
 
 The bounded backend restoration now integrates the frozen core with a passive

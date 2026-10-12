@@ -80,8 +80,8 @@ reply may omit that attempt, so never retry display assuming delivery failed.
 Mark read is independent of claiming. Journal pages are byte bounded as well as
 count bounded.
 
-Closing only a browser tab does not stop the local Service. The future UI must
+Closing only a browser tab does not stop the local Service. The local UI must
 warn users to Pause before closing a tab. Service shutdown pauses and joins the
-worker; a join timeout retains its dependencies and workspace ownership. UI,
+worker; a join timeout retains its dependencies and workspace ownership. The [UI contract](ALERT_UI.md),
 history scans, external notifications, Windows/native and live-provider
 acceptance are separate checkpoints.

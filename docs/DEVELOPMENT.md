@@ -1,5 +1,26 @@
 # Development guide
 
+## Local indicator alerts
+
+See [the UI workflow and failure contracts](ALERT_UI.md). Use an isolated
+synthetic workspace for GUI checks. Preview and save an applied SMA rule paused;
+review and explicitly Arm; drive a later actual native close through the existing
+Hub stream. Check journal/banner, source/timeframe/Market-leave/reload pause,
+archive/restore, current-name labeling and panel-collapse observation separately.
+Do not substitute a manually inserted journal event for runtime acceptance.
+
+Focused frontend and nearest-regression command:
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/IndicatorAlerts.test.tsx frontend/src/IndicatorDraftLifecycle.test.tsx frontend/src/AppChartFocus.test.tsx frontend/src/MarketChartNavigation.test.tsx
+node node_modules/typescript/bin/tsc --noEmit
+node scripts/frontend.mjs build
+```
+
+Reuse already verified unchanged backend runtime evidence. This UI checkpoint
+does not add historical alert scans, agreement conditions or external delivery.
+
+
 ## Compatible chart pane layout (ADR 0054)
 
 Open Indicators, then Pane layout. Change relative weights, use Move up/down,

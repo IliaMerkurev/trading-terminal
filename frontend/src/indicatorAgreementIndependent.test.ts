@@ -1,9 +1,14 @@
-import {it,expect} from 'vitest';
-import fs from 'node:fs';
-import {execFileSync} from 'node:child_process';
+import {it,expect,beforeAll,vi} from 'vitest';
+import fixtureData from '../../tests/fixtures/indicator_agreement_v1.json';
 import {evaluateAgreement,thresholdEvidence} from './indicatorAgreement';
-const fixtures=JSON.parse(fs.readFileSync('tests/fixtures/indicator_agreement_v1.json','utf8'));
-const parity=JSON.parse(execFileSync(process.env.PYTHON_BIN || '.venv/bin/python',['-c', "import json; from terminal.indicator_agreement import evaluate_agreement; f=json.load(open('tests/fixtures/indicator_agreement_v1.json')); print(json.dumps({c['name']:evaluate_agreement(c['input']) for c in f['cases']},allow_nan=False))"],{encoding:'utf8'}));
+const fixtures:any=fixtureData;
+let parity:Record<string,unknown>;
+beforeAll(async()=>{
+ const {execFileSync}=await vi.importActual<any>('node:child_process');
+ const {platform}=await vi.importActual<any>('node:os');
+ const python=platform()==='win32'?'.venv/Scripts/python.exe':'.venv/bin/python';
+ parity=JSON.parse(execFileSync(python,['-c', "import json; from terminal.indicator_agreement import evaluate_agreement; f=json.load(open('tests/fixtures/indicator_agreement_v1.json')); print(json.dumps({c['name']:evaluate_agreement(c['input']) for c in f['cases']},allow_nan=False))"],{encoding:'utf8',maxBuffer:4*1024*1024}));
+});
 const exact=(value:any)=>Object.fromEntries(Object.entries(value).map(([d,v]:any)=>[d,v.map(String)]));
 for(const c of fixtures.cases)it('independent expected agreement: '+c.name,()=>{
  const result=evaluateAgreement(c.input),e=c.expected;

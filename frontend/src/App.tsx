@@ -1,3 +1,4 @@
+import {AlertSessionProvider} from './AlertSession';
 import {RunProgress} from './RunProgress';
 import {DisplayedMetrics,DisplayTrackingNotice} from './DisplayedEvidence';
 import Observations,{type HistoryRequest,type ObservationContext} from './Observations';
@@ -40,7 +41,9 @@ export function savedRunDate(selectedRun:any,runs:any[]):string|null{
   return value?new Date(value).toLocaleString():null;
 }
 
-export default function App(){
+export default function App(){return <AlertSessionProvider><AppContent/></AlertSessionProvider>;}
+
+function AppContent(){
   const transport=transportCapabilities();
   const [serviceStopped,setServiceStopped]=useState(false);
   const [productVersion,setProductVersion]=useState('');
