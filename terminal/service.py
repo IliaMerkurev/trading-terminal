@@ -42,6 +42,8 @@ class AppService:
         self.indicator_history=IndicatorAlertHistory(self.indicator_alerts.store)
         from terminal.rule_strategy import RuleStrategies
         self.rule_strategies=RuleStrategies(self.indicator_alerts.store)
+        from terminal.fear_greed import FearGreed
+        self.fear_greed=FearGreed(self.store.root)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -83,6 +85,7 @@ class AppService:
             fields.update(chart_indicator_page={'snapshot_id','index'}, chart_indicator_upload_begin={'size','sha256'}, chart_indicator_upload_append={'upload_id','offset','text'}, chart_indicator_upload_finish={'upload_id'})
             fields.update(chart_indicator_settings={'market','symbol','source'},chart_indicator_save={'market','symbol','instances','revision','source'},chart_indicator_read={'market','symbol','minutes','start','end','revision','reanchor','source'})
             fields.update(market_preferences=set(),market_open={'market','symbol','source'},market_close=set(),market_chart={'market','symbol','minutes','before','source'})
+            fields.update(fear_greed_status={'refresh'})
             fields.update(managed_experiment_fields={'strategy_id','profile'})
             fields.update(paper_start_manual={'profile'})
             fields.update(paper_lifecycle={'session_id','before','limit'})
@@ -198,6 +201,7 @@ class AppService:
                     'alert_claim_banner': lambda event_id: dict(claimed=self.indicator_alerts.store.claim_banner(event_id)),
                 }
                 result = methods[command](**p)
+            elif command=='fear_greed_status':result=self.fear_greed.status(**p)
             elif command=='market_preferences':result=self.live.market_preferences()
             elif command=='market_open':result=self.live.market_open(**p)
             elif command=='market_close':
@@ -367,7 +371,7 @@ class AppService:
             raise ExceptionGroup('Service shutdown cleanup failed',errors)
         # The calculation process is only one workspace owner. Defer unlocking
         # until live/history/download threads have also actually stopped.
-        for name in ('live','library_batches','experiments','display_indicators','indicator_transport','chart_reads','exports','archives'):
+        for name in ('fear_greed','live','library_batches','experiments','display_indicators','indicator_transport','chart_reads','exports','archives'):
             owner=getattr(self,name,None)
             if owner is not None:attempt(owner.close)
         jobs=getattr(self,'jobs',None)
@@ -375,7 +379,7 @@ class AppService:
         downloads=getattr(self,'downloads',None)
         if downloads is not None:attempt(downloads.close)
         live=getattr(self,'live',None)
-        threads=[getattr(getattr(self,name,None),'thread',None) for name in ('display_indicators','downloads')]
+        threads=[getattr(getattr(self,name,None),'thread',None) for name in ('fear_greed','display_indicators','downloads')]
         threads.extend(getattr(live,name,None) for name in ('thread','warmup_thread','delivery_thread'))
         threads.extend(getattr(getattr(live,name,None),'thread',None) for name in ('hub','chart_history'))
         owners=[getattr(self,name,None) for name in ('chart_reads','exports','jobs','library_batches','experiments')]

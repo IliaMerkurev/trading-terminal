@@ -45,4 +45,34 @@ layouts, keyboard collapse, historical navigation and the node panel. Synthetic
 fixtures will be labeled; real API runtime access will be reported separately.
 No Windows/native, full-product, live-exchange or owner acceptance is implied.
 
-Status: plan checkpoint; implementation and acceptance are not yet complete.
+## Implemented contract and initial verification
+
+The optional service owns one fetch at a time in a background thread. A short-
+lived subprocess performs the fixed HTTPS GET with a 32 KiB response bound,
+redirect rejection and an eight-second parent deadline. A nine-second child
+watchdog also bounds a surviving child after parent failure. Graceful shutdown
+cancels, joins and fences cache writes; current Windows behavior is not verified.
+
+The next attempt follows the advisory countdown plus 60 seconds, with a
+15-minute minimum; a failed attempt backs off one hour. Explicit user refresh
+is throttled to once per minute. The mounted view briefly observes in-flight
+local status at 500 ms (at most 25 reads), then sleeps until due. These local
+reads do not repeat the external request. Exiting cancels view timers and fences
+obsolete replies. Reopening/source changes reuse the independent service cache.
+
+A record is outdated after the advisory update time plus five minutes, or after
+36 hours of source age, whichever occurs first. Source category text controls
+the label and known-category color; the continuous dial gradient is illustrative,
+not a claim about provider classification thresholds. Unknown categories retain
+their text with a neutral color. Failed cache persistence is visible. A corrupt
+or deeply nested cache degrades this widget without preventing app startup.
+
+Initial focused checks passed 22 backend (17 new and five shutdown regressions)
+and 50 frontend (10 new and 40 chart neighbors), TypeScript and production build.
+Three existing route-allowlist assertions require the new read-only sentiment
+endpoint in the external test patch; tracked repository tests remain unchanged.
+The existing bundle-size advisory remains. The application fetch worker obtained
+69 / Greed, source date 2026-10-12, from the real endpoint in the own-cloud runtime;
+an earlier request was temporarily unreachable. This is not a provider uptime
+or platform-wide guarantee. Actual browser acceptance and the private test
+archive are still pending at this implementation checkpoint.

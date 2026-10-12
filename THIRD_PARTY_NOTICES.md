@@ -131,3 +131,11 @@ pivot geometry is disclosed separately from its two-bar-later confirmation.
 A's eight EMA ribbon and Swing's transparent Range Filter do not claim parity
 with proprietary Market Cipher, Morpheus or Scalper. These annotations do not
 create strategy signals, alerts, orders or profitability promises.
+
+## Alternative.me Fear & Greed data
+
+The optional latest daily BTC sentiment display uses the public Alternative.me
+Fear & Greed API. Its data is subject to the [provider terms and API rules](https://alternative.me/crypto/fear-and-greed-index/), not the application MIT license.
+Commercial display is permitted with noticeable attribution next to the data;
+the widget keeps its source link visible when expanded or collapsed. This is
+a BTC-focused sentiment display, without affiliation or impersonation claims.

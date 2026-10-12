@@ -1,5 +1,16 @@
 # Trading Terminal product specification
 
+## Latest daily BTC sentiment extension — 2026-10-12
+
+Add a small collapsible Fear & Greed semicircle to the main Market chart
+workspace, with a clearly dated latest daily BTC value and adjacent Alternative.me
+attribution. Keep it separate from the selected candle/instrument and all
+strategies, alerts, backtests and agreement calculations. A bounded independent
+fetch/cache preserves honest loading, unavailable, invalid, offline and outdated
+states. No paid service, credentials, accounts or network/security changes are
+included. See the [display contract and acceptance](docs/FEAR_GREED.md).
+Product remains 0.6-dev on the existing development branch.
+
 ## Saved backtest comparability extension — 2026-10-12
 
 The owner approved a bounded read-only review of saved comparison conditions:
