@@ -55,8 +55,13 @@ remote publication is verified at
 complete historical evidence are remotely verified at
 `0cbeb0e6daaaa873ade1d96be97e545114b65e5c`. The agreement editor and four-lane
 timeline have passed focused, independent and actual-browser synthetic checks.
-Final combined offline regression and completeness reconciliation remain pending.
-This is not full product or owner acceptance.
+The final backend confirmation passed 804 tests with eight Windows-only skips
+(812 discovered); all 1,008 frontend tests and the production build passed.
+See [the complete 88-row acceptance ledger](RECOVERY_ACCEPTANCE.md) for evidence
+and limits. The shutdown correction is remotely verified at
+`48eaf298472df62231f0ddde5ec140e15e4fcb69`. This completes the scoped functional
+reconstruction, with original-byte/old-database, Windows, live-provider and
+owner acceptance limits retained.
 
 
 ## Pane reconstruction: independent acceptance checkpoint
@@ -702,3 +707,43 @@ The four newly retained independent tests passed after integration in 3.148
 seconds; the two unchanged timeout tests reuse their frozen six-case evidence.
 A complete backend confirmation sweep is required after this focused correction
 is published. The unchanged 1,008-test frontend and build evidence is retained.
+
+## Final combined acceptance and publication
+
+The backend confirmation on `741ad08b6465447e5716928ba5ee042677f8327c`, tree
+`a7d658ffd6980e1b29aa250d1bc116a1574efe5d`, completed with 812 discovered tests:
+804 passed, eight Windows-only skipped, zero errors, exit 0 in 258.773 seconds.
+Its exact tree is published as `48eaf298472df62231f0ddde5ec140e15e4fcb69`.
+The initial failed sweep and focused correction above remain part of the record.
+
+The frontend sweep passed all 1,008 tests in 83 files in 83.66 seconds on
+`0a115f1ca7b8b237dcfd3982b733a8f342f174c3`. Shutdown changes did not touch
+frontend or formula files; its TypeScript no-emit and production build therefore
+remain valid. The final build's HTML, JavaScript and CSS hashes exactly match
+the actual-browser accepted build. The existing large-bundle advisory remains.
+
+Reproduction commands in the pinned environment:
+
+```sh
+.venv/bin/python -m unittest discover -s tests -v
+node node_modules/vitest/vitest.mjs run --maxWorkers=2 --reporter=verbose
+node scripts/frontend.mjs build
+```
+
+The [88-row completeness ledger](RECOVERY_ACCEPTANCE.md) reconciles all five
+restored stages and the preserved baseline regression surface. There are no
+known documented functional omissions within this reconstruction's checked
+scope. No baseline file was deleted. Dependencies, lockfiles, product version
+and licenses are unchanged. Remote publication was verified at each checked
+milestone; there are no configured remote CI runs/checks/status entries, which
+is not a CI pass. Final documentation-only publication adds this acceptance
+record without changing the tested runtime or frontend.
+
+This does not prove byte-identical recovery of the missing original commits,
+compatibility with unavailable authentic old alert/research databases, native
+Windows execution/packaging, real exchange operation or owner-led acceptance.
+The seven Windows containment tests and one Windows lifecycle test remain
+skipped. Strategy conversion is still deferred. Preserve the complete workspace
+database for new journal/research data; strategy archive export does not include
+those records. No reconstruction claim establishes loss of the owner's local
+Windows data.

@@ -4592,3 +4592,22 @@ Pinned detect-secrets 1.5.0 scanned all 17 explicit changed paths. Four findings
 in the synthetic saved-payload fixture were individually matched to the public
 manifest SHA-256 and three formula-metadata SHA-256 values. No new secret or
 unreviewed finding remains; this is not a claim of zero scanner findings.
+
+## Recovery acceptance closure — 2026-10-12
+
+All five reconstructed milestones and the preserved baseline are reconciled in
+[the 88-row acceptance ledger](RECOVERY_ACCEPTANCE.md). Final backend confirmation
+on tree `a7d658ffd6980e1b29aa250d1bc116a1574efe5d` passed 804 tests with eight
+Windows-only skips (812 discovered), zero errors. The full frontend suite passed
+1,008 tests across 83 files; TypeScript and production build passed. Frontend and
+build hashes remain unchanged by the fault-resilient shutdown correction.
+The initial failed backend sweep and correction are retained in
+[the recovery record](RECOVERY.md), not relabeled as a successful first pass.
+
+Focused, independent and actual synthetic production-App checks cover the five
+restored stages. Checked milestones were pushed and remote trees verified; no
+remote CI configuration is present. No known documented functional omission
+remains within the recorded reconstruction scope. Original source byte identity,
+authentic unavailable old database compatibility, Windows/native packaging,
+real providers and owner-led acceptance remain unverified. Strategy conversion
+is deferred; this is not a release, merge or authorization for trading actions.
