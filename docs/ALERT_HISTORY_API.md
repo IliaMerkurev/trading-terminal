@@ -144,3 +144,25 @@ inside the original condition evidence. These reads do not mark events read,
 claim banners, change cursors, arm/pause, mutate Market/drafts, or write the live
 journal. Research uses separate additive workspace tables. Back up the workspace
 database; strategy archive export does not imply research-record export.
+
+## Agreement timelines (ADR 0061 backend)
+
+Version-2 frozen agreement definitions use these same immutable jobs, snapshot
+and paging routes. No new table or history envelope version is required. Every
+calculated close, including prefix, unknown, false and sustained-true nonhits,
+retains `evaluation.conditions[i].agreement` and `.threshold` for an agreement
+condition. `agreement` is the full shared evaluator result: version/hash,
+raw `open_time`, confirmed `close_time`, interval, overall/group/type/variant
+exact distributions and percentages, coverage, member statuses/parameters/
+consumed values/reasons, exclusions and `group_conflict`. Threshold evidence
+retains direction, threshold, required groups, overall/group passes and nullable
+truth. Unknown is not neutral or false; conflict is opposite strict directional
+majorities in different groups. These fields are present on matches, chart rows
+and exact-row lookup, including rows where no new event fired.
+
+Admission includes the full per-member/per-condition evidence copies in its
+256 MiB estimate before calculation. The existing 600 KiB page ceiling can yield
+fewer rows than the requested limit; use the returned cursor/index. Single-item
+overflow is explicit. No member, candle or group is silently omitted. Existing
+research isolation and immutable results survive graph/rule edits and restart.
+The plotted agreement timeline UI is separate from this backend checkpoint.

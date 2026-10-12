@@ -50,8 +50,10 @@ The corrected current-agreement panel has passed focused, independent and
 actual-browser synthetic checks and is remotely verified at
 `3dbbeac4f05d68b15c31fe15c0c0af7ebf419326`. Historical research UI has passed
 focused, independent component and corrected actual-browser synthetic checks;
-remote publication is verified separately. Frozen agreement conditions/full group
-history remain in progress.
+remote publication is verified at
+`981e06e441a2ab3a661eee5fab5c945c8d2175cb`. Frozen agreement conditions and
+complete historical evidence have passed focused and independent backend checks;
+the agreement editor and four-lane timeline remain in progress.
 This is not full product or owner acceptance.
 
 
@@ -588,3 +590,31 @@ and corrected defect, not relabeled as a successful first pass.
 
 The corrected browser session shut down cleanly at 11:41:33 UTC; all six
 forbidden-action guard counters remained zero.
+### Frozen agreement conditions and complete historical evidence
+
+Independently checked source: `946f98fd5db1578c2e853bf3dbd49bba62bd4d7b`, tree `25c8fa2d294007d3558674b5ba3f21cc97605410`. Reproduction after retaining the supplied files: `PYTHONPATH=tests .venv/bin/python -m unittest -v test_agreement_history_independent`.
+
+Eight independently authored scenarios passed. Seven passed in the combined 4.181-second run; the remaining pagination scenario passed in 0.612 seconds after correcting its synthetic input from null to the documented initial cursor 0. An earlier synthetic request identifier was also corrected to the existing identifier format. Expected arithmetic and compatibility hashes were unchanged; these corrections required no product edits. The independent pack reuses only already-retained isolated Service setup/transport mechanics. External/trading guards remained zero.
+
+| Criteria | Fresh evidence | Limits |
+|---|---|---|
+| AGREEMENT-01–03 | Four definitions captured from the accepted reconstructed v1 core retained both definition hashes and complete replay-byte hashes. Agreement rules bind the versioned manifest; tampering rejects. Exact 2/3 passes its inclusive fraction threshold but displayed 67% does not pass threshold .67. | These fixtures prove interoperability with the published reconstruction, not the unavailable original database. Strict required-group half-boundaries also retain the earlier independent shared-evaluator evidence. |
+| AGREEMENT-06, 08, 13 | A separately authored arithmetic oracle, created before integration and without importing product formulas, checked every one of 482 raw closes for both directions: 481 known, one unknown, 60 Up edges and 60 Down edges. Exact group-weighted fractions, neutral rows, conflict, raw-open/confirmation clocks, SMA and CMF values matched. Unknown→true produces no event; sustained true produces one edge. | Actual observed-clock runtime composition and corrupt-rule save/revert scenarios have author tests and source review; the final integrated GUI is a separate gate. |
+| AGREEMENT-05, 08, 11 | Actual Service research persisted complete per-close agreement evidence, including non-hit, neutral and unknown rows. Byte-shortened chart pages advanced from the last actual returned row. All 482 saved rows matched the independent oracle; hit pages were 20/20/20. Cache replacement and full Service restart preserved the exact saved target. Current hidden CMF produced 100% Up while frozen research retained 2/3 Up, 1/3 Down and conflict. | AGREEMENT-04 stale-draft review and AGREEMENT-09–10 four-lane timeline rendering/navigation remain pending frontend work. AGREEMENT-07 mixed pulse/state semantics have author regression evidence, not a new independent mixed-case test in this pack. |
+| AGREEMENT-11–12, 14 | Instrumentation confirmed one formula calculation with identical dependencies deduplicated and one prepared agreement index. Expanded member/evidence resource accounting rejected oversized work before formula allocation. Historical reads left live journal/status/cursor untouched. | Resource checks establish admission behavior, not a broad performance benchmark. |
+
+Independent review found and corrected a save/revert fence issue before freeze: a corrupt unrelated saved or archived definition must be marked review-required without aborting checks for healthy rules. The author retained a corruption-first regression alongside concurrent save/revert coverage. Existing evaluator/manifest and history-storage implementation were unchanged; ordinary v1 replay remained byte-identical to the recorded accepted fixtures.
+
+Portable files: `tests/test_agreement_history_independent.py`, `tests/fixtures/agreement_history_independent.json`, and `tests/fixtures/agreement_legacy_v1_independent.json`. The prior `tests/test_history_independent.py` supplies isolated Service mechanics. Original-source identity, authentic old database migration, native Windows and real-provider operation remain unverified.
+
+The eight retained independent backend scenarios also passed together on the
+history-UI integration in 3.807 seconds. Conflict resolution retained both
+additive documentation sections; terminal source matches the frozen backend
+checkpoint and frontend files are unchanged from the accepted historical UI.
+
+The final explicit 15-file outgoing scan with detect-secrets 1.5.0 reported
+13 high-entropy findings, all reviewed public fixture provenance/compatibility
+hashes: two in the author v1 fixture and eleven in the independent v1 fixture
+(commit/blob identity, canonical metadata, definition and replay hashes).
+No secrets or unclassified findings were identified; this is not a zero-findings
+claim. No dependencies, licenses or product versions changed.

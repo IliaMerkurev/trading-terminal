@@ -4456,3 +4456,64 @@ tests. TypeScript no-emit and production build passed; the existing >500 kB bund
 advisory remains (approximately 1,018 kB JavaScript before compression). No backend,
 MarketChart, dependency or product-version change is included. Independent frozen
 correction checks and renewed actual-browser date/restart acceptance remain separate.
+
+## Reconstructed frozen agreement alert/history backend — 2026-10-12
+
+[ADR 0061](adr/0061-frozen-agreement-alert-history-backend.md) adds the bounded
+agreement state condition, passive live evidence and immutable full-group
+historical evidence. New agreement definitions use strict v2; ordinary v1
+canonical definitions/hashes/default replay and the legacy catalog predicate
+choices remain unchanged. The separate capability descriptor pins the shared
+manifest. No evaluator/formula, frontend, dependency or product-version change
+is included. The existing history snapshots and byte-aware paging store every
+close without live journal/cursor/read/banner effects.
+
+Focused offline synthetic Linux evidence:
+
+- 68 nearest core/store/runtime/history regressions passed (18 + 8 + 22 + 20).
+  The initial command also accidentally discovered the imported runtime/history
+  helper classes a second time; those 42 executions are not additional coverage.
+  Helper imports now use modules to avoid repeated test discovery.
+- 14 distinct new integration tests passed across focused checks. Two synthetic
+  fixture mistakes were corrected: unsupported Ichimoku used obsolete parameter
+  field names; an added duplicate-divergence wave had no baseline divergence and
+  was replaced by the established independently checked divergence fixture.
+  Neither was a product-formula change. A 13-test focused run passed 12 tests;
+  the corrected duplicate-divergence test then passed alone. The final targeted
+  runtime correction pass passed four tests, including three new live tests and
+  the existing concurrent save/revert regression. There was no final combined
+  run of all 82 distinct tests, and reruns are not added to the coverage count.
+- Core coverage checks strict keys/versions/hash/group membership, eligible
+  applied capture, exact-copy dependency dedup and original divergence event
+  identities, one full-origin display call/one prepared index, exact inclusive
+  threshold, strict 50% rejection, rounding independence, mixed ALL/ANY pulses,
+  sustained true/unknown reset, legacy canonical fixture and early byte/memory
+  rejection without an arbitrary member limit.
+- The actual Service persists 482 timeline rows with 481 known and one unknown,
+  60 expected upward matches with complete match/chart paging, opposite group
+  majorities, neutral nonhits, immutable exact evidence after graph changes and
+  Service restart, plus separate sustained-true and unknown-reset history rows.
+  The pure downward fixture independently yields 60 expected edges.
+- Actual passive synthetic Hub receipts verify initial true without delivery,
+  one later event and no sustained-true duplicate, exact open/confirmation/
+  observation clocks, frozen hide/remove/add behavior, no recapture on re-Arm,
+  and sticky surviving-parameter change/revert while active or paused. Rebind
+  stays paused. Forbidden provider/PAPER/order/external-notification guards
+  remain zero.
+- Early independent review identified that an unusable unrelated saved rule
+  could interrupt the new all-saved dependency scan after settings committed.
+  Such definitions now fail closed as review-required and do not prevent healthy
+  rules from being checked. A corrupt-first saved rule plus an archived corrupt
+  rule and a healthy active save/revert test verifies that isolation.
+
+Pinned detect-secrets 1.5.0 full-source scans found 193 baseline and 195
+candidate raw findings. The two additions are public SHA-256 values in the
+synthetic v1 compatibility fixture (formula metadata and definition identity),
+reviewed as non-secrets. No new secret or unreviewed addition remains. This is
+not a claim of zero raw scanner findings.
+
+These are reconstructed-source tests, not historical source/test recovery or
+proof of authentic old-database migration. Agreement editor/group timeline GUI,
+Windows/native, live providers, owner acceptance, full-product regression,
+remote CI, packaging and release are not established by this backend checkpoint.
+Independent immutable-checkpoint audit and publication are separately verified.

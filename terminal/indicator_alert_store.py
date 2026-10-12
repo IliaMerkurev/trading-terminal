@@ -269,7 +269,7 @@ class IndicatorAlertStore:
             if len(evaluation['conditions']) != len(definition['conditions']):
                 raise ValueError('Alert condition evidence is incomplete')
             for index, (evidence, condition) in enumerate(zip(evaluation['conditions'], definition['conditions'])):
-                expected_kind = 'state' if condition['predicate'] in ('above', 'below') else 'impulse'
+                expected_kind = 'state' if condition['predicate'] in ('above', 'below', 'agreement') else 'impulse'
                 if evidence.get('index') != index or evidence.get('predicate') != condition['predicate'] or evidence.get('kind') != expected_kind:
                     raise ValueError('Alert condition evidence does not match the frozen rule')
                 _truth(evidence.get('truth'))

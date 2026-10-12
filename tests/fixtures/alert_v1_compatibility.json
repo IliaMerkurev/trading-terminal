@@ -1,0 +1,199 @@
+{
+  "definition": {
+    "version": 1,
+    "contract": "frozen-indicator-alert-v1",
+    "context": {
+      "source": "bybit",
+      "market": "spot",
+      "symbol": "BTCUSDT",
+      "minutes": 1
+    },
+    "settings_revision": 3,
+    "origin": {
+      "time": 0,
+      "generation": 1,
+      "contract": "native-close-engine-seeds-v1"
+    },
+    "event_contract": "confirmed-vmc-events-v1",
+    "combine": "ALL",
+    "instances": [
+      {
+        "id": "signal",
+        "type": "sma",
+        "params": {
+          "period": 2
+        },
+        "contract": {
+          "display": "native-close-engine-seeds-v1",
+          "vmc": null,
+          "metadata_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        }
+      }
+    ],
+    "conditions": [
+      {
+        "predicate": "cross_above",
+        "left": {
+          "kind": "series",
+          "instance_id": "signal",
+          "port": "value"
+        },
+        "right": {
+          "kind": "level",
+          "unit": "price",
+          "value": 10
+        }
+      }
+    ]
+  },
+  "canonical": "{\"combine\":\"ALL\",\"conditions\":[{\"left\":{\"instance_id\":\"signal\",\"kind\":\"series\",\"port\":\"value\"},\"predicate\":\"cross_above\",\"right\":{\"kind\":\"level\",\"unit\":\"price\",\"value\":10}}],\"context\":{\"market\":\"spot\",\"minutes\":1,\"source\":\"bybit\",\"symbol\":\"BTCUSDT\"},\"contract\":\"frozen-indicator-alert-v1\",\"event_contract\":\"confirmed-vmc-events-v1\",\"instances\":[{\"contract\":{\"display\":\"native-close-engine-seeds-v1\",\"metadata_sha256\":\"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\",\"vmc\":null},\"id\":\"signal\",\"params\":{\"period\":2},\"type\":\"sma\"}],\"origin\":{\"contract\":\"native-close-engine-seeds-v1\",\"generation\":1,\"time\":0},\"settings_revision\":3,\"version\":1}",
+  "definition_hash": "9407b9070e25d7316d0fc3a30c23a90dbd0acccce1282d1e0cca248cc1bdc2cc",
+  "replay": {
+    "version": 1,
+    "definition_hash": "9407b9070e25d7316d0fc3a30c23a90dbd0acccce1282d1e0cca248cc1bdc2cc",
+    "rows": [
+      {
+        "raw_open_time": 0,
+        "confirmed_at": 60,
+        "conditions": [
+          {
+            "index": 0,
+            "predicate": "cross_above",
+            "kind": "impulse",
+            "truth": null,
+            "left": null,
+            "right": 10,
+            "previous_left": null,
+            "previous_right": null,
+            "reason": "warmup_or_missing_value"
+          }
+        ],
+        "truth": null,
+        "state_truth": null,
+        "hit": false
+      },
+      {
+        "raw_open_time": 60,
+        "confirmed_at": 120,
+        "conditions": [
+          {
+            "index": 0,
+            "predicate": "cross_above",
+            "kind": "impulse",
+            "truth": null,
+            "left": 9.0,
+            "right": 10,
+            "previous_left": null,
+            "previous_right": 10,
+            "reason": "warmup_or_missing_value"
+          }
+        ],
+        "truth": null,
+        "state_truth": null,
+        "hit": false
+      },
+      {
+        "raw_open_time": 120,
+        "confirmed_at": 180,
+        "conditions": [
+          {
+            "index": 0,
+            "predicate": "cross_above",
+            "kind": "impulse",
+            "truth": true,
+            "left": 11.0,
+            "right": 10,
+            "previous_left": 9.0,
+            "previous_right": 10,
+            "reason": "condition_true"
+          }
+        ],
+        "truth": true,
+        "state_truth": null,
+        "hit": true
+      },
+      {
+        "raw_open_time": 180,
+        "confirmed_at": 240,
+        "conditions": [
+          {
+            "index": 0,
+            "predicate": "cross_above",
+            "kind": "impulse",
+            "truth": false,
+            "left": 12.0,
+            "right": 10,
+            "previous_left": 11.0,
+            "previous_right": 10,
+            "reason": "condition_false"
+          }
+        ],
+        "truth": false,
+        "state_truth": null,
+        "hit": false
+      },
+      {
+        "raw_open_time": 240,
+        "confirmed_at": 300,
+        "conditions": [
+          {
+            "index": 0,
+            "predicate": "cross_above",
+            "kind": "impulse",
+            "truth": false,
+            "left": 11.0,
+            "right": 10,
+            "previous_left": 12.0,
+            "previous_right": 10,
+            "reason": "condition_false"
+          }
+        ],
+        "truth": false,
+        "state_truth": null,
+        "hit": false
+      },
+      {
+        "raw_open_time": 300,
+        "confirmed_at": 360,
+        "conditions": [
+          {
+            "index": 0,
+            "predicate": "cross_above",
+            "kind": "impulse",
+            "truth": false,
+            "left": 9.0,
+            "right": 10,
+            "previous_left": 11.0,
+            "previous_right": 10,
+            "reason": "condition_false"
+          }
+        ],
+        "truth": false,
+        "state_truth": null,
+        "hit": false
+      }
+    ],
+    "events": [
+      {
+        "raw_open_time": 120,
+        "confirmed_at": 180,
+        "conditions": [
+          {
+            "index": 0,
+            "predicate": "cross_above",
+            "kind": "impulse",
+            "truth": true,
+            "left": 11.0,
+            "right": 10,
+            "previous_left": 9.0,
+            "previous_right": 10,
+            "reason": "condition_true"
+          }
+        ],
+        "truth": true,
+        "state_truth": null,
+        "hit": true
+      }
+    ]
+  }
+}

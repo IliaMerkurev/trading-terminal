@@ -745,3 +745,29 @@ Arm/Pause, alter journal/read state or claim banners. See
 Agreement predicates/full-group timeline, strategy conversion and trading remain
 separate scope. Component evidence does not imply actual-browser, old-database,
 Windows/native, live-provider, owner or release acceptance.
+
+### Reconstructed frozen agreement alert/history backend — 2026-10-12
+
+Freeze the applied visible supported indicator composition for a directional
+agreement state condition, inclusive exact overall threshold and optional strict
+majorities in each required group. Reuse the versioned shared agreement manifest,
+weighting, coverage, duplicates and existing formulas. Preserve original member
+IDs, normalized parameters, context, origin and formula versions independently
+of later hidden/deleted/added/layout graph changes. Surviving parameter changes,
+including change/revert while paused, durably require explicit reviewed rebind;
+rebind stays paused. Applied revision/composition changes invalidate an old
+preview. Arm never captures a replacement composition.
+
+State-only known false-to-true transitions fire; initial/unknown-to-true and
+sustained true do not. Preserve mixed ALL/ANY pulse semantics. Historical research
+persists every close with full overall/group/type/variant/member evidence,
+coverage, true/false/unknown and opposing group-majority conflict, including
+nonhits and sustained true. Live evidence retains the same frozen result and
+actual observation clock. Scans remain immutable and isolated from live state.
+Keep full-origin 10,000-input/256 MiB, definition/active 256 KiB and response
+600 KiB budgets, with complete member-copy accounting and no count quota or
+silent truncation. See [ADR 0061](docs/adr/0061-frozen-agreement-alert-history-backend.md).
+The new strict v2 definition is additive; ordinary v1 bytes/hashes/replay and the
+legacy catalog predicate list remain compatible. Agreement-specific editor and
+timeline presentation, authentic old-database compatibility, Windows/native and
+live-provider acceptance remain separate. Product version stays 0.6-dev.

@@ -48,12 +48,13 @@ class IndicatorAlertRuntime:
 
     @staticmethod
     def catalog():
-        from terminal.indicator_alerts import PREDICATES, DIVERGENCES, OSCILLATOR_PORT, port_units, MAX_CONDITIONS
+        from terminal.indicator_alerts import PREDICATES, DIVERGENCES, OSCILLATOR_PORT, port_units, MAX_CONDITIONS, agreement_capability
         from terminal.display_indicators import FIELDS
         return dict(version=1, ports={kind: port_units(kind) for kind in sorted(FIELDS)},
                     predicates=sorted(PREDICATES), divergences=sorted(DIVERGENCES),
                     oscillators=list(OSCILLATOR_PORT), combine=['ALL', 'ANY'], max_conditions=MAX_CONDITIONS,
-                    price_ports=['open', 'high', 'low', 'close'], price_unit='price')
+                    price_ports=['open', 'high', 'low', 'close'], price_unit='price',
+                    agreement_capability=agreement_capability())
 
     def request(self, request_id):
         with self.lock:
@@ -215,6 +216,26 @@ class IndicatorAlertRuntime:
     def settings_changed(self):
         """Observe applied saves synchronously, including transient changed/reverted params."""
         with self.lock:
+            for trashed in (False, True):
+                after = None
+                while True:
+                    page = self.store.list(trashed, after=after, limit=100)
+                    for metadata in page['rules']:
+                        try:
+                            definition = self.store.get(metadata['id'])['definition']
+                            context = definition['context']
+                            settings = self.display.settings(context['market'], context['symbol'], context['source'])
+                            changed = settings.get('warning') or changed_dependencies(definition, settings)
+                        except (ValueError, TypeError, KeyError):
+                            # A broken unrelated entry cannot skip healthy rules'
+                            # sticky save/revert fence after settings have committed.
+                            self._pause(metadata['id'], 'Saved alert definition unavailable; reviewed rebind required', True)
+                            continue
+                        if changed:
+                            self._pause(metadata['id'], 'Surviving indicator parameters changed; review and rebind required', True)
+                    after = page['next_cursor']
+                    if after is None:
+                        break
             for rule_id, state in list(self.states.items()):
                 if state['phase'] == 'PAUSED':
                     continue

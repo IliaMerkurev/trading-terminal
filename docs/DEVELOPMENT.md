@@ -1089,3 +1089,24 @@ Native date-input regression checks must not use only React change events. Cover
 input.value assignment plus a native input event, DOM-only immediate Start, blur,
 and partial badInput with an empty exposed value before delayed preview. Actual
 browser confirmation remains required even when these component tests pass.
+
+## Frozen agreement backend (ADR 0061)
+
+Agreement-capable clients discover `alert_catalog.agreement_capability` and use
+`predicate: "agreement"` with direction, threshold and required groups through
+the existing preview/review flow. Never infer support from the legacy predicates
+list or silently recapture a saved composition on Arm. History exposes the full
+per-close agreement evidence through the existing chart/row/match routes; its
+specialized frontend remains a separate slice.
+
+Focused reproduction (does not require providers or a browser):
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest tests.test_agreement_alert_history tests.test_indicator_alerts tests.test_indicator_alert_store tests.test_indicator_alert_runtime tests.test_indicator_alert_history
+```
+
+See STATUS for actually executed focused passes and reused coverage, rather than
+assuming this entire command was rerun at final freeze. The checked-in v1 fixture
+is a compatibility snapshot from the accepted reconstructed core; it is not an
+unavailable historical database or an independent formula oracle. Keep synthetic
+fault-injection databases separate from ordinary workspace data.

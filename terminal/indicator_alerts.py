@@ -8,15 +8,18 @@ import hashlib
 import json
 import math
 
+from terminal import indicator_agreement as agreement
 from terminal import display_formula_catalog as formulas
 from terminal import display_indicators as display
 from terminal import vumanchu_indicators as vmc
 from terminal.chart_history import INTERVALS
 from terminal.data import validate_symbol
-from terminal.display_events import CONTRACT as EVENT_CONTRACT, FORMULA_CONTRACT
+from terminal.display_events import CONTRACT as EVENT_CONTRACT, FORMULA_CONTRACT, EventCollector
 from terminal.market_sources import cache_market
 
 CONTRACT = 'frozen-indicator-alert-v1'
+AGREEMENT_CONTRACT = 'frozen-indicator-alert-v2'
+_AGREEMENT_MANIFEST = agreement.manifest()
 MAX_DEFINITION_BYTES = 256 * 1024
 MAX_ACTIVE_BYTES = 256 * 1024
 MAX_CONDITIONS = 16
@@ -164,15 +167,45 @@ def _operand(value, instances):
     raise ValueError('Unsupported alert operand')
 
 
-def _conditions(conditions, instances):
+def agreement_capability():
+    """Separate descriptor: legacy UI enumerates only numeric/pulse predicates."""
+    return dict(version=1, predicate='agreement', definition_version=2,
+                contract=AGREEMENT_CONTRACT, agreement_version=agreement.VERSION,
+                weight_version=agreement.WEIGHT_VERSION, manifest_hash=agreement.MANIFEST_HASH,
+                directions=['up', 'down'], groups=list(_AGREEMENT_MANIFEST['groups']),
+                threshold_min=0, threshold_max=1, threshold_inclusive=True,
+                required_group_threshold='strictly_greater_than_half')
+
+
+def _agreement_member(item):
+    return _AGREEMENT_MANIFEST['rules'].get(item['type'], {}).get('classification') == 'directional'
+
+
+def _agreement_binding(member_ids):
+    return dict(version=agreement.VERSION, weight_version=agreement.WEIGHT_VERSION,
+                manifest_hash=agreement.MANIFEST_HASH, member_ids=sorted(member_ids))
+
+
+def _conditions(conditions, instances, agreement_ids=None):
     if type(conditions) is not list or not 1 <= len(conditions) <= MAX_CONDITIONS:
         raise ValueError('Use 1 to 16 conditions per alert rule')
     result, used = [], set()
     for condition in conditions:
         predicate = condition.get('predicate') if type(condition) is dict else None
-        if type(predicate) is not str or predicate not in PREDICATES:
+        if type(predicate) is not str or predicate not in PREDICATES | {'agreement'}:
             raise ValueError('Unsupported alert predicate')
-        if predicate == 'divergence':
+        if predicate == 'agreement':
+            _keys(condition, 'predicate direction threshold required_groups', 'agreement condition')
+            if agreement_ids is None:
+                raise ValueError('Agreement condition requires a versioned frozen composition')
+            direction, threshold, groups = condition['direction'], _number(condition['threshold']), condition['required_groups']
+            if direction not in ('up', 'down') or not 0 <= threshold <= 1:
+                raise ValueError('Agreement direction and threshold must be up/down and a fraction from 0 to 1')
+            if type(groups) is not list or any(type(group) is not str or group not in _AGREEMENT_MANIFEST['groups'] for group in groups) or len(set(groups)) != len(groups):
+                raise ValueError('Agreement required groups must be distinct known groups')
+            used.update(agreement_ids)
+            result.append(dict(predicate=predicate, direction=direction, threshold=threshold, required_groups=sorted(groups)))
+        elif predicate == 'divergence':
             _keys(condition, 'predicate instance_id event_kind oscillator', 'divergence condition')
             ident = condition['instance_id']
             if type(ident) is not str or ident not in instances or instances[ident]['type'] != 'vmc_cipher_b':
@@ -207,18 +240,25 @@ def freeze_rule(settings, source, market, symbol, minutes, conditions, combine='
     if origin is None:
         raise ValueError('A saved calculation origin is required before freezing an alert')
     frozen = {item['id']: _instance(item) for item in instances}
-    normalized, used = _conditions(conditions, frozen)
-    definition = dict(version=1, contract=CONTRACT, context=dict(source=source, market=market, symbol=symbol, minutes=minutes),
+    has_agreement = type(conditions) is list and any(type(item) is dict and item.get('predicate') == 'agreement' for item in conditions)
+    member_ids = sorted(item['id'] for item in instances if item['visible'] and _agreement_member(item)) if has_agreement else None
+    normalized, used = _conditions(conditions, frozen, member_ids)
+    definition = dict(version=2 if has_agreement else 1, contract=AGREEMENT_CONTRACT if has_agreement else CONTRACT, context=dict(source=source, market=market, symbol=symbol, minutes=minutes),
         settings_revision=settings['revision'], origin=copy.deepcopy(origin), event_contract=EVENT_CONTRACT,
         combine=combine, instances=[frozen[ident] for ident in sorted(used)], conditions=normalized)
+    if has_agreement:
+        definition['agreement'] = _agreement_binding(member_ids)
     return validate_definition(definition)
 
 
 def validate_definition(value):
     """Return an independent normalized snapshot; never accept executable content."""
     encode(value)
-    _keys(value, 'version contract context settings_revision origin event_contract combine instances conditions', 'frozen rule')
-    if type(value['version']) is not int or value['version'] != 1 or value['contract'] != CONTRACT or value['event_contract'] != EVENT_CONTRACT:
+    is_agreement = type(value) is dict and type(value.get('version')) is int and value['version'] == 2
+    keys = 'version contract context settings_revision origin event_contract combine instances conditions'
+    _keys(value, keys + (' agreement' if is_agreement else ''), 'frozen rule')
+    expected_contract = AGREEMENT_CONTRACT if is_agreement else CONTRACT
+    if type(value['version']) is not int or value['version'] not in (1, 2) or value['contract'] != expected_contract or value['event_contract'] != EVENT_CONTRACT:
         raise ValueError('Unsupported frozen alert version or formula contract')
     _keys(value['context'], 'source market symbol minutes', 'alert context')
     context = value['context']
@@ -244,7 +284,18 @@ def validate_definition(value):
         if normalized['id'] in instances:
             raise ValueError('Duplicate frozen indicator ID')
         instances[normalized['id']] = normalized
-    conditions, used = _conditions(value['conditions'], instances)
+    member_ids = None
+    if is_agreement:
+        binding = value['agreement']
+        _keys(binding, 'version weight_version manifest_hash member_ids', 'frozen agreement binding')
+        member_ids = binding['member_ids']
+        if type(member_ids) is not list or any(type(ident) is not str or ident not in instances or not _agreement_member(instances[ident]) for ident in member_ids) or len(set(member_ids)) != len(member_ids):
+            raise ValueError('Invalid frozen agreement member IDs')
+        if binding != _agreement_binding(member_ids):
+            raise ValueError('Unsupported agreement manifest, weights or member ordering')
+    conditions, used = _conditions(value['conditions'], instances, member_ids)
+    if is_agreement and not any(item['predicate'] == 'agreement' for item in conditions):
+        raise ValueError('Version 2 requires an agreement condition')
     if used != set(instances):
         raise ValueError('Frozen rule contains unused indicator dependencies')
     formulas.validate_timeframe(list(instances.values()), minutes)
@@ -331,6 +382,14 @@ def working_estimate(definition, count, *, include_values=False):
         estimated += count * (ports * 80 + event_slots * 1024)
         estimated += 4096 + sum(value * 48 for key, value in item['params'].items()
             if type(value) is int and key not in ('anchor', 'flow_multiplier', 'flow_offset'))
+    if definition['version'] == 2:
+        # Prepared raw/column indexes, complete per-close member/variant/type/group
+        # evidence, retained hit copies and serialized per-condition copies. IDs
+        # and parameters are charged by bytes as well as container overhead.
+        members = {item['id']: item for item in definition['instances']}
+        member_cost = sum(8192 + 32 * len(encode(members[ident])) for ident in definition['agreement']['member_ids'])
+        conditions = sum(item['predicate'] == 'agreement' for item in definition['conditions'])
+        estimated += count * (2048 + (2 + conditions) * (8192 + member_cost))
     if include_values:
         estimated += count * (2048 + sum(512 + 160 * len(port_units(item['type'])) for item in definition['instances']))
     if estimated > 256 * 1024 * 1024:
@@ -352,7 +411,40 @@ def replay(definition, candles, cancel=None, *, include_values=False):
     working_estimate(definition, len(candles), include_values=include_values)
     minutes = definition['context']['minutes']
     instances = [dict(id=item['id'], type=item['type'], params=item['params'], visible=True, color='#ffffff') for item in definition['instances']]
-    result = display.calculate(candles, instances, minutes, candles[0]['time'], candles[-1]['time'], cancel)
+    aliases = {}
+    if definition['version'] == 2:
+        # Calculate identical dependencies once, while preserving every source ID
+        # in frozen membership and evidence. Legacy replay stays byte-identical.
+        unique = {}
+        for item in instances:
+            key = agreement.variant_key(item['type'], item['params'])
+            canonical = unique.setdefault(key, item)
+            aliases[item['id']] = canonical['id']
+        calculation_instances = list(unique.values())
+    else:
+        calculation_instances = instances
+    result = display.calculate(candles, calculation_instances, minutes, candles[0]['time'], candles[-1]['time'], cancel)
+    for ident, canonical in aliases.items():
+        result['columns'][ident] = result['columns'][canonical]
+        if canonical != ident and canonical in result['indicator_events']['instances']:
+            # Event IDs bind the original source ID as well as pivot geometry.
+            # Reuse the existing transport collector to regenerate that identity.
+            collector = EventCollector([dict(id=ident, type=next(item['type'] for item in instances if item['id'] == ident))],
+                                       minutes, candles[0]['time'], candles[-1]['time'])
+            for event in result['indicator_events']['instances'][canonical]:
+                raw = dict(event)
+                for key in ('confirmed_at', 'pivot_time', 'previous_pivot_time'):
+                    if key in raw:
+                        raw[key] -= minutes * 60
+                collector.observe(ident, [raw], event['segment'])
+            result['indicator_events']['instances'][ident] = collector.result()['instances'][ident]
+    prepared_agreement = None
+    if definition['version'] == 2:
+        members = set(definition['agreement']['member_ids'])
+        prepared_agreement = agreement.prepare_agreement(dict(
+            instances=[item for item in instances if item['id'] in members], candles=candles,
+            display=dict(times=result['times'], columns={ident: result['columns'][ident] for ident in members}),
+            interval_seconds=minutes * 60))
     positions = {stamp: index for index, stamp in enumerate(result['times'])}
     events = {}
     for ident, items in result['indicator_events']['instances'].items():
@@ -377,10 +469,14 @@ def replay(definition, candles, cancel=None, *, include_values=False):
             raise InterruptedError('Alert replay cancelled')
         confirmed = candle['time'] + minutes * 60
         evidence = []
+        agreement_result = prepared_agreement.evaluate(confirmed) if prepared_agreement else None
         for condition_index, condition in enumerate(definition['conditions']):
             predicate = condition['predicate']
-            item = dict(index=condition_index, predicate=predicate, kind='state' if predicate in ('above', 'below') else 'impulse')
-            if predicate == 'divergence':
+            item = dict(index=condition_index, predicate=predicate, kind='state' if predicate in ('above', 'below', 'agreement') else 'impulse')
+            if predicate == 'agreement':
+                threshold = agreement.threshold_evidence(agreement_result, condition['direction'], condition['threshold'], condition['required_groups'])
+                item.update(truth=threshold['truth'], reason=threshold['reason'], agreement=agreement_result, threshold=threshold)
+            elif predicate == 'divergence':
                 matches = [e for e in events.get((condition['instance_id'], confirmed), [])
                            if e['kind'] == condition['event_kind'] and e.get('oscillator') == condition['oscillator']]
                 port = OSCILLATOR_PORT[condition['oscillator']]

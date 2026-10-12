@@ -85,3 +85,30 @@ warn users to Pause before closing a tab. Service shutdown pauses and joins the
 worker; a join timeout retains its dependencies and workspace ownership. The [UI contract](ALERT_UI.md),
 history scans, external notifications, Windows/native and live-provider
 acceptance are separate checkpoints.
+
+## Additive agreement capability (ADR 0061)
+
+The legacy `predicates` list is unchanged. `agreement_capability` is a separately
+versioned descriptor with `version:1`, `predicate:"agreement"`,
+`definition_version:2`, `contract`, `agreement_version`, `weight_version`,
+`manifest_hash`, `directions`, `groups`, `threshold_min`, `threshold_max`,
+`threshold_inclusive` and `required_group_threshold`. Older editors can ignore
+this field. An agreement-aware editor may pass exactly
+`{predicate:"agreement",direction:"up",threshold:0.7,required_groups:["trend"]}`
+to preview. All four condition fields are required; unknown fields are rejected.
+
+Preview then returns a frozen v2 definition with an additional `agreement`
+binding (`version,weight_version,manifest_hash,member_ids`). It captures every
+applied visible supported directional member, separately from other condition
+dependencies. Review/create/rebind use the same existing hashes and revisions;
+Arm never recaptures composition. Empty eligible membership is representable but
+produces unavailable agreement rather than false. The complete format and
+compatibility boundary are in [ADR 0061](adr/0061-frozen-agreement-alert-history-backend.md).
+
+Agreement evidence is state evidence, with additional `agreement` and `threshold`
+objects containing the shared full distributions/coverage/members and exact
+threshold verdict. Overall is inclusive; each required group is strictly above
+50%. Initial/unknown-to-true and sustained true do not emit. Save/revert of a
+surviving original's parameters marks even a paused saved rule rebind-required;
+only explicit reviewed rebind clears it, still paused. Hidden/removed/added chart
+members and appearance/layout changes do not alter the frozen composition.
