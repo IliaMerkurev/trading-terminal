@@ -1,7 +1,7 @@
 # Backtest trade review: bounded acceptance
 
-Status: implemented; focused verification passed. Production-browser acceptance
-and final external-test archive verification remain pending.
+Status: implemented. Focused automated checks, production-browser synthetic
+acceptance and private test-archive readback passed.
 Product remains 0.6-dev on the authorized codex/terminal-mvp development branch.
 
 ## Outcome and existing foundation
@@ -114,3 +114,83 @@ Corrections retain actual cursor history across tab changes, preserve complete
 undecorated oversized lifecycle rows with an explicit notice, and treat each
 explicit focus request as viewport navigation. Delayed report selection, including
 stale failures, is fenced independently from the selected trade-page owner.
+
+## Final focused and production-browser acceptance — 2026-10-12
+
+A further external regression established that an obsolete failed report request
+cannot replace the newer report or raise a misleading global error. The focused
+file passed 12 tests. Real-browser review then found that keyboard selection
+scrolled the inspector into view while leaving focus in the table. A small
+frontend correction transfers Enter/Space selection into the inspector and Close
+back to its originating row, fencing obsolete focus callbacks. Its independent
+regression passed in the final 13-test file run (3.49 seconds). Across overlapping
+passes, the final evidence is **50 distinct backend and 56 frontend checks**.
+TypeScript, including the final external tests, and production build passed.
+
+Actual own-cloud Chromium used the production application, real AppService and
+existing worker, with a fresh isolated synthetic workspace and guarded providers,
+Arm, PAPER, native execution and notifications. A frozen-rule run completed with
+640 source bars and 120 trades, exercising the 1–100 and 101–120 pages. Original
+frozen parameters rendered exactly as saved. Review/close, repeated selection,
+source clocks and conservative recorded context passed; the next close's
+evaluation is correctly excluded from a close-minus-one-nanosecond fill.
+
+A real managed-position run had two entry fills, a partial reduction and final
+exit. Independently expected totals matched exactly: gross 50, fees 0.85, funding
+−6.6 and net 42.55 USDT. Entry/scale/reduction/final-exit controls targeted their
+actual source candles; funding remained labeled as a non-fill. The existing
+archive export/import produced a candle-free copy: saved costs/fills remained
+readable, missing raw history was explicit, and no nearby candle was substituted.
+
+A briefly held owned reader, with automatic resume protection, exercised actual
+Cancel/Retry and switching reports before an obsolete read completed. No old data
+leaked into the new owner. Normal 1737×814 and narrow effective 868×407 layouts
+kept controls reachable without horizontal card overflow; 200% browser zoom was
+restored afterwards. Reload/reopen preserved the report. The final production
+build recheck confirmed Enter/Space → inspector, Tab → review action and Close →
+exact originating row, plus the explicit within-loaded-page navigation note.
+All three report hashes stayed unchanged. Task-owned host/tab cleanup was verified
+separately. No new provider, trading, notification or native execution was used.
+
+Browser evidence is distinct from component mocks. This does not establish
+Windows/native, live-provider, full-product, authentic old-database or independent
+owner acceptance. Initial fixture funding metadata was corrected after visible
+admission refusal; no application admission rule or financial expectation changed.
+
+## External regression archive and reproduction
+
+New files `frontend/src/TradeReview.test.tsx`,
+`frontend/src/TradeReviewChart.test.tsx` and `tests/test_trade_review.py` are retained
+only in the owner's private Drive archive. Existing published test files are
+unchanged. No repository history is rewritten. The stated acceptance counts
+require this external patch; checkout/CI does not include it automatically.
+
+Archive: `TradingTerminal_trade_review_tests_2026-10-12_e49e487.zip`.
+SHA-256: `11f9d85657543555f93711878481469e139493779139f372d74141fbb52e84b3`.
+Size: 47,890 bytes. The six entries contain three complete tests, an additive
+patch, manifest and reapplication instructions; no database, raw market data,
+credentials or browser state is included. The archive binds source commit
+`e49e487caf8fe6f9e01280757e5d67cf3164c500` and tree
+`49ddf00e70b6d2c612dacdb226690d2e176143dc`, with 201 runtime file fingerprints.
+Downloaded Drive bytes and CRC are independently checked; final documentation-only
+publication retains the exact tested runtime map.
+
+In an isolated checkout at that source version, verify the manifest's runtime/test
+SHA-256 values. Back up local edits, run `git apply --check` and then `git apply`
+against `test-changes.patch`; stop rather than force a mismatch. Verify restored
+file hashes before running these commands with the existing pinned environment:
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest -v tests.test_trade_review
+PYTHONPATH=tests .venv/bin/python -m unittest -v tests.test_position_management tests.test_jobs tests.test_archives.ArchiveTests.test_roundtrip_preserves_metrics_but_never_bundles_history_or_overwrites_runs tests.test_chart_reads.ChartReadTests.test_run_chart_preserves_nanoseconds_availability_equity_and_unavailable_history
+node node_modules/vitest/vitest.mjs run frontend/src/TradeReview.test.tsx frontend/src/TradeReviewChart.test.tsx frontend/src/App.test.tsx frontend/src/SavedReview.test.tsx frontend/src/RunChartRequests.test.tsx frontend/src/RunChart.test.ts frontend/src/PositionLifecycle.test.tsx frontend/src/DisplayedEvidence.test.tsx
+node node_modules/typescript/bin/tsc --noEmit
+node scripts/frontend.mjs build
+```
+
+The new backend file was measured outside the checkout under module
+`test_trade_review`; after applying the patch its equivalent module path is
+`tests.test_trade_review`. Final frontend evidence combines the initial 54-test
+pass with two added regressions verified in the final 13-test file; unchanged
+overlap is counted once. The manifest records exact commands, durations, results
+and reuse limits. Workspace/database backup remains a separate responsibility.
