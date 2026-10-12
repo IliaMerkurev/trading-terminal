@@ -1,4 +1,64 @@
+# Recovery pane acceptance — 2026-10-12
+
+The reconstructed pane source passed independent 9 Python and 3 TypeScript
+challenge tests, followed by actual production-browser synthetic acceptance of
+order, compatible grouping, relative weights, visibility, presets, draft
+retention and clean Service restart. See [the recovery ledger](RECOVERY.md) for
+exact source hashes, author-test overlap, commands and remaining boundaries.
+These checks do not establish old-database interoperability, Windows/native,
+live-provider or owner acceptance. Runtime formula source is unchanged by this
+acceptance record. Remote publication remains a separate verified operation.
+
 # Implementation status
+
+## Reconstructed compatible chart panes — 2026-10-12
+
+Implemented versioned pane membership/order and relative price/auxiliary/Recorded
+IR weights through the same atomic settings revision as indicators. RSI/Stochastic,
+MACD/Momentum and ATR/standard-deviation compatibility groups are distinct; VMC B
+keeps all seven ports in its exclusive signed group. Price stays first, Recorded
+IR separate and last, extras linear, and volume overlays independently scaled.
+Hidden panes release space while keeping membership/order/weight. Numeric controls,
+move buttons, preset capture/staging and retained layout-only session drafts are
+included. There is no fixed pane-count quota. See
+[ADR 0054](adr/0054-compatible-chart-pane-layout.md).
+
+This is a new reconstruction from the published preset baseline and retained
+functional requirements, not recovery of unavailable old source or test artifacts.
+Historical pane-database schema compatibility remains unverified without an
+authentic surviving fixture. No existing formula implementation was changed.
+
+Focused automated evidence:
+
+- First backend pass: 37 of 38 checks passed across chart panes, presets, display
+  indicators and transport. One new invariant fixture initially compared the
+  revision-bearing event envelope byte-for-byte across a settings revision change.
+  The correction explicitly checks revision 1 to 2 while requiring identical
+  event/projection payloads, numeric values and origins.
+- Independent read-only review found an actual dispatch compatibility regression:
+  the optional layout field had become mandatory for initial legacy saves. It was
+  corrected with an actual-Service regression covering omitted-layout initial
+  save, custom layout, old-client rejection and explicit null reset. Large integer
+  weights also now fail bounded validation before finite-number conversion.
+- The one focused corrective backend pass passed 15 checks: all nine new pane
+  tests, five transport regressions and the preset Service test. Together with
+  unaffected passing checks from the first pass, 39 distinct backend tests pass;
+  overlapping runs are not added again. This is not a full product-suite run.
+- Frontend: 99 tests passed across ChartPanes (11), ChartIndicators (32),
+  IndicatorPresets (13), IndicatorDraftLifecycle (8), MarketChartNavigation (27)
+  and LiveChart (8). No frontend source changed afterward. TypeScript and the
+  production Vite build passed; the existing large-chunk advisory remains.
+- The new tests cover compatible/invalid versions and membership, 400 independent
+  panes without a fixed count cap, physical creation-order requests, weights,
+  scale separation, hidden-state retention, joint edits, stale drafts, legacy
+  presets, supported/unsupported extensions, restart, atomic upload and exact
+  formula/event/origin preservation. Rendering checks use chart API mocks;
+  component tests use simulated DOM/IPC.
+
+Actual production-browser geometry and interaction, independent frozen-checkpoint
+challenges, Windows/native, live Bybit/OKX and owner-led unaided acceptance remain
+separate gates. No provider acquisition, PAPER/order action, new dependency,
+product version, publication, release or main merge is implied by this checkpoint.
 
 ## Named indicator preset candidate — 2026-10-11
 

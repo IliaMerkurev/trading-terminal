@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
+import {unsupportedPaneExtensions} from './chartPanes';
 import {api} from './api';
 import {indicatorName, type ChartIndicator} from './ChartIndicators';
 
@@ -74,7 +75,7 @@ export default function IndicatorPresets({namespace, revision, dirty, busy, onSt
   const validName = name.trim().length > 0 && [...name.trim()].length <= 120;
   const blocked = busy || loading || writing || uncertain;
   const row = rows.find(value => value.id === selected);
-  const unsupported = preview && (preview.content.version !== 1 || Object.keys(preview.content.extensions ?? {}).length > 0);
+  const unsupported = preview && unsupportedPaneExtensions(preview.content);
   return <section className="indicator-presets" aria-label="Indicator preset library">
     <button aria-expanded={opened} onClick={() => setOpened(value => !value)}>Named presets</button>
     {opened && <>

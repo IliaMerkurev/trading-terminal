@@ -13,7 +13,8 @@ import {acceptedIndicatorEvents, IndicatorEventsPrimitive, indicatorEventsHoverA
 import {isVmcKind} from './vmcSettings';
 import {acceptedIchimoku, retainIchimokuRawAnchor} from './chartIchimokuIntegration';
 import {useChartIndicators} from './useChartIndicators';
-import {installIndicatorSeries,updateIndicatorSeries,auxiliaryKinds} from './chartIndicatorSeries';
+import {visiblePanes} from './chartPanes';
+import {installIndicatorSeries,updateIndicatorSeries} from './chartIndicatorSeries';
 
 import {chartPriceData,type PriceStyle} from './chartPriceData';
 
@@ -196,9 +197,9 @@ export default function MarketChart({source='bybit',sessionId,market='spot',symb
   // Move the recorded series out before deleting panes owned by displays.
   lineRef.current?.moveToPane(0);
   for(const item of owned.current)chart.removeSeries?.(item.series);
-  owned.current=installIndicatorSeries(chart,lineRef.current,display.settings.instances,!!indicator);
+  owned.current=installIndicatorSeries(chart,lineRef.current,display.settings.instances,!!indicator,display.settings.pane_layout);
   updateIndicatorSeries(owned.current,displayResult,minutes);
- },[display.settings.instances,indicator]);
+ },[display.settings.instances,display.settings.pane_layout,indicator]);
  useLayoutEffect(()=>{updateIndicatorSeries(owned.current,displayResult,minutes);},[displayResult,minutes]);
  useLayoutEffect(()=>{clearEvents();},[display.result,display.projectionCurrent,display.settings,rows,source,market,symbol,minutes,active,priceStyle,indicator]);
  useEffect(()=>{
@@ -255,7 +256,7 @@ export default function MarketChart({source='bybit',sessionId,market='spot',symb
   for(const [title,value,color] of levels)if(value&&Number.isFinite(Number(value)))priceLines.current.push({owner:levelSeries,line:levelSeries.createPriceLine({price:Number(value),color,lineWidth:1,lineStyle:2,axisLabelVisible:true,title})});
  },[paper,price,mark,fresh,priceStyle]);
  const visibleDisplays=display.settings.instances.filter(i=>i.visible);
- const paneCount=new Set(visibleDisplays.filter(i=>(i.type!=='volume'&&auxiliaryKinds.includes(i.type))||(i.type==='volume'&&i.placement==='pane')).map(i=>i.type)).size+(indicator?1:0);
+ const paneCount=visiblePanes(display.settings.instances,display.settings.pane_layout).length+(indicator?1:0);
  const hoverCandle=hoverTime==null?rows.at(-1):rows.find(row=>row.time+minutes*60===hoverTime);
  const format=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?value.toLocaleString(undefined,{maximumSignificantDigits:9}):'N/A';
  const selectedTime=hoverTime??(rows.length?rows.at(-1)!.time+minutes*60:null);

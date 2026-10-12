@@ -20,6 +20,8 @@ from terminal import chart_presentation as prices
 from terminal.display_projection import ProjectionCollector, MAX_DISPLACEMENT
 from terminal.market_sources import cache_market
 from terminal.indicator_transport import check_result_budget
+from terminal.chart_panes import validate_layout
+_LAYOUT_UNSET = object()
 CONTRACT = 'native-close-engine-seeds-v1'
 MAX_BARS = 10000
 FIELDS = {'sma': ('period',), 'ema': ('period',), 'bb': ('period', 'deviations'), 'rsi': ('period',), 'macd': ('fast', 'slow', 'signal'), 'volume': (), 'atr': ('period',), 'stochastic': ('period', 'smooth', 'signal'), 'obv': ()}
@@ -75,7 +77,11 @@ def parse_settings_document(raw):
     doc = json.loads(raw)
     if type(doc.get('version')) is not int or doc['version'] != 1 or type(doc.get('revision')) is not int or (doc['revision'] < 0):
         raise ValueError()
+    if set(doc) - {'version', 'revision', 'instances', 'origins', 'pane_layout'}:
+        raise ValueError()
     doc['instances'] = validate_instances(doc['instances'])
+    if 'pane_layout' in doc:
+        doc['pane_layout'] = validate_layout(doc['pane_layout'], doc['instances'])
     if not isinstance(doc.get('origins'), dict) or len(doc['origins']) > 6:
         raise ValueError()
     for interval, origin in doc['origins'].items():
@@ -316,7 +322,7 @@ class DisplayIndicators:
                 fallback['warning'] = 'Saved indicator settings are invalid or unsupported; use Apply to replace them.'
         return fallback
 
-    def save(self, market, symbol, instances, revision, source='bybit'):
+    def save(self, market, symbol, instances, revision, source='bybit', pane_layout=_LAYOUT_UNSET):
         valid = validate_instances(instances)
         if type(revision) is not int:
             raise ValueError('Invalid settings revision')
@@ -324,7 +330,12 @@ class DisplayIndicators:
             doc = self.settings(market, symbol, source)
             if doc['revision'] != revision:
                 raise ValueError('Indicator settings changed; reopen Indicators before applying')
+            if pane_layout is _LAYOUT_UNSET and 'pane_layout' in doc:
+                raise ValueError('Pane layout must be included when saving these settings; reload a compatible client')
+            layout = validate_layout(pane_layout, valid) if pane_layout is not _LAYOUT_UNSET and pane_layout is not None else None
             doc = dict(version=1, revision=revision + 1, instances=valid, origins=doc['origins'])
+            if layout is not None:
+                doc['pane_layout'] = layout
             check_result_budget(doc)
             self._write(cache_market(market,source), symbol, doc)
             self.cache.clear()

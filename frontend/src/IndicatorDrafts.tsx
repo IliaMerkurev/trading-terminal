@@ -1,8 +1,11 @@
 import {createContext, useRef, type ReactNode} from 'react';
+import type {PaneLayout} from './chartPanes';
 import type {ChartIndicator, IndicatorSettings} from './ChartIndicators';
 
 export type IndicatorDraft = {
   draft: ChartIndicator[];
+  paneLayout: PaneLayout | null;
+  submittedLayout: PaneLayout | null;
   base: IndicatorSettings;
   stagedName: string;
   selected: string | null;

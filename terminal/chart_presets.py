@@ -103,7 +103,7 @@ class ChartPresets:
                 raise ValueError('Saved indicator settings are invalid or unsupported; cannot save a preset') from exc
             if doc['revision'] != revision:
                 raise ValueError('Indicator settings changed; reopen Indicators before saving a preset')
-            content = dict(version=1, instances=doc['instances'], extensions={})
+            content = dict(version=1, instances=doc['instances'], extensions={'pane_layout': doc['pane_layout']} if 'pane_layout' in doc else {})
             check_result_budget(content)
             return self._insert(db, name, canonical(content).decode(), len(content['instances']))
 

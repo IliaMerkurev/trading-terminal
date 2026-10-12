@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
+import {validatePaneLayout, type PaneLayout} from './chartPanes';
 import {api} from './api';
 import {poll} from './poll';
 import {emptySettings, type ChartIndicator, type IndicatorSettings} from './ChartIndicators';
@@ -47,7 +48,7 @@ export function useChartIndicators(
     anchor.current = false;
     api<IndicatorSettings>('chart_indicator_settings', {market, symbol, ...(source==='bybit'?{}:{source})}, {signal: controller.signal}).then(doc => {
       if (token !== generation.current) return;
-      if (doc.version !== 1 || !Array.isArray(doc.instances)) {
+      if (doc.version !== 1 || !Array.isArray(doc.instances) || doc.pane_layout !== undefined && !!validatePaneLayout(doc.pane_layout, doc.instances)) {
         throw new Error('Settings unavailable');
       }
       setSettings(doc);
@@ -106,7 +107,7 @@ export function useChartIndicators(
     };
   }, [source, market, symbol, minutes, active, loaded, saving, settings, windowEpoch, priceStyle]);
 
-  const apply = async (instances: ChartIndicator[], expectedRevision?: number) => {
+  const apply = async (instances: ChartIndicator[], expectedRevision?: number, paneLayout?: PaneLayout | null) => {
     if (!namespaceLoaded || writeInFlight.current || uncertainSave.current) return;
     const token = generation.current;
     writeInFlight.current = true;
@@ -116,7 +117,7 @@ export function useChartIndicators(
     setError('');
     try {
       const doc = await api<IndicatorSettings>('chart_indicator_save', {
-        market, symbol, ...(source==='bybit'?{}:{source}), instances, revision: expectedRevision ?? settingsRef.current.revision,
+        market, symbol, ...(source==='bybit'?{}:{source}), instances, ...(paneLayout !== undefined ? {pane_layout:paneLayout} : settingsRef.current.pane_layout ? {pane_layout:settingsRef.current.pane_layout} : {}), revision: expectedRevision ?? settingsRef.current.revision,
       });
       if (token === generation.current) {
         setSettings(doc);

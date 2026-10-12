@@ -2,7 +2,8 @@ import {LineSeries, HistogramSeries, BaselineSeries} from 'lightweight-charts';
 import {type ChartIndicator} from './ChartIndicators';
 import {isVmcKind} from './vmcSettings';
 
-export const auxiliaryKinds = ['vmc_cipher_b', 'rsi', 'macd', 'volume', 'atr', 'stochastic', 'obv', 'roc', 'momentum', 'cci', 'williamsr', 'mfi', 'cmf', 'stddev', 'dmi', 'stochrsi', 'bbpercentb', 'bbwidth'];
+import {legacyPaneLayout, visiblePanes, type PaneLayout} from './chartPanes';
+export {auxiliaryKinds} from './chartPanes';
 
 // Rebuild only owned display series. Derive pane indexes from visible kinds,
 // then move the separate recorded IR series to the last pane.
@@ -11,16 +12,19 @@ export function installIndicatorSeries(
   recorded: any,
   instances: ChartIndicator[],
   recordedVisible: boolean,
+  layout?: PaneLayout,
 ) {
   const owned: {id: string; port: string; kind: string; series: any; color: string}[] = [];
   const panes = new Map<string, number>();
-  let next = 1;
-  for (const item of instances) {
+  const resolved = layout ?? legacyPaneLayout(instances);
+  const activePanes = visiblePanes(instances, resolved);
+  activePanes.forEach((pane,index) => pane.instance_ids.forEach(id => panes.set(id,index+1)));
+  const next = activePanes.length + 1;
+  // Create panes in index order: hidden/empty groups never reserve space.
+  for (const item of [...instances].sort((a,b) => (panes.get(a.id) ?? 0) - (panes.get(b.id) ?? 0))) {
     if (!item.visible) continue;
     const volumeOverlay = item.type === 'volume' && item.placement !== 'pane';
-    const group = auxiliaryKinds.includes(item.type) && !volumeOverlay ? item.type : 'price';
-    if (group !== 'price' && !panes.has(group)) panes.set(group, next++);
-    const pane = panes.get(group) ?? 0;
+    const pane = panes.get(item.id) ?? 0;
     const ports = item.type === 'vmc_cipher_b' ? ['flow','wt1','wt2','fast_wave','rsi','stoch_k','stoch_d'] : item.type === 'vmc_cipher_a' ? Array.from({length:8},(_,i)=>`ema${i+1}`) : item.type === 'vmc_swing' ? ['filter','upper','lower'] : item.type === 'ichimoku' ? ['tenkan', 'kijun'] : ['bb', 'donchian', 'keltner'].includes(item.type) ? ['upper', 'middle', 'lower']
       : item.type === 'macd' ? ['macd', 'signal', 'histogram'] : ['stochastic', 'stochrsi'].includes(item.type) ? ['k', 'd'] : item.type === 'dmi' ? ['plus_di', 'minus_di', 'adx'] : item.type === 'supertrend' ? ['up', 'down'] : ['value'];
     for (const port of ports) {
@@ -89,7 +93,7 @@ export function installIndicatorSeries(
   // Pixel-height setters redistribute neighboring panes. Relative weights
   // survive the final ResizeObserver layout without squeezing earlier panes.
   chart.panes?.().forEach((pane: any, index: number) => {
-    pane.setStretchFactor(index === 0 ? 320 : 130);
+    pane.setStretchFactor(index === 0 ? resolved.price_weight : activePanes[index-1]?.weight ?? resolved.recorded_weight);
   });
   return owned;
 }

@@ -111,7 +111,7 @@ class IndicatorTransport:
                     raise ValueError('Indicator settings upload checksum or length mismatch')
                 with upload['path'].open(encoding='utf-8') as stream:
                     value = json.load(stream)
-                if not isinstance(value, dict) or set(value) != {'market', 'symbol', 'source', 'revision', 'instances'}:
+                if not isinstance(value, dict) or set(value) - {'pane_layout'} != {'market', 'symbol', 'source', 'revision', 'instances'}:
                     raise ValueError('Invalid indicator settings upload fields')
                 return value
             finally:

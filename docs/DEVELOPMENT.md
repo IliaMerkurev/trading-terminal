@@ -1,5 +1,34 @@
 # Development guide
 
+## Compatible chart pane layout (ADR 0054)
+
+Open Indicators, then Pane layout. Change relative weights, use Move up/down,
+or assign an instance to a compatible group. Apply indicators saves layout and
+indicator edits together; Cancel edits restores both. Hidden groups retain their
+position and weight without occupying chart space. Price and Recorded IR remain
+fixed endpoints. Volume placement remains in the volume instance editor.
+
+Save current captures the applied layout. Stage of a legacy preset explicitly
+returns to legacy grouping; it does not preserve a custom destination layout.
+Unknown extensions remain viewable/duplicable but cannot be staged. Preserve the
+ordinary workspace database in backups; reconstruction does not recover an
+unavailable old database or establish its schema compatibility.
+
+Focused commands for the reconstructed pane surface:
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest tests.test_chart_panes tests.test_chart_presets tests.test_display_indicators tests.test_indicator_transport
+node node_modules/vitest/vitest.mjs run frontend/src/ChartPanes.test.tsx frontend/src/ChartIndicators.test.tsx frontend/src/IndicatorPresets.test.tsx frontend/src/IndicatorDraftLifecycle.test.tsx frontend/src/MarketChartNavigation.test.tsx frontend/src/LiveChart.test.tsx
+node scripts/frontend.mjs build
+```
+
+Actual-App synthetic acceptance should inspect physical pane order, VMC B's seven
+signed series, hidden-space release, 400/240 relative weights, price log/manual
+mode, volume overlay scale, preset Stage/Cancel/Apply, reload and dirty-context
+roundtrips. Disable public acquisition and PAPER. Report browser checks separately
+from deterministic tests, native Windows and owner-led acceptance. Reuse unchanged
+build/test evidence rather than repeatedly rerunning broad suites.
+
 ## Named indicator presets (ADR 0053)
 
 The preset library belongs to the selected local data root. Preserve its SQLite
@@ -39,10 +68,10 @@ node scripts/frontend.mjs build
 The earlier API, LiveChart and MarketChartNavigation checks cover unchanged
 transport/rendering surfaces. See STATUS for exactly executed passes and overlaps.
 
-No pane-layout or alert implementation belongs to this slice. Future declarative
-layout data belongs in the versioned content extension; an older client must
-refuse to stage unsupported extensions rather than silently drop them. See
-[ADR 0053](adr/0053-named-indicator-presets.md).
+The named-preset baseline did not implement pane layouts or alerts. The later
+[ADR 0054](adr/0054-compatible-chart-pane-layout.md) milestone supports the
+versioned `pane_layout` extension. Other unsupported extensions still cannot
+be staged; metadata actions preserve them unchanged.
 
 Read [PROJECT.md](../PROJECT.md), [architecture](ARCHITECTURE.md), [status](STATUS.md) and [AGENTS.md](../AGENTS.md). Preserve existing changes. Windows x64 remains the desktop target; historical native evidence does not establish acceptance of the current candidate. Linux/browser research has separate verified coverage. See the [current checkpoint](CHECKPOINT.md) for navigation, priorities and platform limits; a conventional installer remains deferred.
 

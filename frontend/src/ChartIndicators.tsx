@@ -1,3 +1,5 @@
+import PaneLayoutEditor from './PaneLayoutEditor';
+import {legacyPaneLayout, reconcilePaneLayout, validatePaneLayout, presetPaneLayout, type PaneLayout} from './chartPanes';
 import {isVmcKind, vmcDefaults, vmcParameterOrder, validateVmcParams, VmcFields, type VmcKind, type VmcParams} from './vmcSettings';
 import {useContext, useEffect, useId, useLayoutEffect, useRef, useState} from 'react';
 import {IndicatorDraftContext} from './IndicatorDrafts';
@@ -20,6 +22,7 @@ export type IndicatorSettings = {
   instances: ChartIndicator[];
   origins: Record<string, {time: number; generation: number; contract: string}>;
   warning?: string;
+  pane_layout?: PaneLayout;
 };
 export const emptySettings: IndicatorSettings = {version: 1, revision: 0, instances: [], origins: {}};
 export const defaults = {
@@ -164,7 +167,7 @@ export function indicatorName(item: ChartIndicator) {
 }
 
 // Backend canonical JSON ordering is not a semantic settings change.
-const indicatorSignature = (items: ChartIndicator[]) => JSON.stringify(items, (_key, value) =>
+const indicatorSignature = (items: unknown) => JSON.stringify(items, (_key, value) =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b))) : value);
 
@@ -174,7 +177,7 @@ type Props = {
   toolbar?: React.ReactNode;
   toolbarActions?: React.ReactNode;
   settings: IndicatorSettings;
-  onApply: (items: ChartIndicator[], revision?: number) => void;
+  onApply: (items: ChartIndicator[], revision?: number, paneLayout?: PaneLayout | null) => void;
   busy: boolean;
   error: string;
   volumeUnit?: string;
@@ -195,9 +198,13 @@ export default function ChartIndicators({namespace, settings, onApply, busy, err
   const [target, setTarget] = useState<'search' | 'editor' | null>(null);
   const [selected, setSelected] = useState<string | null>(retained?.selected ?? settings.instances[0]?.id ?? null);
   const [draft, setDraft] = useState<ChartIndicator[]>(retained?.draft ?? settings.instances);
+  const [paneLayout, setPaneLayout] = useState<PaneLayout | null>(retained ? retained.paneLayout : settings.pane_layout ?? null);
+  const layout = paneLayout ? reconcilePaneLayout(paneLayout, draft) : legacyPaneLayout(draft);
   const [base, setBase] = useState(retained?.base ?? settings);
   const [stagedName, setStagedName] = useState(retained?.stagedName ?? '');
   const submitted = useRef<ChartIndicator[] | null>(retained?.submitted ?? null);
+  const submittedLayout = useRef<PaneLayout | null>(retained?.submittedLayout ?? null);
+  const layoutSignature = indicatorSignature(paneLayout ? layout : null);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [page, setPage] = useState(0);
@@ -209,9 +216,9 @@ export default function ChartIndicators({namespace, settings, onApply, busy, err
   useEffect(() => {
     // A settings refresh cannot silently discard edits or advance their revision.
     // Only a successful acknowledgement of this submitted draft adopts a new base.
-    const acknowledged = settings.revision > base.revision && submitted.current && indicatorSignature(submitted.current) === indicatorSignature(settings.instances);
-    if ((!stagedName && indicatorSignature(draft) === indicatorSignature(base.instances)) || acknowledged) {
-      setDraft(settings.instances); setBase(settings); setStagedName(''); submitted.current = null;
+    const acknowledged = settings.revision > base.revision && submitted.current && indicatorSignature(submitted.current) === indicatorSignature(settings.instances) && indicatorSignature(submittedLayout.current) === indicatorSignature(settings.pane_layout ?? null);
+    if ((!stagedName && indicatorSignature(draft) === indicatorSignature(base.instances) && layoutSignature === indicatorSignature(base.pane_layout ?? null)) || acknowledged) {
+      setDraft(settings.instances); setPaneLayout(settings.pane_layout ?? null); setBase(settings); setStagedName(''); submitted.current = null; submittedLayout.current = null;
       setSelected(previous => settings.instances.some(item => item.id === previous) ? previous : settings.instances[0]?.id ?? null);
     }
   }, [settings]);
@@ -225,11 +232,11 @@ export default function ChartIndicators({namespace, settings, onApply, busy, err
     `${entry.kind} ${entry.name} ${entry.description}`.toLowerCase().includes(search.trim().toLowerCase()));
   const lastPage = Math.max(0, Math.ceil(matches.length / pageSize) - 1);
   const currentPage = Math.min(page, lastPage);
-  const invalid = validateIndicators(draft, minutes);
-  const dirty = !!stagedName || indicatorSignature(draft) !== indicatorSignature(base.instances);
+  const invalid = validateIndicators(draft, minutes) || validatePaneLayout(layout, draft);
+  const dirty = !!stagedName || indicatorSignature(draft) !== indicatorSignature(base.instances) || layoutSignature !== indicatorSignature(base.pane_layout ?? null);
   useLayoutEffect(() => {
     if (!retainedDrafts || !namespaceKey) return;
-    if (dirty) retainedDrafts.set(namespaceKey, {draft, base, stagedName, selected, submitted: submitted.current, open, catalogOpen});
+    if (dirty) retainedDrafts.set(namespaceKey, {draft, paneLayout: paneLayout ? layout : null, base, stagedName, selected, submitted: submitted.current, submittedLayout: submittedLayout.current, open, catalogOpen});
     else retainedDrafts.delete(namespaceKey);
   });
   const edit = (id: string, change: Partial<ChartIndicator>) => {
@@ -254,7 +261,7 @@ export default function ChartIndicators({namespace, settings, onApply, busy, err
     setOpen(false); setTarget(null);
     (initiator.current?.isConnected && !initiator.current.matches(':disabled') ? initiator.current : toggle.current)?.focus({preventScroll:true});
   };
-  const cancel = () => {setBase(settings); setStagedName(''); submitted.current = null; setDraft(settings.instances); setSelected(settings.instances[0]?.id ?? null); collapse();};
+  const cancel = () => {setPaneLayout(settings.pane_layout ?? null); submittedLayout.current = null; setBase(settings); setStagedName(''); submitted.current = null; setDraft(settings.instances); setSelected(settings.instances[0]?.id ?? null); collapse();};
   const selectedItem = draft.find(item => item.id === selected) ?? draft[0];
   return <div className="chart-indicator-manager" onKeyDown={event=>{
     if(open && event.key==='Escape' && !event.isDefaultPrevented() && !event.nativeEvent.isComposing && !isTypingTarget(event.target)){
@@ -269,7 +276,7 @@ export default function ChartIndicators({namespace, settings, onApply, busy, err
       {toolbarActions}
     </div>
     {namespace && <IndicatorPresets key={JSON.stringify(namespace)} namespace={namespace} revision={settings.revision} dirty={dirty} busy={busy} onStage={preset => {
-      setDraft(structuredClone(preset.content.instances)); setBase(settings); setStagedName(preset.name);
+      setDraft(structuredClone(preset.content.instances)); setPaneLayout(structuredClone(presetPaneLayout(preset.content))); setBase(settings); setStagedName(preset.name);
       setSelected(preset.content.instances[0]?.id ?? null); setCatalogOpen(false); setOpen(true); setTarget('editor');
     }}/>}
     {dirty && <small className="indicator-draft-note">Pending edits are retained for this source, market and symbol during this session. Apply or Cancel before reloading the app.</small>}
@@ -282,7 +289,7 @@ export default function ChartIndicators({namespace, settings, onApply, busy, err
         <button disabled={busy} className="indicator-settings-link" aria-label={`Settings for ${index + 1} ${indicatorShortLabel(item.type)}`} title={indicatorName(item)} onClick={event => {initiator.current=event.currentTarget; setSelected(item.id); setCatalogOpen(false); setOpen(true); setTarget('editor');}}>
           <strong>{index + 1}. {indicatorShortLabel(item.type)}</strong><span>{indicatorParameters(item) || (item.type === 'volume' ? item.placement === 'pane' ? 'separate pane' : 'price overlay' : 'zero origin')}</span>
         </button>
-        <button disabled={busy || open || dirty} aria-label={`${item.visible ? 'Hide' : 'Show'} ${index + 1} ${indicatorShortLabel(item.type)}`} aria-pressed={item.visible} title={open || dirty ? 'Apply or cancel edits before changing visibility here' : 'Save visibility immediately'} onClick={() => onApply(settings.instances.map(row => row.id === item.id ? {...row, visible: !row.visible} : row))}>{item.visible ? 'Hide' : 'Show'}</button>
+        <button disabled={busy || open || dirty} aria-label={`${item.visible ? 'Hide' : 'Show'} ${index + 1} ${indicatorShortLabel(item.type)}`} aria-pressed={item.visible} title={open || dirty ? 'Apply or cancel edits before changing visibility here' : 'Save visibility immediately'} onClick={() => {const items = settings.instances.map(row => row.id === item.id ? {...row, visible: !row.visible} : row); if (settings.pane_layout) onApply(items, settings.revision, settings.pane_layout); else onApply(items);}}>{item.visible ? 'Hide' : 'Show'}</button>
       </li>)}
     </ul>}
     {settings.instances.some(item => ['atr', 'volume', 'obv', 'keltner', 'vwma', 'mfi', 'cmf'].includes(item.type)) && <details className="indicator-unit-note"><summary>Indicator units and seed notes</summary><p>ATR/Keltner ATR: price units, Wilder smoothing with an SMA true-range seed; initialization differs from graph/recorded IR. Volume-weighted formulas use raw source volume. Volume/OBV: {volumeUnit ?? 'source-native units (unverified)'}. OBV starts at zero at the saved origin or segment reset. Stochastic: percent. Full calculation details are below the chart.</p></details>}
@@ -354,8 +361,9 @@ export default function ChartIndicators({namespace, settings, onApply, busy, err
       </fieldset>)}
       </section>
       </div>
+      <PaneLayoutEditor instances={draft} layout={layout} busy={busy} onChange={setPaneLayout} onVisibility={(ids,visible) => {setPaneLayout(layout);setDraft(rows => rows.map(row => ids.includes(row.id) ? {...row,visible} : row));}}/>
       {(invalid || error) && <p role="alert">{invalid || error}</p>}
-      <button disabled={busy || !!invalid} onClick={() => {submitted.current = draft; onApply(draft, base.revision);}}>{busy ? 'Saving…' : 'Apply indicators'}</button>
+      <button disabled={busy || !!invalid} onClick={() => {submitted.current = draft; submittedLayout.current = paneLayout ? layout : null; if (paneLayout || base.pane_layout || settings.pane_layout) onApply(draft, base.revision, paneLayout ? layout : null); else onApply(draft, base.revision);}}>{busy ? 'Saving…' : 'Apply indicators'}</button>
       <button disabled={busy} onClick={cancel}>Cancel edits</button>
       <small>Display only · confirmed native-timeframe closes. More visible instances increase calculation and rendering work; hidden instances are not calculated. Apply saves all valid edits together in this source workspace. Cancel discards edits; Collapse retains them. Recorded IR and trading settings are separate. Defaults are examples, not trading recommendations.</small>
     </div>}

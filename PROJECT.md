@@ -632,3 +632,20 @@ pane layouts without implementing panes or alerts in this slice. See
 [ADR 0053](docs/adr/0053-named-indicator-presets.md). Current Windows/native,
 live-provider and owner-led acceptance are deferred; development does not imply
 publication, release or acceptance.
+
+### Reconstructed compatible chart pane layout — 2026-10-12
+
+Provide persistent pane order, relative weights and compatible indicator groups
+as part of the same atomic indicator Apply/Cancel revision. RSI/Stochastic share
+0–100; MACD/Momentum share price differences; ATR/standard deviation share the
+separate price-distance unit. VMC B remains an exclusive signed group, with all
+seven ports together. Price stays first and Recorded IR separate and last.
+Hidden panes release space but retain order/weight. Extra panes are linear;
+price scale options and the independent volume overlay scale are preserved.
+Preset snapshots include supported layout, while old presets retain legacy
+kind grouping and unsupported extensions cannot be staged. There is no fixed
+pane-count quota. Layout-only edits preserve formulas, values and origins.
+See [ADR 0054](docs/adr/0054-compatible-chart-pane-layout.md). This reconstructed
+implementation does not establish byte identity with unavailable historical
+source or compatibility with unavailable old databases. Platform, actual-browser
+and owner acceptance are recorded separately from focused automated checks.
