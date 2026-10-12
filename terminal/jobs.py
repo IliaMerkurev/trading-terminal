@@ -181,6 +181,9 @@ class JobManager:
         if native and profile.execution_minutes!=1:raise ValueError("Native Python requires detailed M1 execution history")
         manifest=self.datasets.describe(dataset_id)
         self.datasets.check_profile(manifest,profile)
+        if not native and not benchmark:
+            from terminal.rule_strategy import check_admission
+            check_admission(strategy,profile,manifest,research)
         if benchmark:
             from terminal.benchmarks import validate_document
             frozen=validate_document(strategy,profile,manifest)

@@ -356,6 +356,8 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
         raise ValueError("No minute history available")
     if not isinstance(profile, Profile):
         profile = Profile(**profile)
+    if getattr(evaluator, 'frozen_schedule', None) is not None:
+        evaluator.frozen_schedule.check_execution(profile, candles, trade_start)
     seconds=profile.execution_minutes*60
     if native_factory is not None and profile.execution_minutes!=1:
         raise ValueError('Native Python requires detailed M1 execution history')

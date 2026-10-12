@@ -229,6 +229,13 @@ class RunStore:
         if len(canonical(document))>1024*1024: raise ValueError("Strategy exceeds size budget")
         strategy_id=identifier(strategy_id) if strategy_id else uuid.uuid4().hex
         with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            previous=db.execute('SELECT kind,document FROM strategies WHERE id=?',(strategy_id,)).fetchone()
+            if previous and previous['kind']=='graph':
+                from terminal.rule_strategy import frozen_nodes
+                original=frozen_nodes(json.loads(previous['document']).get('graph',{}))
+                if original and (kind!='graph' or frozen_nodes(document.get('graph',{}))!=original):
+                    raise ValueError('The frozen source node is immutable; create a new strategy from another reviewed rule')
             db.execute("INSERT INTO strategies(id,name,kind,document,updated_at,profile) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,kind=excluded.kind,document=excluded.document,updated_at=excluded.updated_at,profile=COALESCE(excluded.profile,strategies.profile)",
                        (strategy_id,name,kind,canonical(document).decode(),datetime.now(timezone.utc).isoformat(),canonical(profile).decode() if profile is not None else None))
         return strategy_id

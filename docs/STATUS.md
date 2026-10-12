@@ -1,3 +1,18 @@
+# Saved rule to strategy checkpoint — 2026-10-12
+
+Saved Bybit native M1 indicator rules now convert through explicit review into
+independent editable graph strategies. One immutable source node preserves exact
+frozen parameters, formula/weight contracts, origin and provenance. Backtests
+consume existing replay hits without translating formulas or edge semantics.
+Normal graph exits and simulation settings remain editable. Other sources and
+timeframes, uncertain dataset provenance, missing origins/gaps, live/PAPER and
+parameter experiments fail visibly. No execution begins during conversion.
+
+The focused checkpoint has 69 distinct backend checks and 77 frontend checks,
+TypeScript/build evidence and independent semantic review. Actual browser
+acceptance is pending. See [scope, tests and limits](RULE_STRATEGY_CONVERSION.md).
+No product version, merge or release is included.
+
 # Recovery pane acceptance — 2026-10-12
 
 The reconstructed pane source passed independent 9 Python and 3 TypeScript

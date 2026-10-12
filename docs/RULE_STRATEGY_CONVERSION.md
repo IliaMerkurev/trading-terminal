@@ -1,7 +1,9 @@
 # Saved rule to strategy: bounded acceptance plan
 
-Status: implementation planned; this checkpoint establishes scope and publication
-before application changes. Product remains 0.6-dev on codex/terminal-mvp.
+Status: backend and frontend implemented; focused automated verification passed.
+Independent review corrected the recorded-source admission boundary. Actual
+production-browser acceptance remains pending. Product remains 0.6-dev on
+codex/terminal-mvp.
 
 ## Complete outcome
 
@@ -60,3 +62,35 @@ Every small finished milestone must have a local commit and verified remote
 publication. A commit/publication failure pauses implementation until restored.
 Only reviewed, secret-scanned source, synthetic tests and technical documents
 are published; private workspaces, databases and market datasets are excluded.
+
+## Implemented checkpoint evidence — 2026-10-12
+
+The backend stores one canonical, immutable `frozen_rule` node and an atomic
+creation receipt. The existing replay engine prepares its single-use full-origin
+hit schedule; ordinary graph exits and simulation costs remain editable. A saved
+source node cannot be replaced or removed by saving over that strategy. The UI
+provides explicit direction/preview/review/create and retains exact pending
+request identities for read-only reconciliation across reloads.
+
+Recorded Bybit admission requires matching kline category/symbol/M1 interval,
+requested origin/end, a response hash, and retrieval/provider clocks after the
+last close. This validates recorded matching REST provenance, not independent
+authentication of the historical response. Explicit test fixtures require
+synthetic metadata and source attribution and remain labeled synthetic.
+
+Focused backend evidence: the first 16-test pass had two test-harness errors
+(the Service response key and the store trash-method name). Correcting those
+selectors, the combined new-feature/graph/jobs/core/agreement run passed 65 tests
+in 10.054 seconds. A later focused 20-test run passed in 1.911 seconds after the
+independent provenance finding was corrected and four boundary cases added.
+Together these establish 69 distinct passing checks, not 85 independent checks.
+They include actual worker backtest/trades, linear short simulation, confirmed
+divergence timing, exact agreement hits, future independence, physical memory
+admission, atomic rollback, concurrent repeated creation and immutable snapshots.
+
+Frontend evidence: 77 tests across conversion, frozen source, editor, GraphEditor,
+IndicatorAlerts and App passed. TypeScript and production build passed; the
+existing large-bundle advisory remains. Component mocks are not browser evidence.
+No provider/PAPER/order/external-notification operation was used for acceptance.
+Windows/native, live providers, owner acceptance and full-product regression
+are not established by this focused checkpoint.

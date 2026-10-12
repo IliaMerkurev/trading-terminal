@@ -97,6 +97,8 @@ class LiveManager:
         if profile.execution_minutes!=1:raise ValueError("Live/Paper requires M1 execution resolution")
         if execution_source not in ('strategy','manual'):raise ValueError('Invalid paper execution source')
         graph=strategy['document']['graph']
+        from terminal.rule_strategy import reject_frozen
+        reject_frozen(graph, 'live/PAPER')
         from terminal.graph import POSITION_FIELDS
         if paper and any(node['type'] in POSITION_FIELDS for node in graph['nodes']) and profile.position_management is None:
             raise ValueError('Live position nodes require an enabled Position Management paper account')

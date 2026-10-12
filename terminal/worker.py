@@ -49,7 +49,7 @@ def main():
         if runtime_snapshot()!=snapshot["runtime"]:
             raise ValueError("Runtime changed after the run snapshot was prepared")
         profile=Profile(**snapshot["profile"])
-        _,bars,marks,funding=DatasetStore(root/"datasets").for_run(snapshot["dataset"]["id"],profile)
+        dataset,bars,marks,funding=DatasetStore(root/"datasets").for_run(snapshot["dataset"]["id"],profile)
         strategy=snapshot["strategy"]
         window=snapshot.get('research',{}).get('window')
         if window:
@@ -88,7 +88,9 @@ def main():
                 result['indicators']=[p for p in result['indicators'] if p['time']>=window['start']]
                 result['gaps']=[p for p in result['gaps'] if p[1]>=window['start']]
         else:
-            result=run_backtest(bars,profile,GraphEvaluator(strategy),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None)
+            from terminal.rule_strategy import frozen_nodes,FrozenSchedule
+            schedule=FrozenSchedule(strategy,profile,dataset,bars,research=snapshot.get('research')) if frozen_nodes(strategy) else None
+            result=run_backtest(bars,profile,GraphEvaluator(strategy,frozen_schedule=schedule),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None)
         result["manifest_sha256"]=snapshot["snapshot_sha256"]
         if snapshot.get('research',{}).get('experiment') or snapshot.get('research',{}).get('library'):
             result['candles_reference']={'dataset_id':snapshot['dataset']['id'],'range':[window['start'],window['end']]}

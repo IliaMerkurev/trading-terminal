@@ -20,6 +20,8 @@ MAX_MINUTE_RUNS=2_000_000
 
 
 def parameter_fields(graph,profile=None):
+    from terminal.rule_strategy import reject_frozen
+    reject_frozen(graph, 'parameter experiments')
     fields=[]
     for node in graph['nodes']:
         for key,value in node['params'].items():
@@ -91,6 +93,8 @@ def normalize_axes(graph,axes,profile=None):
 
 
 def warmup_bars(graph):
+    from terminal.rule_strategy import reject_frozen
+    reject_frozen(graph, 'estimated warmup/research windows')
     nodes={n['id']:n for n in graph['nodes']};required={}
     for ident in validate_graph(graph):
         node=nodes[ident];p=node['params'];prior=max((required[ref.split('.')[0]] for ref in node['inputs'].values()),default=0)

@@ -40,6 +40,8 @@ class AppService:
         self.indicator_alerts=IndicatorAlertRuntime(self.display_indicators)
         from terminal.indicator_alert_history import IndicatorAlertHistory
         self.indicator_history=IndicatorAlertHistory(self.indicator_alerts.store)
+        from terminal.rule_strategy import RuleStrategies
+        self.rule_strategies=RuleStrategies(self.indicator_alerts.store)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -99,6 +101,9 @@ class AppService:
                           observation_save_start={'request_id','expected_source','observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
             fields.update(chart_read_start={'request_id','view_id','generation','surface','query'},chart_read_status={'request_id'},chart_read_cancel={'request_id'},chart_read_activity=set(),observation_save_history=set())
             alert_fields = {
+                'alert_strategy_preview': ({'rule_id','revision','name','direction'}, set()),
+                'alert_strategy_create': ({'rule_id','revision','name','direction','preview_hash','request_id'}, set()),
+                'alert_strategy_request': ({'request_id'}, set()),
                 'alert_history_preview': ({'rule_id','revision'}, set()),
                 'alert_history_start': ({'request_id','rule_id','revision','definition_hash','start','end'}, set()),
                 'alert_history_request': ({'request_id'}, set()),
@@ -157,6 +162,9 @@ class AppService:
             elif command in ('live_start','live_start_terminal'):result=self.live.start(**p)
             elif command in alert_fields:
                 methods = {
+                    'alert_strategy_preview': self.rule_strategies.preview,
+                    'alert_strategy_create': self.rule_strategies.create,
+                    'alert_strategy_request': self.rule_strategies.request,
                     'alert_history_preview': self.indicator_history.preview,
                     'alert_history_start': self.indicator_history.start,
                     'alert_history_request': self.indicator_history.request,

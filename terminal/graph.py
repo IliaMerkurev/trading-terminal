@@ -13,7 +13,7 @@ NUMBER = "number"
 BOOLEAN = "boolean"
 POSITION_FIELDS = ('position_side','position_size','position_avg_entry','position_unrealized_pnl_pct','bars_since_entry')
 PORTS = {
-    "price":{"value":NUMBER}, "constant":{"value":NUMBER}, "multiply":{"value":NUMBER},
+    "frozen_rule":{"value":BOOLEAN}, "price":{"value":NUMBER}, "constant":{"value":NUMBER}, "multiply":{"value":NUMBER},
     "rolling_min":{"value":NUMBER}, "rolling_max":{"value":NUMBER}, "lag":{"value":NUMBER},
     "roc":{"value":NUMBER}, "sma":{"value":NUMBER}, "ema":{"value":NUMBER}, "rsi":{"value":NUMBER},
     "bb":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
@@ -28,11 +28,13 @@ INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd","roc"
 INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below","multiply")})
 INPUTS.update({k:{"left":BOOLEAN,"right":BOOLEAN} for k in ("and","or")})
 INPUTS["not"] = {"source":BOOLEAN}
+INPUTS["frozen_rule"] = {}
 PARAMS = {"price":{"field"}, "constant":{"value"}, "compare":{"operator"},
           "bb":{"period","deviations"}, "macd":{"fast","slow","signal"},
           **{k:{"period"} for k in ("sma","ema","rsi","atr","roc","rolling_min","rolling_max")},
           **{k:set() for k in ("cross_above","cross_below","and","or","not","multiply")}}
 PARAMS.update({k:set() for k in POSITION_FIELDS})
+PARAMS['frozen_rule']={'snapshot'}
 PARAMS['lag']={'bars'}
 PARAMS['donchian']={'upper_period','lower_period'}
 
@@ -56,6 +58,8 @@ def validate_graph(graph,allow_incomplete=False):
         raise GraphError("Expected Strategy IR version 1; layout is stored separately")
     if not isinstance(graph["nodes"],list) or not (0 if allow_incomplete else 1) <= len(graph["nodes"]) <= 128:
         raise GraphError("Graph must contain 1–128 nodes")
+    if sum(node.get("type") == "frozen_rule" for node in graph["nodes"] if isinstance(node, dict)) > 1:
+        raise GraphError("One frozen indicator-rule node is supported per strategy")
     nodes = {}
     for node in graph["nodes"]:
         if not isinstance(node,dict) or set(node) != {"id","type","inputs","params"}:
@@ -69,6 +73,9 @@ def validate_graph(graph,allow_incomplete=False):
         params = node["params"]
         if not isinstance(params,dict) or set(params) != PARAMS[kind]:
             raise GraphError(f"Invalid parameters for {kind}")
+        if kind == "frozen_rule":
+            from terminal.rule_strategy import validate_snapshot
+            validate_snapshot(params["snapshot"])
         for key in ("period","fast","slow","signal","upper_period","lower_period"):
             if key in params and (type(params[key]) is not int or not 1 <= params[key] <= 10000):
                 raise GraphError("Indicator periods must be integers from 1 to 10000")
@@ -141,10 +148,19 @@ class GraphEvaluator:
     Commit only a completed primary bar; keep cross history per evaluation step.
     Thus repeated H1 partials do not advance the H1 EMA/RSI recurrence repeatedly.
     """
-    def __init__(self, graph):
+    def __init__(self, graph, *, frozen_schedule=None):
         self.graph = copy.deepcopy(graph)
         self.order = validate_graph(self.graph)
         self.nodes = {node["id"]:node for node in self.graph["nodes"]}
+        self.frozen_schedule = frozen_schedule
+        frozen = [node for node in self.nodes.values() if node['type'] == 'frozen_rule']
+        if frozen:
+            from terminal.rule_strategy import FrozenSchedule
+            if not isinstance(frozen_schedule, FrozenSchedule):
+                raise GraphError('Frozen indicator rules require an admitted backtest replay; live/PAPER is unavailable')
+            frozen_schedule.bind(frozen[0])
+        elif frozen_schedule is not None:
+            raise GraphError('Unexpected frozen replay schedule')
         self.states = {ident:indicator_for(node) for ident,node in self.nodes.items()}
         self.previous = {}
         self.last_time = None
@@ -168,7 +184,9 @@ class GraphEvaluator:
             inputs = {port:values[ref] for port,ref in node["inputs"].items()}
             result = {port:None for port in PORTS[kind]}
             state = copy.deepcopy(self.states[ident])
-            if kind == "price":
+            if kind == "frozen_rule":
+                result = self.frozen_schedule.consume(candle, time, complete)
+            elif kind == "price":
                 result["value"] = getattr(candle,params["field"])
             elif kind in POSITION_FIELDS:
                 if self.position_context is None or kind not in self.position_context:
