@@ -4324,3 +4324,64 @@ Backend only: no frontend edits, agreement-condition/history integration,
 strategy conversion, provider/PAPER/order action, new dependency, version bump,
 release or main merge. Actual GUI, old-database interoperability, Windows/native,
 live-provider and owner acceptance remain unverified by this checkpoint.
+
+## Reconstructed current indicator-agreement panel — 2026-10-12
+
+Implemented the compact Market panel and accepted-response boundary from
+[ADR 0059](adr/0059-current-indicator-agreement-panel.md). It consumes only applied
+settings, existing raw candles and the accepted display response. The pure
+ADR 0057 evaluator and raw-cache/formula implementations are unchanged. All
+current-state/envelope failures clear scores visibly; separate history gives
+Return to latest guidance. Ordinary recent-buffer pan, hover, focus, style and
+unapplied drafts do not change the reference. Details preserve mounted state
+across polling/focus, default closed on remount, and retain the heuristic warning
+outside their disclosure. The panel adds no API call.
+
+Focused synthetic DOM evidence:
+
+- Initial pass: 141/142 tests passed across new adapter/component tests and
+  MarketChartNavigation, ChartIndicators and API transport. The only failure was
+  the new test clicking an obsolete UI label; it was corrected to the existing
+  accessible Settings for 1 SMA action without changing product behavior.
+- Corrected focused pass: 86/86 tests passed across adapter, component and Market
+  navigation, including one added coherent-future-origin rejection. The 57
+  unchanged settings/transport tests from the first pass are reused. Thus 143
+  distinct tests passed; repeated overlap is not added to the total.
+- Initial TypeScript check caught nullable-ref narrowing in the new receipt
+  return. An explicit local non-null guard resolved it. Final TypeScript
+  `--noEmit` and production Vite build passed. The existing >500 kB bundle warning
+  remains. This is not a full-product regression or remote CI pass.
+- The already accepted independent evaluator harness was copied unchanged from
+  the integration checkout's browser-tsconfig-safe correction; numerical expected
+  vectors and evaluator semantics were not changed or broadly rerun here.
+
+Independent immutable-checkpoint and actual-App browser acceptance remain
+separate gates. This checkpoint does not establish Windows/native, live-provider,
+owner-led acceptance, old-database compatibility, agreement alert conditions,
+historical agreement timelines, packaging, merge or release.
+
+### Pending older-page correction
+
+The actual-App review exposed a nonterminal older-page path: `idle` with
+`loading=false` left an unresolved paging cursor while clearing the client
+loading flag. Recent reads were consequently delayed, but current agreement
+could still show the last accepted recent buffer. Return cleared the cursor.
+This response can occur when the backend queue is full; the isolated fixture
+also reproduced it with acquisition deliberately stopped and a rolling cursor
+without a saved page record. A separate deterministic characterization reproduced
+the stale-reference/Return sequence on the integrated pre-correction source.
+
+The bounded correction keeps client loading true until an older-page request
+returns ready, end or error. Current agreement therefore remains suppressed
+through nonterminal replies. Polling, raw data, formulas and historical-buffer
+semantics are unchanged. Three focused regressions cover idle-to-ready,
+Return plus a late superseded reply, and ordinary recent-buffer panning while
+the reference advances to a new confirmed close without moving the viewport.
+
+Focused correction verification: 89/89 tests passed across Market navigation,
+current agreement boundary and panel components in one pass. TypeScript
+`--noEmit` and production Vite build passed; the existing bundle warning remains.
+The earlier 57 unchanged settings/transport tests are reused, giving 146 distinct
+passing author tests across the panel milestone and this correction. Independent
+and corrected actual-App acceptance are recorded separately; the pre-correction
+GUI observation is retained as a discovered failure, not relabeled as a pass.

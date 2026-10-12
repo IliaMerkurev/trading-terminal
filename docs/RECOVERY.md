@@ -44,9 +44,11 @@ configuration is not a successful CI result.
 Pane layout passed focused, independent and actual-browser synthetic checks.
 The frozen alert core, passive runtime/Service, pure agreement evaluator and
 cache-only historical backend are independently checked and remotely published.
-The alert interface has passed focused/component and actual-browser synthetic
-acceptance; its remote publication is being verified separately. Historical research UI, current-agreement
-panel and frozen agreement conditions/full group history remain in progress.
+The alert interface passed focused/component and actual-browser synthetic
+acceptance and is remotely verified at `23382863bb22689757df45242ee2ec229e3dda2b`.
+The corrected current-agreement panel has passed focused, independent and
+actual-browser synthetic checks; remote publication is verified separately. Historical research UI and frozen
+agreement conditions/full group history remain in progress.
 This is not full product or owner acceptance.
 
 
@@ -451,3 +453,60 @@ through rename/archive/restore/rebind/restart. Service stopped cleanly at
 one real observed crossing, not a second-cross GUI scenario. Uncertain-network,
 overflow and delayed-response behavior remain automated/component evidence.
 Windows, live providers and owner unaided acceptance remain unverified.
+## Reconstructed current agreement panel: independent acceptance
+
+Source checkpoint: `5e00d3dc67bf07018be0a54556dec48c7b1082bd`; tree `cba1fea8c9beab7318d7a415695fb5b8cd15457a`. Independent frozen run: **8/8 passed** in 1.23 seconds, with no tracked source changes. Portable tests: `frontend/src/currentAgreementIndependent.test.tsx`. Run `pnpm exec vitest run frontend/src/currentAgreementIndependent.test.tsx` from the repository root.
+
+| Criteria | Independent evidence | Remaining boundary |
+| --- | --- | --- |
+| CURRENT-01, 15 | Summary and heuristic disclaimer remain visible, details start collapsed, and expansion survives an ordinary accepted-response refresh. | Actual browser geometry and keyboard interaction still require GUI acceptance. |
+| CURRENT-02 | Only applied member identity/parameters/visibility are accepted. A hidden CMF changes three-group two-thirds Up into two-group all-Up only when response settings match. Draft-only changes cannot reuse the old response. | Live draft navigation is a separate GUI scenario. |
+| CURRENT-03 | Exact newest confirmed RAW close is selected; forming rows and synthetic HA price candles cannot change the vote. Missing newest output is unavailable, never replaced with an older ready output. | Recent-buffer pan behavior is additionally source-reviewed; detached history uses the dedicated historical-buffer flag rather than Following state. |
+| CURRENT-04–05 | Historical, inactive, stale, loading, saving, missing-settings and error states suppress before evaluator preparation. Nineteen adversarial envelope/raw/setting mutations reject. | Existing chart navigation owns Return to latest; no extra fetching or monitoring path is added. |
+| CURRENT-05 | First persisted origin and internally consistent accepted reanchor work despite initially empty/stale locally loaded origins. Receipt identity, generation/window/raw-key and projection/event envelopes must match. | Backend supported cache writes preserve old candles and mark corrections conflicted; display replay rejects these conflicts. External database editing is not a supported live update path. |
+| CURRENT-06–14 | The accepted shared evaluator is reused unchanged. A three-group independently specified case yields exact 2/3 Up, 1/3 Down, conflict, and 67/33/0 integer display. | Broader numeric boundary/coverage parity evidence belongs to the earlier pure evaluator checkpoint; these counts must not be added as unrelated duplicate scenarios. |
+
+This slice does not complete agreement alert conditions or historical agreement timelines. It adds no formula engine, provider call, strategy, PAPER/order action or external notification. Authentic old-database compatibility and original-source byte identity remain unverified.
+
+
+The current-panel integration preserves the published alert session bridge and
+historical backend. Its retained eight independent scenarios and nine nearest
+alert lifecycle scenarios passed together (17 checks, 3.33s), followed by
+TypeScript and production build. These are reused scenarios, not extra distinct
+coverage. The only source conflict was two additive MarketChart imports, both
+retained. The existing bundle-size advisory remains.
+
+
+### Actual current-agreement acceptance and navigation correction
+
+The first integrated GUI check on `0cef242a57ed979ba4790ab4791c57b5424f32bf`
+found a real pending-page defect: an older-page `idle/loading=false` reply
+retained its cursor while permitting old recent-buffer percentages. This can
+also occur under queue saturation. It was reproduced deterministically and
+corrected by retaining the loading fence until ready/end/error. The unchanged
+pure evaluator, adapter and panel retain their prior acceptance.
+
+Corrected production source `c7373abf82648dd2e76afc01b9c062cf28c7a29e` passed
+the focused actual-App synthetic navigation checks: an unresolved older page
+kept percentages unavailable; truthful cache-page metadata completion resolved
+that same request into a detached historical buffer, which remained suppressed.
+Return restored the current 11:20 UTC result. A subsequent small pan inside the
+retained recent buffer kept the viewport fixed while the reference advanced
+from 11:20 to 11:21 UTC. Moving the crosshair to 10:00 did not select another
+reference. Metadata completion changed neither raw OHLC nor calculated results.
+
+Earlier unaffected GUI checks established applied-versus-draft separation; CMF
+adding a third group with neutral votes retained in denominators; exact SMA
+copies adding no type/variant weight; hidden CMF removing its group; native
+11:06 results unchanged between Candles and Heikin Ashi; a single available
+group suppressing overall while retaining its group result; and immediate
+suppression of the old source during Bybit/OKX switching. Those observations
+are carried only across unchanged production code.
+
+The correction passed 89 focused author checks and four reviewed/re-executed
+navigation checks, followed by four affected integrated checks and the build.
+The four are existing tests, not newly authored independent coverage; overlapping
+counts are not additive. Total author coverage is 146 distinct tests, with eight
+independently authored adapter/component scenarios retained. Service stopped
+cleanly at 11:21:27 UTC with all forbidden guards zero. Live providers, Windows
+and owner unaided acceptance are not established by these synthetic checks.

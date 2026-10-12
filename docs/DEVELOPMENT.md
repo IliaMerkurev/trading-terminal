@@ -1028,3 +1028,27 @@ edits over late coverage replies, preserve cancellation/request IDs until durabl
 reconciliation, use actual page cursors, and request an exact row when the
 byte-shortened chart window excludes its target. Do not represent unavailable
 formula values as false or every unknown as definite initialization warmup.
+
+## Current indicator agreement (ADR 0059)
+
+The panel consumes the hook's exact accepted response receipt and existing raw
+rows; pass `historical.current`, not `!following`, as its detached-buffer gate.
+Do not supply the trimmed hover/display projection, synthetic candles, draft
+members or an independently queried latest snapshot. First-origin/reanchor
+updates come from coherent response settings without inventing an applied
+member revision. Source/cache conflict invariants are documented in
+[ADR 0059](adr/0059-current-indicator-agreement-panel.md).
+
+Focused commands in the existing pinned environment:
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/currentAgreement.test.ts frontend/src/IndicatorAgreementPanel.test.tsx frontend/src/MarketChartNavigation.test.tsx frontend/src/ChartIndicators.test.tsx frontend/src/api.test.ts
+node scripts/frontend.mjs build
+```
+
+Use the changed adapter/component/navigation subset for a corrective pass;
+reuse unaffected settings/transport and pure-evaluator evidence. Actual-App QA
+must separately inspect disclosure keyboard behavior, normal/narrow/focused
+layout, draft/cancel/apply, duplicate/variant coverage, stale receipt transitions,
+separate history/Return and reload. Use an isolated synthetic data root with no
+provider/PAPER/order activity. Do not claim DOM mocks establish browser geometry.

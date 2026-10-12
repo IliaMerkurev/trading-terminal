@@ -706,3 +706,25 @@ Market, Arm, cursor, live journal, unread state or banner claims. See
 [Service API](docs/ALERT_HISTORY_API.md). Frontend and agreement-condition/history
 integration remain separately scoped; no old-schema, Windows or live-provider
 acceptance is implied by this reconstructed backend.
+
+### Reconstructed current indicator-agreement panel — 2026-10-12
+
+Provide a compact below-chart summary of applied visible display indicators at
+the common latest confirmed raw close in the recent buffer. Reuse the shared
+versioned agreement manifest/evaluator and existing verified display response;
+introduce no formula engine, data acquisition, provider call or monitoring.
+Exclude hidden, unavailable, context-only and unsupported members explicitly.
+Show up/down/neutral, exact UTC, group distributions/conflict, fully covered
+supported visible types and available/total parameter variants. Overall requires
+at least two available groups and at least 50% fully covered supported visible
+types. Neutral remains in the denominator. Explain member parameters, rule and
+reason in initially collapsed details; keep the heuristic warning visible.
+
+Require matching source/market/symbol/native interval, applied settings revision,
+raw snapshot, response identity, origin/generation, window and exact close.
+Suppress paused/stale, inactive, loading, saving, error and separate historical
+buffer states. Ordinary recent-buffer panning, hover, forming candles, synthetic
+price style and unsaved parameter drafts must not change the reference or votes.
+Never substitute older output for a missing latest value. See
+[ADR 0059](docs/adr/0059-current-indicator-agreement-panel.md). Agreement alert
+conditions and historical agreement timelines remain separate milestones.

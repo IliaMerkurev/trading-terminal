@@ -5,6 +5,12 @@ import {poll} from './poll';
 import {emptySettings, type ChartIndicator, type IndicatorSettings} from './ChartIndicators';
 import type {LiveCandle} from './liveChartData';
 
+export interface IndicatorResponseReceipt {
+  response: unknown; rawSnapshotKey: string; requestKey: string; windowEpoch: number;
+  settingsRevision: number; generation: number; calculationEpoch: number;
+  responseRevision: unknown; origin: string;
+}
+
 export function useChartIndicators(
   market: string,
   symbol: string,
@@ -30,6 +36,7 @@ export function useChartIndicators(
   const resultWindow = useRef(windowEpoch);
   const resultKey = useRef('');
   const resultRows = useRef('');
+  const resultReceipt = useRef<IndicatorResponseReceipt | null>(null);
   const writeInFlight = useRef(false);
   const uncertainSave = useRef(false);
   const requestKey = JSON.stringify([source, market, symbol, minutes, priceStyle]);
@@ -90,6 +97,9 @@ export function useChartIndicators(
       resultRows.current = reply.key;
       resultWindow.current = windowEpoch;
       resultKey.current = requestKey;
+      resultReceipt.current = {response: reply.value, rawSnapshotKey: reply.key, requestKey, windowEpoch,
+        settingsRevision: settings.revision, generation: generation.current, calculationEpoch: reply.epoch,
+        responseRevision: reply.value?.revision, origin: JSON.stringify(reply.value?.origin)};
       setResult(reply.value);
       setError(reply.value.error ?? reply.value.settings?.warning ?? '');
     }, reason => {
@@ -145,5 +155,9 @@ export function useChartIndicators(
   const projectionCurrent = resultRows.current === JSON.stringify(rows.current);
   const accepted = namespaceLoaded && !writeInFlight.current && !uncertainSave.current && projectionCurrent
     && resultWindow.current === windowEpoch && resultKey.current === requestKey;
-  return {settings: loadedNamespace === namespaceKey ? settings : emptySettings, projectionCurrent, rawSnapshotKey: resultRows.current, result: accepted ? result : null, error: loadedNamespace === namespaceKey || !loaded ? error : '', saving, loaded: namespaceLoaded, apply, reanchor};
+  const candidateReceipt = resultReceipt.current;
+  const receipt = accepted && candidateReceipt && candidateReceipt.response === result
+    && candidateReceipt.generation === generation.current
+    && candidateReceipt.calculationEpoch === calculationEpoch.current ? candidateReceipt : null;
+  return {receipt, settings: loadedNamespace === namespaceKey ? settings : emptySettings, projectionCurrent, rawSnapshotKey: resultRows.current, result: accepted ? result : null, error: loadedNamespace === namespaceKey || !loaded ? error : '', saving, loaded: namespaceLoaded, apply, reanchor};
 }

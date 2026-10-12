@@ -394,3 +394,108 @@ it('keeps VMC events in owned panes, exposes both clocks, and clears stale geome
  view.rerender(<MarketChart fresh active={false}/>);await flush();expect(wave.detachPrimitive).toHaveBeenCalled();
  view.unmount();writes.mockRestore();
 });
+
+it('keeps current agreement on the confirmed raw close across pan, hover, focus, style and unapplied drafts',async()=>{
+ const {makeAgreementInput}=await import('./currentAgreementTestFixture');
+ const input=makeAgreementInput(),applied=input.settings;
+ const recent=input.rows.map(row=>({...row,time:row.time+180000}));marketRead=()=>ready(recent);
+ const original=mock.api.getMockImplementation()!;
+ mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve(applied):original(command,p));
+ indicatorRead=p=>{
+  const response=structuredClone(input.response),context={...response.projections.context,start:p.start,end:p.end};
+  response.times=recent.map(row=>row.time+60);response.projections.raw_times=response.times;
+  response.projections.context=context;response.indicator_events.context={...context};
+  response.projections.horizon=p.end+60;response.indicator_events.horizon=p.end+60;
+  return response;
+ };
+ const view=render(<MarketChart fresh/>);await flush();await tick();
+ const agreement=()=>screen.getByLabelText('Current indicator agreement');
+ expect(agreement().textContent).toContain('Up 67%');expect(agreement().textContent).toContain('1970-01-03 02:03:00 UTC');
+ const details=agreement().querySelector('details')!;fireEvent.click(details.querySelector('summary')!);
+ pan(1,2);act(()=>mock.crosshair({time:180060}));
+ expect(agreement().textContent).toContain('Up 67%');expect(agreement().textContent).toContain('1970-01-03 02:03:00 UTC');
+ view.rerender(<MarketChart fresh focusMode/>);expect(details.open).toBe(true);
+ fireEvent.change(screen.getByLabelText('Chart price style'),{target:{value:'heikin_ashi'}});await flush();await tick();
+ expect(agreement().textContent).toContain('Up 67%');expect(details.open).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 SMA'}));
+ fireEvent.change(screen.getByLabelText('1 SMA period'),{target:{value:'20'}});
+ expect(agreement().textContent).toContain('Parameters: period=1');expect(agreement().textContent).toContain('Up 67%');
+ expect(mock.api.mock.calls.some(call=>call[0]==='chart_indicator_save')).toBe(false);
+ view.rerender(<MarketChart fresh={false} focusMode/>);expect(agreement().textContent).toContain('paused or stale');
+ expect(screen.queryByLabelText('Overall agreement')).toBeNull();
+});
+
+it('suppresses current agreement for detached history, restores it on Return and adds no read routes',async()=>{
+ const {makeAgreementInput}=await import('./currentAgreementTestFixture');const input=makeAgreementInput();
+ const recent=input.rows.map(row=>({...row,time:row.time+180000}));
+ marketRead=p=>ready(p.before==null?recent:[]);
+ const original=mock.api.getMockImplementation()!;
+ mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve(input.settings):original(command,p));
+ indicatorRead=p=>{
+  const response=structuredClone(input.response);response.times=recent.map(row=>row.time+60);
+  response.projections.raw_times=response.times;
+  for(const envelope of [response.projections,response.indicator_events]){envelope.context={...envelope.context,start:p.start,end:p.end};envelope.horizon=p.end+60;}
+  return response;
+ };
+ render(<MarketChart fresh/>);await flush();await tick();expect(screen.getByLabelText('Overall agreement')).toBeTruthy();
+ marketRead=p=>ready(p.before==null?recent:bars(p.before/60-5,5));await older();
+ expect(screen.getByLabelText('Current indicator agreement').textContent).toContain('Historical buffer. Return to latest');
+ expect(screen.queryByLabelText('Overall agreement')).toBeNull();
+ goLatest();await flush();await tick();expect(screen.getByLabelText('Overall agreement')).toBeTruthy();
+ expect(new Set(mock.api.mock.calls.map(call=>call[0]))).toEqual(new Set(['market_chart','chart_indicator_settings','chart_indicator_read','chart_drawing_settings']));
+});
+
+async function installCurrentAgreement() {
+ const {makeAgreementInput}=await import('./currentAgreementTestFixture');const input=makeAgreementInput();
+ const original=mock.api.getMockImplementation()!;
+ mock.api.mockImplementation((command:string,p:any)=>command==='chart_indicator_settings'?Promise.resolve(input.settings):original(command,p));
+ indicatorRead=p=>{
+  const response=structuredClone(input.response);
+  response.times=Array.from({length:(p.end-p.start)/(p.minutes*60)+1},(_,index)=>p.start+(index+1)*p.minutes*60);
+  response.columns={sma:{value:response.times.map(()=>1)},roc:{value:response.times.map(()=>1)},cmf:{value:response.times.map(()=>1)}};
+  response.projections.raw_times=response.times;
+  for(const envelope of [response.projections,response.indicator_events]){envelope.context={...envelope.context,start:p.start,end:p.end};envelope.horizon=p.end+p.minutes*60;}
+  return response;
+ };
+}
+const agreementClose=()=>screen.getByLabelText('Current indicator agreement').querySelector('time')?.getAttribute('datetime');
+
+it('keeps an idle older-page request loading and agreement suppressed until ready detaches the buffer',async()=>{
+ await installCurrentAgreement();let status='idle';
+ marketRead=p=>p.before==null?ready(bars(3000,300)):{candles:bars(p.before/60-300,300),loading:false,page_status:status};
+ render(<MarketChart fresh/>);await flush();await tick();expect(screen.getByLabelText('Overall agreement')).toBeTruthy();
+ pan(-10,290);await tick(4000);
+ expect(screen.getByLabelText('Current indicator agreement').textContent).toContain('Loading the current chart');
+ expect(screen.queryByLabelText('Overall agreement')).toBeNull();
+ expect((screen.getByRole('button',{name:'Older history'}) as HTMLButtonElement).disabled).toBe(true);
+ expect(mock.api.mock.calls.filter(call=>call[0]==='market_chart').at(-1)?.[1].before).toBe(3000*60);
+ status='ready';await tick();
+ expect(screen.getByLabelText('Current indicator agreement').textContent).toContain('Historical buffer. Return to latest');
+ expect(screen.queryByLabelText('Overall agreement')).toBeNull();
+ expect((screen.getByRole('button',{name:'Older history'}) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it('Return cancels an unresolved idle-page request, rejects its late reply and restores the newest recent close',async()=>{
+ await installCurrentAgreement();let recent=bars(3000,300),hold=false;const obsolete=pending();
+ marketRead=p=>p.before==null?ready(recent):hold?obsolete.promise:{candles:[],loading:false,page_status:'idle'};
+ render(<MarketChart fresh/>);await flush();await tick();
+ pan(-10,290);await tick();expect(screen.queryByLabelText('Overall agreement')).toBeNull();
+ hold=true;await tick();recent=bars(3000,301);goLatest();
+ obsolete.resolve(ready(bars(1000,300)));await flush();await tick(2000);
+ expect(agreementClose()).toBe(new Date(3301*60*1000).toISOString());
+ expect(mode()).toContain('Following latest');expect(screen.getByLabelText('Overall agreement')).toBeTruthy();
+ expect(candles()[0].time).toBe(3001*60);
+ expect(mock.api.mock.calls.filter(call=>call[0]==='market_chart').at(-1)?.[1].before).toBeNull();
+});
+
+it('ordinary recent-buffer pan keeps its viewport while agreement advances to the next confirmed raw close',async()=>{
+ await installCurrentAgreement();let recent=bars(3000,300);marketRead=()=>ready(recent);
+ render(<MarketChart fresh/>);await flush();await tick();
+ expect(agreementClose()).toBe(new Date(3300*60*1000).toISOString());
+ pan(100,180);expect(mode()).toContain('Browsing history');
+ recent=bars(3000,301);await tick(2000);
+ expect(agreementClose()).toBe(new Date(3301*60*1000).toISOString());
+ expect(mock.range).toEqual({from:100,to:180});expect(mode()).toContain('Browsing history');
+ expect(screen.getByLabelText('Overall agreement')).toBeTruthy();
+ expect(mock.api.mock.calls.filter(call=>call[0]==='market_chart').every(call=>call[1].before==null)).toBe(true);
+});
