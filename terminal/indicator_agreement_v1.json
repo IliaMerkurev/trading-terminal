@@ -1,0 +1,441 @@
+{
+  "version": "indicator-agreement-v1",
+  "weight_version": "equal-group-type-variant-v1",
+  "groups": [
+    "trend",
+    "momentum",
+    "volume"
+  ],
+  "directions": [
+    "up",
+    "down",
+    "neutral"
+  ],
+  "rules": {
+    "sma": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ]
+    },
+    "ema": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ]
+    },
+    "wma": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ]
+    },
+    "rma": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ]
+    },
+    "vwma": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ]
+    },
+    "hma": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ]
+    },
+    "vwap": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "mode",
+        "anchor"
+      ]
+    },
+    "sar": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "step",
+        "max"
+      ]
+    },
+    "bb": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "middle"
+      ],
+      "parameters": [
+        "period",
+        "deviations"
+      ]
+    },
+    "donchian": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "middle"
+      ],
+      "parameters": [
+        "period"
+      ]
+    },
+    "keltner": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "raw_close_compare",
+      "ports": [
+        "middle"
+      ],
+      "parameters": [
+        "period",
+        "atr_period",
+        "multiplier"
+      ]
+    },
+    "supertrend": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "signed_direction",
+      "ports": [
+        "direction"
+      ],
+      "parameters": [
+        "period",
+        "multiplier"
+      ],
+      "up": 1,
+      "down": -1
+    },
+    "dmi": {
+      "classification": "directional",
+      "group": "trend",
+      "rule": "adx_di",
+      "ports": [
+        "adx",
+        "plus_di",
+        "minus_di"
+      ],
+      "parameters": [
+        "period",
+        "adx_period"
+      ],
+      "adx_neutral_below": 20
+    },
+    "rsi": {
+      "classification": "directional",
+      "group": "momentum",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ],
+      "lower": 45,
+      "upper": 55,
+      "guard": "flat_closes"
+    },
+    "stochastic": {
+      "classification": "directional",
+      "group": "momentum",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "k"
+      ],
+      "parameters": [
+        "period",
+        "smooth",
+        "signal"
+      ],
+      "lower": 45,
+      "upper": 55,
+      "guard": "flat_smoothed_range"
+    },
+    "macd": {
+      "classification": "directional",
+      "group": "momentum",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "histogram"
+      ],
+      "parameters": [
+        "fast",
+        "slow",
+        "signal"
+      ],
+      "lower": 0,
+      "upper": 0,
+      "guard": null
+    },
+    "roc": {
+      "classification": "directional",
+      "group": "momentum",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ],
+      "lower": 0,
+      "upper": 0,
+      "guard": null
+    },
+    "momentum": {
+      "classification": "directional",
+      "group": "momentum",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ],
+      "lower": 0,
+      "upper": 0,
+      "guard": null
+    },
+    "cci": {
+      "classification": "directional",
+      "group": "momentum",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ],
+      "lower": -100,
+      "upper": 100,
+      "guard": null
+    },
+    "williamsr": {
+      "classification": "directional",
+      "group": "momentum",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ],
+      "lower": -55,
+      "upper": -45,
+      "guard": "flat_range"
+    },
+    "bbpercentb": {
+      "classification": "directional",
+      "group": "momentum",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period",
+        "deviations"
+      ],
+      "lower": 0.45,
+      "upper": 0.55,
+      "guard": null
+    },
+    "mfi": {
+      "classification": "directional",
+      "group": "volume",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ],
+      "lower": 45,
+      "upper": 55,
+      "guard": null
+    },
+    "cmf": {
+      "classification": "directional",
+      "group": "volume",
+      "rule": "inclusive_neutral_band",
+      "ports": [
+        "value"
+      ],
+      "parameters": [
+        "period"
+      ],
+      "lower": -0.05,
+      "upper": 0.05,
+      "guard": null
+    },
+    "obv": {
+      "classification": "directional",
+      "group": "volume",
+      "rule": "adjacent_change",
+      "ports": [
+        "value"
+      ],
+      "parameters": [],
+      "guard": "adjacent_confirmed"
+    },
+    "atr": {
+      "classification": "context",
+      "reason": "No directional price rule"
+    },
+    "volume": {
+      "classification": "context",
+      "reason": "No directional price rule"
+    },
+    "stddev": {
+      "classification": "context",
+      "reason": "No directional price rule"
+    },
+    "bbwidth": {
+      "classification": "context",
+      "reason": "No directional price rule"
+    },
+    "ichimoku": {
+      "classification": "unsupported",
+      "reason": "Composite direction is not supported by this version"
+    },
+    "stochrsi": {
+      "classification": "unsupported",
+      "reason": "Composite direction is not supported by this version"
+    },
+    "vmc_cipher_b": {
+      "classification": "unsupported",
+      "reason": "Composite direction is not supported by this version"
+    },
+    "vmc_cipher_a": {
+      "classification": "unsupported",
+      "reason": "Composite direction is not supported by this version"
+    },
+    "vmc_swing": {
+      "classification": "unsupported",
+      "reason": "Composite direction is not supported by this version"
+    }
+  },
+  "raw_contract": {
+    "time": "UTC integer seconds at candle open",
+    "display_time": "UTC integer seconds at confirmation close",
+    "confirmed": [
+      "closed_rest",
+      "provider_confirmed",
+      "synthetic_closed"
+    ],
+    "target": "exact_requested_close_only",
+    "predecessors": "real_contiguous_confirmed_raw_bars",
+    "values": "existing_display_outputs_only",
+    "envelope_validation": "caller_must_validate_source_revision_origin_window_generation_and_freshness",
+    "validity": "finite open/high/low/close; low <= open and close <= high; no explicit conflict"
+  },
+  "guards": {
+    "flat_closes": {
+      "length": "period + 1",
+      "test": "all closes equal",
+      "result": "neutral"
+    },
+    "flat_range": {
+      "length": "period",
+      "test": "maximum high equals minimum low",
+      "result": "neutral"
+    },
+    "flat_smoothed_range": {
+      "length": "period + smooth - 1",
+      "test": "maximum high equals minimum low over all smoothing inputs",
+      "result": "neutral"
+    },
+    "adjacent_confirmed": {
+      "length": 2,
+      "test": "adjacent raw closes and finite adjacent output",
+      "result": "sign of current minus previous"
+    },
+    "insufficient": "unavailable",
+    "undefined_output": "unavailable_even_when_flat"
+  },
+  "weighting": {
+    "duplicate_identity": "type + sorted parameters with IEEE754 numeric normalization",
+    "duplicate_conflict": "unavailable unless all visible copies have identical assessment evidence",
+    "variants": "equal available variants within type",
+    "types": "equal available types within group",
+    "groups": "equal available groups overall",
+    "neutral": "included in every denominator",
+    "excluded": [
+      "hidden",
+      "context",
+      "unsupported",
+      "unavailable"
+    ],
+    "fully_covered_type": "all distinct supported visible variants available"
+  },
+  "coverage": {
+    "minimum_available_groups": 2,
+    "minimum_fully_covered_type_fraction": [
+      1,
+      2
+    ]
+  },
+  "rounding": {
+    "method": "largest_remainder",
+    "total": 100,
+    "tie_order": [
+      "up",
+      "down",
+      "neutral"
+    ]
+  },
+  "threshold": {
+    "overall": "inclusive exact fraction >= shortest decimal representation of numeric threshold",
+    "required_groups": "each exact directional fraction strictly > 1/2",
+    "missing": "unavailable",
+    "range": [
+      0,
+      1
+    ]
+  },
+  "wording": "Descriptive heuristic; not probability, confidence, price strength or a trading recommendation"
+}

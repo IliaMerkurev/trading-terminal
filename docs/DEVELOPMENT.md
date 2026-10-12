@@ -958,3 +958,25 @@ Closing a browser tab cannot promise stopping Service; the future UI must expose
 Pause and warn before tab closure. A new UI session must initialize null context
 before registering its current Market context. Keep request IDs until writes
 are reconciled; do not automatically retry uncertain writes with fresh IDs.
+
+## Pure indicator-agreement core (ADR 0057)
+
+Use `terminal.indicator_agreement.prepare_agreement` or the equivalent
+`frontend/src/indicatorAgreement.ts` prepared evaluator to reuse indexed raw
+support and display outputs across exact confirmed closes. The shared package
+resource is `terminal/indicator_agreement_v1.json`; do not copy its rules into a
+UI, alert condition or history worker. Caller envelope checks remain mandatory
+and are outside this checkpoint. See [ADR 0057](adr/0057-pure-indicator-agreement-core.md).
+
+Focused commands, using the already pinned matching local environment:
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest tests.test_indicator_agreement
+node node_modules/vitest/vitest.mjs run frontend/src/indicatorAgreement.test.ts
+node scripts/frontend.mjs build
+```
+
+The TypeScript test includes a single local Python subprocess for complete JSON
+parity over independently expected vectors. On Windows it selects the existing
+`.venv/Scripts/python.exe`; on other systems `.venv/bin/python`. No package is
+installed and no provider, database, PAPER or order route is invoked.

@@ -4211,3 +4211,40 @@ above the plot remained reachable. The wrapper used matching production source,
 actual Market sizing and offline cached history; it is not full-application,
 live-provider, native/Windows or owner unaided acceptance. No source edits or
 additional suite runs were made for this documentation-only acceptance record.
+
+## Reconstructed pure indicator-agreement core — 2026-10-12
+
+Implemented the standalone shared manifest and pure Python/TypeScript evaluator
+from [ADR 0057](adr/0057-pure-indicator-agreement-core.md). It consumes existing
+display outputs at one exact confirmed raw close, applies the declared direction
+rules and contiguous flat/OBV guards, deduplicates normalized type/parameters,
+and produces equal-variant/type/group evidence with explicit unavailable,
+context, unsupported and hidden statuses. Neutral stays in the denominator.
+Overall needs two available groups and at least half of supported visible types
+fully covered. Results include exact rational fractions, finite numeric shares,
+100-total integer display percentages, coverage and opposing group majorities.
+A reusable prepared-snapshot seam avoids raw-prefix replay. A pure threshold
+helper checks inclusive exact overall fractions and strictly greater-than-half
+required group fractions; it creates no alert condition or event.
+
+Fresh focused evidence: 67 Python tests and 68 TypeScript tests passed, including
+48 independently authored shared expected cases, seven threshold cases, full
+Python/TypeScript result parity, all directional ports, flat/gap guards,
+normalization, missing variants, invalid/conflicting raw inputs, future-value
+perturbations and detached prepared snapshots. Shared vectors are included in
+both totals, not additional tests. The first pass had one failing vector in both
+languages because its independently authored input accidentally shared a mutable
+member list with another case. Its author corrected only that input to match its
+original three-type/four-variant specification; no expected value or evaluator
+behavior was changed. The single focused correction pass produced the totals
+above. TypeScript typecheck and production Vite build passed before this
+fixture-only correction on identical implementation. The existing large-bundle
+warning remains. This is not a complete product regression run or remote CI.
+
+This is a functional reconstruction, not recovery of historical implementation
+or prior test evidence. Current-panel rendering/source-envelope gates, agreement
+alert definitions/transitions, historical scans/timelines and persistence are
+not integrated by this milestone. There are no formula, provider, PAPER, order,
+strategy, dependency or product-version changes. Windows/native, live-provider,
+owner acceptance, packaging and release are not established by this pure-core
+checkpoint.
