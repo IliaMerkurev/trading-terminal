@@ -29,79 +29,56 @@ with unavailable former source or compatibility with unavailable old databases.
 
 ## Current bounded slice: saved comparison conditions
 
-The Results comparison now has condition-specific matched/different/unknown
-evidence, separate from outcomes and raw metadata differences. Missing currency,
-venue, execution resolution and actual readiness remain unknown. Saved content
-fingerprints and coverage do not authenticate providers or current cache.
-Cancellation, retry, selection/report changes and obsolete replies are fenced.
+The existing Results comparison now reviews 28 saved conditions across Data,
+Period, Capital and Costs & execution, separately from outcomes and raw metadata
+changes. Each condition is matched, different or unknown with per-run evidence.
+Missing currency, venue, execution resolution and actual readiness stay unknown.
+No overall equivalence/ranking verdict, rerun, repricing or current-cache lookup
+is introduced. Existing Lab batch overlays and comparison names/notes remain.
 
-Focused checks establish 25 backend and 30 frontend passes, TypeScript and build.
-The new 23-backend/11-frontend tests are external to Git; final private archive and
-actual-browser acceptance remain pending. See [comparability acceptance](BACKTEST_COMPARABILITY.md).
+The recorded graph trace uses two indexed archived endpoints and does not prove
+warmup completion or continuous evaluation. Dataset hashes cover full normalized
+trade/mark/funding inputs, potentially beyond the evaluation window. Provider
+claims are not authenticated. Malformed, unsupported or inconsistent evidence is
+unknown. Raw detail is bounded; request cancellation, retry, selection/report
+changes and obsolete replies are fenced. See [comparability acceptance](BACKTEST_COMPARABILITY.md).
 
-## Preserved bounded slice: saved trade review
+### Latest verification
 
-Selecting a saved trade opens one inspector beside the existing recorded chart.
-It shows exact saved gross PnL, fees, signed funding and net PnL; first-entry and
-final-exit prices, quantities, reasons and exact UTC execution times remain
-individual fills. Managed positions retain original entries, DCA/scales, partial
-reductions, funding and other lifecycle events. Selection synchronizes the
-lifecycle instead of displaying another position independently.
+Focused checks passed **25 backend** (23 new plus two archive regressions) and
+**30 frontend** (11 new plus 19 neighboring checks), TypeScript and production
+build. Independent semantic review led to exact bounded decimal comparison and
+stricter legacy coverage/type validation. The existing bundle-size advisory remains.
 
-Entry, exit and lifecycle fills navigate the existing chart. Server-derived
-integer clocks preserve close-minus-one-nanosecond candle ownership before JSON
-transport. Fill, candle-close and evaluation clocks remain distinct. Repeated Show
-reveals the target after panning; settled failed/cancelled reads can be retried.
-Keyboard focus, within-page trade navigation and actual byte-shortened cursors
-are supported. Visited page starts survive tab changes; stale responses are fenced.
+New tests are in an owner-only private Drive archive, with full files, additive
+patch, commands/results and 205 runtime hashes tied to implementation `5414820`.
+Downloaded bytes/CRC, source/test hashes, privacy and isolated `git apply --check`
+passed. Existing Git tests are unchanged; the archive is required for this coverage.
 
-Original conditions and execution settings come only from the immutable run
-manifest. Optional chart context shows the last archived evaluation within the
-loaded window available no later than the selected fill. This is context, not
-proof of causation. No signals, indicator values or accounting are recalculated.
-Frozen backtests do not archive underlying leaf numerics or agreement member
-votes; missing per-fill evidence is disclosed. Unknown/null, false and absent
-values remain distinct. Native signal outputs and legacy lifecycles can be absent.
+Actual own-cloud production-browser synthetic checks passed matched/different/
+unknown, incomplete legacy-shaped evidence, Cancel/retry, repeated-click blocking,
+stale selection/report changes and reload. Saved reports persisted; transient
+checkbox selection reset normally. Normal 1180px and 150%-zoom 787px layouts kept
+controls reachable without body overflow. Ten saved JSON artifacts stayed unchanged;
+no comparison started execution, acquisition, trading or notifications. Owned QA
+service/tabs were closed, zoom restored, and one real screenshot was captured.
 
-Imported/candle-free reports retain saved fills and costs with an explicit missing
-history state. A lifecycle too large for additive clock metadata remains readable
-as the complete original row; its unsupported exact targets are disabled, without
-truncating events. No execution engine, provider, timeframe, dependency or schema
-change is introduced. See [trade-review acceptance](BACKTEST_TRADE_REVIEW.md).
+No Windows/native, live-provider, authentic old-owner database/archive, full-product
+regression or owner acceptance is established. No CI statuses/workflow runs were
+reported for the implementation commit. Final docs retain the tested runtime map.
 
-## Latest verification
+## Preserved saved trade review
 
-Trade review establishes **50 distinct backend checks** (26 new independent plus
-24 nearest regressions) and **56 distinct frontend checks** (overlap counted once).
-They cover exact M1/H1/D1 clocks, independently expected long/short average-cost
-lifecycles, partial-fill fee/funding attribution, unchanged SQLite/artifact bytes,
-metadata-inclusive byte budgets, actual worker/archive regressions, stale owners,
-keyboard navigation, cancellation, retry and conservative recorded-value context.
-TypeScript and production build passed; the existing bundle-size advisory remains.
+The selected-trade inspector retains exact saved gross PnL, fees, signed funding,
+net PnL and managed lifecycle fills. Entry/exit/lifecycle chart targeting preserves
+nanosecond source ownership. Original frozen conditions come from immutable
+snapshots; context is not causal proof. Missing underlying leaf numerics/member
+votes, candle-free imports and oversized legacy clock decoration stay explicit.
 
-The three new tests are in a private version-bound Drive archive; existing Git
-tests are unchanged. These counts require its patch and are not a claim about
-unpatched checkout/CI. The archive binds source/test hashes, base patch, commands,
-outcomes and reapplication instructions. Final runtime and downloaded archive
-bytes are checked separately from Git publication.
-
-Actual production-browser checks used isolated synthetic data and the real
-Service/worker: a 640-bar frozen-rule run produced 120 trades; a managed position
-matched independently expected gross 50, fees 0.85, funding −6.6 and net 42.55 USDT.
-Entry/scale/reduction/exit navigation, candle-free imported review, cancellation,
-late-reader/run isolation, reload and normal/narrow layout passed. Enter/Space now
-focuses the inspector; Close restores the original row. Original snapshots and
-all three saved report hashes remained unchanged. Owned QA services/tabs were closed; existing resources were preserved.
-
-These are focused synthetic checks. Prior conversion evidence reports 109 backend
-and 91 frontend checks (requiring its separate external patch), build and actual
-browser/worker acceptance: 160 recorded rows matched original replay, with 30 hits
-and trades. See [conversion acceptance](RULE_STRATEGY_CONVERSION.md).
-
-Historical recovery recorded 804 backend passes, eight Windows-only skips and
-1,008 frontend passes. Neither earlier count is a fresh trade-review/full-product
-run. No status or workflow run was reported for the implementation checkpoint;
-local checks do not imply remote CI ran.
+Its prior acceptance established 50 backend and 56 frontend checks (requiring its
+separate private regression patch), TypeScript/build and production-browser
+synthetic lifecycle/clock/cancellation/reload/keyboard checks. These are historical
+trade-review evidence, not newly rerun totals. See [trade-review acceptance](BACKTEST_TRADE_REVIEW.md).
 
 ## Preserved saved-rule conversion
 
@@ -126,11 +103,11 @@ conversion acceptance record retains complete usage, limits and evidence.
 - Reconstructed functionality does not recover missing application data. Preserve
   the complete workspace database: strategy archives omit alert journal and
   research records, and regression archives contain no application data.
-- Broader signal debugging, conversion contexts and comparison enhancements are
+- Broader signal debugging, conversion contexts and broader comparison enhancements are
   separate work. Missing historical evidence is not a license to reconstruct it
   from current settings or substitute a nearby candle.
-- Next: owner review of the existing saved-rule → editor → backtest → trade-review
-  workflow within its stated limits. No later roadmap slice, merge or release is
+- Next: owner review of saved conditions alongside the existing saved-rule →
+  editor → backtest → trade-review workflow within its stated limits. No later roadmap slice, merge or release is
   implied by these development checkpoints.
 
 ## Durable checkpoints and documentation

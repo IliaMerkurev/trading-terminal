@@ -1,7 +1,7 @@
 # Saved backtest comparability: bounded acceptance
 
-Status: implemented; focused automated checks passed. Production-browser
-acceptance and final private regression-archive verification remain pending.
+Status: implemented. Focused automated checks, actual production-browser
+synthetic review and private regression-archive readback passed.
 Product remains 0.6-dev on `codex/terminal-mvp`. This slice improves the existing
 Results saved-run comparison, preserving its metrics and export selection.
 Existing Lab batch comparisons, names/notes and equity overlays remain available.
@@ -79,6 +79,72 @@ Focused evidence: 23 new backend tests plus two existing archive/comparison
 regressions passed; 11 new frontend tests plus 19 existing neighboring tests passed.
 TypeScript (including the external frontend file) and production build passed,
 with the existing bundle-size advisory. New tests remain untracked and external
-to this checkpoint; the final private archive is required to reproduce them.
-Browser, Windows/native, providers, full-product regression and remote CI are not
-established by these focused checks. Product remains 0.6-dev.
+to this checkpoint; the private archive below is required to reproduce them. Browser evidence is
+separate below. Windows/native, providers, full-product regression and remote CI
+are not established by these focused checks. Product remains 0.6-dev.
+
+## Final acceptance — 2026-10-12
+
+Own-cloud Chromium reviewed the real production App/Service on four isolated,
+explicitly synthetic saved runs. Two identical inputs showed 21 matched and seven
+unknown conditions; different normalized candles/commission assumptions plus a
+legacy-shaped candle-free record showed three different, 12 unknown and 13 matched.
+The missing legacy fingerprint did not hide a conflict between the other runs.
+Original net PnL/fees stayed 97.9/2.10 and 145.7/4.30 USDT for the two synthetic
+variants, with no recalculation during comparison. These are fixtures, not market
+results or profitability evidence. The legacy-shaped record is deliberately
+constructed compatibility evidence, not an authentic old-owner database/archive.
+
+Actual Cancel/retry, disabled repeat submission, selection change and report
+switch while a read was delayed rejected obsolete responses. Reload retained all
+saved runs; transient checkbox selection reset and could be selected again.
+This slice does not persist arbitrary comparison selections. Normal 1180-pixel
+and 150%-zoom 787-pixel viewports kept comparison/disclosure controls reachable
+without body overflow; normal zoom was restored. A production screenshot was
+captured. Ten original snapshot/result/dataset JSON artifacts remained unchanged.
+Eight comparison reads invoked no execution, provider, PAPER/order or notification
+routes. The owned service was explicitly stopped and owned tabs were closed.
+
+The UI intentionally separates recorded graph evaluation endpoints from a verified
+readiness boundary. It cannot establish actual whole-strategy warmup completion,
+continuous evaluation, provider authenticity, or absent old currency/venue fields.
+No new runtime evidence is invented or backfilled. Matching full-dataset content
+may include warmup/unused suffix; a differing hash does not locate the difference
+inside the evaluated period. Existing Lab batch overlays/names/notes are unchanged.
+
+## Private regression archive and reproduction
+
+Archive: `TradingTerminal_comparability_tests_2026-10-12_5414820.zip`.
+Size: 22,471 bytes. SHA-256:
+`1f93e87893e87feeeb5422378557b4ea4cf424da699620a46e954900a1db720d`.
+It is stored owner-only, unshared, in the owner's existing private research folder.
+Downloaded bytes matched exactly, ZIP CRC passed, and all 205 runtime fingerprints
+plus both complete test-file hashes matched source commit
+`5414820db1aabd262ef7946d039534c6f0d47874` (tree
+`878afc953969eb9ea8834196c85415a444b4ccca`). The final documentation checkpoint
+must preserve this exact runtime map.
+
+The five archive entries are `tests/test_backtest_comparability.py`,
+`frontend/src/BacktestComparability.test.tsx`, an additive `test-changes.patch`,
+`manifest.json` and `README.md`. They contain no databases, raw market datasets,
+credentials, user data or browser state. Existing Git tests remain unchanged.
+Checkout/CI does not automatically include these 23 backend and 11 frontend tests.
+
+In an isolated checkout at the source commit, verify manifest source/test hashes,
+back up local edits, run `git apply --check test-changes.patch`, then `git apply`
+only if the check succeeds. The patch check passed against an isolated source
+checkout. Do not force a mismatch. Verify installed test hashes before running:
+
+```sh
+PYTHONPATH=.:tests .venv/bin/python -m unittest -v tests.test_backtest_comparability tests.test_archives.ArchiveTests.test_comparison_exposes_changed_costs_strategy_data_and_runtime_contracts tests.test_archives.ArchiveTests.test_roundtrip_preserves_metrics_but_never_bundles_history_or_overwrites_runs
+node node_modules/vitest/vitest.mjs run frontend/src/BacktestComparability.test.tsx frontend/src/ComparisonPanel.test.tsx frontend/src/SavedReview.test.tsx frontend/src/App.test.tsx
+node node_modules/typescript/bin/tsc --noEmit
+node scripts/frontend.mjs build
+```
+
+The measured backend file ran externally as `test_backtest_comparability` via
+PYTHONPATH; the installed command above is equivalent. Exact commands/durations
+and environment are retained in the archive. CPython 3.12.14 and Node 24.19.0 were
+used with hash-pinned Linux binaries and frozen frontend dependencies; actual pnpm
+was 11.25.0. No lockfile/dependency changes were introduced. Remote implementation
+commit had no reported statuses or workflow runs; local passes do not imply CI.
