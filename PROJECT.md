@@ -1,5 +1,14 @@
 # Trading Terminal product specification
 
+## Saved backtest comparability extension — 2026-10-12
+
+The owner approved a bounded read-only review of saved comparison conditions:
+data/content/coverage, declared and recorded periods, capital, costs and execution
+contracts. Missing historical evidence stays unknown. Preserve saved results and
+existing metrics; do not rerun, reprice, rank or infer equivalence. See the
+[comparability acceptance record](docs/BACKTEST_COMPARABILITY.md). Arbitrary new
+saved-comparison workflows, merge and release remain later scope.
+
 ## Saved backtest trade review extension — 2026-10-12
 
 The authorized development continuation improves the existing saved Results

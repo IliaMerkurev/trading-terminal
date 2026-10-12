@@ -27,7 +27,19 @@ Recovered pane/alert/agreement/history scope is recorded in
 Recovery reconstructed documented behavior; it does not establish byte identity
 with unavailable former source or compatibility with unavailable old databases.
 
-## Latest bounded slice: saved trade review
+## Current bounded slice: saved comparison conditions
+
+The Results comparison now has condition-specific matched/different/unknown
+evidence, separate from outcomes and raw metadata differences. Missing currency,
+venue, execution resolution and actual readiness remain unknown. Saved content
+fingerprints and coverage do not authenticate providers or current cache.
+Cancellation, retry, selection/report changes and obsolete replies are fenced.
+
+Focused checks establish 25 backend and 30 frontend passes, TypeScript and build.
+The new 23-backend/11-frontend tests are external to Git; final private archive and
+actual-browser acceptance remain pending. See [comparability acceptance](BACKTEST_COMPARABILITY.md).
+
+## Preserved bounded slice: saved trade review
 
 Selecting a saved trade opens one inspector beside the existing recorded chart.
 It shows exact saved gross PnL, fees, signed funding and net PnL; first-entry and
