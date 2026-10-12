@@ -649,3 +649,27 @@ See [ADR 0054](docs/adr/0054-compatible-chart-pane-layout.md). This reconstructe
 implementation does not establish byte identity with unavailable historical
 source or compatibility with unavailable old databases. Platform, actual-browser
 and owner acceptance are recorded separately from focused automated checks.
+
+### Later authorized frozen local indicator alerts — core restoration
+
+Restore local indicator rules with exact source/market/symbol/native interval,
+frozen normalized formula parameters and saved seed origins. Supported bounded
+expressions are level states, causal crossings and confirmed VMC B divergences,
+with 1–16 conditions in one same-close ALL/ANY group. Preserve unknown states;
+state-only rules emit on consecutive known false → true, never initial or
+unknown → true. Saved rules have no fixed count quota; serialized definition,
+active-set and computation resource budgets remain explicit.
+
+Frozen calculations survive hiding/deleting graph originals. Changed surviving
+parameters require explicit reviewed paused rebind. Rules are saved paused and
+startup never restores monitoring. Local immutable event evidence and cursor
+advance must be atomic and deduplicated, with exact raw-open/confirmed-close/
+pivot clocks and separate observation time. Read state and recoverable rule
+Trash/Restore are durable. No strategy conversion, new formulas, providers,
+orders, PAPER or external notification is part of this restoration.
+
+The current checkpoint implements only the pure core/storage, not runtime,
+Service, UI or historical scan delivery. [ADR 0055](docs/adr/0055-frozen-local-indicator-alert-core.md)
+records its precise scope and remaining obligations. Original old-alert schema
+compatibility is unverified because authentic fixtures are unavailable. Product
+remains 0.6-dev; implementation does not establish release or owner acceptance.

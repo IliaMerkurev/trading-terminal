@@ -909,3 +909,26 @@ node scripts/frontend.mjs build
 Reuse valid passing evidence rather than rerunning the suite after docs changes.
 Offline real-formula actual-App geometry checks, native/Windows verification and
 live-provider checks are separate gates; do not present DOM mocks as those gates.
+
+
+## Frozen indicator-alert core checkpoint (ADR 0055)
+
+The pure `terminal.indicator_alerts` and durable `indicator_alert_store` modules
+are not yet Service or Market UI routes. Do not infer a live monitor from a
+saved rule or cursor. Store startup invalidates previous tokens. The runtime
+must own explicit reviewed Arm, complete active-set byte admission, observed
+receipt provenance/freshness and context/generation fencing. Never send old
+replay hits during baseline creation. Pure replay and historical research must
+share the same transition/evidence contract; observation time belongs only to
+actual live receipt commits.
+
+Focused isolated verification:
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest tests.test_indicator_alerts tests.test_indicator_alert_store tests.test_display_indicators tests.test_vumanchu_display_events -v
+```
+
+See [ADR 0055](adr/0055-frozen-local-indicator-alert-core.md) for exact APIs,
+strict JSON/semantic units, close/pivot clocks, resource estimates and remaining
+integration gates. Use synthetic isolated databases; the absent historical alert
+schema is not a license to fabricate compatibility claims or alter user data.

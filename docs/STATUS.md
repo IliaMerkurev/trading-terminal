@@ -59,6 +59,38 @@ Actual production-browser geometry and interaction, independent frozen-checkpoin
 challenges, Windows/native, live Bybit/OKX and owner-led unaided acceptance remain
 separate gates. No provider acquisition, PAPER/order action, new dependency,
 product version, publication, release or main merge is implied by this checkpoint.
+## Frozen local indicator-alert core recovery — 2026-10-12
+
+Partial restoration only: strict frozen definitions, existing-formula causal
+replay, three-state state/impulse semantics and additive durable rule/event
+storage are implemented. Rules capture exact source/native interval, normalized
+parameters, seed origins and formula contracts. Event evidence preserves exact
+confirmed close versus raw open/pivot clocks, and atomically commits with its
+cursor. Stored rules have no automatically restored armed state. Saved rules
+have no count quota; definition/active-set byte and replay work budgets remain.
+See [ADR 0055](adr/0055-frozen-local-indicator-alert-core.md) for the API,
+truth semantics, schema and integration obligations.
+
+The focused synthetic Linux pass ran 44 tests successfully in 3.439 seconds:
+17 new core tests, 8 new storage tests and 19 existing display/event regressions.
+It covers a transaction failure injected between event insertion and cursor
+advance, cross-Arm deduplication, restart token fencing, exact SMA equality
+crossing evidence, VMC pivot+2 and future-input independence. A follow-up resource
+preflight test passed after combining formula/evidence estimates; the bounded
+validation correction also rejects huge integers before existing formula
+parameter validation. The corrected 26-test core/storage pass passed in 0.277 seconds (18 core and
+8 storage tests), giving 45 distinct passing tests with unchanged regressions
+reused. No broad suite was rerun.
+These are isolated core tests, not a product-wide regression or remote CI pass.
+
+No Service/runtime/UI/history integration is added in this checkpoint. Actual
+Market receipts, async lifecycle, explicit Arm review, cache-only admission,
+UI uncertain-response handling and event/history viewers remain unimplemented.
+No original missing source or old-alert schema compatibility is claimed. The
+new synthetic additive-table test preserves unrelated workspace records; it
+is not a migration test against an authentic previous alert database. Product
+remains 0.6-dev; no provider/order/PAPER action, dependency, strategy conversion,
+release or native/Windows acceptance is included.
 
 ## Named indicator preset candidate — 2026-10-11
 
