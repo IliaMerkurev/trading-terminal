@@ -349,3 +349,26 @@ shared-manifest/threshold portions of AGREEMENT-01 through AGREEMENT-03. It does
 not establish the current-summary UI, accepted-response provenance/freshness
 fences, frozen agreement-rule integration, historical timeline or notifications.
 Those remain pending under the completeness ledger. Contract: ADR 0057.
+## Reconstructed cache-only historical research: independent acceptance
+
+Source checkpoint: `32f8e3db4ca3ea6c21d98bce08f73c71a2d7d9ff`, tree
+`b28f148bda1620142dfc18751a1b45475ff48ed1`. Integrated source
+`40eef0a267339207d6ba249a154e3119bd4f32f1` has the identical tree. Eight
+independent actual-Service scenarios passed on the frozen checkpoint in 5.231s.
+The retained test `tests/test_history_independent.py` also passed its portability
+run (eight tests, 5.222s). The final missing-target assertions were then retained
+and their affected test passed separately. These are the same eight scenarios,
+not additional coverage.
+
+| Criteria | Independently challenged behavior | Limit |
+| --- | --- | --- |
+| HISTORY-01, 03, 08, 10 | Independent 362-row SMA(2) tape yields 360 known rows, two unknown rows and exactly 60 crossings. Three pages contain twenty hits each, with independently derived raw-open/confirmation-close times and SMA values. | Synthetic local inputs, not an original saved dataset. |
+| HISTORY-01, 07 | Raw candles, calculated values and frozen rule identity remain identical after current cache replacement, current rule rename and clean Service restart. | Authentic old-format run migration remains unverified. |
+| HISTORY-05 | Identical request-ID/content returns the same durable run; different content rejects; unknown readback is read-only. | Lost-response frontend reconciliation is a later UI gate. |
+| HISTORY-03, 04 | Later Start cannot evade the 10,000 full-origin input budget or hide an early cache gap; ninth unfinished job rejects. | The 256 MiB estimate is also reviewed/author-tested, not a measured memory benchmark here. |
+| HISTORY-08, 09 | Forced byte-shortening before a selected target returns the actual last-row cursor and truthful target-omitted state. Exact-row fallback reaches the precise raw candle; next page starts at the actual next index. | Real chart rendering and target navigation are later GUI gates. |
+| EVIDENCE-01–03, HISTORY-07 | Historical reads/scans leave live cursor, journal evidence, unread state and banner claim unchanged. Current-cache OHLC may differ, while original condition evidence remains authoritative. Missing exact target is visible and never replaced with a nearby candle. | Does not yet test frontend draft/layout isolation. |
+| HISTORY-05, 06 | Running cancellation remains pending until the worker clears it; queued cancellation is terminal. Cancelled results survive restart. | Frontend late-poll cancellation handling is still pending. |
+| HISTORY-05, REGRESSION safety | Deliberately blocked shutdown retains dependent services and worker ownership, marks the scan interrupted and preserves that state after restart without automatic resume. | Tests use bounded controlled worker delays. |
+
+All provider, PAPER/order and external-notification guards remained zero in these independent Service tests. This backend checkpoint does not complete historical date-field behavior, compact hit-list layout, detached chart rendering, or agreement-history integration. No original-byte or old-database compatibility claim is made.

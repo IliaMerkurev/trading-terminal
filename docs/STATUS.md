@@ -4248,3 +4248,44 @@ not integrated by this milestone. There are no formula, provider, PAPER, order,
 strategy, dependency or product-version changes. Windows/native, live-provider,
 owner acceptance, packaging and release are not established by this pure-core
 checkpoint.
+
+## Cached frozen-rule research and original event evidence backend — 2026-10-12
+
+Implemented bounded asynchronous cache-only research using the published frozen
+alert replay and existing display formulas. Admission atomically freezes the
+chosen rule revision, complete raw origin-to-End prefix and durable request
+identity. Completed output retains all per-close values and evidence, including
+pre-range rows, across cache/rule/settings changes and restart. Eight-unfinished,
+10,000 full-origin raw input, conservative 256 MiB work, 256 KiB definition and
+600 KiB response budgets fail visibly; no fill, fetch, reseed or truncation is
+performed. Cancellation/interruption never claims completed coverage or resumes.
+Saved runs/matches are paged at 20, chart windows at 200 plus bytes, with all-window
+markers, truthful cursors/target metadata and exact-row fallback.
+
+A separate original-event evidence route preserves immutable event numbers and
+frozen conditions as authoritative, and explicitly labels adjacent price candles
+as current cache that may have changed. Missing/unconfirmed/conflicting exact
+confirmation targets remain explicit. Neither viewer nor research mutates live
+journal, cursor, unread/banner, Market context or Arm state. See
+[ADR 0058](adr/0058-cache-only-alert-history-evidence.md) and the
+[Service API](ALERT_HISTORY_API.md).
+
+Focused synthetic Linux evidence:
+
+- First pass: 64 of 65 tests passed in 19.195s across new history (17), frozen core
+  (18), durable alert storage (8) and actual-Service runtime (22). The one failure
+  was a new test inspecting `state` rather than the published runtime `phase`;
+  its numerical/history assertions had passed. All 48 existing regressions passed.
+- The bounded correction fixes that test and names coverage explicitly as
+  pre-range rows versus requested initial/unknown observations. Additional
+  independent-value checks cover default replay byte parity, original VMC
+  confirmation versus pivot navigation, and all 150 expected large-fixture hits.
+- Final corrected history pass: 20/20 tests passed in 7.893s. Together with the
+  48 unchanged passing core/storage/runtime checks, 68 distinct tests passed;
+  repeated overlap is not added twice. Independent immutable acceptance remains
+  a separate gate. No broad product suite or frontend build is implied.
+
+Backend only: no frontend edits, agreement-condition/history integration,
+strategy conversion, provider/PAPER/order action, new dependency, version bump,
+release or main merge. Actual GUI, old-database interoperability, Windows/native,
+live-provider and owner acceptance remain unverified by this checkpoint.

@@ -676,3 +676,28 @@ records core semantics; [ADR 0056](docs/adr/0056-passive-local-alert-runtime.md)
 records the bounded runtime and [Service contract](docs/ALERT_RUNTIME_API.md). Original old-alert schema
 compatibility is unverified because authentic fixtures are unavailable. Product
 remains 0.6-dev; implementation does not establish release or owner acceptance.
+
+### Later authorized cached alert-history and evidence backend restoration
+
+Provide asynchronous durable scans of a reviewed frozen alert revision over an
+inclusive UTC confirmed-close range. Snapshot the complete contiguous confirmed
+raw cache from the frozen origin through End, replay all pre-range warmup through
+the existing formulas, and persist per-close values/evidence. No provider fetch,
+reseed, gap fill, truncation or alternate formula engine is allowed. Preserve
+immutable completed rule/raw/value snapshots across edits and restart; expose
+unknown values separately from false. Limit full-origin work to 10,000 raw rows
+and an estimated 256 MiB, eight unfinished jobs, and existing definition/response
+byte guards. Cancellation/interruption never claims complete coverage or resumes
+automatically. Durable request identities permit read-only lost-reply recovery.
+
+Keep saved runs/matches paged at 20 and chart windows at most 200 plus bytes;
+markers include all matches in the displayed window. Exact close/raw-open lookup
+must never substitute a nearby candle, and byte-shortened navigation discloses
+an omitted target with an exact fallback. Original event evidence remains
+immutable and authoritative, with separately labeled current-cache price context
+and explicit missing/unconfirmed target states. Reads and scans do not alter
+Market, Arm, cursor, live journal, unread state or banner claims. See
+[ADR 0058](docs/adr/0058-cache-only-alert-history-evidence.md) and the
+[Service API](docs/ALERT_HISTORY_API.md). Frontend and agreement-condition/history
+integration remain separately scoped; no old-schema, Windows or live-provider
+acceptance is implied by this reconstructed backend.

@@ -321,26 +321,35 @@ def _tape(candles, definition):
         expected += width
 
 
-def replay(definition, candles, cancel=None):
+def working_estimate(definition, count, *, include_values=False):
+    # Includes the row/condition dictionaries and copied hit evidence, beyond
+    # the display engine's separate formula-array preflight. No silent trimming.
+    estimated = count * (4096 + 4096 * len(definition['conditions']))
+    for item in definition['instances']:
+        ports = len(port_units(item['type']))
+        event_slots = 12 if item['type'] == 'vmc_cipher_b' else 8 if item['type'] == 'vmc_cipher_a' else 1 if item['type'] == 'vmc_swing' else 0
+        estimated += count * (ports * 80 + event_slots * 1024)
+        estimated += 4096 + sum(value * 48 for key, value in item['params'].items()
+            if type(value) is int and key not in ('anchor', 'flow_multiplier', 'flow_offset'))
+    if include_values:
+        estimated += count * (2048 + sum(512 + 160 * len(port_units(item['type'])) for item in definition['instances']))
+    if estimated > 256 * 1024 * 1024:
+        raise ValueError('Alert evidence exceeds the estimated 256 MiB working resource budget')
+    return estimated
+
+
+def replay(definition, candles, cancel=None, *, include_values=False):
     """Replay one frozen full-origin tape, returning every close and hit evidence.
 
     No observed_at is fabricated here. A runtime must seed its arm baseline from
     the last row without delivering historical hits, then accept only observed
     subsequent native closes. A historical scan consumes the same rows unchanged.
     """
+    if type(include_values) is not bool:
+        raise ValueError('Invalid replay value snapshot option')
     definition = validate_definition(definition)
     _tape(candles, definition)
-    # Includes the row/condition dictionaries and copied hit evidence, beyond
-    # the display engine's separate formula-array preflight. No silent trimming.
-    estimated = len(candles) * (4096 + 4096 * len(definition['conditions']))
-    for item in definition['instances']:
-        ports = len(port_units(item['type']))
-        event_slots = 12 if item['type'] == 'vmc_cipher_b' else 8 if item['type'] == 'vmc_cipher_a' else 1 if item['type'] == 'vmc_swing' else 0
-        estimated += len(candles) * (ports * 80 + event_slots * 1024)
-        estimated += 4096 + sum(value * 48 for key, value in item['params'].items()
-            if type(value) is int and key not in ('anchor', 'flow_multiplier', 'flow_offset'))
-    if estimated > 256 * 1024 * 1024:
-        raise ValueError('Alert evidence exceeds the estimated 256 MiB working resource budget')
+    working_estimate(definition, len(candles), include_values=include_values)
     minutes = definition['context']['minutes']
     instances = [dict(id=item['id'], type=item['type'], params=item['params'], visible=True, color='#ffffff') for item in definition['instances']]
     result = display.calculate(candles, instances, minutes, candles[0]['time'], candles[-1]['time'], cancel)
@@ -393,6 +402,9 @@ def replay(definition, candles, cancel=None):
             evidence.append(item)
         state = transition(evidence, definition['combine'], previous_truth, previous_state_truth)
         row = dict(raw_open_time=candle['time'], confirmed_at=confirmed, conditions=evidence, **state)
+        if include_values:
+            row['values'] = {ident: {port: values[positions[confirmed]] for port, values in ports.items()}
+                             for ident, ports in result['columns'].items()}
         rows.append(row)
         if row['hit']:
             hits.append(copy.deepcopy(row))

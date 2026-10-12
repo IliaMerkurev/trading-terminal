@@ -38,6 +38,8 @@ class AppService:
         self.chart_presets=ChartPresets(self.display_indicators)
         from terminal.indicator_alert_runtime import IndicatorAlertRuntime
         self.indicator_alerts=IndicatorAlertRuntime(self.display_indicators)
+        from terminal.indicator_alert_history import IndicatorAlertHistory
+        self.indicator_history=IndicatorAlertHistory(self.indicator_alerts.store)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -97,6 +99,16 @@ class AppService:
                           observation_save_start={'request_id','expected_source','observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
             fields.update(chart_read_start={'request_id','view_id','generation','surface','query'},chart_read_status={'request_id'},chart_read_cancel={'request_id'},chart_read_activity=set(),observation_save_history=set())
             alert_fields = {
+                'alert_history_preview': ({'rule_id','revision'}, set()),
+                'alert_history_start': ({'request_id','rule_id','revision','definition_hash','start','end'}, set()),
+                'alert_history_request': ({'request_id'}, set()),
+                'alert_history_get': ({'run_id'}, set()),
+                'alert_history_cancel': ({'run_id'}, set()),
+                'alert_history_list': (set(), {'after','limit'}),
+                'alert_history_matches': ({'run_id'}, {'after','limit'}),
+                'alert_history_chart': ({'run_id'}, {'start_index','limit','target_confirmed_at'}),
+                'alert_history_row': ({'run_id'}, {'confirmed_at','raw_open_time'}),
+                'alert_event_evidence': ({'event_id'}, {'before','after'}),
                 'alert_catalog': (set(), set()),
                 'alert_request': ({'request_id'}, set()),
                 'alert_session_init': ({'session_id'}, set()),
@@ -145,6 +157,16 @@ class AppService:
             elif command in ('live_start','live_start_terminal'):result=self.live.start(**p)
             elif command in alert_fields:
                 methods = {
+                    'alert_history_preview': self.indicator_history.preview,
+                    'alert_history_start': self.indicator_history.start,
+                    'alert_history_request': self.indicator_history.request,
+                    'alert_history_get': self.indicator_history.get,
+                    'alert_history_cancel': self.indicator_history.cancel,
+                    'alert_history_list': self.indicator_history.list,
+                    'alert_history_matches': self.indicator_history.matches,
+                    'alert_history_chart': self.indicator_history.chart,
+                    'alert_history_row': self.indicator_history.row,
+                    'alert_event_evidence': self.indicator_history.event_evidence,
                     'alert_catalog': self.indicator_alerts.catalog,
                     'alert_request': self.indicator_alerts.request,
                     'alert_session_init': self.indicator_alerts.session_init,
@@ -325,6 +347,7 @@ class AppService:
             except Exception as exc:errors.append(exc)
         # A still-running alert replay retains all dependencies and workspace
         # ownership. Do not close its database/history under a timed-out worker.
+        self.indicator_history.close()
         self.indicator_alerts.close()
         attempt(self.live.close)
         attempt(self.library_batches.close)

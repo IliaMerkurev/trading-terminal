@@ -980,3 +980,30 @@ The TypeScript test includes a single local Python subprocess for complete JSON
 parity over independently expected vectors. On Windows it selects the existing
 `.venv/Scripts/python.exe`; on other systems `.venv/bin/python`. No package is
 installed and no provider, database, PAPER or order route is invoked.
+
+## Cache-only history and original evidence (ADR 0058)
+
+Use the strict [history/evidence Service API](ALERT_HISTORY_API.md). Read current
+cache tables directly for bounded snapshot/evidence reads; never call ordinary
+chart requests, which may fetch. Start's chosen revision, raw prefix and request
+identity must commit together. Replay from the frozen origin, retain per-close
+values from the existing calculator, and publish all output rows atomically.
+Keep history worker shutdown before Service dependency cleanup; retain ownership
+if joining fails. Never recalculate saved results on read or automatically resume
+an interrupted job. Never use alert session/context/Arm or journal mutations for
+a history/evidence viewer.
+
+Focused checks in the pinned local environment:
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest tests.test_indicator_alert_history tests.test_indicator_alerts tests.test_indicator_alert_store tests.test_indicator_alert_runtime -v
+```
+
+Tests use guarded actual Service instances and isolated synthetic new-schema
+databases. New-schema SQLite backup/restart tests are not evidence for unavailable
+historical schemas. Preserve default replay output and runtime event identity
+when using the optional per-close value snapshot. For later UI work, retain date
+edits over late coverage replies, preserve cancellation/request IDs until durable
+reconciliation, use actual page cursors, and request an exact row when the
+byte-shortened chart window excludes its target. Do not represent unavailable
+formula values as false or every unknown as definite initialization warmup.
