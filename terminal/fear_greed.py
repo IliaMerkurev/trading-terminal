@@ -71,7 +71,8 @@ def _fetch_child():
         record = validate(payload, time.time())
         return {'record': record}
     except HTTPError as exc:
-        return {'error': 'access', 'detail': f'Provider request rejected (HTTP {exc.code}); access may be restricted.'}
+        kind = 'access' if exc.code in (401, 403, 451) else 'rate_limit' if exc.code == 429 else 'provider'
+        return {'error': kind, 'detail': f'Provider request failed (HTTP {exc.code}).'}
     except (URLError, OSError):
         return {'error': 'offline', 'detail': 'Could not reach Alternative.me. Check network or provider access.'}
     except (ValueError, TypeError, UnicodeError):
@@ -172,8 +173,10 @@ class FearGreed:
             if not isinstance(result, dict):
                 raise ValueError('Invalid worker result')
             if result.get('error'):
-                error = result['error'] if result['error'] in ('access', 'offline', 'invalid') else 'invalid'
-                details = {'access': 'Alternative.me access was rejected; network or provider restrictions may apply.',
+                error = result['error'] if result['error'] in ('access', 'offline', 'invalid', 'provider', 'rate_limit') else 'invalid'
+                details = {'provider': 'Alternative.me could not supply an update; try again later.',
+                           'rate_limit': 'Alternative.me rate-limited this request; the next automatic attempt is in one hour.',
+                           'access': 'Alternative.me access was rejected; network or provider restrictions may apply.',
                            'offline': 'Could not reach Alternative.me; last saved value retained when available.',
                            'invalid': 'Alternative.me returned no valid latest value.'}
                 with self.lock:

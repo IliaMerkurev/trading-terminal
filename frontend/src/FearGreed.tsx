@@ -27,16 +27,19 @@ export default function FearGreed({active}:{active:boolean}) {
  const [state,setState]=useState<Snapshot>(empty),[request,setRequest]=useState(0),[clock,setClock]=useState(Date.now());
  const [collapsed,setCollapsed]=useState(()=>{try{return localStorage.getItem(preference)==='true';}catch{return false;}});
  const [preferenceError,setPreferenceError]=useState(false);
+ const [pending,setPending]=useState(false),[refreshReadyAt,setRefreshReadyAt]=useState(0);
  const id=useId(),manualSeen=useRef(0);
  useEffect(()=>{
   if(!active)return;
+  setClock(Date.now());
   let gone=false,polls=0,timer:ReturnType<typeof setTimeout>|undefined;
   const controller=new AbortController();
   async function read(refresh=false){
+   setPending(true);
    try{
     const next=snapshot(await api('fear_greed_status',{refresh},{signal:controller.signal}));
     if(gone)return;
-    setState(next);setClock(Date.now());
+    setState(next);setClock(Date.now());setRefreshReadyAt(Date.now()+next.refresh_after*1000);
     // Short bounded local status reads observe one background fetch; they do
     // not initiate repeated external requests. Stable values sleep until due.
     if(next.loading&&++polls<=24)timer=setTimeout(()=>read(),500);
@@ -48,7 +51,7 @@ export default function FearGreed({active}:{active:boolean}) {
     if(gone)return;
     setState(previous=>({...previous,loading:false,error:{kind:'offline',detail:'Sentiment service is unavailable. Last received value retained when available.'}}));
     setClock(Date.now());timer=setTimeout(()=>read(),3600000);
-   }
+   }finally{if(!gone)setPending(false);}
   }
   const manual=request> manualSeen.current;manualSeen.current=request;read(manual);
   return()=>{gone=true;controller.abort();clearTimeout(timer);};
@@ -58,11 +61,15 @@ export default function FearGreed({active}:{active:boolean}) {
  useEffect(()=>{
   if(!active||!record)return;
   const boundary=Math.min(record.next_update_at+301,record.timestamp+36*3600+1)*1000;
-  if(boundary<=Date.now())return;
+  if(boundary<=Date.now()){setClock(Date.now());return;}
   const timer=setTimeout(()=>setClock(Date.now()),boundary-Date.now());return()=>clearTimeout(timer);
  },[active,record]);
+ useEffect(()=>{
+  if(!active||refreshReadyAt<=Date.now())return;
+  const timer=setTimeout(()=>setClock(Date.now()),refreshReadyAt-Date.now());return()=>clearTimeout(timer);
+ },[active,refreshReadyAt]);
  const date=record?new Date(record.timestamp*1000).toISOString().slice(0,10):'No dated value';
- const status=!active?'Paused':state.closed?'Service stopped':state.loading?'Updating…':state.error?(state.error.kind==='invalid'?(record?'Saved · invalid update':'Invalid data'):state.error.kind==='access'?(record?'Saved · access blocked':'Access blocked'):(record?'Saved · offline':'Unavailable')):outdated?'Outdated':record?'Latest available':'No data';
+ const status=!active?'Paused':state.closed?'Service stopped':state.loading?'Updating…':state.error?(state.error.kind==='invalid'?(record?'Saved · invalid update':'Invalid data'):state.error.kind==='access'?(record?'Saved · access blocked':'Access blocked'):['provider','rate_limit'].includes(state.error.kind)?(record?'Saved · update failed':'Provider unavailable'):(record?'Saved · offline':'Unavailable')):outdated?'Outdated':record?'Latest available':'No data';
  const color=record?(colors[record.category]??'#a2b5c5'):'#637284';
  const angle=record?Math.PI*(1-record.value/100):0;
  const needle=record?{x:90+55*Math.cos(angle),y:78-55*Math.sin(angle)}:null;
@@ -86,7 +93,7 @@ export default function FearGreed({active}:{active:boolean}) {
   <div className="fear-greed-date">{record?'Value date: ':''}<time dateTime={record?new Date(record.timestamp*1000).toISOString():undefined}>{date}</time>{record?' UTC':''}</div>
   <div className="fear-greed-status" role="status">{status}{outdated&&status!=='Outdated'?' · outdated':''}</div>
   <a href={source} target="_blank" rel="noopener noreferrer">Source: Alternative.me ↗</a>
-  {!collapsed&&<><small>BTC sentiment, independent of chart history.</small>{state.error&&<small>{state.error.detail}</small>}{state.cache_warning&&<small>{state.cache_warning}</small>}{!state.loading&&(state.error||outdated)&&<button type="button" className="fear-greed-retry" disabled={!active||state.closed} onClick={()=>setRequest(v=>v+1)}>Check for update</button>}</>}
+  {!collapsed&&<><small>BTC sentiment, independent of chart history.</small>{state.error&&<small>{state.error.detail}</small>}{state.cache_warning&&<small>{state.cache_warning}</small>}{!state.loading&&(state.error||outdated)&&<button type="button" className="fear-greed-retry" disabled={!active||state.closed||pending||clock<refreshReadyAt} onClick={()=>{setPending(true);setRequest(v=>v+1);}}>{pending?'Checking…':clock<refreshReadyAt?'Retry shortly':'Check for update'}</button>}</>}
   {preferenceError&&<small>Collapse preference could not be saved.</small>}
  </aside>;
 }

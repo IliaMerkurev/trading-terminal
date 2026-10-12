@@ -74,5 +74,16 @@ endpoint in the external test patch; tracked repository tests remain unchanged.
 The existing bundle-size advisory remains. The application fetch worker obtained
 69 / Greed, source date 2026-10-12, from the real endpoint in the own-cloud runtime;
 an earlier request was temporarily unreachable. This is not a provider uptime
-or platform-wide guarantee. Actual browser acceptance and the private test
-archive are still pending at this implementation checkpoint.
+or platform-wide guarantee. Review corrections passed 18 focused backend and 12 focused frontend checks:
+HTTP 403 is distinguished from 503/429; reactivation immediately ages the date;
+manual refresh is fenced while pending and its one-minute cooldown is visible.
+These totals overlap the initial pass and are not additive unique-test totals.
+
+Actual production-browser acceptance is blocked in the current own-cloud
+control environment: Chromium cannot reach the exec-launched loopback host,
+and the documented native terminal input route does not enter commands.
+No network/security changes or alternate Chromium launch were attempted.
+No actual layout, keyboard, node-panel, narrow/focus, restart/reopen GUI or
+screenshot acceptance is claimed. The in-flow gauge reserves its own layout
+space before the plot; its actual visual fit still needs inspection. The private
+version-linked test archive is pending at this checkpoint.

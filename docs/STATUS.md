@@ -27,45 +27,37 @@ Recovered pane/alert/agreement/history scope is recorded in
 Recovery reconstructed documented behavior; it does not establish byte identity
 with unavailable former source or compatibility with unavailable old databases.
 
-## Current bounded slice: saved comparison conditions
+## Current bounded slice: latest daily BTC sentiment
 
-The existing Results comparison now reviews 28 saved conditions across Data,
-Period, Capital and Costs & execution, separately from outcomes and raw metadata
-changes. Each condition is matched, different or unknown with per-run evidence.
-Missing currency, venue, execution resolution and actual readiness stay unknown.
-No overall equivalence/ranking verdict, rerun, repricing or current-cache lookup
-is introduced. Existing Lab batch overlays and comparison names/notes remain.
+Market now includes a small collapsible Fear & Greed semicircle with a latest
+BTC/daily label, exact UTC source date and adjacent Alternative.me attribution.
+A separate bounded fetch worker/cache never changes chart prices, strategies,
+backtests, alerts or agreement. Invalid/future data is rejected; offline/invalid/
+outdated states preserve only dated last-good data. See [display contract and
+acceptance](FEAR_GREED.md) for schedules, cancellation and cache boundaries.
 
-The recorded graph trace uses two indexed archived endpoints and does not prove
-warmup completion or continuous evaluation. Dataset hashes cover full normalized
-trade/mark/funding inputs, potentially beyond the evaluation window. Provider
-claims are not authenticated. Malformed, unsupported or inconsistent evidence is
-unknown. Raw detail is bounded; request cancellation, retry, selection/report
-changes and obsolete replies are fenced. See [comparability acceptance](BACKTEST_COMPARABILITY.md).
+Focused verification passed 22 backend and 50 frontend checks initially, followed
+by 18 backend and 12 frontend checks for review corrections (overlapping totals),
+TypeScript and production build. The application worker also obtained the actual
+provider value 69 / Greed, source date 2026-10-12. Runtime availability is not an
+uptime guarantee. The existing bundle-size advisory remains.
 
-### Latest verification
+Actual production-browser visual/keyboard/layout acceptance is blocked by the
+current own-cloud control route. No screenshot, Windows/native, full-product or
+owner acceptance is claimed. New/modified tests remain outside Git; the private
+version-linked archive and final remote verification are pending at this point.
 
-Focused checks passed **25 backend** (23 new plus two archive regressions) and
-**30 frontend** (11 new plus 19 neighboring checks), TypeScript and production
-build. Independent semantic review led to exact bounded decimal comparison and
-stricter legacy coverage/type validation. The existing bundle-size advisory remains.
+## Preserved saved comparison conditions
 
-New tests are in an owner-only private Drive archive, with full files, additive
-patch, commands/results and 205 runtime hashes tied to implementation `5414820`.
-Downloaded bytes/CRC, source/test hashes, privacy and isolated `git apply --check`
-passed. Existing Git tests are unchanged; the archive is required for this coverage.
-
-Actual own-cloud production-browser synthetic checks passed matched/different/
-unknown, incomplete legacy-shaped evidence, Cancel/retry, repeated-click blocking,
-stale selection/report changes and reload. Saved reports persisted; transient
-checkbox selection reset normally. Normal 1180px and 150%-zoom 787px layouts kept
-controls reachable without body overflow. Ten saved JSON artifacts stayed unchanged;
-no comparison started execution, acquisition, trading or notifications. Owned QA
-service/tabs were closed, zoom restored, and one real screenshot was captured.
-
-No Windows/native, live-provider, authentic old-owner database/archive, full-product
-regression or owner acceptance is established. No CI statuses/workflow runs were
-reported for the implementation commit. Final docs retain the tested runtime map.
+Results retains a 28-condition read-only review of saved Data, Period, Capital
+and Costs & execution, with matched/different/unknown per-run evidence. It does
+not rerun, reprice or rank results; missing historical evidence remains unknown.
+The prior comparability acceptance passed 25 backend and 30 frontend checks,
+TypeScript/build and actual own-cloud synthetic production-browser checks. These
+are historical counts, not newly rerun totals. Its separate owner-only regression
+archive is required to reproduce that coverage; tracked tests remain unchanged.
+See [comparability acceptance](BACKTEST_COMPARABILITY.md) for all source-evidence,
+clock, provider-authentication, archive and platform limitations.
 
 ## Preserved saved trade review
 
