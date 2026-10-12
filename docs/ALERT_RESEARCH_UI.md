@@ -4,7 +4,7 @@ This 0.6-dev interface uses only the published
 [historical research and evidence API](ALERT_HISTORY_API.md). It introduces no
 provider acquisition, formula engine, dependency, strategy conversion, order,
 PAPER or external notification. A match is not a trade, backtest or profitability
-estimate. Agreement conditions and a full agreement timeline are separate scope.
+estimate. Agreement state evidence uses the same immutable research routes.
 
 ## Scan a frozen rule
 
@@ -108,3 +108,28 @@ Strategy archive export does not export these records. Compatibility with an
 unavailable older research database remains unverified; new-schema checks do not
 prove it. Component mocks, actual-browser checks, native Windows, live providers,
 remote CI and owner acceptance are separately recorded evidence.
+
+
+## Four-lane saved agreement timeline (ADR 0062)
+
+Choose a saved agreement condition to inspect Overall, Trend, Momentum and Volume
+lanes. Up/Down/Neutral distributions come directly from saved evidence; striped ?
+is unavailable/Unknown, never neutral. A separate state row shows T/F/?, gold ●
+for a new rule match and orange ◆ for opposing-group-majority conflict. Conflict
+is independent of a match, and sustained True does not imply a new event.
+
+Select any lane cell or use Select exact saved candle, including nonhits. Previous
+candle and Next candle target the exact native close across windows. Chart paging
+uses the actual byte-shortened next index; match pages remain independently bounded
+at 20. Missing/oversized exact evidence stays visible and is never substituted.
+The unchanged price chart uses saved raw candles and saved lower-pane port values.
+
+Selected-row evidence shows exact raw OPEN/confirmed CLOSE/native interval, exact
+fractions, the complete saved threshold verdict, coverage and group distributions.
+Initially collapsed details contain types, variants, member statuses, normalized
+parameters, consumed values, reasons, exclusions and contract hashes. All agreement
+and generic conditions remain available even when the timeline selector changes.
+No frontend evaluator or current-panel value supplies historical evidence. Later
+Market hide/remove/add/layout or rule changes cannot rewrite the result. The
+heuristic warning remains visible; original event price context keeps its separate
+current-cache warning. See [ADR 0062](adr/0062-frozen-agreement-editor-timeline.md).

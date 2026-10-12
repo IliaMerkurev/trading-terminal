@@ -4,7 +4,7 @@ This reconstructed 0.6-dev interface uses the existing strict
 [Service API](ALERT_RUNTIME_API.md) and [frozen core](adr/0055-frozen-local-indicator-alert-core.md).
 It adds no providers, formulas, dependencies, strategy conversion, orders,
 PAPER activity, system notifications, sound, email or Telegram delivery.
-Historical rule research and agreement conditions are separate milestones.
+Historical research and agreement editing are additive interfaces described below.
 
 ## Create, review and monitor
 
@@ -105,3 +105,26 @@ chart navigation and retained indicator/preset drafts. Production compilation,
 independent source challenges and actual-App synthetic GUI acceptance are recorded
 separately in STATUS and RECOVERY. No Windows/native, live Bybit/OKX, old-alert
 schema interoperability, remote CI or owner acceptance is implied.
+
+
+## Agreement state conditions (ADR 0062)
+
+Agreement appears only after the Service capability exactly matches this client's
+supported definition, manifest and semantics. A legacy or mismatched catalog
+still supports numeric/divergence conditions. Set Up/Down, a minimum fraction
+from 0 to 1 (0.7 means 70%), and optional required groups. Overall comparison is
+inclusive on unrounded shares; each required group must be strictly greater than
+50% in the chosen direction. No selected groups adds no group requirement.
+
+Preview frozen alert captures visible APPLIED supported instances on the server.
+Review the membership subset, normalized parameters, native interval, origin and
+formula/manifest contracts. Explicit numeric dependencies outside agreement are
+listed separately. Applied composition or revision changes block saving until
+Refresh applied composition, another preview and another review. Unapplied chart
+edits never affect this capture. Save alert paused and Save reviewed rebind paused
+never Arm automatically. Saved membership does not follow later hide/remove/add/
+layout edits; changed surviving parameters retain the backend's sticky rebind flag.
+
+Shares are descriptive heuristics, not probabilities, confidence or trade advice.
+See [ADR 0062](adr/0062-frozen-agreement-editor-timeline.md) and the
+[immutable history workflow](ALERT_RESEARCH_UI.md).

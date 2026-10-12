@@ -771,3 +771,21 @@ The new strict v2 definition is additive; ordinary v1 bytes/hashes/replay and th
 legacy catalog predicate list remain compatible. Agreement-specific editor and
 timeline presentation, authentic old-database compatibility, Windows/native and
 live-provider acceptance remain separate. Product version stays 0.6-dev.
+
+### Reconstructed agreement editor and immutable timeline — 2026-10-12
+
+The agreement-specific frontend extends ADR 0061 through an exact versioned
+capability gate, explicit fraction threshold and required-group editor, actual
+server preview, normalized frozen membership/contracts review and paused save.
+Applied revision/composition drift requires explicit refresh and review. Numeric
+and divergence controls and uncertain-write recovery remain supported.
+
+Historical research shows immutable overall/trend/momentum/volume distributions
+for every returned candle, including unknown, neutral, false, sustained true and
+nonhit conflict. Distinguish condition state, new rule match and opposing-group
+conflict. Multiple agreement conditions are selectable without losing generic
+condition evidence. Exact row/previous/next selection and actual byte-aware
+cursors preserve all returned candles. See [ADR 0062](docs/adr/0062-frozen-agreement-editor-timeline.md).
+No current-panel recalculation, formula engine, backend/dependency/provider,
+strategy/trading or product-version change is introduced. Actual-browser,
+Windows/native, live-provider and owner acceptance remain separate evidence.

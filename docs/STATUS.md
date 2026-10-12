@@ -4517,3 +4517,53 @@ proof of authentic old-database migration. Agreement editor/group timeline GUI,
 Windows/native, live providers, owner acceptance, full-product regression,
 remote CI, packaging and release are not established by this backend checkpoint.
 Independent immutable-checkpoint audit and publication are separately verified.
+
+## Frozen agreement editor and immutable timeline — 2026-10-12
+
+Restored the additive agreement condition editor, actual server preview and
+normalized frozen composition/contracts review. Capability matching includes
+version, definition contract, manifest, direction/group domains and exact threshold
+semantics; legacy numeric/divergence controls remain usable. Fraction threshold
+units and the literal native interval are visible. Applied revision or composition
+drift invalidates capture until explicit refresh, new preview and new review.
+Save/rebind stays paused and existing uncertain-write recovery is retained.
+
+The historical result adds selectable Overall/Trend/Momentum/Volume lanes using
+only saved agreement/threshold evidence. Unknown, neutral, condition truth, new
+match and opposing-group conflict remain distinct. Multiple agreement conditions
+have a selector, and all generic evidence remains available. Exact-candle selection
+and previous/next navigation include nonhits and retain actual byte-aware cursors,
+exact-row fallback, singleton wrapper overflow, saved raw/port chart lower panes
+and the separate original-event current-cache warning. See
+[ADR 0062](adr/0062-frozen-agreement-editor-timeline.md).
+
+Focused author verification passed on the first combined pass:
+
+- 141/141 tests in seven files: agreement capability/frozen-review, saved agreement
+  rendering, local alerts, detached research, indicator draft lifecycle, App chart
+  focus and Market navigation. This includes all 482 independent oracle rows across
+  actual shortened cursor pages, all 60 match rows across independent pages,
+  unknown/neutral/nonhit/conflict rendering, exact fractions versus rounded shares,
+  mixed conditions, stale composition, fraction validation and retained v2 create.
+- The retained research cases cover native DOM date input/blur/immediate submission,
+  per-field dirty preview, exact unknown Start, cancellation/reopen epochs and
+  StrictMode/Escape isolation. Existing local-alert cases cover uncertain create/
+  Arm, paused recovery and live context boundaries.
+- TypeScript no-emit and production Vite build passed. The existing JavaScript
+  >500 kB advisory remains; generated JavaScript is 1,057.60 kB before compression.
+- No dependency, backend, shared formula/evaluator or ResearchChart implementation
+  changed. Two shape/presentation issues found during pre-test inspection were
+  corrected: frozen formula contracts are objects and conflict uses a separate
+  orange diamond. No failed author pass or corrective suite was needed.
+
+These are synthetic component/chart-mock checks, not browser geometry or runtime
+acceptance. Independent immutable-checkpoint review, actual production-browser
+Service checks and integrated regression remain separate gates. Windows/native,
+live providers, authentic old databases, remote CI, owner acceptance and release
+are not established. Product remains 0.6-dev; no strategy conversion, order,
+PAPER, provider or external notification is added.
+
+Pinned detect-secrets 1.5.0 scanned all 17 explicit changed paths. Four findings
+in the synthetic saved-payload fixture were individually matched to the public
+manifest SHA-256 and three formula-metadata SHA-256 values. No new secret or
+unreviewed finding remains; this is not a claim of zero scanner findings.

@@ -52,8 +52,10 @@ actual-browser synthetic checks and is remotely verified at
 focused, independent component and corrected actual-browser synthetic checks;
 remote publication is verified at
 `981e06e441a2ab3a661eee5fab5c945c8d2175cb`. Frozen agreement conditions and
-complete historical evidence have passed focused and independent backend checks;
-the agreement editor and four-lane timeline remain in progress.
+complete historical evidence are remotely verified at
+`0cbeb0e6daaaa873ade1d96be97e545114b65e5c`. The agreement editor and four-lane
+timeline have passed focused, independent and actual-browser synthetic checks.
+Final combined offline regression and completeness reconciliation remain pending.
 This is not full product or owner acceptance.
 
 
@@ -618,3 +620,61 @@ hashes: two in the author v1 fixture and eleven in the independent v1 fixture
 (commit/blob identity, canonical metadata, definition and replay hashes).
 No secrets or unclassified findings were identified; this is not a zero-findings
 claim. No dependencies, licenses or product versions changed.
+### Agreement editor and saved four-lane history interface
+
+Independently tested source: `940cccd1c1f15a7c2b02857ccf429740681eaba4`, tree `4def58074b06c31399824e028c4c30bdd4261ccd`. Eight separately authored rendered/controller scenarios passed together in 1.90 seconds. The worktree's tracked source remained unchanged. Reproduce the retained pack with `node node_modules/vitest/vitest.mjs run frontend/src/agreementUiIndependent.test.tsx`.
+
+| Criteria | Fresh independent evidence | Limits |
+|---|---|---|
+| AGREEMENT-01–04 | Exact manifest capability gates agreement editing while legacy numeric controls remain available. Fraction 70 is rejected; 0.66 and selected required groups are submitted explicitly. Real backend contract objects render safely. Applied composition/revision changes discard reviewed preview and block save; explicit refresh retains authored conditions and requires a new preview/review. | Preview/save/Arm semantics also retain the earlier controller/runtime tests. No new actual-browser Arm claim at this checkpoint. |
+| AGREEMENT-05, 08 | Saved member/contract details distinguish agreement membership from other numeric dependencies. Evidence renders immutable 2/3 Up, 1/3 Down, conflict and saved truth with exact raw-open/confirmed-close/native units. | The eight-row payload shape comes from accepted backend output; numeric expectations were independently authored before integration. Current-versus-frozen arithmetic and persistence are established by the preceding backend pack. |
+| AGREEMENT-09–10 | All four lanes render. Unknown is distinguished from known neutral; nonhit rows are selectable. Exact selector, Previous/Next and raw-price target stay aligned. A next close beyond a byte-clipped page uses exact-row readback; if its chart wrapper cannot fit, the singleton exact timeline/price/evidence remains usable. | The lightweight price chart is a test probe here. Physical charts, CSS colors/markers, keyboard operation and full GUI workflow require the integrated actual-browser gate. |
+| AGREEMENT-14 | History navigation invokes only historical read routes. The interface identifies percentages as descriptive shares, with no probability or trading-advice claims. | No real provider or trading acceptance is inferred. |
+
+Review corrected two presentation details before freeze: frozen formula contracts are objects and must be serialized rather than inserted as React children; opposing-majority conflict uses an orange diamond distinct from the gold match dot. Earlier native-date and uncertain-write tests remain separate regression evidence, not duplicated in this eight-case count.
+
+Portable files: `frontend/src/agreementUiIndependent.test.tsx` and the author's identical synthetic `tests/fixtures/agreement_ui_saved.json`. Original-source identity, authentic old database compatibility, Windows and real-provider operation remain unverified.
+
+### Agreement interface: actual-browser synthetic acceptance
+
+Integrated source `9e334194f671a587a2463aa271235816f5dfb6c8` has exactly the
+same tree as independently checked `940cccd1c1f15a7c2b02857ccf429740681eaba4`.
+The retained eight-case independent harness passed again after placement, and
+TypeScript and the production build passed. The existing bundle warning remains.
+
+The actual application rejected threshold 70 in the explicitly labeled 0–1
+fraction field. A reviewed 0.66 Up condition with required Trend and Momentum
+captured visible applied members. An eight-member rule visibly failed Arm's
+256 MiB full-origin working estimate and stayed paused. Hiding and applying
+extra chart instances allowed a separate three-member SMA3/ROC1/CMF1 rule;
+the original frozen rule was unchanged. Resource limits were not weakened.
+
+The three-member rule armed from a known false baseline at 12:09 UTC. Genuine
+observed raw closes 22, 28 and 34 at 12:10, 12:11 and 12:12 produced exactly one
+agreement event at 12:10. The durable cursor reached 12:12 with a true state;
+two sustained-true closes created no repeat. Opening research did not interrupt
+monitoring. The separate four-close live-rule scan retained one match and two
+sustained-true nonhits. Current CMF hiding did not remove frozen Volume evidence.
+
+Both separately seeded SOL Up and Down research runs retained 482 rows,
+481 known, one unknown and 60 matches each. The independent arithmetic oracle
+checked all saved rows. The actual four-lane timeline distinguished unknown row
+1, false nonhit row 2, and true conflict row 3 with exact 2/3 Up and 1/3 Down.
+Paged navigation reached the last Up target at row 475 and a Down target at
+row 7. These are one-based displayed row numbers. Saved distributions, conflict,
+truth and new matches remained separate; no current-panel values replaced them.
+
+After full Service restart at 12:14:37 UTC, the live rule remained paused with
+an unknown runtime baseline. The journal retained exactly the original scalar
+event plus the new agreement event, and reopening the old Up scan retained its
+60 matches and input hash. Existing ETH/scalar evidence remained unchanged.
+Native Windows, real providers, owner-led acceptance and unavailable original
+source/database compatibility remain separate unverified limits. Final combined
+regression and the complete recovery matrix are recorded in the next checkpoint.
+
+The fixture independently verified both event hashes, existing SOL Up/Down
+saved-result hashes and ETH scan hashes unchanged through restart; all rules
+were paused. The new live-rule scan was first hashed after restart, so its claim
+is preserved GUI counts and agreement with saved live evaluations, not a measured
+before/after byte comparison. Clean shutdown completed at 12:16:05 UTC with all
+six forbidden-action guard counters zero.

@@ -1110,3 +1110,27 @@ assuming this entire command was rerun at final freeze. The checked-in v1 fixtur
 is a compatibility snapshot from the accepted reconstructed core; it is not an
 unavailable historical database or an independent formula oracle. Keep synthetic
 fault-injection databases separate from ordinary workspace data.
+
+## Agreement editor and four-lane history (ADR 0062)
+
+Use the exact Service capability and actual preview; never infer membership from
+union dependencies or re-evaluate saved evidence in the frontend. Frozen formula
+contracts are objects, so include the synthetic saved payload fixture in render
+checks. Keep native date-input, unknown-create/Start, Arm and lifecycle regressions.
+
+Focused author and nearest-critical command:
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/agreementAlert.test.tsx frontend/src/AgreementHistory.test.tsx frontend/src/IndicatorAlerts.test.tsx frontend/src/AlertResearch.test.tsx frontend/src/IndicatorDraftLifecycle.test.tsx frontend/src/AppChartFocus.test.tsx frontend/src/MarketChartNavigation.test.tsx
+node node_modules/typescript/bin/tsc --noEmit
+node scripts/frontend.mjs build
+```
+
+Actual-browser acceptance must separately inspect the four aligned lanes, compact
+scrolling, lower canvas panes and selected targets in normal/narrow/focused views.
+Run agreement research through actual synthetic Service data, inspect unknown,
+neutral, conflict, nonhit and sustained-true rows, every match/chart page, refresh
+an applied draft, and reopen frozen evidence after hiding a current member. Retain
+unapplied Market drafts and focus and verify no provider/PAPER/order activity.
+Component mocks are not proof of geometry, runtime delivery, restart durability,
+native Windows, live providers, authentic old databases or owner acceptance.
