@@ -154,24 +154,42 @@ class RunStore:
             db.execute("UPDATE runs SET status='completed',result_hash=?,summary=? WHERE id=?",
                        (hashlib.sha256(raw).hexdigest(),canonical(summary).decode(),run_id))
 
-    def page(self,run_id,kind,offset=0,limit=200):
+    def page(self,run_id,kind,offset=0,limit=200,review=False):
         identifier(run_id)
         if kind not in SERIES or type(offset) is not int or offset<0 or type(limit) is not int or not 1<=limit<=1000:
             raise ValueError("Invalid bounded result-page request")
-        if self.get(run_id)["status"]!="completed": raise ValueError("No completed result available")
+        if type(review) is not bool or review and kind != 'trades':
+            raise ValueError("Trade review metadata is only supported for trade pages")
+        run=self.get(run_id)
+        if run["status"]!="completed": raise ValueError("No completed result available")
         with self.connect() as db:
             rows=db.execute("SELECT value FROM series WHERE run_id=? AND kind=? AND row_index>=? ORDER BY row_index LIMIT ?",
                             (run_id,kind,offset,limit)).fetchall()
             count=db.execute("SELECT COUNT(*) FROM series WHERE run_id=? AND kind=?",(run_id,kind)).fetchone()[0]
-        selected=[];size=0
+        selected=[];size=0;review_unavailable=False
         for row in rows:
-            size+=len(row["value"].encode())
+            value=json.loads(row["value"]);row_review_unavailable=False
+            if review:
+                from terminal.trade_review import decorate
+                decorated=decorate(value,run['manifest']['profile'])
+                if len(canonical(decorated))<=512*1024:
+                    value=decorated
+                else:
+                    # Keep an otherwise readable legacy row intact. Never omit
+                    # lifecycle events merely to make extra clock metadata fit.
+                    row_review_unavailable=True
+            # Include additive transport metadata in the existing page budget.
+            size+=len(canonical(value))
             if size>512*1024:
                 if not selected: raise ValueError("Individual result row exceeds IPC budget")
                 break
-            selected.append(json.loads(row["value"]))
+            selected.append(value)
+            review_unavailable=review_unavailable or row_review_unavailable
         next_offset=offset+len(selected)
-        return {"rows":selected,"total":count,"offset":offset,"next":next_offset if next_offset<count else None}
+        result={"rows":selected,"total":count,"offset":offset,"next":next_offset if next_offset<count else None}
+        if review_unavailable:
+            result['review_notice']='Exact clock metadata is unavailable for a large lifecycle row. All saved fills, events and costs are retained; unsupported chart targets are disabled.'
+        return result
 
     def result(self,run_id):
         run=self.get(run_id)
@@ -205,6 +223,8 @@ class RunStore:
         for fill in result['series']['fills']:
             # Derive the candle association before JavaScript rounds epoch nanoseconds.
             fill['chart_time']=(fill['time_ns']//(seconds*1_000_000_000)+1)*seconds
+            from terminal.trade_review import clock
+            fill['review_clock']=clock(fill,seconds)
         research=run['manifest'].get('research',{})
         if run['summary'].get('origin')=='local' and (research.get('experiment') or research.get('library')):
             from terminal.data import DatasetStore

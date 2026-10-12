@@ -29,7 +29,21 @@ The recovered pane/alert/agreement/history scope is recorded in
 Recovery reconstructed documented behavior; it does not establish byte identity
 with unavailable former source or compatibility with unavailable old databases.
 
-## Latest bounded slice: saved rule to strategy
+## Current bounded slice: saved trade review
+
+The existing Results chart now has one selected-trade inspector with exact saved
+costs, first-entry/final-exit labels, synchronized managed lifecycle fills,
+keyboard/previous/next review and original immutable strategy context. Additive
+server clock metadata preserves nanoseconds and source-candle ownership before
+JSON conversion. No accounting or historical signal is recalculated. Missing
+per-fill/leaf evidence, legacy lifecycles and absent imported candles are explicit.
+
+Focused verification currently establishes 50 distinct backend checks and 54
+frontend checks, TypeScript and production build. New test files are external to
+Git; final private-archive readback and actual-browser acceptance remain pending.
+See [trade-review acceptance](BACKTEST_TRADE_REVIEW.md) for the bounded contract.
+
+## Prior completed slice: saved rule to strategy
 
 A saved indicator rule now offers an explicit preview/review/create action.
 Confirmation saves an independent graph strategy and opens the normal editor.

@@ -1,6 +1,7 @@
 # Backtest trade review: bounded acceptance
 
-Status: acceptance plan; implementation and verification are pending.
+Status: implemented; focused verification passed. Production-browser acceptance
+and final external-test archive verification remain pending.
 Product remains 0.6-dev on the authorized codex/terminal-mvp development branch.
 
 ## Outcome and existing foundation
@@ -59,3 +60,57 @@ remote parent, and remotely read back. Any save/publication failure stops furthe
 implementation and validation until saving is repaired. Completion requires
 accepted bounded behavior, verified publication and verified external-test archive,
 or a clearly reported blocker. Later roadmap work remains separate.
+
+## Implementation contract
+
+`result_page` accepts optional Boolean `review` only for trade pages. Omission
+retains the ordinary saved-row representation. The additive transport view gives
+exact nanoseconds as strings, UTC with nine fractional digits, source OPEN/CLOSE,
+source interval and the last whole second available by each event. Python integer
+arithmetic assigns a close-minus-one-nanosecond fill to the preceding candle; an
+exact opening fill belongs to the new candle. No saved artifact is rewritten.
+
+The existing 512 KiB row/page budget includes metadata. A lifecycle whose metadata
+alone exceeds the single-row limit remains readable as its complete original row
+with an explicit clock-unavailable notice. No events are omitted; unsupported
+exact targets are disabled. Pages use actual returned next cursors, retaining the
+visited starts for Previous navigation across tab changes. Late report/page/read
+responses cannot replace the currently selected owner.
+
+The inspector shows saved decimal strings and synchronizes the existing managed
+position lifecycle with table selection. First entry and final exit remain
+individual fills, including their individual quantities; they are not weighted
+whole-position prices. Entry, scale, reduction and exit can navigate; funding,
+stop changes and rejected actions are not relabeled as fills. Repeated explicit
+Show actions reveal the selected candle even after manual panning. Settled failed
+or cancelled same-target reads can be requested again; unresolved cancellation
+continues to require inspection.
+
+Original definitions and simulation settings come only from `run_manifest`. The
+chart can display the last recorded evaluation within the loaded page whose
+recorded availability is no later than the exact fill. This is conservatively
+limited context, never a causal join or a reconstructed explanation. In particular,
+a close-minus-one-nanosecond fill does not receive the next second's evaluation.
+Unknown/null, false and unavailable remain distinct. Frozen backtests archive
+actionable hit/condition/state outputs, but not underlying leaf numerics or
+agreement member votes. Native signal outputs can be absent. Legacy/imported
+records and missing candles retain explicit unsupported/missing states.
+
+No new dependency, schema migration, financial calculation, simulation rule or
+provider/market/notification operation is introduced.
+
+## Focused implementation verification
+
+The first integrated pass establishes 50 distinct backend checks: 26 independent
+external trade-review checks and 24 nearest existing position-management, worker,
+archive and nanosecond-chart regressions. The eight-file frontend pass passed 54
+tests, including 21 new external review/chart checks. TypeScript and production
+build passed; the pre-existing bundle-size advisory remains. These are focused
+checks, not a full-product or native Windows acceptance claim.
+
+Independent review identified byte-shortened Previous paging, metadata-only
+single-row overflow, and repeated same-candle navigation after manual panning.
+Corrections retain actual cursor history across tab changes, preserve complete
+undecorated oversized lifecycle rows with an explicit notice, and treat each
+explicit focus request as viewport navigation. Delayed report selection, including
+stale failures, is fenced independently from the selected trade-page owner.

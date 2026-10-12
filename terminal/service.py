@@ -133,6 +133,8 @@ class AppService:
                 'alert_mark_read': ({'event_id'}, {'is_read'}),
                 'alert_claim_banner': ({'event_id'}, set()),
             }
+            if command == 'result_page' and 'review' in p:
+                fields[command].add('review')
             # Optional fields stay optional under the strict exact-key envelope.
             if isinstance(command, str) and command in alert_fields:
                 required, optional = alert_fields[command]

@@ -1,5 +1,15 @@
 # Trading Terminal product specification
 
+## Saved backtest trade review extension — 2026-10-12
+
+The authorized development continuation improves the existing saved Results
+workflow with one selected-trade inspector, actual entry/exit/lifecycle chart
+navigation, saved costs and immutable strategy context. Preserve source clocks,
+DCA/partial-fill accounting and explicit unavailable condition evidence. Do not
+recompute historical signals or add an execution model. See the bounded
+[trade-review acceptance record](docs/BACKTEST_TRADE_REVIEW.md). Product stays
+0.6-dev; merge, release and later roadmap slices remain separate.
+
 ## Saved indicator rule to strategy extension — 2026-10-12
 
 The owner authorized a bounded saved-rule conversion flow into the existing
