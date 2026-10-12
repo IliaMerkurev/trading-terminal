@@ -194,3 +194,93 @@ The isolated alert-core checkpoint follows it. Its runtime implementation and
 new user-facing controls may begin only after this next source checkpoint is
 remotely verified. No configured remote CI runs are present; this is not a CI
 pass claim.
+
+
+## Passive local alert runtime and Service checkpoint — 2026-10-12
+
+The next backend slice adds the passive observed runtime and strict Service API
+in ADR 0056, after remotely verified core `5e20e93d04d7e76c6aaf2141cdbefdbedd230044`.
+It reconstructs bounded lifecycle guarantees rather than claiming byte recovery
+of missing original source. The exact API is in `ALERT_RUNTIME_API.md`; author
+verification is recorded in STATUS. Source/publication hashes and independent
+immutable-checkpoint challenges are recorded separately when established.
+
+At this slice, ALERT-01–08 and ALERT-09–12 gain backend Service/receipt/session
+integration, while UI creation/review, real banners, visible journal controls and
+lost-reply interaction remain pending. ALERT-13–14 gain Service metadata/read
+routes but not UI acceptance. ALERT-15 has actual synthetic Service/Hub negative
+guards with zero provider/PAPER/order/external notification calls. History,
+current/agreement summaries, Windows/native, live sources and owner acceptance
+remain outside this backend checkpoint. Do not carry historical report claims
+forward as newly executed tests.
+## Alert runtime/Service: independent acceptance checkpoint
+
+Reviewed source: `883b6439c407ed67d985416b7947673dd859db31`.
+Tree: `dccca22cdae1c47d32e087ed9737f9d3e34ac1dd`.
+
+Ten independently authored tests passed through the actual Service, MarketHub
+fanout and runtime, using a guarded synthetic stream. Provider, PAPER, order and
+external-notification guard counters stayed zero. No event was inserted manually.
+Portable retained test: `tests/test_alert_runtime_independent.py`.
+
+```sh
+PYTHONPATH=. .venv/bin/python -m unittest discover -s tests -p test_alert_runtime_independent.py -v
+```
+
+Established scenarios:
+
+- Explicit Arm warms a baseline without historical events. A subsequent observed
+  crossing produces its exact raw-open and confirmed-close evidence. Repeated
+  identical delivery does not duplicate the journal; explicit Pause prevents
+  further events.
+- A healthy five-minute stream can Arm two minutes after its latest close.
+  Queue freshness is not incorrectly substituted for native-interval freshness.
+- A provider confirmation observed before its candle close remains ineligible
+  as an Arm baseline even after wall time later passes that close.
+- Context change during a deliberately blocked asynchronous Arm prevents late
+  activation or events. A new frontend session leaves a null current context.
+- Four distinct pending receipts overflow the bounded three-receipt observer and
+  fail closed. Consecutive identical confirmations may be coalesced without
+  discarding distinct or conflicting observations.
+- Missing cached full-origin input pauses instead of inventing an event.
+- Changed then restored original parameters retain a durable rebind requirement,
+  including after Service restart.
+- Read-only request lookup resolves an uncertain create; repeating the same
+  request identity does not create a second rule. Different content with the
+  same identity is rejected.
+- A worker that cannot join within the shutdown timeout leaves dependent Service
+  components alive. They are not closed underneath the still-running replay.
+
+Independent source review found three additional safety corrections before
+freeze: the three-receipt capacity, baseline observation clock check, and a
+concurrent save/revert race. Settings save and dependency notification now share
+the established runtime→display lock order for both inline and uploaded saves.
+The author's controlled two-thread regression verifies that a second save cannot
+hide the first applied parameter change. This concurrency scenario is author-test
+and independent-source-review evidence, not an extra independent test count.
+
+The author reports 56 distinct focused checks, with 25 affected checks rerun after
+correction. Those overlapping runs are not additive. Pure formulas remain
+unchanged. Runtime and strict Service APIs cover the backend portions of ALERT-05
+through ALERT-12 and request/journal support in ALERT-13. Actual editor,
+uncertain-create UI quarantine, banners, same-selector UI behavior and graphical
+acceptance remain pending; backend readiness is not the complete restored alert
+feature. Event/history and agreement integration are separate stages.
+
+Contract: reconstruction ADR 0056. This new ADR number does not imply byte
+identity with an unavailable historical ADR of the same number. Original-database
+compatibility, Windows/native, live providers, full product regression, remote CI,
+packaging and release remain outside this checkpoint.
+
+### Observed-clock Service smoke
+
+The integrated source `efff6ba8baa0139a0f179a24df053d1c45c57ebb` has the
+same reviewed runtime tree above. A separate guarded synthetic database and the
+actual BrowserServer, AppService and MarketHub were exercised without patching
+the wall clock. Arm emitted no backlog. The next real minute's raw close of 22
+changed SMA(3) from 10 to 14, crossing 12 and producing exactly one durable event.
+Its raw open was 1791800280; confirmed and observed times were 1791800340.
+Repeated delivery produced no duplicate. Explicit context Pause and clean
+Service reopen retained the identical event and paused state. All six forbidden
+side-effect counters remained zero. This is Service-level evidence, not browser
+alert-editor acceptance. The accepted pane fixture was unchanged.

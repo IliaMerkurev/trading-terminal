@@ -650,7 +650,7 @@ implementation does not establish byte identity with unavailable historical
 source or compatibility with unavailable old databases. Platform, actual-browser
 and owner acceptance are recorded separately from focused automated checks.
 
-### Later authorized frozen local indicator alerts — core restoration
+### Later authorized frozen local indicator alerts — backend restoration
 
 Restore local indicator rules with exact source/market/symbol/native interval,
 frozen normalized formula parameters and saved seed origins. Supported bounded
@@ -668,8 +668,11 @@ pivot clocks and separate observation time. Read state and recoverable rule
 Trash/Restore are durable. No strategy conversion, new formulas, providers,
 orders, PAPER or external notification is part of this restoration.
 
-The current checkpoint implements only the pure core/storage, not runtime,
-Service, UI or historical scan delivery. [ADR 0055](docs/adr/0055-frozen-local-indicator-alert-core.md)
-records its precise scope and remaining obligations. Original old-alert schema
+The current checkpoint implements the pure core/storage and a passive observed
+runtime with strict Service routes, explicit asynchronous Arm, UI session/context
+registration, periodic source/input fences and durable uncertain-reply recovery.
+It does not implement UI or historical scans. [ADR 0055](docs/adr/0055-frozen-local-indicator-alert-core.md)
+records core semantics; [ADR 0056](docs/adr/0056-passive-local-alert-runtime.md)
+records the bounded runtime and [Service contract](docs/ALERT_RUNTIME_API.md). Original old-alert schema
 compatibility is unverified because authentic fixtures are unavailable. Product
 remains 0.6-dev; implementation does not establish release or owner acceptance.

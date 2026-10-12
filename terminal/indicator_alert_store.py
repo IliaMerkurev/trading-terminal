@@ -32,6 +32,10 @@ class IndicatorAlertStore:
         self.store = store
         with self.store.connect() as db:
             db.executescript('''
+                CREATE TABLE IF NOT EXISTS indicator_alert_review_v1(rule_id TEXT PRIMARY KEY);
+                CREATE TABLE IF NOT EXISTS indicator_alert_requests_v1(
+                    request_id TEXT PRIMARY KEY, kind TEXT NOT NULL,
+                    fingerprint TEXT NOT NULL, rule_id TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS indicator_alert_rules_v1(
                     id TEXT PRIMARY KEY, name TEXT NOT NULL, revision INTEGER NOT NULL,
                     definition_revision INTEGER NOT NULL, deleted INTEGER NOT NULL,
@@ -72,13 +76,64 @@ class IndicatorAlertStore:
             raise ValueError('Alert rule changed; reload before continuing')
         return row
 
-    def create(self, name, definition):
+    def requires_rebind(self, rule_id):
+        with self.store.connect() as db:
+            return db.execute('SELECT 1 FROM indicator_alert_review_v1 WHERE rule_id=?', (rule_id,)).fetchone() is not None
+
+    def require_rebind(self, rule_id):
+        identifier(rule_id)
+        with self.store.connect() as db:
+            db.execute('INSERT OR IGNORE INTO indicator_alert_review_v1 VALUES(?)', (rule_id,))
+
+    def inspect_request(self, request_id):
+        identifier(request_id)
+        with self.store.connect() as db:
+            row = db.execute('SELECT request_id,kind,rule_id FROM indicator_alert_requests_v1 WHERE request_id=?', (request_id,)).fetchone()
+        return dict(row) if row else None
+
+    def request(self, request_id, kind, fingerprint):
+        """Durable bounded identities make uncertain create/arm replies inspectable.
+
+        Each record is constant-size; it never retains a duplicate definition.
+        Like saved rules/events, the local ledger is not a fixed-count quota.
+        """
+        identifier(request_id)
+        with self.store.connect() as db:
+            row = db.execute('SELECT * FROM indicator_alert_requests_v1 WHERE request_id=?', (request_id,)).fetchone()
+        if row and (row['kind'] != kind or row['fingerprint'] != fingerprint):
+            raise ValueError('Alert request identity was reused with different content')
+        return row['rule_id'] if row else None
+
+    def record_arm_request(self, request_id, fingerprint, rule_id):
+        identifier(request_id); identifier(rule_id)
+        with self.store.connect() as db:
+            db.execute('INSERT INTO indicator_alert_requests_v1 VALUES(?,?,?,?)',
+                       (request_id, 'arm', fingerprint, rule_id))
+
+    def create(self, name, definition, request_id=None):
         name = preset_name(name)
         definition = validate_definition(definition)
         raw, digest = encode(definition).decode(), definition_hash(definition)
         ident = uuid.uuid4().hex
+        fingerprint = hashlib.sha256(encode([name, definition], 300 * 1024)).hexdigest()
+        if request_id is not None:
+            prior = self.request(request_id, 'create', fingerprint)
+            if prior:
+                return self.get(prior)
         with self.store.connect() as db:
-            db.execute('INSERT INTO indicator_alert_rules_v1 VALUES(?,?,1,1,0,?,?)', (ident, name, raw, digest))
+            db.execute('BEGIN IMMEDIATE')
+            if request_id is not None:
+                # Runtime serializes requests, and this recheck also protects
+                # direct callers from a concurrent duplicate create.
+                prior = db.execute('SELECT * FROM indicator_alert_requests_v1 WHERE request_id=?', (request_id,)).fetchone()
+                if prior:
+                    if prior['kind'] != 'create' or prior['fingerprint'] != fingerprint:
+                        raise ValueError('Alert request identity was reused with different content')
+                    ident = prior['rule_id']
+                else:
+                    db.execute('INSERT INTO indicator_alert_requests_v1 VALUES(?,?,?,?)', (request_id, 'create', fingerprint, ident))
+            if request_id is None or prior is None:
+                db.execute('INSERT INTO indicator_alert_rules_v1 VALUES(?,?,1,1,0,?,?)', (ident, name, raw, digest))
         return self.get(ident)
 
     def get(self, rule_id, revision=None):
@@ -120,6 +175,8 @@ class IndicatorAlertStore:
                         row['definition'] if definition is None else encode(definition).decode(),
                         row['definition_hash'] if definition is None else definition_hash(definition), rule_id))
             db.execute('UPDATE indicator_alert_cursors_v1 SET token=NULL WHERE rule_id=?', (rule_id,))
+            if definition is not None:
+                db.execute('DELETE FROM indicator_alert_review_v1 WHERE rule_id=?', (rule_id,))
         return self.get(rule_id)
 
     def rename(self, rule_id, revision, name):

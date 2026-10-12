@@ -3,7 +3,9 @@
 Date: 2026-10-12
 
 Status: Implemented core-only partial restoration; runtime, Service, UI and
-historical research integration are not implemented by this checkpoint.
+historical research integration are not implemented by this original core checkpoint.
+The later [ADR 0056](0056-passive-local-alert-runtime.md) adds runtime and Service;
+UI and history remain separate.
 Product version remains 0.6-dev. This does not establish product acceptance.
 
 ## Context and boundaries
@@ -17,7 +19,8 @@ claimed. New tables are additive and preserve unrelated workspace data.
 
 There is no new formula engine, strategy conversion, user-code evaluator,
 provider request, order, PAPER action, external notification or background
-monitor. The new modules are not imported by Service. Existing licensed VMC
+monitor. At the original core checkpoint these modules were not imported by Service;
+ADR 0056 supplies that integration. Existing licensed VMC
 formulas remain unchanged in their MPL-2.0 module; this original orchestration
 code calls the existing display calculation API.
 

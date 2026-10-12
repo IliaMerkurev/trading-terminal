@@ -149,7 +149,7 @@ class ChartHistory:
         if (source,market,symbol)!=(getattr(self.hub,'source','bybit'),self.hub.market,self.hub.symbol):return
         market=cache_market(market,source)
         rows=self.hub.latest(INTERVALS[minutes])
-        with self.store.connect() as db:
+        with self.lock,self.store.connect() as db:
             for row in rows:
                 if row.get('confirmed') is not True:continue
                 candle=self.payload(row);key=(market,symbol,minutes,candle['time'])

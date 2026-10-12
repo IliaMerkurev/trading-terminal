@@ -914,7 +914,8 @@ live-provider checks are separate gates; do not present DOM mocks as those gates
 ## Frozen indicator-alert core checkpoint (ADR 0055)
 
 The pure `terminal.indicator_alerts` and durable `indicator_alert_store` modules
-are not yet Service or Market UI routes. Do not infer a live monitor from a
+are integrated with the later ADR 0056 Service/runtime. Market UI and history
+scans remain separate. Do not infer a live monitor from a
 saved rule or cursor. Store startup invalidates previous tokens. The runtime
 must own explicit reviewed Arm, complete active-set byte admission, observed
 receipt provenance/freshness and context/generation fencing. Never send old
@@ -932,3 +933,28 @@ See [ADR 0055](adr/0055-frozen-local-indicator-alert-core.md) for exact APIs,
 strict JSON/semantic units, close/pivot clocks, resource estimates and remaining
 integration gates. Use synthetic isolated databases; the absent historical alert
 schema is not a license to fabricate compatibility claims or alter user data.
+
+
+## Passive local alert runtime (ADR 0056)
+
+Use the exact [Service API](ALERT_RUNTIME_API.md), including optional field
+behavior, applied revision/hash preview, durable request lookup, explicit Arm
+review, client/context revisions and journal/banner claim semantics. The
+runtime observes only the already-open Hub. Never replace its passive observer
+with a strategy MarketFeed, open a source, fetch history to arm, or insert
+synthetic journal evidence to simulate a runtime result.
+
+Reproducible focused backend checks (no public source required):
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest -v tests.test_indicator_alert_runtime tests.test_indicator_alert_store tests.test_market_lifecycle tests.test_chart_presets tests.test_chart_panes
+```
+
+The fixture drives the actual Service/Hub fanout in an isolated temporary data
+root; provider/PAPER/order/notification guards must remain zero. Its controlled
+clock tests are not a live-source or browser claim. A later actual-App fixture
+must use real observed native close times and no injected alert event rows.
+Closing a browser tab cannot promise stopping Service; the future UI must expose
+Pause and warn before tab closure. A new UI session must initialize null context
+before registering its current Market context. Keep request IDs until writes
+are reconciled; do not automatically retry uncertain writes with fresh IDs.

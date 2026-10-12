@@ -1,5 +1,6 @@
 """One public connection, independent from optional strategy consumers."""
 from collections import deque
+import copy
 import queue
 import threading
 import time
@@ -32,6 +33,43 @@ class MarketFeed:
         with self.hub.lock:self.hub.consumers.discard(self)
 
 
+class MarketObserver:
+    """Passive bounded confirmation tap, never a strategy connection owner.
+
+    Receipts are detached copies. A failed queue is never silently resumed.
+    Construction and consumption cannot open/acquire a public source.
+    """
+    def __init__(self, hub, interval, capacity=3):
+        self.hub, self.interval = hub, interval
+        self.events = queue.Queue(maxsize=capacity)
+        self.failed = False
+        self.sequence = 0
+        self.epoch = hub.observation_epoch
+        self.generation = hub.state.generation
+        self.initial = copy.deepcopy(hub.confirmations.get(interval))
+        self.last_receipt = self.initial
+
+    def offer(self, receipt):
+        if self.failed or receipt['interval'] != self.interval:
+            return
+        prior = self.last_receipt
+        if prior and not receipt['conflict'] and not prior['conflict'] and all(receipt[key] == prior[key] for key in ('candle', 'epoch', 'generation', 'source', 'market', 'symbol')):
+            return
+        self.sequence += 1
+        value = copy.deepcopy(receipt)
+        self.last_receipt = copy.deepcopy(receipt)
+        value['sequence'] = self.sequence
+        try:
+            self.events.put_nowait(value)
+        except queue.Full:
+            self.failed = True
+
+    def close(self):
+        with self.hub.lock:
+            self.hub.observers.discard(self)
+
+
+
 class MarketHub:
     """Socket lifecycle never waits for SQLite strategy warmup or a UI render."""
     def __init__(self,stream_factory=PublicStream):
@@ -39,6 +77,7 @@ class MarketHub:
         self.lock=threading.RLock();self.stop=threading.Event();self.thread=None
         self.source='bybit';self.market=None;self.symbol=None;self.consumers=set();self.subscribed=False
         self.phase='PAUSED';self.detail='Market view is not open'
+        self.observers=set();self.observation_epoch=0;self.confirmations={}
         self.candles={};self.started=None;self.first={};self.errors=deque(maxlen=50)
 
     def open(self,market,symbol,source='bybit'):
@@ -50,6 +89,7 @@ class MarketHub:
             with self.lock:
                 if self.consumers:raise ValueError('Pause strategy monitoring before changing the market')
             self.close()
+        with self.lock:self._invalidate_observers()
         self.source=source;self.market,self.symbol=market,symbol;self.stop.clear()
         self.state=MarketState();self.candles={};self.first={};self.started=time.monotonic()
         self.phase='CONNECTING';self.detail='Opening public market data'
@@ -67,12 +107,29 @@ class MarketHub:
             phase=('CONNECTED' if result['fresh'] else 'DEGRADED') if self.phase=='CONNECTED' else self.phase
             return {**result,'source':self.source,'market':self.market,'symbol':self.symbol,'active':active,
                     'status':phase,'detail':self.detail,'first':self.first.copy(),
-                    'errors':list(self.errors)}
+                    'errors':list(self.errors),'observation_epoch':self.observation_epoch}
 
     def latest(self,interval):
         with self.lock:return [dict(row) for row in self.candles.get(interval,{}).values()]
 
-    def _observe_candle(self,event):
+    def observe(self, interval):
+        """Subscribe only to an already open Hub. Does not count as a consumer."""
+        with self.lock:
+            observer = MarketObserver(self, interval)
+            self.observers.add(observer)
+            return observer
+
+    def _invalidate_observers(self):
+        self.observation_epoch += 1
+        self.confirmations.clear()
+        for observer in self.observers:
+            observer.failed = True
+
+    def _observe_candle(self, event):
+        with self.lock:
+            self._observe_candle_locked(event)
+
+    def _observe_candle_locked(self,event):
         interval=event.get('interval','1');candle=event['candle']
         row={**candle,'confirmed':event['kind']=='candle' or event.get('confirmed',False),'provider_ms':event.get('provider_ms',0)}
         table=self.candles.setdefault(interval,{})
@@ -84,6 +141,17 @@ class MarketHub:
             old['provider_ms']=row['provider_ms']
         if old is None or (not old['confirmed'] and row['provider_ms']>=old['provider_ms']):table[candle['time']]=row
         for key in sorted(table)[:-3]:del table[key]
+        if row['confirmed'] and event['kind'] in ('candle', 'display_candle'):
+            receipt = dict(interval=interval, source=self.source, market=self.market,
+                symbol=self.symbol, epoch=self.observation_epoch, generation=self.state.generation,
+                observed_at=int(time.time()), observed_monotonic=time.monotonic(),
+                candle={**candle, 'confirmation':'provider_confirmed'},
+                conflict=bool(row.get('conflict') or (old and old.get('conflict'))))
+            current = self.confirmations.get(interval)
+            if current is None or candle['time'] >= current['candle']['time']:
+                self.confirmations[interval] = copy.deepcopy(receipt)
+            for observer in self.observers:
+                observer.offer(receipt)
 
     def _run(self):
         attempts=0
@@ -120,7 +188,7 @@ class MarketHub:
                     self.subscribed=False;self.phase='RECONNECTING';self.detail=f'{self.source.upper()} public connection interrupted ({safe_error(exc)}); waiting for new snapshots'
                     self.errors.append({'time':int(time.time()),'message':self.detail})
                     for feed in self.consumers:feed.failed=True
-                    self.candles={};self.state.reset()
+                    self._invalidate_observers();self.candles={};self.state.reset()
                 if self.stop.wait(reconnect_delay(attempts)):break
                 attempts+=1
                 if attempts>=8:self.phase='ERROR';self.detail='Market retries exhausted; reopen Live to retry';break
@@ -134,4 +202,5 @@ class MarketHub:
         if self.thread and self.thread.is_alive():raise RuntimeError('Public market shutdown still pending')
         with self.lock:
             for feed in self.consumers:feed.failed=True
+            self._invalidate_observers()
             self.phase='PAUSED';self.detail='Market view closed';self.state.reset()

@@ -1,5 +1,17 @@
 # Current engineering checkpoint
 
+## Local indicator alert backend — 2026-10-12
+
+Frozen core/storage plus the passive observed runtime and strict Service API
+are implemented. Rules save paused and require reviewed asynchronous Arm against
+the already-open fresh native Market context. See [ADR 0056](adr/0056-passive-local-alert-runtime.md),
+[API](ALERT_RUNTIME_API.md) and [STATUS](STATUS.md) for the exact verified scope.
+UI, actual browser, history/agreement features, Windows/native, live providers and
+owner acceptance remain separate. No product version or dependency changed.
+
+The named-preset entry below records its earlier checkpoint; reconstructed panes
+and alert backend now supersede its statement about subsequent slices.
+
 ## Named indicator presets — 2026-10-11
 
 The current local candidate adds revision-guarded named presets, staged Apply and

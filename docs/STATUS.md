@@ -11,6 +11,57 @@ acceptance record. Remote publication remains a separate verified operation.
 
 # Implementation status
 
+## Passive local indicator-alert runtime and Service — 2026-10-12
+
+The bounded backend restoration now integrates the frozen core with a passive
+MarketHub observer and exact strict Service commands. It uses the existing open
+source and confirmed native intervals, with no provider acquisition, strategy
+conversion, new formula engine, dependency, PAPER/order action or external
+notification. UI/history integration is not included. See
+[ADR 0056](adr/0056-passive-local-alert-runtime.md) and the
+[Service contract](ALERT_RUNTIME_API.md).
+
+Create is paused. Explicit reviewed asynchronous Arm establishes a fresh observed
+full-origin cached baseline without historical delivery, then commits only later
+observed contiguous closes. A three-receipt bounded queue, cursor/token, source,
+native interval, client/context, generation/epoch, prefix-hash and freshness
+fences pause on inconsistency without auto-resume. Periodic polling detects stale
+sources even without a new candle. Changed surviving parameters durably require
+reviewed rebind; hidden/deleted originals and layout changes retain frozen values.
+New UI sessions pause the old context; Service restart never restores Arm. Durable
+create/Arm request identities and read-only lookup reconcile lost replies.
+Immutable event/cursor writes and at-most-once banner claims reuse the core store.
+
+Focused synthetic Linux evidence:
+
+- First pass: 49/49 tests in 14.487s across runtime (15), core store (8), existing
+  market lifecycle (6), presets (11) and panes (9).
+- Independent source review identified a concurrent save/revert window between
+  display save and dependency notification. Inline and uploaded saves now hold
+  the runtime→display locks across both operations. A controlled two-thread
+  regression confirms the change remains durably review-required after reversal.
+- Final focused corrective pass: 25/25 tests in 14.172s, including all 22 actual
+  AppService/MarketHub runtime tests and three directly affected preset/pane
+  Service regressions. With unchanged earlier regressions reused, 56 distinct
+  tests passed; repeated tests are not added twice. No full suite was rerun.
+- Actual Hub stream fanout covers initial true/no backlog, subsequent known
+  false→true and five-minute equality crossing with exact UTC clocks, Arm between
+  coarse closes, duplicates and lower-provider-watermark conflicts, overflow,
+  cache changes, freshness polling, source switch/reconnect, pending Arm/context
+  switch, session/restart fences, lost-response reconciliation and explicit rebind.
+- Additional challenges cover read-only catalog/request lookup, optional strict
+  fields, complete active-definition byte admission, concurrent save/revert,
+  premature confirmation clocks, and retaining dependencies/workspace ownership
+  when worker shutdown cannot yet join. Provider/PAPER/order/external-notification
+  guard counters remained zero in every runtime scenario.
+
+These tests use isolated temporary databases and controlled clocks. They do not
+establish actual GUI/banner display, old-alert database interoperability,
+Windows/native, live Bybit/OKX, owner acceptance, full-product regression or
+remote CI success. No frontend source was changed; earlier frontend evidence is
+not relabeled as a new run. Publication and independent immutable-checkpoint
+challenges remain separately recorded operations.
+
 ## Reconstructed compatible chart panes — 2026-10-12
 
 Implemented versioned pane membership/order and relative price/auxiliary/Recorded
@@ -83,9 +134,11 @@ parameter validation. The corrected 26-test core/storage pass passed in 0.277 se
 reused. No broad suite was rerun.
 These are isolated core tests, not a product-wide regression or remote CI pass.
 
-No Service/runtime/UI/history integration is added in this checkpoint. Actual
-Market receipts, async lifecycle, explicit Arm review, cache-only admission,
-UI uncertain-response handling and event/history viewers remain unimplemented.
+No Service/runtime/UI/history integration was added in that original core checkpoint.
+The later runtime/Service entry above supersedes those two missing portions. Actual
+Market receipts, async lifecycle, explicit Arm review and cache-only admission
+were deferred there; UI uncertain-response handling and event/history viewers
+remain separate checkpoints.
 No original missing source or old-alert schema compatibility is claimed. The
 new synthetic additive-table test preserves unrelated workspace records; it
 is not a migration test against an authentic previous alert database. Product

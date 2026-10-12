@@ -36,6 +36,8 @@ class AppService:
         self.chart_drawings=ChartDrawings(self.store)
         from terminal.chart_presets import ChartPresets
         self.chart_presets=ChartPresets(self.display_indicators)
+        from terminal.indicator_alert_runtime import IndicatorAlertRuntime
+        self.indicator_alerts=IndicatorAlertRuntime(self.display_indicators)
 
     def handle(self,message):
         request_id=message.get("id") if isinstance(message,dict) else None
@@ -94,6 +96,30 @@ class AppService:
                           observation_get={'observation_id','revision'},
                           observation_save_start={'request_id','expected_source','observation_id','expected_revision','dataset_id','start','end','hypothesis','falsification'})
             fields.update(chart_read_start={'request_id','view_id','generation','surface','query'},chart_read_status={'request_id'},chart_read_cancel={'request_id'},chart_read_activity=set(),observation_save_history=set())
+            alert_fields = {
+                'alert_catalog': (set(), set()),
+                'alert_request': ({'request_id'}, set()),
+                'alert_session_init': ({'session_id'}, set()),
+                'alert_context': ({'session_id','context_revision','source','market','symbol','minutes','visible'}, set()),
+                'alert_preview': ({'source','market','symbol','minutes','settings_revision','conditions'}, {'combine'}),
+                'alert_create': ({'request_id','name','definition','definition_hash','settings_revision'}, set()),
+                'alert_list': (set(), {'trashed','after','limit'}),
+                'alert_get': ({'rule_id'}, {'revision'}),
+                'alert_rebind': ({'rule_id','revision','definition','definition_hash','settings_revision'}, set()),
+                'alert_rename': ({'rule_id','revision','name'}, set()),
+                'alert_archive': ({'rule_id','revision'}, set()),
+                'alert_restore': ({'rule_id','revision'}, set()),
+                'alert_arm': ({'request_id','rule_id','revision','definition_hash','session_id','context_revision','reviewed'}, set()),
+                'alert_status': (set(), {'rule_id'}), 'alert_pause': (set(), {'rule_id'}),
+                'alert_events': (set(), {'after','limit','unread_only'}),
+                'alert_event': ({'event_id'}, set()),
+                'alert_mark_read': ({'event_id'}, {'is_read'}),
+                'alert_claim_banner': ({'event_id'}, set()),
+            }
+            # Optional fields stay optional under the strict exact-key envelope.
+            if isinstance(command, str) and command in alert_fields:
+                required, optional = alert_fields[command]
+                fields[command] = required | (optional & set(p))
             if command=='chart_indicator_read' and 'price_style' in p:fields[command].add('price_style')
             if command=='chart_indicator_save' and 'pane_layout' in p:fields[command].add('pane_layout')
             if command=='archive_import_cancel' and 'attempt_key' in p:fields[command].add('attempt_key')
@@ -117,9 +143,34 @@ class AppService:
                 result=platform_capabilities()
             elif command=='scheduler_status':result={**self.jobs.scheduler_status(),'verified_reads':self.chart_reads.activity()}
             elif command in ('live_start','live_start_terminal'):result=self.live.start(**p)
+            elif command in alert_fields:
+                methods = {
+                    'alert_catalog': self.indicator_alerts.catalog,
+                    'alert_request': self.indicator_alerts.request,
+                    'alert_session_init': self.indicator_alerts.session_init,
+                    'alert_context': self.indicator_alerts.register_context,
+                    'alert_preview': self.indicator_alerts.preview,
+                    'alert_create': self.indicator_alerts.create,
+                    'alert_list': self.indicator_alerts.list,
+                    'alert_get': self.indicator_alerts.get,
+                    'alert_rebind': self.indicator_alerts.rebind,
+                    'alert_rename': self.indicator_alerts.rename,
+                    'alert_archive': self.indicator_alerts.archive,
+                    'alert_restore': self.indicator_alerts.restore,
+                    'alert_arm': self.indicator_alerts.arm,
+                    'alert_status': self.indicator_alerts.status,
+                    'alert_pause': self.indicator_alerts.pause,
+                    'alert_events': self.indicator_alerts.store.events,
+                    'alert_event': self.indicator_alerts.store.event,
+                    'alert_mark_read': self.indicator_alerts.store.mark_read,
+                    'alert_claim_banner': lambda event_id: dict(claimed=self.indicator_alerts.store.claim_banner(event_id)),
+                }
+                result = methods[command](**p)
             elif command=='market_preferences':result=self.live.market_preferences()
             elif command=='market_open':result=self.live.market_open(**p)
-            elif command=='market_close':result=self.live.market_close()
+            elif command=='market_close':
+                self.indicator_alerts.pause()
+                result=self.live.market_close()
             elif command=='chart_drawing_settings':result=self.chart_drawings.settings(**p)
             elif command=='chart_drawing_save':result=self.chart_drawings.save(**p)
             elif command=='chart_preset_list':result=self.chart_presets.list(**p)
@@ -130,12 +181,12 @@ class AppService:
             elif command=='chart_preset_trash':result=self.chart_presets.trash(**p)
             elif command=='chart_preset_restore':result=self.chart_presets.restore(**p)
             elif command=='chart_indicator_settings':result=self.display_indicators.settings(**p)
-            elif command=='chart_indicator_save':result=self.display_indicators.save(**p)
+            elif command=='chart_indicator_save':result=self.indicator_alerts.save_settings(**p)
             elif command=='chart_indicator_read':result=self.display_indicators.read(**p)
             elif command=='chart_indicator_page':result=self.indicator_transport.page(**p)
             elif command=='chart_indicator_upload_begin':result=self.indicator_transport.upload_begin(**p)
             elif command=='chart_indicator_upload_append':result=self.indicator_transport.upload_append(**p)
-            elif command=='chart_indicator_upload_finish':result=self.display_indicators.save(**self.indicator_transport.upload_finish(**p))
+            elif command=='chart_indicator_upload_finish':result=self.indicator_alerts.save_settings(**self.indicator_transport.upload_finish(**p))
             elif command=='market_chart':result=self.live.chart_history.request(**p)
             elif command=='live_chart':result=self.live.journal.chart(**p)
             elif command=='paper_manual':result=self.live.manual(**p)
@@ -272,6 +323,9 @@ class AppService:
         def attempt(action):
             try:action()
             except Exception as exc:errors.append(exc)
+        # A still-running alert replay retains all dependencies and workspace
+        # ownership. Do not close its database/history under a timed-out worker.
+        self.indicator_alerts.close()
         attempt(self.live.close)
         attempt(self.library_batches.close)
         attempt(self.experiments.close)
