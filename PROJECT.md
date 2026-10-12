@@ -1,5 +1,15 @@
 # Trading Terminal product specification
 
+## Saved indicator rule to strategy extension — 2026-10-12
+
+The owner authorized a bounded saved-rule conversion flow into the existing
+strategy editor and backtest workflow. Preserve the exact frozen rule meaning
+and provenance, expose execution defaults for review, and create an independent
+editable strategy without starting execution. Unsupported contexts must fail
+explicitly rather than approximate. The first-slice acceptance boundary is
+[documented here](docs/RULE_STRATEGY_CONVERSION.md). Product remains 0.6-dev;
+this authorization does not include a merge, release or later roadmap slices.
+
 ## Project license — 2026-10-10
 
 The owner selected the [MIT License](LICENSE) for Trading Terminal. This explicit
