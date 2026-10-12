@@ -678,3 +678,27 @@ were paused. The new live-rule scan was first hashed after restart, so its claim
 is preserved GUI counts and agreement with saved live evaluations, not a measured
 before/after byte comparison. Clean shutdown completed at 12:16:05 UTC with all
 six forbidden-action guard counters zero.
+### Final-sweep shutdown defect and focused correction
+
+The initial complete Python sweep on `0a115f1ca7b8b237dcfd3982b733a8f342f174c3` ran 804 tests in 265.079 seconds: 792 passed, four errors and eight Windows-only skips. This was a failed sweep and is retained as such. The complete frontend suite passed 1,008 tests across 83 files; TypeScript and the production build also passed.
+
+The four errors exposed a genuine cleanup-order regression: a new history status-write failure could abort Service shutdown before background owners stopped. Runtime cursor invalidation had the related risk of skipping later rules after an earlier persistence failure. A partial-Service test fixture and temporary-directory cleanup ordering also needed correction; their injected-error assertions were retained.
+
+Corrected source `001acc049b78a8b9b9f887b42d73410deba6ec77`, tree `49d86e859a980ab3f2355d929611f2ff1ac654ac`, passed six independent scenarios in 7.950 seconds: four newly authored fault/idempotence checks and the two previously retained true blocked-worker checks. They establish:
+
+- Shared storage failure still signals cancellation, joins the history and alert workers, attempts other Service cleanup and reports the original persistence error.
+- The first rule's failed cursor invalidation does not skip cancellation or observer detachment for the next rule.
+- Repeated successful close after workspace removal does not reopen storage.
+- Combined blocked-history and storage failure stops alert runtime while keeping live/cache dependencies and workspace ownership until the history worker actually joins.
+- Both existing genuine history/runtime timeout checks still pass. A timeout is not treated as an ordinary persistence error.
+
+The independent test file is `tests/test_shutdown_independent.py`; its Service setup reuses retained historical test mechanics. Reproduce these six checks with:
+
+`PYTHONPATH=tests .venv/bin/python -m unittest -v test_shutdown_independent test_history_independent.IndependentHistoricalResearch.test_shutdown_timeout_retains_dependencies_and_restart_keeps_interrupted test_alert_runtime_independent.IndependentRuntime.test_shutdown_timeout_preserves_dependencies_until_worker_has_joined`
+
+The author separately reports 53 distinct focused passing checks, including the original failing routes and nearest runtime/history regressions. Counts overlap and must not be summed as distinct coverage. All independent forbidden-action guards stayed zero. Formulas, frontend source, dependencies, product versions and licenses are unchanged by this correction. The eight skipped original checks require Windows containment/lifecycle support; this repair does not change that limitation.
+
+The four newly retained independent tests passed after integration in 3.148
+seconds; the two unchanged timeout tests reuse their frozen six-case evidence.
+A complete backend confirmation sweep is required after this focused correction
+is published. The unchanged 1,008-test frontend and build evidence is retained.

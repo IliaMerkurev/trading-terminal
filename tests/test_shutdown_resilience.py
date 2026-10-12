@@ -37,6 +37,8 @@ class ShutdownResilienceTests(unittest.TestCase):
         self.assertFalse(service.live.delivery_thread.is_alive())
         self.assertFalse(service.live.chart_history.thread.is_alive())
         self.assertFalse(service.display_indicators.thread.is_alive())
+        self.assertFalse(service.indicator_history.thread.is_alive())
+        self.assertFalse(service.indicator_alerts.thread.is_alive())
         self.assertTrue(service.jobs.instance_file.closed)
         reopened=JobManager(self.tmp.name);reopened.close()
 
@@ -83,6 +85,15 @@ class ShutdownResilienceTests(unittest.TestCase):
         warmup.is_alive.return_value=False
         with self.assertRaises(ExceptionGroup):service.close()
         self.assertTrue(jobs.instance_file.closed)
+
+    def test_completed_close_never_reopens_storage_after_workspace_removal(self):
+        service=AppService(self.tmp.name)
+        service.close();self.tmp.cleanup()
+        with patch.object(service.store,'connect',side_effect=AssertionError('Closed workspace cannot be reopened')):
+            service.indicator_history.close()
+            service.indicator_alerts.close()
+            service.close();service.close()
+        self.assertTrue(service.jobs.instance_file.closed)
 
     def test_replay_cancel_terminates_even_when_status_write_fails(self):
         jobs=JobManager(self.tmp.name);self.addCleanup(jobs.close)

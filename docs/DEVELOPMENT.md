@@ -1,5 +1,19 @@
 # Development guide
 
+## Shutdown persistence and ownership (ADR 0063)
+
+Keep persistence-failure checks separate from genuine worker-join timeout checks.
+Storage failure must still stop owners and release a safely idle workspace; a
+live replay must retain its dependencies and lock until a later successful join.
+Use temporary workspaces and remove them only after all registered Service
+cleanup. Repeated completed close must not reopen the workspace database.
+
+Focused command:
+
+```sh
+PYTHONPATH=tests .venv/bin/python -m unittest tests.test_shutdown_resilience tests.test_independent_spot.IndependentSpotTests.test_metadata_market_order_limit_and_service_optional_admission tests.test_indicator_alert_runtime tests.test_indicator_alert_history tests.test_alert_runtime_independent.IndependentRuntime.test_shutdown_timeout_preserves_dependencies_until_worker_has_joined tests.test_history_independent.IndependentHistoricalResearch.test_shutdown_timeout_retains_dependencies_and_restart_keeps_interrupted
+```
+
 ## Local indicator alerts
 
 See [the UI workflow and failure contracts](ALERT_UI.md). Use an isolated

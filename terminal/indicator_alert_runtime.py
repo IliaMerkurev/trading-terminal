@@ -431,10 +431,28 @@ class IndicatorAlertRuntime:
                             self._pause(rule_id, str(exc)[:500] or 'Alert evaluation interrupted', isinstance(exc, DependencyChanged))
 
     def close(self):
+        errors = []
         with self.lock:
-            self.closed = True
-            self._pause_all('Service stopped; explicit Arm required after restart')
+            if not self.closed:
+                self.closed = True
+                for state in self.states.values():
+                    state['cancel'].set()
+                # Each observer must detach even if an earlier cursor write fails.
+                for rule_id, state in self.states.items():
+                    if state['phase'] != 'PAUSED':
+                        try:
+                            self._pause(rule_id, 'Service stopped; explicit Arm required after restart')
+                        except Exception as exc:
+                            errors.append(exc)
+                try:
+                    self.store.invalidate_cursor()
+                except Exception as exc:
+                    errors.append(exc)
             self.wake.set()
         self.thread.join(timeout=2)
         if self.thread.is_alive():
-            raise RuntimeError('Alert worker shutdown is still pending; keep dependencies and workspace ownership')
+            errors.append(RuntimeError('Alert worker shutdown is still pending; keep dependencies and workspace ownership'))
+        if len(errors) == 1:
+            raise errors[0]
+        if errors:
+            raise ExceptionGroup('Alert shutdown cleanup failed', errors)

@@ -284,6 +284,63 @@ class HistoricalServiceTests(unittest.TestCase):
         self.service.close(); self.service = AppService(Path(self.temp.name))
         self.assertEqual(self.call('alert_history_get', run_id=run['id'])['status'], 'interrupted')
 
+    def test_shutdown_storage_failure_still_cancels_joins_and_recovers_on_restart(self):
+        from test_shutdown_resilience import failures
+        entered = threading.Event(); original = core.replay
+        def until_cancelled(definition, tape, cancel, **kwargs):
+            entered.set()
+            if not cancel.wait(3):
+                raise AssertionError('Shutdown did not cancel historical replay')
+            return original(definition, tape, cancel, **kwargs)
+        with patch.object(core, 'replay', side_effect=until_cancelled):
+            run = self.call('alert_history_start', **self.params())
+            self.assertTrue(entered.wait(3))
+            fault = sqlite3.OperationalError('injected historical shutdown failure')
+            with patch.object(self.service.store, 'connect', side_effect=fault), \
+                 patch('threading.excepthook') as unhandled:
+                with self.assertRaises(ExceptionGroup) as caught:
+                    self.service.close()
+            self.assertIn(fault, failures(caught.exception))
+            unhandled.assert_not_called()
+        self.assertFalse(self.service.indicator_history.thread.is_alive())
+        self.assertFalse(self.service.indicator_alerts.thread.is_alive())
+        self.assertFalse(self.service.live.chart_history.thread.is_alive())
+        self.assertTrue(self.service.jobs.instance_file.closed)
+        self.service = AppService(Path(self.temp.name))
+        self.assertEqual(self.call('alert_history_get', run_id=run['id'])['status'], 'interrupted')
+        self.assertEqual(self.service.indicator_history.tokens, {})
+
+    def test_storage_failure_with_live_replay_keeps_dependencies_and_lock(self):
+        from test_shutdown_resilience import failures
+        from terminal.jobs import JobManager
+        entered = threading.Event(); release = threading.Event(); original = core.replay
+        def blocked(*args, **kwargs):
+            entered.set(); release.wait(5); return original(*args, **kwargs)
+        try:
+            with patch.object(core, 'replay', side_effect=blocked):
+                self.call('alert_history_start', **self.params())
+                self.assertTrue(entered.wait(3))
+                fault = sqlite3.OperationalError('injected blocked historical shutdown failure')
+                with patch.object(self.service.store, 'connect', side_effect=fault), \
+                     patch.object(self.service.indicator_history.thread, 'join'), \
+                     patch.object(self.service.live, 'close', wraps=self.service.live.close) as live_close:
+                    with self.assertRaises(ExceptionGroup) as caught:
+                        self.service.close()
+                self.assertIn(fault, failures(caught.exception))
+                self.assertTrue(any('keep dependencies' in str(error) for error in failures(caught.exception)))
+                live_close.assert_not_called()
+                self.assertTrue(self.service.indicator_history.thread.is_alive())
+                self.assertFalse(self.service.indicator_alerts.thread.is_alive())
+                self.assertTrue(self.service.display_indicators.thread.is_alive())
+                self.assertTrue(self.service.live.chart_history.thread.is_alive())
+                self.assertFalse(self.service.jobs.instance_file.closed)
+                with self.assertRaisesRegex(ValueError, 'Another application instance'):
+                    JobManager(self.temp.name)
+        finally:
+            release.set(); self.service.indicator_history.thread.join(3)
+        self.service.close()
+        self.assertTrue(self.service.jobs.instance_file.closed)
+
     def test_missing_origin_gaps_tail_provenance_conflicts_fail_without_admission(self):
         for index, change, fragment in [
             (0, 'delete', 'origin'), (8, 'delete', 'gap'), (361, 'delete', 'coverage'),

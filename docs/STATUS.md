@@ -11,6 +11,31 @@ acceptance record. Remote publication remains a separate verified operation.
 
 # Implementation status
 
+## Fault-resilient shutdown correction — 2026-10-12
+
+The combined backend acceptance run exposed four shutdown integration errors:
+new history persistence failures skipped existing owner cleanup, a partial Service
+fixture lacked newer owners, and a temporary-workspace fixture removed storage
+before its registered Service cleanup. The original 804-test result remains a
+failed acceptance run with four errors and eight skips.
+
+History and alert runtime now cancel, wake and join independently of persistence
+success. Service aggregates storage faults after worker termination, while true
+join timeouts still retain all downstream dependencies and workspace ownership.
+Both replay owners receive shutdown even if the first fails. Completed repeated
+close never reopens storage; startup retains interrupted/paused recovery fences.
+See [ADR 0063](adr/0063-fault-resilient-alert-shutdown.md).
+
+Focused offline evidence: all 51 loaded checks passed in 22.131 seconds across
+shutdown resilience, the affected spot admission test, and the full runtime and
+history modules. Two additional independent timeout selectors initially had
+incorrect class names and produced loader errors; correcting only those selectors
+passed both tests in 4.881 seconds. Thus 53 distinct focused checks passed, with
+no original assertions weakened and four added regression cases. No broad suite,
+frontend build or GUI pass was repeated for this backend-only correction.
+Independent frozen-checkpoint review and integrated acceptance remain separate
+gates; this is not Windows/native, provider or owner acceptance.
+
 ## Local indicator-alert UI reconstruction — 2026-10-12
 
 The local interface now provides authoritative-catalog condition composition,

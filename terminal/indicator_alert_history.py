@@ -231,13 +231,14 @@ class IndicatorAlertHistory:
 
     def _run(self):
         while True:
-            with self.lock, self.store.connect() as db:
+            with self.lock:
                 if self.closed:
                     return
-                run = db.execute("SELECT * FROM indicator_history_runs_v1 WHERE status='queued' ORDER BY sequence LIMIT 1").fetchone()
-                if run:
-                    token = self.tokens[run['id']] = threading.Event()
-                    db.execute("UPDATE indicator_history_runs_v1 SET status='running' WHERE id=?", (run['id'],))
+                with self.store.connect() as db:
+                    run = db.execute("SELECT * FROM indicator_history_runs_v1 WHERE status='queued' ORDER BY sequence LIMIT 1").fetchone()
+                    if run:
+                        token = self.tokens[run['id']] = threading.Event()
+                        db.execute("UPDATE indicator_history_runs_v1 SET status='running' WHERE id=?", (run['id'],))
             if run is None:
                 self.wake.wait(.25); self.wake.clear()
                 continue
@@ -257,25 +258,31 @@ class IndicatorAlertHistory:
                     pre_range_rows=len(rows)-len(selected), pre_range_unknown_rows=sum(row['truth'] is None for row in rows if row['confirmed_at'] < run['start']),
                     initial_unknown_rows=next((index for index, row in enumerate(selected) if row['truth'] is not None), len(selected)),
                     unknown_reason='warmup_or_missing_value', input_rows=len(rows), coverage_start=selected[0]['confirmed_at'], coverage_end=selected[-1]['confirmed_at'])
-                with self.lock, self.store.connect() as db:
-                    current = self._run_row(db, run['id'])
-                    if self.closed or current['status'] not in UNFINISHED:
+                with self.lock:
+                    if self.closed:
                         continue
-                    if token.is_set() or current['cancel_requested']:
-                        raise InterruptedError('Historical scan cancelled')
-                    # Publish the entire computed timeline atomically or no output.
-                    db.executemany('INSERT INTO indicator_history_rows_v1 VALUES(?,?,?,?,?,?)',
-                        ((run['id'], index, row['confirmed_at'], int(run['start'] <= row['confirmed_at'] <= run['end']),
-                          int(row['hit']), core.encode(row, MAX_RESPONSE_BYTES).decode()) for index, row in enumerate(rows)))
-                    db.execute("UPDATE indicator_history_runs_v1 SET status='completed',summary=?,cancel_requested=0 WHERE id=?",
-                               (core.encode(summary).decode(), run['id']))
+                    with self.store.connect() as db:
+                        current = self._run_row(db, run['id'])
+                        if current['status'] not in UNFINISHED:
+                            continue
+                        if token.is_set() or current['cancel_requested']:
+                            raise InterruptedError('Historical scan cancelled')
+                        # Publish the entire computed timeline atomically or no output.
+                        db.executemany('INSERT INTO indicator_history_rows_v1 VALUES(?,?,?,?,?,?)',
+                            ((run['id'], index, row['confirmed_at'], int(run['start'] <= row['confirmed_at'] <= run['end']),
+                              int(row['hit']), core.encode(row, MAX_RESPONSE_BYTES).decode()) for index, row in enumerate(rows)))
+                        db.execute("UPDATE indicator_history_runs_v1 SET status='completed',summary=?,cancel_requested=0 WHERE id=?",
+                                   (core.encode(summary).decode(), run['id']))
             except Exception as exc:
-                with self.lock, self.store.connect() as db:
-                    current = self._run_row(db, run['id'])
-                    if current['status'] in UNFINISHED:
-                        cancelled = token.is_set() or current['cancel_requested']
-                        db.execute('UPDATE indicator_history_runs_v1 SET status=?,cancel_requested=0,error=? WHERE id=?',
-                                   ('cancelled' if cancelled else 'error', str(exc)[:1000] or 'Historical calculation failed', run['id']))
+                with self.lock:
+                    if self.closed:
+                        continue
+                    with self.store.connect() as db:
+                        current = self._run_row(db, run['id'])
+                        if current['status'] in UNFINISHED:
+                            cancelled = token.is_set() or current['cancel_requested']
+                            db.execute('UPDATE indicator_history_runs_v1 SET status=?,cancel_requested=0,error=? WHERE id=?',
+                                       ('cancelled' if cancelled else 'error', str(exc)[:1000] or 'Historical calculation failed', run['id']))
             finally:
                 with self.lock:
                     self.tokens.pop(run['id'], None)
@@ -399,13 +406,25 @@ class IndicatorAlertHistory:
         return _response(result)
 
     def close(self):
-        with self.lock, self.store.connect() as db:
-            self.closed = True
-            for token in self.tokens.values():
-                token.set()
-            db.execute("UPDATE indicator_history_runs_v1 SET status='interrupted',cancel_requested=0,error=? WHERE status IN ('queued','running','cancel_requested')",
-                       ('Service stopped; this scan was interrupted and will not automatically resume',))
+        errors = []
+        with self.lock:
+            if not self.closed:
+                self.closed = True
+                for token in self.tokens.values():
+                    token.set()
+                try:
+                    with self.store.connect() as db:
+                        db.execute("UPDATE indicator_history_runs_v1 SET status='interrupted',cancel_requested=0,error=? WHERE status IN ('queued','running','cancel_requested')",
+                                   ('Service stopped; this scan was interrupted and will not automatically resume',))
+                except Exception as exc:
+                    errors.append(exc)
+            # Shutdown signals and joining cannot depend on a successful write.
+            # A later close retries joining, never storage after ownership release.
             self.wake.set()
         self.thread.join(timeout=2)
         if self.thread.is_alive():
-            raise RuntimeError('Historical worker shutdown is still pending; keep dependencies and workspace ownership')
+            errors.append(RuntimeError('Historical worker shutdown is still pending; keep dependencies and workspace ownership'))
+        if len(errors) == 1:
+            raise errors[0]
+        if errors:
+            raise ExceptionGroup('Historical shutdown cleanup failed', errors)

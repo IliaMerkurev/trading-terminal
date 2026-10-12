@@ -341,29 +341,39 @@ class AppService:
             return {"version":1,"id":request_id,"type":"error","error":{"code":"REQUEST_FAILED","message":str(exc)[:2000]}}
 
     def close(self):
+        if getattr(self,'_shutdown_complete',False):return
         errors=[]
         def attempt(action):
             try:action()
             except Exception as exc:errors.append(exc)
         # A still-running alert replay retains all dependencies and workspace
-        # ownership. Do not close its database/history under a timed-out worker.
-        self.indicator_history.close()
-        self.indicator_alerts.close()
-        attempt(self.live.close)
-        attempt(self.library_batches.close)
-        attempt(self.experiments.close)
+        # ownership. A persistence fault after it stops must not skip cleanup.
+        replay_owners=[getattr(self,name,None) for name in ('indicator_history','indicator_alerts')]
+        for owner in replay_owners:
+            if owner is not None:attempt(owner.close)
+        if any(owner is not None and owner.thread.is_alive() for owner in replay_owners):
+            if len(errors)==1:raise errors[0]
+            errors.append(RuntimeError('Alert replay shutdown is incomplete; keep dependencies and workspace ownership'))
+            raise ExceptionGroup('Service shutdown cleanup failed',errors)
         # The calculation process is only one workspace owner. Defer unlocking
         # until live/history/download threads have also actually stopped.
-        attempt(self.display_indicators.close)
-        attempt(self.indicator_transport.close)
-        attempt(self.chart_reads.close)
-        attempt(self.exports.close)
-        attempt(self.archives.close)
-        attempt(lambda:self.jobs.close(release_workspace=False))
-        attempt(self.downloads.close)
-        threads=(self.display_indicators.thread,self.live.thread,self.live.warmup_thread,self.live.hub.thread,self.live.chart_history.thread,
-                 self.live.delivery_thread,self.downloads.thread)
-        if self.chart_reads.active or self.exports.active or self.archives.worker.active or self.jobs.active or self.library_batches.active or self.experiments.active or any(t and t.is_alive() for t in threads):
+        for name in ('live','library_batches','experiments','display_indicators','indicator_transport','chart_reads','exports','archives'):
+            owner=getattr(self,name,None)
+            if owner is not None:attempt(owner.close)
+        jobs=getattr(self,'jobs',None)
+        if jobs is not None:attempt(lambda:jobs.close(release_workspace=False))
+        downloads=getattr(self,'downloads',None)
+        if downloads is not None:attempt(downloads.close)
+        live=getattr(self,'live',None)
+        threads=[getattr(getattr(self,name,None),'thread',None) for name in ('display_indicators','downloads')]
+        threads.extend(getattr(live,name,None) for name in ('thread','warmup_thread','delivery_thread'))
+        threads.extend(getattr(getattr(live,name,None),'thread',None) for name in ('hub','chart_history'))
+        owners=[getattr(self,name,None) for name in ('chart_reads','exports','jobs','library_batches','experiments')]
+        owners.append(getattr(getattr(self,'archives',None),'worker',None))
+        if any(getattr(owner,'active',None) for owner in owners) or any(t and t.is_alive() for t in threads):
             errors.append(RuntimeError('Service shutdown is incomplete; workspace ownership is retained'))
-        else:attempt(self.jobs.close)
+        elif jobs is not None:
+            attempt(jobs.close)
+            self._shutdown_complete=jobs.instance_file.closed
+        else:self._shutdown_complete=True
         if errors:raise ExceptionGroup('Service shutdown cleanup failed',errors)

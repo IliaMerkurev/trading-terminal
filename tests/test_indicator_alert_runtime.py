@@ -2,6 +2,7 @@
 import copy
 from pathlib import Path
 import queue
+import sqlite3
 import tempfile
 import threading
 import time
@@ -454,6 +455,26 @@ class AlertServiceTests(unittest.TestCase):
         finally:
             release.set()
             wait_for(lambda: not self.service.indicator_alerts.thread.is_alive())
+
+    def test_cursor_write_failure_cancels_all_rules_and_stops_before_unlock(self):
+        from test_shutdown_resilience import failures
+        rules = [self.create(), self.create()]
+        for rule in rules:
+            self.arm(rule); self.phase(rule, 'ARMED')
+        runtime = self.service.indicator_alerts
+        states = list(runtime.states.values())
+        original = sqlite3.OperationalError('injected cursor shutdown failure')
+        with patch.object(runtime.store, 'invalidate_cursor', side_effect=original):
+            with self.assertRaises(ExceptionGroup) as caught:
+                self.service.close()
+        self.assertIn(original, failures(caught.exception))
+        self.assertFalse(runtime.thread.is_alive())
+        self.assertFalse(self.service.indicator_history.thread.is_alive())
+        self.assertTrue(self.service.jobs.instance_file.closed)
+        self.assertEqual(len(self.service.live.hub.observers), 0)
+        for state in states:
+            self.assertTrue(state['cancel'].is_set())
+            self.assertEqual(state['phase'], 'PAUSED')
 
     def test_layout_only_edit_keeps_arm_and_cached_raw_values(self):
         rule = self.create(); self.arm(rule); self.phase(rule, 'ARMED')

@@ -27,6 +27,7 @@ def explicit_spot(**changes):
 class IndependentSpotTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.jobs=JobManager(self.temp.name);self.manager=LibraryBatchManager(self.jobs)
+        self.addCleanup(self.temp.cleanup)
         self.bars=[Candle(i*60,100,100,100,100,100) for i in range(48)]
         self.spot=self.jobs.datasets.save('spot','BTCUSDT',0,2880,self.bars,[],{},metadata={},provenance=[])
         self.linear=self.jobs.datasets.save('linear','BTCUSDT',0,2880,self.bars,[],{},metadata={},provenance=[])
@@ -38,7 +39,7 @@ class IndependentSpotTests(unittest.TestCase):
             'spot_dataset_id':self.spot['id'],'spot_benchmark':explicit_spot()}
 
     def tearDown(self):
-        self.manager.close();self.jobs.close();self.temp.cleanup()
+        self.manager.close();self.jobs.close()
 
     def wait(self,ident):
         if self.manager.active:
