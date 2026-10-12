@@ -1,3 +1,4 @@
+import {AlertResearchProvider} from './AlertResearch';
 import {AlertSessionProvider} from './AlertSession';
 import {RunProgress} from './RunProgress';
 import {DisplayedMetrics,DisplayTrackingNotice} from './DisplayedEvidence';
@@ -41,7 +42,7 @@ export function savedRunDate(selectedRun:any,runs:any[]):string|null{
   return value?new Date(value).toLocaleString():null;
 }
 
-export default function App(){return <AlertSessionProvider><AppContent/></AlertSessionProvider>;}
+export default function App(){return <AlertSessionProvider><AlertResearchProvider><AppContent/></AlertResearchProvider></AlertSessionProvider>;}
 
 function AppContent(){
   const transport=transportCapabilities();

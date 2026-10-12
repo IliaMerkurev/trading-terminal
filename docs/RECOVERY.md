@@ -47,8 +47,11 @@ cache-only historical backend are independently checked and remotely published.
 The alert interface passed focused/component and actual-browser synthetic
 acceptance and is remotely verified at `23382863bb22689757df45242ee2ec229e3dda2b`.
 The corrected current-agreement panel has passed focused, independent and
-actual-browser synthetic checks; remote publication is verified separately. Historical research UI and frozen
-agreement conditions/full group history remain in progress.
+actual-browser synthetic checks and is remotely verified at
+`3dbbeac4f05d68b15c31fe15c0c0af7ebf419326`. Historical research UI has passed
+focused, independent component and corrected actual-browser synthetic checks;
+remote publication is verified separately. Frozen agreement conditions/full group
+history remain in progress.
 This is not full product or owner acceptance.
 
 
@@ -510,3 +513,78 @@ counts are not additive. Total author coverage is 146 distinct tests, with eight
 independently authored adapter/component scenarios retained. Service stopped
 cleanly at 11:21:27 UTC with all forbidden guards zero. Live providers, Windows
 and owner unaided acceptance are not established by these synthetic checks.
+## Reconstructed historical research interface: independent acceptance
+
+Source checkpoint: `8aefbc20385e41c6e72b1194bead157c0040164e`; tree `2f16182c42991fc5dbef3d5e711e95d228ca9873`. Independent frozen run: **8/8 passed** in 1.56 seconds, with no tracked source changes. Portable tests: `frontend/src/historyUiIndependent.test.tsx`. Run `pnpm exec vitest run frontend/src/historyUiIndependent.test.tsx` from the repository root. The tests replace only the chart renderer with a data/target probe; they do not claim actual chart pixels or geometry.
+
+| Criteria | Independently challenged behavior | Remaining boundary |
+| --- | --- | --- |
+| HISTORY-02 | A manually edited Start survives a late coverage reply while untouched End is filled. Immediate submission carries the exact visible UTC values. Invalid calendar dates and reversed ranges are rejected. | Actual browser date-entry behavior remains a GUI gate. |
+| HISTORY-05 | An uncertain start retains the exact request through provider remount and resolves the original run without issuing a second start. A post-commit error envelope also recovers through durable request readback. | Network failures are injected API outcomes, not manual browser disconnects. |
+| HISTORY-06 | A pre-cancel poll cannot clear a newer cancellation-pending state. Only an authoritative current cancellation status may settle it. | Actual UI cancellation and restart workflow remains a GUI gate. |
+| HISTORY-08–09 | Match paging uses the actual returned cursor. A byte-shortened page omitting the target falls back to the exact saved row; if the chart wrapper also fails, that row is rendered as a truthful singleton with missing-context notice. | Actual Lightweight Charts rendering, 40-row context geometry and short-viewport usability remain GUI checks. |
+| EVIDENCE-01–04 | Original event evidence, raw-open/confirmed-close labels and current-cache warning remain distinct. A separately returned exact event target survives adjacent-byte clipping. No live Service mutation route is invoked by that read/close flow. | Preservation of a real live chart's drafts/layout/Arm is checked separately in integrated GUI. |
+| HISTORY-01, 11–12 | All component cases run under StrictMode, including accepted start navigation and saved chart loading. Durable data, restart and independent 60-cross arithmetic evidence are supplied by the earlier backend checkpoint. | Component counts must not be summed with overlapping author cases as unique coverage. |
+
+Independent review corrected two issues before freeze: effect cleanup flags needed resetting on StrictMode setup, and exact-row fallback must remain usable when the larger chart wrapper exceeds its byte budget. This slice does not implement agreement-history conditions/timelines. Original-byte identity and authentic old-format database compatibility remain unverified.
+
+Integrated historical UI verification: 26/26 passed across the retained eight
+independent research scenarios, unchanged current-agreement boundary scenarios
+and App chart-focus integration. TypeScript no-emit and the production build
+passed. The existing bundle-size advisory remains. The accepted current-panel
+navigation correction and all previously published backend files are retained.
+Actual-browser acceptance remains pending for this integrated checkpoint.
+### Native date submission correction
+
+The actual browser found a gap not covered by the first React-change tests:
+a visibly edited reversed range could leave Start enabled and submit the prior
+state values. That run is not counted as successful date acceptance.
+
+Correction `0b0306f934b34685ed82b82c33d71f8791bf935e`, tree
+`301f0819fb24478c30613becc2de1f13e858f406`, synchronizes native input and blur,
+preserves each DOM-edited/partial field before late preview defaults, and reads
+both actual input values and validity before submitting. Correctness does not
+require blur or a prior React change event.
+
+The independently authored pack now contains twelve StrictMode scenarios:
+the original eight plus four new cases for input-only reversed-range disabling,
+DOM-only valid immediate submission, DOM-only reversed rejection with stale
+valid React state, and partial native badInput protection against late preview.
+All twelve passed on the exact frozen correction in 1.68 seconds. These are
+12 distinct cases, not 8+12. The portable file is
+`frontend/src/historyUiIndependent.test.tsx`.
+
+Corrected actual-browser date entry and exact submitted range remain a separate
+GUI gate. Backend immutable snapshot, journal isolation and earlier component
+proofs are retained with their original hashes and limits.
+
+### Corrected historical interface: actual-browser acceptance
+
+The production application was checked on integrated source
+`e09bd83c72bc016f6f18700b20440dd9acc92a5b` with an isolated synthetic
+Service workspace. On the corrected build, visible Start 12:00 UTC with End
+11:22 UTC immediately showed the reversed-range error and disabled Start.
+Edited valid 06:00–11:22 bounds were submitted exactly: the completed run
+contained 323 known rows, zero unknown rows, 54 matches and 39 pre-range rows.
+The retained independent twelve-case harness also passed on this integration.
+
+The initial full-origin run retained all 362 rows (359 known, three unknown)
+and 60 matches across three 20-match pages. The exact last match selected raw
+OPEN 11:17 / confirmed CLOSE 11:18, row index 358, with saved SMA 14 and previous
+10; the actual chart displayed the target and seven markers in its returned
+window. Reopening after Service restart preserved the original input hash and
+full run, and this exact chart target was rechecked on the corrected build.
+
+Original BTC event evidence retained raw OPEN 10:51 / confirmed CLOSE 10:52,
+the saved 10-to-14 crossing and the mandatory current-cache price warning.
+An unapplied SMA period-5 draft survived research open/close; Cancel restored
+the applied period 3. The fixture independently checked immutable saved-run
+content and the single original journal event. No provider, PAPER, order or
+external-notification actions occurred. Cancellation and uncertain-network races
+remain automated evidence, not manual GUI claims. Native Windows, real providers,
+authentic old database interoperability and original source identity remain
+unverified. The initial native-date failure is retained above as a discovered
+and corrected defect, not relabeled as a successful first pass.
+
+The corrected browser session shut down cleanly at 11:41:33 UTC; all six
+forbidden-action guard counters remained zero.

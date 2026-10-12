@@ -4385,3 +4385,74 @@ The earlier 57 unchanged settings/transport tests are reused, giving 146 distinc
 passing author tests across the panel milestone and this correction. Independent
 and corrected actual-App acceptance are recorded separately; the pre-correction
 GUI observation is retained as a discovered failure, not relabeled as a pass.
+
+## Detached historical research and original-event UI — 2026-10-12
+
+Restored the separate frozen-rule scan setup, inclusive UTC range validation,
+per-field late-preview retention, exact durable Start identity/reconciliation,
+asynchronous status/cancel, saved-scan pages and immutable result inspection.
+Research is mounted above keyed Market remounts. It uses saved raw candles and
+calculated values, independent 20-match pages, all returned chart markers and
+actual bounded cursors. Exact-target byte clipping falls back to the exact row,
+including a singleton chart if only its wrapper exceeds the budget. The separate
+original-event view keeps frozen evidence authoritative and warns that adjacent
+price context is current cache. See [ALERT_RESEARCH_UI](ALERT_RESEARCH_UI.md) and
+[ADR 0060](adr/0060-detached-frozen-rule-research-ui.md).
+
+Focused synthetic frontend evidence:
+
+- First combined pass: 94/96 passed across historical research (26/28), alert UI,
+  indicator draft lifecycle, App chart focus and Market navigation. Both failures
+  were new test mistakes: a mock cancel response did not persist its own state
+  before authoritative polling, and a label expectation used different case.
+- Early review and source inspection corrected StrictMode lifecycle setup refs
+  before that run. Independent review also identified the exact-row-versus-chart
+  wrapper byte boundary; singleton exact-row rendering was added without changing
+  the backend or substituting a nearby candle.
+- One focused corrective pass: 32/32 historical research tests passed in 2.15s.
+  This includes added exact-row/current-cache byte boundaries, accepted unknown
+  request reconciliation after reload, and stale polling after close/reopen.
+  Reusing the unchanged 68 nearest regressions yields 100 distinct passing author
+  tests; repeated runs are not counted twice. This is not a full product suite.
+- TypeScript no-emit and the production Vite build passed. The existing >500 kB
+  JavaScript advisory remains; the resulting JavaScript is approximately 1,017 kB
+  before compression. No dependency, product-version or formula change is included.
+
+Tests use independently expected synthetic values and mocked transport/chart APIs.
+They cover exact UTC/close/open values, dirty fields, invalid order/alignment,
+retention before mutation, storage failure, double clicks, post-commit errors,
+unknown exact retries/reload, cancel/terminal fences, all three 20-match pages,
+actual returned cursors, saved numeric line data, exact target failure/fallback,
+missing/unconfirmed/conflicting original targets and modal Escape isolation.
+Unchanged actual-Service backend evidence is reused rather than relabeled.
+Independent immutable-checkpoint tests, actual-browser canvas/draft checks and
+remote publication remain separate gates. Old research database compatibility,
+Windows/native, live providers, owner acceptance, remote CI and agreement
+condition/full-timeline integration are not established by this checkpoint.
+
+### Native date-input submission correction — 2026-10-12
+
+Actual production-browser acceptance found a real gap not caught by the initial
+React change-event tests: a native date editor displayed a reversed range while
+Start remained enabled, and Start submitted the prior controlled-state dates.
+The earlier component pass therefore did not establish native visible-date
+submission correctness. That acceptance gate was reopened before publication.
+
+The correction adds native input/blur synchronization, independently preserves
+actual DOM edits before late preview defaults, and handles partially edited native
+inputs whose exposed value is empty with badInput set. Start requires both mounted
+input elements, snapshots their actual visible values and validity before any
+state update, rejects an invalid visible range without mutation, and retains the
+exact valid visible range before sending. Per-field dirty behavior and uncertain
+request identity/content remain unchanged.
+
+Focused correction checks passed all 40 historical research tests, including
+eight new input-only, DOM-only immediate submit, blur, late-preview and partial
+native-input cases. Final source inspection moved native-validity capture before
+any state setter; the same 40 tests passed again on that final source in 2.29s.
+The previous 32 and repeated checks are included, not counted again.
+With the unchanged 68 nearest regressions reused, author coverage is 108 distinct
+tests. TypeScript no-emit and production build passed; the existing >500 kB bundle
+advisory remains (approximately 1,018 kB JavaScript before compression). No backend,
+MarketChart, dependency or product-version change is included. Independent frozen
+correction checks and renewed actual-browser date/restart acceptance remain separate.

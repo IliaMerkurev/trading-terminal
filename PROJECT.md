@@ -728,3 +728,20 @@ price style and unsaved parameter drafts must not change the reference or votes.
 Never substitute older output for a missing latest value. See
 [ADR 0059](docs/adr/0059-current-indicator-agreement-panel.md). Agreement alert
 conditions and historical agreement timelines remain separate milestones.
+
+### Later authorized detached historical research interface restoration
+
+The frozen-rule history/evidence backend now has a separately mounted research
+interface: explicit UTC inclusive confirmed-close setup, frozen revision/context/
+parameter review, durable exact Start recovery, asynchronous cancellation/status,
+saved scans, paged matches and immutable snapshot charts. Original events open a
+separate view with authoritative saved evidence and explicitly current-cache price
+context. Exact close/open navigation never substitutes nearest candles. These
+views do not register live alert contexts, change Market drafts/layout/focus,
+Arm/Pause, alter journal/read state or claim banners. See
+[the workflow and limits](docs/ALERT_RESEARCH_UI.md) and
+[ADR 0060](docs/adr/0060-detached-frozen-rule-research-ui.md).
+
+Agreement predicates/full-group timeline, strategy conversion and trading remain
+separate scope. Component evidence does not imply actual-browser, old-database,
+Windows/native, live-provider, owner or release acceptance.

@@ -1052,3 +1052,40 @@ must separately inspect disclosure keyboard behavior, normal/narrow/focused
 layout, draft/cancel/apply, duplicate/variant coverage, stale receipt transitions,
 separate history/Return and reload. Use an isolated synthetic data root with no
 provider/PAPER/order activity. Do not claim DOM mocks establish browser geometry.
+
+## Detached frozen-rule research and original-event UI
+
+See [ALERT_RESEARCH_UI](ALERT_RESEARCH_UI.md). In an isolated synthetic workspace,
+select a saved rule in Local alerts and open Scan this frozen rule. Edit UTC
+inclusive close bounds, including typing immediately before preview completes.
+Run a known crossing sequence, inspect every 20-match page, the last exact
+confirmation/raw-open pair and lower saved-value pane. Navigate chart pages using
+the actual returned index and exercise byte-shortened exact-target fallback.
+Reopen completed/cancelled/interrupted scans without another Start. A stopped
+Service must not resume unfinished scans.
+
+Open Original alert evidence from a genuine runtime journal event. Compare saved
+current/previous values and confirmation/observation clocks, inspect the mandatory
+current-cache warning and missing/unconfirmed exact targets. Preserve an unapplied
+indicator draft and Market focus across open/close/Escape. Check journal/unread/
+banner/runtime state before and after; the independent live observer may run, but
+history views themselves must never invoke its mutation routes. Never replace
+actual runtime events or scan results with hand-inserted acceptance rows.
+
+Focused commands (reuse valid unchanged regressions instead of broad reruns):
+
+```sh
+node node_modules/vitest/vitest.mjs run frontend/src/AlertResearch.test.tsx frontend/src/IndicatorAlerts.test.tsx frontend/src/IndicatorDraftLifecycle.test.tsx frontend/src/AppChartFocus.test.tsx frontend/src/MarketChartNavigation.test.tsx
+node node_modules/typescript/bin/tsc --noEmit
+node scripts/frontend.mjs build
+```
+
+Include StrictMode in lifecycle challenges. Distinguish component/chart mocks from
+actual production-browser geometry, Service restart, native Windows, live-provider
+and owner acceptance. Back up the workspace database; strategy archive export does
+not export research records. Authentic old-database compatibility is still unknown.
+
+Native date-input regression checks must not use only React change events. Cover
+input.value assignment plus a native input event, DOM-only immediate Start, blur,
+and partial badInput with an empty exposed value before delayed preview. Actual
+browser confirmation remains required even when these component tests pass.
