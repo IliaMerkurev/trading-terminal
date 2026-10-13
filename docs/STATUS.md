@@ -36,7 +36,7 @@ download or native trust action. Unsupported contracts and missing/invalid input
 remain distinct from inspection-budget exceedance. Existing results stay intact.
 See [supported cases, limits and workflow](SAVED_RUN_RESEARCH.md).
 
-Focused verification passed 115 frontend checks across 8 files, 52 backend
+Focused verification passed 115 frontend checks across 8 files, 53 backend
 checks, TypeScript and production build. The existing bundle-size advisory
 remains. Added tests remain in a private version-linked archive. Saved output
 authenticity, full-product/CI, actual GUI, Windows/native and owner acceptance are

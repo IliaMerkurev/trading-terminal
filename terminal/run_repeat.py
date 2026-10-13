@@ -13,7 +13,7 @@ from terminal.data import canonical, digest, runtime_snapshot, validate_range, v
 from terminal.graph import validate_graph
 from terminal.profile import Profile
 from terminal.series import Candle
-from terminal.source_limits import checked_parquet, check_materialization, check_manifest
+from terminal.source_limits import checked_parquet, check_materialization, check_manifest, SOURCE_LIMIT
 from terminal.storage import identifier
 
 MAX_SNAPSHOT = 256 * 1024
@@ -86,7 +86,12 @@ def _dataset(store, datasets, saved, profile):
     manifest = _small_json(_inside(store.root, directory / 'manifest.json'), MAX_SNAPSHOT)
     if not isinstance(manifest, dict):
         raise ValueError('Local dataset manifest must be an object')
-    check_manifest(manifest)
+    try:
+        check_manifest(manifest)
+    except ValueError as exc:
+        if str(exc) == SOURCE_LIMIT:
+            raise InspectionLimit(LIMIT) from exc
+        raise
     validate_range(manifest['market'], manifest['symbol'], *manifest['range'])
     seconds = manifest.get('interval_seconds', 60)
     if type(seconds) is not int or seconds % 60:
