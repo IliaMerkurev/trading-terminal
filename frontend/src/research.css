@@ -272,3 +272,10 @@ nav .running-link{margin-left:auto;color:#a4efdb;font-size:12px;white-space:nowr
 .equity-inspector dl{display:flex;gap:8px 24px;flex-wrap:wrap}
 .equity-inspector dl>div{display:flex;gap:8px}
 .equity-inspector dd{margin:0;font-variant-numeric:tabular-nums}
+
+/* Read-only input readiness and explicit independent draft preparation. */
+.run-repeat{margin:18px 0;padding:16px;border:1px solid #48647b;border-radius:8px;overflow-wrap:anywhere}
+.run-repeat h3{margin-top:0}.run-repeat dl>div{padding:8px 0;border-bottom:1px solid #354759}
+.run-repeat dt{font-weight:600}.run-repeat dd{margin:6px 0}.run-repeat dd p{margin:6px 0}
+.run-repeat pre{max-height:220px;overflow:auto;white-space:pre-wrap;font-size:12px}
+.run-repeat button{margin:6px 8px 6px 0}.repeat-ack{display:flex;align-items:start;gap:8px;margin:12px 0}

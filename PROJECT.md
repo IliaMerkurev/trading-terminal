@@ -1,5 +1,17 @@
 # Trading Terminal product specification
 
+## Saved-run independent research extension — 2026-10-13
+
+The authorized development continuation adds bounded read-only checks of original
+saved input availability and deliberate preparation of an independent editor
+draft. The first slice supports completed local ordinary closed-bar graph runs;
+unknown/native/imported/research-specific contracts remain explicit. Preserve
+frozen simulation conditions and exact local dataset identity, existing draft
+protection and immutable results. A changed runtime permits only explicitly
+acknowledged current-runtime research, without equal-output claims or automatic
+execution/downloads. See the [bounded contract](docs/SAVED_RUN_RESEARCH.md).
+Product remains 0.6-dev on the current development branch.
+
 ## Latest daily BTC sentiment extension — 2026-10-12
 
 Add a small collapsible Fear & Greed semicircle to the main Market chart

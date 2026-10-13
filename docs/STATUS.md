@@ -27,7 +27,22 @@ Recovered pane/alert/agreement/history scope is recorded in
 Recovery reconstructed documented behavior; it does not establish byte identity
 with unavailable former source or compatibility with unavailable old databases.
 
-## Current bounded slice: closed-workspace recovery
+## Current bounded slice: independent research from saved inputs
+
+Results now offers explicit local input-availability checks and guarded creation
+of an independent unsaved graph draft. It preserves frozen profile/data identity,
+requires acknowledgement of changed runtime evidence, and never starts a run,
+download or native trust action. Unsupported contracts and missing/invalid inputs
+remain distinct from inspection-budget exceedance. Existing results stay intact.
+See [supported cases, limits and workflow](SAVED_RUN_RESEARCH.md).
+
+Focused verification passed 115 frontend checks across 8 files, 52 backend
+checks, TypeScript and production build. The existing bundle-size advisory
+remains. Added tests remain in a private version-linked archive. Saved output
+authenticity, full-product/CI, actual GUI, Windows/native and owner acceptance are
+not established by this bounded input-readiness slice.
+
+## Preserved closed-workspace recovery
 
 The offline backup/verify/restore CLI preserves every regular file and directory
 in an explicitly selected closed data root, except its transient ownership lock.

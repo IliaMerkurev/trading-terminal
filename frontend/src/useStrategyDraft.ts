@@ -75,6 +75,7 @@ export function useStrategyDraft(initial:()=>StrategyDraft,persist:(draft:Strate
   function choose(choice:Choice){const prompt=s.prompt;s.prompt=null;prompt?.resolve(choice);changed();}
   return {draft:s.draft,get current(){return s.draft;},revision:s.revision,isCurrent:(revision:number)=>s.alive&&s.revision===revision,
     prepare:()=>{const ticket={intent:beginIntent(),revision:s.revision};changed();return ticket;},
+    cancelPrepared:(ticket:DraftIntent)=>{if(s.intent===ticket.intent){beginIntent();changed();}},
     set,save,replace,choose,prompt:s.prompt,dirty:content(s.draft)!==s.baseline,saving:s.saving,loading:s.loading,error:s.error,notice:s.notice,
     editor:{graph:s.draft.graph,layout:s.draft.layout,canUndo:!!s.history.past.length,canRedo:!!s.history.future.length,
       change:(graph:Graph,layout:Layout)=>graphUpdate(()=>s.history.change({graph,layout})),
