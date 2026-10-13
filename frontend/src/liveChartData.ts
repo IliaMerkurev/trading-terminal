@@ -1,4 +1,4 @@
-export type LiveCandle={time:number;open:number;high:number;low:number;close:number;volume:number};
+export type LiveCandle={time:number;open:number;high:number;low:number;close:number;volume:number;confirmation?:string};
 export const displayIntervals=[1,5,15,60,240,1440] as const;
 export function displayCandles(recorded:LiveCandle[],forming:LiveCandle|undefined,minutes:number){
   const rows=new Map(recorded.map(c=>[c.time,c]));

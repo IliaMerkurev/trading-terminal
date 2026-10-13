@@ -1,0 +1,32 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {act,cleanup,renderHook,waitFor} from '@testing-library/react';
+import {useChartIndicators} from './useChartIndicators';
+import {defaults} from './ChartIndicators';
+const mock=vi.hoisted(()=>({api:vi.fn(),tick:null as any,publish:null as any,fail:null as any}));
+vi.mock('./api',()=>({api:mock.api}));
+vi.mock('./poll',()=>({poll:(tick:any,publish:any,fail:any)=>{mock.tick=tick;mock.publish=publish;mock.fail=fail;return ()=>{};}}));
+afterEach(()=>{cleanup();vi.clearAllMocks();});
+const row={time:0,open:100,high:110,low:90,close:105,volume:1,confirmation:'synthetic_closed'};
+const item={id:'b',type:'vmc_cipher_b' as const,visible:true,color:'#123456',params:{...defaults.vmc_cipher_b}};
+const settings={version:1,revision:1,instances:[item],origins:{}};
+const ready={status:'ready',times:[60],columns:{b:{wt1:[10]}},origin:{time:0,generation:1},price_style:'heikin_ashi',price_candles:[{time:60,open:102,high:110,low:90,close:103}],indicator_events:{instances:{b:[{id:'event'}]}}};
+it('rejects the whole accepted snapshot for a same-time raw correction, including columns, HA and events',async()=>{
+ const rows={current:[{...row}]};mock.api.mockImplementation(async(command:string)=>command==='chart_indicator_settings'?settings:{...ready});
+ const hook=renderHook(()=>useChartIndicators('spot','BTCUSDT',1,true,rows,'bybit',0,'heikin_ashi'));
+ await waitFor(()=>expect(hook.result.current.loaded).toBe(true));await act(async()=>mock.publish(await mock.tick()));
+ expect(hook.result.current.result).toEqual(ready);
+ rows.current=[{...row,close:99}];hook.rerender();
+ expect(hook.result.current.projectionCurrent).toBe(false);expect(hook.result.current.result).toBeNull();
+ await act(async()=>mock.publish(await mock.tick()));expect(hook.result.current.result).toEqual(ready);
+});
+it('quarantines uncertain settings commit, ignores old replies/errors and blocks blind retry or reanchor',async()=>{
+ const rows={current:[{...row}]};
+ mock.api.mockImplementation((command:string)=>command==='chart_indicator_save'?Promise.reject(new Error('response expired after commit')):Promise.resolve(command==='chart_indicator_settings'?settings:ready));
+ const hook=renderHook(()=>useChartIndicators('spot','BTCUSDT',1,true,rows));await waitFor(()=>expect(hook.result.current.loaded).toBe(true));
+ await act(async()=>mock.publish(await mock.tick()));const oldPublish=mock.publish,oldFail=mock.fail,oldReply=await mock.tick();
+ await act(async()=>hook.result.current.apply([{...item,visible:false}]));
+ expect(hook.result.current.loaded).toBe(false);expect(hook.result.current.result).toBeNull();expect(hook.result.current.settings).toEqual(settings);
+ const warning=hook.result.current.error;expect(warning).toContain('could not be confirmed');
+ await act(async()=>{oldPublish(oldReply);oldFail(new Error('late poll failure'));await hook.result.current.apply([{...item,visible:false}]);hook.result.current.reanchor();});
+ expect(hook.result.current.error).toBe(warning);expect(hook.result.current.result).toBeNull();expect(mock.api.mock.calls.filter(call=>call[0]==='chart_indicator_save')).toHaveLength(1);
+});

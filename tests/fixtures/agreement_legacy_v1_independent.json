@@ -1,0 +1,225 @@
+{
+  "source_commit": "40035d5f7a3b76753d55c93bdff9a5f6beebb6fa",
+  "core_blob": "89c6ce33bffd332ef011330a10a0056ebf577ac4",
+  "raw_source": "agreement-history-oracle.json",
+  "fixtures": [
+    {
+      "name": "scalar_state",
+      "definition": {
+        "version": 1,
+        "contract": "frozen-indicator-alert-v1",
+        "context": {
+          "source": "bybit",
+          "market": "spot",
+          "symbol": "BTCUSDT",
+          "minutes": 1
+        },
+        "settings_revision": 7,
+        "origin": {
+          "time": 1800000000,
+          "generation": 1,
+          "contract": "native-close-engine-seeds-v1"
+        },
+        "event_contract": "confirmed-vmc-events-v1",
+        "combine": "ALL",
+        "instances": [
+          {
+            "id": "trend",
+            "type": "sma",
+            "params": {
+              "period": 2
+            },
+            "contract": {
+              "display": "native-close-engine-seeds-v1",
+              "vmc": null,
+              "metadata_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+            }
+          }
+        ],
+        "conditions": [
+          {
+            "predicate": "above",
+            "left": {
+              "kind": "series",
+              "instance_id": "trend",
+              "port": "value"
+            },
+            "right": {
+              "kind": "level",
+              "unit": "price",
+              "value": 11
+            }
+          }
+        ]
+      },
+      "definition_hash": "f4213112d31bedc17e693f3f0d3396b0cc87c4ffec348447c635cb57fc3199d6",
+      "replay_bytes_sha256": "68590be0c0a55b907eea0eee7a6b6d4a5bf55fe07b7d804cc1de1c289b218365"
+    },
+    {
+      "name": "raw_cross",
+      "definition": {
+        "version": 1,
+        "contract": "frozen-indicator-alert-v1",
+        "context": {
+          "source": "bybit",
+          "market": "spot",
+          "symbol": "BTCUSDT",
+          "minutes": 1
+        },
+        "settings_revision": 7,
+        "origin": {
+          "time": 1800000000,
+          "generation": 1,
+          "contract": "native-close-engine-seeds-v1"
+        },
+        "event_contract": "confirmed-vmc-events-v1",
+        "combine": "ALL",
+        "instances": [],
+        "conditions": [
+          {
+            "predicate": "cross_above",
+            "left": {
+              "kind": "price",
+              "port": "close"
+            },
+            "right": {
+              "kind": "level",
+              "unit": "price",
+              "value": 12
+            }
+          }
+        ]
+      },
+      "definition_hash": "68a566422b5d7089f0afa9cc0504df95ee2c36bf7ceda9d5ae2041b9cc41e684",
+      "replay_bytes_sha256": "4afa64a7c6c1532c9d196fc3dfa53040e121e758a465797d90257172c12e0aa0"
+    },
+    {
+      "name": "mixed_all",
+      "definition": {
+        "version": 1,
+        "contract": "frozen-indicator-alert-v1",
+        "context": {
+          "source": "bybit",
+          "market": "spot",
+          "symbol": "BTCUSDT",
+          "minutes": 1
+        },
+        "settings_revision": 7,
+        "origin": {
+          "time": 1800000000,
+          "generation": 1,
+          "contract": "native-close-engine-seeds-v1"
+        },
+        "event_contract": "confirmed-vmc-events-v1",
+        "combine": "ALL",
+        "instances": [
+          {
+            "id": "trend",
+            "type": "sma",
+            "params": {
+              "period": 2
+            },
+            "contract": {
+              "display": "native-close-engine-seeds-v1",
+              "vmc": null,
+              "metadata_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+            }
+          }
+        ],
+        "conditions": [
+          {
+            "predicate": "above",
+            "left": {
+              "kind": "series",
+              "instance_id": "trend",
+              "port": "value"
+            },
+            "right": {
+              "kind": "level",
+              "unit": "price",
+              "value": 11
+            }
+          },
+          {
+            "predicate": "cross_above",
+            "left": {
+              "kind": "price",
+              "port": "close"
+            },
+            "right": {
+              "kind": "level",
+              "unit": "price",
+              "value": 12
+            }
+          }
+        ]
+      },
+      "definition_hash": "738a4f9fbb45b3ef4a122244089de267dbb9677571ef2d66a3cdef5c66e37ee7",
+      "replay_bytes_sha256": "5db4c8103e692c8e08ae75034c8a52e1d8d39fea9bda5eee4a90fec01f5e7d63"
+    },
+    {
+      "name": "mixed_any",
+      "definition": {
+        "version": 1,
+        "contract": "frozen-indicator-alert-v1",
+        "context": {
+          "source": "bybit",
+          "market": "spot",
+          "symbol": "BTCUSDT",
+          "minutes": 1
+        },
+        "settings_revision": 7,
+        "origin": {
+          "time": 1800000000,
+          "generation": 1,
+          "contract": "native-close-engine-seeds-v1"
+        },
+        "event_contract": "confirmed-vmc-events-v1",
+        "combine": "ANY",
+        "instances": [
+          {
+            "id": "trend",
+            "type": "sma",
+            "params": {
+              "period": 2
+            },
+            "contract": {
+              "display": "native-close-engine-seeds-v1",
+              "vmc": null,
+              "metadata_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+            }
+          }
+        ],
+        "conditions": [
+          {
+            "predicate": "above",
+            "left": {
+              "kind": "series",
+              "instance_id": "trend",
+              "port": "value"
+            },
+            "right": {
+              "kind": "level",
+              "unit": "price",
+              "value": 11
+            }
+          },
+          {
+            "predicate": "cross_above",
+            "left": {
+              "kind": "price",
+              "port": "close"
+            },
+            "right": {
+              "kind": "level",
+              "unit": "price",
+              "value": 12
+            }
+          }
+        ]
+      },
+      "definition_hash": "45e76ab27ab24752b1d586bddc3c4148b605a5bc48d0940ef467fd89f4d63ea4",
+      "replay_bytes_sha256": "96672d02eff541c83148a3843294f000fcd8312e07a16e4900f8a0537d4d82e7"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+.chart-context-strip{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;min-width:0;margin:7px 0}
+.chart-context-strip>.chart-ohlcv{flex:1 1 240px;align-content:flex-start}
+.fear-greed{box-sizing:border-box;flex:0 1 194px;min-width:0;width:194px;padding:9px 11px;border:1px solid #354559;border-radius:10px;background:#121d2a;color:#ccdae7;font-size:10px;line-height:1.35}
+.fear-greed-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px}
+.fear-greed-heading button{padding:0;min-width:28px;min-height:28px;font-size:17px;line-height:1}
+.fear-greed-scope{color:#afc6db;font-size:10px;font-weight:650;letter-spacing:.03em}
+.fear-greed-reading{display:flex;align-items:baseline;gap:5px;margin:3px 0 0}
+.fear-greed-reading strong{font-size:25px;line-height:1.1;font-variant-numeric:tabular-nums}
+.fear-greed-reading span{font-size:10px}
+.fear-greed-dial{display:block;width:100%;height:72px;overflow:visible}
+.fear-greed-dial text{fill:#a7b8c8;font-size:9px}
+.fear-greed-ends{display:flex;justify-content:space-between;gap:5px;font-size:8px;color:#a7b8c8}
+.fear-greed-date{margin-top:5px;color:#d2dfeb;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.fear-greed-status{color:#f0c576;margin:2px 0}
+.fear-greed a{display:inline-block;color:#8dc8ff;text-decoration:underline;padding:3px 0;min-height:20px}
+.fear-greed small{display:block;font-size:9px;line-height:1.35;color:#9eb1c3;margin-top:3px;overflow-wrap:anywhere}
+.fear-greed-retry{margin-top:5px;min-height:27px;font-size:10px;padding:3px 7px}
+.fear-greed button:focus-visible,.fear-greed a:focus-visible{outline:2px solid #9fceff;outline-offset:3px}
+.fear-greed--collapsed{flex-basis:230px;width:230px}
+.fear-greed--collapsed .fear-greed-reading strong{font-size:18px}
+@media(max-width:600px){.chart-context-strip{gap:7px}.fear-greed{flex-basis:184px}.chart-context-strip>.chart-ohlcv{flex-basis:160px}}

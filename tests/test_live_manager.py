@@ -94,6 +94,8 @@ class LiveManagerTests(unittest.TestCase):
                 with manager.store.connect() as db:
                     db.execute('INSERT INTO live_options VALUES(?,?)',(sid,canonical({'paper':True,'channels':[],'warmup_minutes':2,'execution_source':'manual'}).decode()))
                 manager.session_id=sid;manager.thread=Mock();manager.thread.is_alive.return_value=True
+                # _run executes synchronously here; model normal ownership release on join.
+                manager.thread.join.side_effect=lambda timeout=None:setattr(manager.thread.is_alive,'return_value',False)
                 manager._run(sid)
                 self.assertEqual(observed_positions[0],None)
                 self.assertEqual(observed_positions[1]['side'],'long')

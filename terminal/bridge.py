@@ -9,12 +9,12 @@ def main():
     parser=argparse.ArgumentParser(description='Local research IPC service')
     parser.add_argument('--data-root')
     options=parser.parse_args()
-    from terminal.service import AppService
-    from terminal.data import canonical
-    from terminal.paths import data_root
     def send(value):
-        sys.stdout.buffer.write(canonical(value)+b'\n');sys.stdout.buffer.flush()
+        sys.stdout.buffer.write(json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=True,allow_nan=False).encode()+b'\n');sys.stdout.buffer.flush()
     try:
+        from terminal.service import AppService
+        from terminal.data import canonical
+        from terminal.paths import data_root
         service=AppService(data_root(options.data_root))
     except Exception as error:
         send({'version':1,'id':'startup','type':'error','error':{'code':'STARTUP_FAILED','message':str(error)[:1000]}})

@@ -1,0 +1,7 @@
+.rule-strategy-overlay{position:fixed;inset:0;background:#080c14c9;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.rule-strategy-dialog{width:min(880px,100%);max-height:calc(100vh - 40px);overflow:auto;background:var(--panel,#141c2a);border:1px solid #45516a;border-radius:12px;padding:24px;box-shadow:0 20px 80px #0009}
+.rule-strategy-dialog>label{display:block;margin:12px 0}.rule-strategy-dialog>label>input,.rule-strategy-dialog>label>select{display:block;max-width:100%;width:100%;margin-top:6px}
+.rule-strategy-dialog button,.rule-strategy-recovery button{margin:6px 8px 6px 0}.rule-strategy-dialog p,.frozen-strategy-source p{line-height:1.5}
+.conversion-defaults{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}.conversion-defaults>div{padding:8px;background:#ffffff08;border-radius:5px}.conversion-defaults dt{color:#aab6c8;font-size:12px}.conversion-defaults dd{margin:4px 0 0;overflow-wrap:anywhere}
+.frozen-strategy-source{min-width:0}.frozen-hash{overflow-wrap:anywhere}.frozen-strategy-source pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto;font-size:12px}
+.rule-strategy-recovery{position:fixed;right:16px;bottom:16px;max-width:min(620px,calc(100vw - 32px));max-height:40vh;overflow:auto;z-index:1100;background:#162232;border:1px solid #60738e;border-radius:8px;padding:12px 16px;box-shadow:0 8px 30px #0008}.rule-strategy-recovery p{overflow-wrap:anywhere;margin:6px 0}

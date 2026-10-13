@@ -123,9 +123,14 @@ class PublicStream:
             if row['confirm'] and timestamp<start+width-1:
                 raise LiveProtocolError('Candle confirmed before its close')
             if interval!='1':
-                previous=self.display_watermarks.get(interval,(-1,-1,False))
-                if start<previous[0] or (start==previous[0] and (timestamp<=previous[1] or previous[2])):continue
-                self.display_watermarks[interval]=(start,timestamp,row['confirm'])
+                # Per-candle bounded watermarks admit delayed closes/corrections
+                # for retained intervals, without reopening arbitrary old history.
+                watermarks=self.display_watermarks.setdefault(interval,{})
+                if watermarks and start<max(watermarks)-2*width:continue
+                previous=watermarks.get(start,(-1,False))
+                if timestamp<=previous[0] or (previous[1] and not row['confirm']):continue
+                watermarks[start]=(timestamp,row['confirm'])
+                for old_start in sorted(watermarks)[:-3]:del watermarks[old_start]
                 candle=Candle(start//1000,*(float(row[key]) for key in ('open','high','low','close','volume')))
                 events.append({'kind':'display_candle','interval':interval,'confirmed':row['confirm'],'candle':asdict(candle),'provider_ms':timestamp})
                 continue

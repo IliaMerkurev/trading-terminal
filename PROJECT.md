@@ -1,14 +1,87 @@
 # Trading Terminal product specification
 
+## Saved-run independent research extension — 2026-10-13
+
+The authorized development continuation adds bounded read-only checks of original
+saved input availability and deliberate preparation of an independent editor
+draft. The first slice supports completed local ordinary closed-bar graph runs;
+unknown/native/imported/research-specific contracts remain explicit. Preserve
+frozen simulation conditions and exact local dataset identity, existing draft
+protection and immutable results. A changed runtime permits only explicitly
+acknowledged current-runtime research, without equal-output claims or automatic
+execution/downloads. See the [bounded contract](docs/SAVED_RUN_RESEARCH.md).
+Product remains 0.6-dev on the current development branch.
+
+## Latest daily BTC sentiment extension — 2026-10-12
+
+Add a small collapsible Fear & Greed semicircle to the main Market chart
+workspace, with a clearly dated latest daily BTC value and adjacent Alternative.me
+attribution. Keep it separate from the selected candle/instrument and all
+strategies, alerts, backtests and agreement calculations. A bounded independent
+fetch/cache preserves honest loading, unavailable, invalid, offline and outdated
+states. No paid service, credentials, accounts or network/security changes are
+included. See the [display contract and acceptance](docs/FEAR_GREED.md).
+Product remains 0.6-dev on the existing development branch.
+
+## Saved backtest comparability extension — 2026-10-12
+
+The owner approved a bounded read-only review of saved comparison conditions:
+data/content/coverage, declared and recorded periods, capital, costs and execution
+contracts. Missing historical evidence stays unknown. Preserve saved results and
+existing metrics; do not rerun, reprice, rank or infer equivalence. See the
+[comparability acceptance record](docs/BACKTEST_COMPARABILITY.md). Arbitrary new
+saved-comparison workflows, merge and release remain later scope.
+
+## Saved backtest trade review extension — 2026-10-12
+
+The authorized development continuation improves the existing saved Results
+workflow with one selected-trade inspector, actual entry/exit/lifecycle chart
+navigation, saved costs and immutable strategy context. Preserve source clocks,
+DCA/partial-fill accounting and explicit unavailable condition evidence. Do not
+recompute historical signals or add an execution model. See the bounded
+[trade-review acceptance record](docs/BACKTEST_TRADE_REVIEW.md). Product stays
+0.6-dev; merge, release and later roadmap slices remain separate.
+
+## Saved indicator rule to strategy extension — 2026-10-12
+
+The owner authorized a bounded saved-rule conversion flow into the existing
+strategy editor and backtest workflow. Preserve the exact frozen rule meaning
+and provenance, expose execution defaults for review, and create an independent
+editable strategy without starting execution. Unsupported contexts must fail
+explicitly rather than approximate. The first-slice acceptance boundary is
+[documented here](docs/RULE_STRATEGY_CONVERSION.md). Product remains 0.6-dev;
+this authorization does not include a merge, release or later roadmap slices.
+
+## Project license — 2026-10-10
+
+The owner selected the [MIT License](LICENSE) for Trading Terminal. This explicit
+authorization supersedes earlier project-license exclusions only for adopting MIT;
+all other scope and publication limits remain in force. Third-party components
+and market data retain their own licenses and provider terms. See
+[third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Current authorized research-workspace extension
+
+The owner authorized a simpler card-first Research workspace with a retained Pro
+editor, reusable/updatable local history, explicit faster closed-bar backtests,
+longer-horizon strategy candidates and timeframe comparison on 2026-09-30.
+This extends section 23 without a product-version bump. Existing live features
+remain available in Pro; current work prioritizes backtests. Preserve accounting,
+native trust, immutable results and independent validation. See
+[ADR 0025](docs/adr/0025-research-resolution.md). Git checkpoints are authorized;
+merge, release and deployment remain separate owner decisions. Linear updates
+are not required for this work. Finish the current safe milestone and stop adding
+scope when account remaining usage falls below 10 percent.
+
 Product 0.5.1-dev was accepted through the owner-authorized conditional squash merge of PR #6. Product 0.6-dev is authorized for development, not accepted. Section 23 defines this extension; earlier behavior and immutable results remain supported.
 
-Current accepted product: 0.5 development build (`0.5-dev`). Sections 1–20 retain the historical 0.1–0.4 contracts; section 21 defines the 0.5 extension and supersedes their scope exclusions only for explicitly listed features. Stored results retain their original versioned execution assumptions. Owner manual acceptance permits the 0.5 merge with remaining UI/UX issues deferred; it does not retroactively establish unperformed automated native measurements. Telegram delivery remains unverified and outside acceptance. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
+Historical accepted 0.5 baseline: `0.5-dev`; the accepted 0.5.1 maintenance checkpoint is recorded above. Current 0.6 development is not owner-accepted. Sections 1–20 retain the historical 0.1–0.4 contracts; section 21 defines the 0.5 extension and supersedes their scope exclusions only for explicitly listed features. Stored results retain their original versioned execution assumptions. Owner manual acceptance permits the 0.5 merge with remaining UI/UX issues deferred; it does not retroactively establish unperformed automated native measurements. Telegram delivery remains unverified and outside acceptance. This file is the sole current technical specification. ADRs explain implementations without silently removing requirements. Public artifacts are English; historical archives are not competing specifications.
 
 ## 1. Purpose and delivery target
 
 Build a local desktop application for historical strategy research. The complete workflow is: create or import a strategy, prepare historical data, run a backtest, inspect trades and metrics, change parameters, and compare saved runs. The application does not promise profitable strategies. Example indicator strategies are test scenarios, not recommendations.
 
-0.1 targets Windows 11 x64 with a 32 GB RAM reference configuration. Establish performance and memory budgets through measurements. Linux/macOS portability should remain feasible, but their releases and verification are outside 0.1. A documented development launch script with one-time setup is acceptable before a conventional installer. The project license remains undecided.
+0.1 targets Windows 11 x64 with a 32 GB RAM reference configuration. Establish performance and memory budgets through measurements. Linux/macOS portability should remain feasible, but their releases and verification are outside 0.1. A documented development launch script with one-time setup is acceptable before a conventional installer. The project is licensed under the [MIT License](LICENSE).
 
 ## 2. Markets and position semantics
 
@@ -333,3 +406,438 @@ Backend saved metrics include net PnL, period return, final equity, drawdown, co
 Cards and sortable table expose provenance, compatibility, original/default versus chosen timeframe, actual saved-report links, comparison equity and Create my copy. Bundled templates remain immutable. Input changes label old results stale; untested/failed values are N/A. Rank comparable cohorts only. Freeze selected candidates before separate later-period validation with fresh capital/baselines; retain attempted variants, source dates and repeated-holdout warnings.
 
 Count a strategy only after independent nontrivial synthetic evidence and a finite cached public-data integration run; losses remain valid observations. Preserve accepted features, native trust and user data using copied additive migration checks. Six–ten strategies are optional only after the core and owner budget gate. No Telegram, real trading, new license, 0.7, release or 0.6 merge is authorized. Actual verified progress is recorded in STATUS.md; partial safe checkpoints are not completed core acceptance.
+
+
+### Owner-authorized usability refinement — 2026-09-30
+
+The card-first extension uses task navigation: Strategy library, Market data,
+Saved tests and Strategy editor. This supersedes the Research/Pro switch and
+earlier tab names while retaining their capabilities under explicit tasks or
+More tools. Direct card testing needs no editable copy; Customize strategy
+creates an independent draft. Selection and active work survive navigation.
+History preparation returns to the preserved test setup. Review shows the
+actual period, capital, costs, variants and passive comparisons before start.
+Saved comparisons and individual reports remain reopenable without execution.
+Later-period verification has its own date/data controls and uses the original
+candidate's frozen settings. See [ADR 0027](docs/adr/0027-task-oriented-testing-workspace.md).
+
+
+### Owner-authorized catalog batch comparison — 2026-09-30
+
+Provide a Test all strategies action that forms the full catalog by a shared,
+explicitly selected timeframe set. Default to 4h and 1d. Search/family filters
+must not silently reduce the catalog batch. Each strategy retains its current
+indicator parameters across timeframes; all rows share history, evaluation
+dates, initial capital, sizing, costs and execution settings. Preserve model
+versions and native trust; unsupported rows remain visible with reasons.
+Persist immutable inputs, row states and results in the existing local database.
+Saved comparisons support filters and bidirectional metric sorting within
+compatible execution cohorts. This finite matrix is not a parameter optimizer.
+At most 96 strategy/timeframe rows plus two passive alternatives are admitted,
+with the existing 2,000,000-source-candle workload cap. No product-version bump,
+database migration, parallel execution or automatic resume is required.
+See [ADR 0028](docs/adr/0028-catalog-batch-comparison.md).
+
+
+### Original-plan workload admission correction — 2026-10-10
+
+TT10/A4 retains the 2,000,000 modeled source-candle execution cap while counting
+actual modeled row windows: full preceding source prefix plus evaluation for
+strategies, evaluation only for passive references, zero for unavailable rows,
+and no cache discount. Resolve source units per row. Preserve all indicator
+history and numerical execution semantics. Thus 600,000 preceding candles plus
+100,000 evaluation candles with two passive references counts 900,000 for one
+strategy, 1,600,000 for two, and rejects 2,300,000 for three.
+
+Full trade/mark/funding source loading is a separate bounded admission policy,
+including suffix history outside the modeled window. Check manifest and physical
+Parquet metadata/schema/integrity before eager decoding, retaining normalized
+content verification. State materialization estimates honestly; they are not a
+peak-memory guarantee. Freeze additive workload version/breakdown and source-load
+policy for new contracts; retain the old alias and unchanged historical reports.
+See [development guidance](docs/DEVELOPMENT.md#modeled-work-and-independent-full-source-admission-tt10--a4).
+Historical A4 slice boundary: independent linear-origin spot contracts, TT13
+and bounded research were separate then; subsequent completed evidence is in
+[the current checkpoint](docs/CHECKPOINT.md).
+
+### Original-plan independent passive contract — 2026-10-10
+
+TT10/A2 admits an explicit independent spot execution profile and versioned
+cost/precision provenance for linear-origin Library comparisons. Use actual
+same-source/symbol/resolution spot history, matching initial capital and dates,
+and unleveraged passive policies. No futures fees, precision or order limits may
+be copied implicitly. Explicit numerical cost sharing is separately reviewed and
+frozen. Missing/incomplete optional settings leave passive references N/A without
+blocking valid strategies. Provenance participates in the additive benchmark
+execution document/hash used by jobs, workers, archives and frozen resume.
+Ordinary spot legacy documents remain unchanged when the field is absent.
+Later-period verification retains original costs/precision against new history;
+current metadata never retroactively changes a frozen result. Manual historical
+modeling requires explicit review and a note. Preserve separate risk cohorts and
+all TT10/A4 modeled-work/source-loading guards. TT13 and bounded research were
+outside this historical A2 slice and are now recorded as completed in the current
+checkpoint; Windows/native/live acceptance stays separate.
+
+
+### Original-plan TT13: recoverable background import slice
+
+The production archive importer uses a managed background process and durable
+start/status/attempt-targeted cancellation. Explicit checksum-bound continuation
+retains original reserved IDs, verifies completed artifacts and normalized rows,
+and inserts only missing verified content. Staged rows remain unavailable as
+successful results until per-run atomic visibility. Startup never promotes,
+retries or grants source trust. Legacy synchronous finish remains compatibility
+only; archive and receipt schema 1 remain readable through additive controls.
+See [ADR 0035](docs/adr/0035-asynchronous-recoverable-import.md).
+
+The historical import slice alone did not close TT13. Subsequent export/download,
+local finalization and verified-read work is complete under ADRs 0036–0038 and
+current STATUS evidence, along with the bounded research program. TT10 modeled/
+source budgets and independent spot contracts are unchanged. Windows/native,
+new exchange/live and the explicitly conditional data/owner gates remain separate.
+
+### Later authorized bounded catalog additions — 2026-10-11
+
+After the original bounded TT17/TT18 program completed, add C12 Double 7's and
+C13 Improved R2 as independently authored daily spot long/flat graph candidates.
+Use generic current-inclusive numeric rolling minimum/maximum and completed-bar
+lag nodes with editor support. Preserve all existing templates/defaults and
+archives. Both candidates initially support historical closed daily execution,
+strict gaps, configured profile-2 costs/sizing and no position-management overlay.
+Separate synthetic implementation verification from empirical validation, which
+has not been established for these additions. Their separately recorded finite
+cached-public-data gate is now complete with explicit technical recovery, four
+verified outputs and one retained cancelled attempt; it establishes integration
+only, not profitable or robust behavior. Source rules, adaptations, authored
+rule-summary hashes and limitations are explicit in ADR 0039 and catalog cards.
+Test all strategies retains its 4h/1d default and unavailable rows; individual new
+cards offer daily only. No optional Supertrend, chart-display indicator controls,
+new source acquisition, live orders, main merge or release belongs to this slice.
+
+### Later authorized baseline chart indicators — 2026-10-11
+
+Following the daily catalog addition, add explicitly separate cache-only chart
+SMA/EMA/Bollinger Bands/RSI/MACD/native-volume presentation tools, with atomic
+parameters/colors/visibility, multiple instances and workspace-local persistence.
+This later authorization extends the older recorded-IR-only display restriction;
+recorded IR itself and every strategy/financial computation remain unchanged.
+Require explicit confirmed provenance, deterministic persisted calculation origins,
+gap/warmup disclosure, bounded cancellable off-dispatch replay and independently
+verified engine seed conventions. See [ADR 0040](docs/adr/0040-cache-only-chart-indicators.md).
+No new data acquisition, real orders, release, version change or Windows claim.
+
+### Later authorized chart workspace convenience — 2026-10-11
+
+Deliver a bounded research-chart workspace using the existing open-source
+Lightweight Charts 5.2.1, while retaining MIT application source and Apache-2.0
+attribution. This is not TradingView product parity or a Pine runtime. Native
+volume defaults to a bottom-of-price overlay on an independent zero-based scale;
+explicit per-instance separate-pane placement remains available and persistent.
+Legacy volume entries lacking placement migrate additively to overlay. Existing
+hidden or removed instances stay hidden or removed. Large volume cannot enter
+price autoscaling. Retain the six existing display formulas and source-specific
+origins without modifying strategies, execution, signals or immutable results.
+
+Provide quick native timeframes, OHLC/volume hover readout, fit, automatic/manual
+and logarithmic price scale controls, and searchable indicator selection with a
+bounded settings panel. Provide independently authored horizontal/vertical line,
+trend/ray, rectangle, Fibonacci retracement and text tools, plus a transient ruler.
+Support selection, body/endpoint movement, color/width/style, candle-OHLC snapping,
+hide/lock, deletion and bounded undo/redo. Gestures commit atomically; Escape or
+pointer cancellation discards an unfinished gesture. Shortcuts belong only to
+the drawing workspace and must not capture typing in inputs.
+
+Persist at most 100 drawings in existing workspace SQLite by source, market and
+instrument, shared across native timeframes. Store UTC interval-end time and
+price anchors, never screen pixels or mutable bar indexes. Require strict
+finite/range/schema/text bounds, optimistic revisions, atomic writes, visible
+save errors and stale-response rejection. Drawings remain visual annotations;
+there is no execution/trading meaning or new data acquisition. Optional new
+indicator formulas are deferred in this first slice. See ADR 0042 for rendering,
+acceptance boundaries and implementation limits. No release, main merge,
+version bump, subscription, proprietary chart product or dependency installation.
+
+### Later authorized chart indicator and drawing extension — 2026-10-11
+
+Add native-timeframe cache-only display ATR (Wilder with explicit SMA seed),
+Stochastic (rolling high/low, SMA K/D) and zero-origin OBV. Preserve the previous
+six formulas, source confirmations/origins, bounded replay and native volume
+units. Disclose that display ATR initialization differs from graph/recorded IR;
+no Pine equality or new strategy/execution support is implied. Add optional
+validated custom Fibonacci ratios with labels/reset and optional drawing names
+in the existing selector. Legacy version-1 drawings remain readable without
+read-time rewrites. See [ADR 0043](docs/adr/0043-chart-indicator-drawing-additions.md)
+for formulas, warmup, limits and acceptance boundaries. No new dependency,
+provider acquisition, release, main merge or version bump.
+
+### Later authorized chart context ergonomics — 2026-10-11
+
+Move drawing properties into a collapsible in-flow context before all chart
+panes, with saved-object access and visible failed-save recovery even when
+collapsed. Keep context geometry stable throughout pointer capture and retain
+keyboard text-input protections. Add an outside-plot indicator instance legend
+with ordered parameter labels, explicit visibility saves and focused settings
+access. Preserve unsaved parameter drafts when collapsing; quick actions cannot
+overwrite them or bypass loading/save state. Keep numeric axis values readable
+without verbose display-series titles, with source-unit and ATR seed caveats
+nearby and full provenance still available. See ADR 0044 for exact interaction
+and layout limits. This slice is frontend-only; all formulas, backend/schema,
+persistence, strategy/trading, dependencies and product version stay unchanged.
+
+### Later authorized explicit latest-chart navigation — 2026-10-11
+
+Provide Return to latest with explicit Following latest / Browsing history states,
+independent of feed freshness. Preserve logical zoom, log/manual price options,
+indicator settings/origins/drafts and drawings/revisions/undo. Following keeps the
+latest candle visible across forming updates, append and the bounded rollover;
+manual navigation away stops following. A historical buffer's right edge never
+implicitly becomes current. Return navigates a recent buffer directly, or keeps
+history visible until a successful bounded recent response replaces it. Loading,
+empty/error retry and obsolete-response cancellation must not destroy the visible
+graph. Remove obsolete auxiliary timestamps and hover on replacement; ordinary
+polls retain accepted indicator data. Keep existing paging/cap/retry contracts,
+initial/explicit Fit behavior and all financial/provider boundaries. See
+[ADR 0045](docs/adr/0045-chart-latest-navigation.md); no new dependency or product
+version is introduced.
+
+### Later authorized Market chart focus — 2026-10-11
+
+Provide reversible Focus chart / Exit chart focus in the actual App / Live market
+layout. Temporarily remove surrounding application/quote/paper/book chrome while
+retaining the same mounted chart, zoom/following state, price options, indicator
+drafts and drawing selection/history. Keep a labelled sticky Exit, essential
+source/symbol/market/freshness, reachable timeframe/chart controls and truthful
+errors. Use one outer scroll owner with wrapping narrow/short layouts. Escape
+must yield to drawing/editor interactions and never discard their drafts merely
+to exit focus. Restore normal layout/scroll without persisting a preference;
+leaving Live market clears focus. Source namespaces retain their existing reset
+rules. Saved history and run charts are not part of this workspace feature.
+See [ADR 0046](docs/adr/0046-market-chart-focus.md). No dependency, backend,
+provider/network, key, strategy/trading, Windows or product-version change.
+
+### Later authorized chart catalog, styles and formula expansion — 2026-10-11
+
+Deliver a compact reference-inspired Market toolbar and searchable categorized
+catalog with type-only UI favorites and a single selected-instance settings
+editor. Preserve atomic whole-draft saves/revisions, hidden-instance cap of eight,
+source namespaces, focus/Return, source-unit and seed disclosures. Collapse keeps
+drafts; Cancel discards. Catalog/controls must remain reachable in flow without
+covering axes, handles or Exit. No inert service or chart-style controls.
+
+Continue in gated slices with candles/Heikin Ashi/line and a finite 30-type free-
+compatible display catalog. HA must use a stable cache-derived origin, explicit
+synthetic-price labeling and independent seed/gap/paging tests; raw prices,
+indicator inputs and all trading/recorded IR stay unchanged. Formula additions
+need bounded contracts, independent fixtures, causality, persistence and series
+integration before catalog exposure. The current integrated candidate exposes all 30 implemented types with bounded
+catalog pagination and Candles/Heikin Ashi/raw-close Line. Advanced integration
+adds explicit UTC VWAP coverage, local SAR dots and causal Ichimoku primitive
+projections; see ADRs 0049 and 0050. The bounded 30-type implementation and
+actual-App browser milestone passed through corrected source `e4d35a0`; this is
+not whole-product, platform-parity, live-provider, Windows/native or owner-led
+unaided acceptance. Earlier bounded synthetic actual-App acceptance for
+price styles and the 21-type catalog passed on corrected source `7086f36`. Price style
+is transient and resets to Candles on reload; indicator/drawing persistence
+remains unchanged. See the
+[expansion plan](docs/CHART_EXPANSION_PLAN.md) and [ADR 0047](docs/adr/0047-market-indicator-catalog.md).
+No Pine runtime, paid chart package, additional dependency, provider acquisition,
+strategy/trading change, product-version bump, release or main merge is implied.
+
+The chart styles and first twelve formula additions follow [ADR 0048](docs/adr/0048-chart-price-styles-and-formula-batch.md).
+
+### Later authorized removal of fixed indicator-instance limits — 2026-10-11
+
+There is no fixed count limit for visible or hidden chart indicator instances.
+Hidden instances are not calculated. Large result/settings transport must be
+paged and coherent; applying settings remains atomic and revision-checked.
+Explicit byte/work safety guards remain and must never truncate settings or
+claim unlimited hardware. ADR 0051 supersedes earlier eight-instance references;
+unchanged historical bar/origin, strategy/trading and provider boundaries apply.
+See [ADR 0051](docs/adr/0051-uncapped-indicator-instances.md).
+
+### Later authorized VuManChu display extension — 2026-10-11
+
+The chart catalog now contains 33 implemented types, adding Cipher B Core +
+confirmed divergences, Cipher A and Swing Free. Preserve raw-price inputs,
+confirmed native-timeframe causality, two-bar divergence confirmation delay,
+atomic numeric/event snapshots, source namespaces and saved origins. Use accurate
+Fast WT and candle-body-proxy flow labels; omit Sommi/MTF/Schaff features and do
+not claim Pine or proprietary-product parity. ADR 0051's no-fixed-instance-limit
+contract and existing 10,000 input / 1,800 viewport, 64 MiB serialized / estimated
+256 MiB working-resource guards remain unchanged. See [ADR 0052](docs/adr/0052-vumanchu-display-events.md)
+and [third-party notices](THIRD_PARTY_NOTICES.md) for the file-level MPL-2.0
+exception, source availability and exact scope. No strategy/trading, dependency,
+provider, product-version, release or main-merge change is authorized here.
+
+### Later authorized named indicator presets — 2026-10-11
+
+Provide a local workspace preset library with Save current, staged selection,
+explicit Apply, Duplicate/Save as, Rename and recoverable Trash/Restore. The
+library is reusable across chart namespaces, but Apply affects only the current
+source/market/symbol. Save current captures the applied revision, not unapplied
+edits; never silently overwrite existing preset content or discard dirty work.
+Preserve all typed parameters, hidden instances, colors and placement. Empty
+presets are valid. Keep atomic revision guards, resource-bounded paged transport
+and no fixed preset/indicator count quota. Never transplant calculation origins,
+history, alerts or execution state. Retain a versioned extension seam for later
+pane layouts without implementing panes or alerts in this slice. See
+[ADR 0053](docs/adr/0053-named-indicator-presets.md). Current Windows/native,
+live-provider and owner-led acceptance are deferred; development does not imply
+publication, release or acceptance.
+
+### Reconstructed compatible chart pane layout — 2026-10-12
+
+Provide persistent pane order, relative weights and compatible indicator groups
+as part of the same atomic indicator Apply/Cancel revision. RSI/Stochastic share
+0–100; MACD/Momentum share price differences; ATR/standard deviation share the
+separate price-distance unit. VMC B remains an exclusive signed group, with all
+seven ports together. Price stays first and Recorded IR separate and last.
+Hidden panes release space but retain order/weight. Extra panes are linear;
+price scale options and the independent volume overlay scale are preserved.
+Preset snapshots include supported layout, while old presets retain legacy
+kind grouping and unsupported extensions cannot be staged. There is no fixed
+pane-count quota. Layout-only edits preserve formulas, values and origins.
+See [ADR 0054](docs/adr/0054-compatible-chart-pane-layout.md). This reconstructed
+implementation does not establish byte identity with unavailable historical
+source or compatibility with unavailable old databases. Platform, actual-browser
+and owner acceptance are recorded separately from focused automated checks.
+
+### Later authorized frozen local indicator alerts — local restoration
+
+Restore local indicator rules with exact source/market/symbol/native interval,
+frozen normalized formula parameters and saved seed origins. Supported bounded
+expressions are level states, causal crossings and confirmed VMC B divergences,
+with 1–16 conditions in one same-close ALL/ANY group. Preserve unknown states;
+state-only rules emit on consecutive known false → true, never initial or
+unknown → true. Saved rules have no fixed count quota; serialized definition,
+active-set and computation resource budgets remain explicit.
+
+Frozen calculations survive hiding/deleting graph originals. Changed surviving
+parameters require explicit reviewed paused rebind. Rules are saved paused and
+startup never restores monitoring. Local immutable event evidence and cursor
+advance must be atomic and deduplicated, with exact raw-open/confirmed-close/
+pivot clocks and separate observation time. Read state and recoverable rule
+Trash/Restore are durable. No strategy conversion, new formulas, providers,
+orders, PAPER or external notification is part of this restoration.
+
+The current checkpoint implements the pure core/storage and a passive observed
+runtime with strict Service routes, explicit asynchronous Arm, UI session/context
+registration, periodic source/input fences and durable uncertain-reply recovery.
+The reconstructed local UI adds paged rule CRUD/archive/restore, catalog-driven
+condition capture, separate reviewed preview and Arm, explicit paused rebind,
+uncertain-write reconciliation, journal/read state and at-most-once banner
+attempts. A stable App-level session controller fences context changes even
+when the panel is collapsed. Historical scans remain a separate milestone.
+See [the interface contract](docs/ALERT_UI.md). [ADR 0055](docs/adr/0055-frozen-local-indicator-alert-core.md)
+records core semantics; [ADR 0056](docs/adr/0056-passive-local-alert-runtime.md)
+records the bounded runtime and [Service contract](docs/ALERT_RUNTIME_API.md). Original old-alert schema
+compatibility is unverified because authentic fixtures are unavailable. Product
+remains 0.6-dev; implementation does not establish release or owner acceptance.
+
+### Later authorized cached alert-history and evidence backend restoration
+
+Provide asynchronous durable scans of a reviewed frozen alert revision over an
+inclusive UTC confirmed-close range. Snapshot the complete contiguous confirmed
+raw cache from the frozen origin through End, replay all pre-range warmup through
+the existing formulas, and persist per-close values/evidence. No provider fetch,
+reseed, gap fill, truncation or alternate formula engine is allowed. Preserve
+immutable completed rule/raw/value snapshots across edits and restart; expose
+unknown values separately from false. Limit full-origin work to 10,000 raw rows
+and an estimated 256 MiB, eight unfinished jobs, and existing definition/response
+byte guards. Cancellation/interruption never claims complete coverage or resumes
+automatically. Durable request identities permit read-only lost-reply recovery.
+
+Keep saved runs/matches paged at 20 and chart windows at most 200 plus bytes;
+markers include all matches in the displayed window. Exact close/raw-open lookup
+must never substitute a nearby candle, and byte-shortened navigation discloses
+an omitted target with an exact fallback. Original event evidence remains
+immutable and authoritative, with separately labeled current-cache price context
+and explicit missing/unconfirmed target states. Reads and scans do not alter
+Market, Arm, cursor, live journal, unread state or banner claims. See
+[ADR 0058](docs/adr/0058-cache-only-alert-history-evidence.md) and the
+[Service API](docs/ALERT_HISTORY_API.md). Frontend and agreement-condition/history
+integration remain separately scoped; no old-schema, Windows or live-provider
+acceptance is implied by this reconstructed backend.
+
+### Reconstructed current indicator-agreement panel — 2026-10-12
+
+Provide a compact below-chart summary of applied visible display indicators at
+the common latest confirmed raw close in the recent buffer. Reuse the shared
+versioned agreement manifest/evaluator and existing verified display response;
+introduce no formula engine, data acquisition, provider call or monitoring.
+Exclude hidden, unavailable, context-only and unsupported members explicitly.
+Show up/down/neutral, exact UTC, group distributions/conflict, fully covered
+supported visible types and available/total parameter variants. Overall requires
+at least two available groups and at least 50% fully covered supported visible
+types. Neutral remains in the denominator. Explain member parameters, rule and
+reason in initially collapsed details; keep the heuristic warning visible.
+
+Require matching source/market/symbol/native interval, applied settings revision,
+raw snapshot, response identity, origin/generation, window and exact close.
+Suppress paused/stale, inactive, loading, saving, error and separate historical
+buffer states. Ordinary recent-buffer panning, hover, forming candles, synthetic
+price style and unsaved parameter drafts must not change the reference or votes.
+Never substitute older output for a missing latest value. See
+[ADR 0059](docs/adr/0059-current-indicator-agreement-panel.md). Agreement alert
+conditions and historical agreement timelines remain separate milestones.
+
+### Later authorized detached historical research interface restoration
+
+The frozen-rule history/evidence backend now has a separately mounted research
+interface: explicit UTC inclusive confirmed-close setup, frozen revision/context/
+parameter review, durable exact Start recovery, asynchronous cancellation/status,
+saved scans, paged matches and immutable snapshot charts. Original events open a
+separate view with authoritative saved evidence and explicitly current-cache price
+context. Exact close/open navigation never substitutes nearest candles. These
+views do not register live alert contexts, change Market drafts/layout/focus,
+Arm/Pause, alter journal/read state or claim banners. See
+[the workflow and limits](docs/ALERT_RESEARCH_UI.md) and
+[ADR 0060](docs/adr/0060-detached-frozen-rule-research-ui.md).
+
+Agreement predicates/full-group timeline, strategy conversion and trading remain
+separate scope. Component evidence does not imply actual-browser, old-database,
+Windows/native, live-provider, owner or release acceptance.
+
+### Reconstructed frozen agreement alert/history backend — 2026-10-12
+
+Freeze the applied visible supported indicator composition for a directional
+agreement state condition, inclusive exact overall threshold and optional strict
+majorities in each required group. Reuse the versioned shared agreement manifest,
+weighting, coverage, duplicates and existing formulas. Preserve original member
+IDs, normalized parameters, context, origin and formula versions independently
+of later hidden/deleted/added/layout graph changes. Surviving parameter changes,
+including change/revert while paused, durably require explicit reviewed rebind;
+rebind stays paused. Applied revision/composition changes invalidate an old
+preview. Arm never captures a replacement composition.
+
+State-only known false-to-true transitions fire; initial/unknown-to-true and
+sustained true do not. Preserve mixed ALL/ANY pulse semantics. Historical research
+persists every close with full overall/group/type/variant/member evidence,
+coverage, true/false/unknown and opposing group-majority conflict, including
+nonhits and sustained true. Live evidence retains the same frozen result and
+actual observation clock. Scans remain immutable and isolated from live state.
+Keep full-origin 10,000-input/256 MiB, definition/active 256 KiB and response
+600 KiB budgets, with complete member-copy accounting and no count quota or
+silent truncation. See [ADR 0061](docs/adr/0061-frozen-agreement-alert-history-backend.md).
+The new strict v2 definition is additive; ordinary v1 bytes/hashes/replay and the
+legacy catalog predicate list remain compatible. Agreement-specific editor and
+timeline presentation, authentic old-database compatibility, Windows/native and
+live-provider acceptance remain separate. Product version stays 0.6-dev.
+
+### Reconstructed agreement editor and immutable timeline — 2026-10-12
+
+The agreement-specific frontend extends ADR 0061 through an exact versioned
+capability gate, explicit fraction threshold and required-group editor, actual
+server preview, normalized frozen membership/contracts review and paused save.
+Applied revision/composition drift requires explicit refresh and review. Numeric
+and divergence controls and uncertain-write recovery remain supported.
+
+Historical research shows immutable overall/trend/momentum/volume distributions
+for every returned candle, including unknown, neutral, false, sustained true and
+nonhit conflict. Distinguish condition state, new rule match and opposing-group
+conflict. Multiple agreement conditions are selectable without losing generic
+condition evidence. Exact row/previous/next selection and actual byte-aware
+cursors preserve all returned candles. See [ADR 0062](docs/adr/0062-frozen-agreement-editor-timeline.md).
+No current-panel recalculation, formula engine, backend/dependency/provider,
+strategy/trading or product-version change is introduced. Actual-browser,
+Windows/native, live-provider and owner acceptance remain separate evidence.

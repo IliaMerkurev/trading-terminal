@@ -140,7 +140,11 @@ class ExperimentTests(unittest.TestCase):
         changed=[Candle(b.time,200,400,50,300,b.volume) if b.time>=1440 else b for b in bars]
         future=self.service.datasets.save('spot','BTCUSDT',0,2160,changed,[],{},metadata={},provenance=[])
         other=self.manager.start(**{**self.params,'dataset_id':future['id']})['experiment_id'];self.wait(lambda:self.manager.active is None)
-        def ranking(ident):return sorted(self.manager.get(ident)['rows'],key=lambda r:(-float(r['summary']['metrics']['net_pnl']),r['ordinal']))
+        def ranking(ident):
+            report=self.manager.get(ident)
+            self.assertEqual([r['status'] for r in report['rows']],['completed']*4,report)
+            self.assertTrue(all(r['summary'] is not None for r in report['rows']),report)
+            return sorted(report['rows'],key=lambda r:(-float(r['summary']['metrics']['net_pnl']),r['ordinal']))
         a,b=ranking(original),ranking(other)
         self.assertEqual([r['ordinal'] for r in a],[r['ordinal'] for r in b])
         self.assertEqual([r['summary']['metrics'] for r in a],[r['summary']['metrics'] for r in b])

@@ -8,16 +8,16 @@ vi.mock('./LiveChart',()=>({default:()=> <div>Live chart</div>}));
 
 it('starts only a saved strategy with explicit paper/channels and displays live state',async()=>{
  mock.api.mockImplementation(async(command:string)=>command==='live_status'?{active:false,telegram:{configured:false}}:{session_id:'fixture'});
- render(<Live strategyId="saved" profile={defaultProfile}/>);
+ render(<Live strategyId="saved" profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  fireEvent.click(screen.getByLabelText('Paper trading'));
  fireEvent.click(screen.getByRole('button',{name:'Start new live session'}));
  await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('live_start_terminal',{strategy_id:'saved',profile:defaultProfile,paper:true,channels:[],execution_source:'strategy'}));
- expect(screen.getByText(/No real orders/)).not.toBeNull();
+ expect(screen.getByText('No real orders',{selector:'.market-diagnostics summary span'})).not.toBeNull();
 });
 
 it('sends Telegram values only to configure and clears fields after secure save',async()=>{
  mock.api.mockImplementation(async(command:string)=>command==='live_status'?{telegram:{configured:true}}:{configured:true});
- render(<Live strategyId={null} profile={defaultProfile}/>);
+ render(<Live strategyId={null} profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  fireEvent.click(screen.getByRole('button',{name:'Notifications'}));
  fireEvent.click(screen.getByRole('button',{name:'Configure Telegram'}));
  const token=screen.getByLabelText('Bot token'),chat=screen.getByLabelText('Chat ID');

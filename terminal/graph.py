@@ -13,24 +13,30 @@ NUMBER = "number"
 BOOLEAN = "boolean"
 POSITION_FIELDS = ('position_side','position_size','position_avg_entry','position_unrealized_pnl_pct','bars_since_entry')
 PORTS = {
-    "price":{"value":NUMBER}, "constant":{"value":NUMBER}, "multiply":{"value":NUMBER},
+    "frozen_rule":{"value":BOOLEAN}, "price":{"value":NUMBER}, "constant":{"value":NUMBER}, "multiply":{"value":NUMBER},
+    "rolling_min":{"value":NUMBER}, "rolling_max":{"value":NUMBER}, "lag":{"value":NUMBER},
     "roc":{"value":NUMBER}, "sma":{"value":NUMBER}, "ema":{"value":NUMBER}, "rsi":{"value":NUMBER},
     "bb":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
+    "donchian":{"upper":NUMBER,"middle":NUMBER,"lower":NUMBER},
     "macd":{"macd":NUMBER,"signal":NUMBER,"histogram":NUMBER}, "atr":{"value":NUMBER},
     **{k:{"value":BOOLEAN} for k in ("compare","cross_above","cross_below","and","or","not")},
     **{k:{"value":NUMBER} for k in POSITION_FIELDS},
 }
-INPUTS = {k:{} for k in ("price","constant","atr")}
+INPUTS = {k:{} for k in ("price","constant","atr","donchian")}
 INPUTS.update({k:{} for k in POSITION_FIELDS})
-INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd","roc")})
+INPUTS.update({k:{"source":NUMBER} for k in ("sma","ema","rsi","bb","macd","roc","rolling_min","rolling_max","lag")})
 INPUTS.update({k:{"left":NUMBER,"right":NUMBER} for k in ("compare","cross_above","cross_below","multiply")})
 INPUTS.update({k:{"left":BOOLEAN,"right":BOOLEAN} for k in ("and","or")})
 INPUTS["not"] = {"source":BOOLEAN}
+INPUTS["frozen_rule"] = {}
 PARAMS = {"price":{"field"}, "constant":{"value"}, "compare":{"operator"},
           "bb":{"period","deviations"}, "macd":{"fast","slow","signal"},
-          **{k:{"period"} for k in ("sma","ema","rsi","atr","roc")},
+          **{k:{"period"} for k in ("sma","ema","rsi","atr","roc","rolling_min","rolling_max")},
           **{k:set() for k in ("cross_above","cross_below","and","or","not","multiply")}}
 PARAMS.update({k:set() for k in POSITION_FIELDS})
+PARAMS['frozen_rule']={'snapshot'}
+PARAMS['lag']={'bars'}
+PARAMS['donchian']={'upper_period','lower_period'}
 
 
 class GraphError(ValueError):
@@ -52,6 +58,8 @@ def validate_graph(graph,allow_incomplete=False):
         raise GraphError("Expected Strategy IR version 1; layout is stored separately")
     if not isinstance(graph["nodes"],list) or not (0 if allow_incomplete else 1) <= len(graph["nodes"]) <= 128:
         raise GraphError("Graph must contain 1–128 nodes")
+    if sum(node.get("type") == "frozen_rule" for node in graph["nodes"] if isinstance(node, dict)) > 1:
+        raise GraphError("One frozen indicator-rule node is supported per strategy")
     nodes = {}
     for node in graph["nodes"]:
         if not isinstance(node,dict) or set(node) != {"id","type","inputs","params"}:
@@ -65,9 +73,16 @@ def validate_graph(graph,allow_incomplete=False):
         params = node["params"]
         if not isinstance(params,dict) or set(params) != PARAMS[kind]:
             raise GraphError(f"Invalid parameters for {kind}")
-        for key in ("period","fast","slow","signal"):
+        if kind == "frozen_rule":
+            from terminal.rule_strategy import validate_snapshot
+            validate_snapshot(params["snapshot"])
+        for key in ("period","fast","slow","signal","upper_period","lower_period"):
             if key in params and (type(params[key]) is not int or not 1 <= params[key] <= 10000):
                 raise GraphError("Indicator periods must be integers from 1 to 10000")
+        if kind in ("rolling_min","rolling_max","lag"):
+            length = params["bars" if kind == "lag" else "period"]
+            if type(length) is not int or not 1 <= length <= 1000:
+                raise GraphError("Rolling windows and lags must be integers from 1 to 1000")
         if kind == "macd" and params["fast"] >= params["slow"]:
             raise GraphError("MACD fast period must be below slow period")
         if kind == "constant":
@@ -113,6 +128,9 @@ def validate_graph(graph,allow_incomplete=False):
 
 def indicator_for(node):
     p, kind = node["params"], node["type"]
+    if kind == 'donchian':return (deque(maxlen=p['upper_period']),deque(maxlen=p['lower_period']))
+    if kind == "lag": return deque(maxlen=p["bars"])
+    if kind in ("rolling_min","rolling_max"): return deque(maxlen=p["period"])
     if kind == "roc": return deque(maxlen=p["period"]+1)
     if kind == "sma": return SimpleMovingAverage(p["period"])
     if kind == "ema": return ExponentialMovingAverage(p["period"])
@@ -130,10 +148,19 @@ class GraphEvaluator:
     Commit only a completed primary bar; keep cross history per evaluation step.
     Thus repeated H1 partials do not advance the H1 EMA/RSI recurrence repeatedly.
     """
-    def __init__(self, graph):
+    def __init__(self, graph, *, frozen_schedule=None):
         self.graph = copy.deepcopy(graph)
         self.order = validate_graph(self.graph)
         self.nodes = {node["id"]:node for node in self.graph["nodes"]}
+        self.frozen_schedule = frozen_schedule
+        frozen = [node for node in self.nodes.values() if node['type'] == 'frozen_rule']
+        if frozen:
+            from terminal.rule_strategy import FrozenSchedule
+            if not isinstance(frozen_schedule, FrozenSchedule):
+                raise GraphError('Frozen indicator rules require an admitted backtest replay; live/PAPER is unavailable')
+            frozen_schedule.bind(frozen[0])
+        elif frozen_schedule is not None:
+            raise GraphError('Unexpected frozen replay schedule')
         self.states = {ident:indicator_for(node) for ident,node in self.nodes.items()}
         self.previous = {}
         self.last_time = None
@@ -157,7 +184,9 @@ class GraphEvaluator:
             inputs = {port:values[ref] for port,ref in node["inputs"].items()}
             result = {port:None for port in PORTS[kind]}
             state = copy.deepcopy(self.states[ident])
-            if kind == "price":
+            if kind == "frozen_rule":
+                result = self.frozen_schedule.consume(candle, time, complete)
+            elif kind == "price":
                 result["value"] = getattr(candle,params["field"])
             elif kind in POSITION_FIELDS:
                 if self.position_context is None or kind not in self.position_context:
@@ -165,6 +194,28 @@ class GraphEvaluator:
                 result['value'] = self.position_context[kind]
             elif kind == "constant":
                 result["value"] = params["value"]
+            elif kind == 'donchian':
+                highs,lows=state
+                # Prior committed candles only. Current extrema must never move
+                # the breakout level being tested on this candle.
+                if len(highs)==params['upper_period'] and len(lows)==params['lower_period']:
+                    upper,lower=max(highs),min(lows)
+                    result={'upper':upper,'lower':lower,'middle':(upper+lower)/2}
+                highs.append(candle.high);lows.append(candle.low)
+                states[ident]=state
+            elif kind == "lag":
+                # Read BEFORE appending: only completed primary-bar slots count.
+                # Null occupies a slot; forming calls clone and never advance it.
+                if len(state) == params['bars']:
+                    result['value'] = state[0]
+                state.append(inputs['source'])
+                states[ident] = state
+            elif kind in ("rolling_min","rolling_max"):
+                # Current-inclusive window, preserving missing observations.
+                state.append(inputs['source'])
+                if len(state) == params['period'] and all(v is not None for v in state):
+                    result['value'] = (min if kind == 'rolling_min' else max)(state)
+                states[ident] = state
             elif kind == "roc":
                 source=inputs['source']
                 if source is not None:

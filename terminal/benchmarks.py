@@ -8,19 +8,60 @@ from terminal.data import digest, runtime_snapshot
 from terminal.profile import Profile, dec
 
 VERSION = 1
+SPOT_EXECUTION_FIELDS = ('fee_rate', 'slippage', 'tick_size', 'quantity_step',
+                         'min_quantity', 'max_quantity', 'min_notional', 'max_notional')
+
+
+def execution_assumptions(value):
+    fields = {'version', 'fee_source', 'fee_note', 'slippage_source', 'precision_source', 'precision_note'}
+    if not isinstance(value, dict) or set(value) != fields or type(value['version']) is not int or value['version'] != 1:
+        raise ValueError('Invalid spot execution assumptions')
+    if value['fee_source'] not in ('explicit_spot', 'explicit_shared') or value['slippage_source'] not in ('explicit_spot', 'explicit_shared'):
+        raise ValueError('Spot costs must be explicitly reviewed')
+    if value['precision_source'] not in ('dataset_metadata', 'reviewed_manual'):
+        raise ValueError('Spot precision must have an explicit modeling source')
+    for key in ('fee_note', 'precision_note'):
+        if not isinstance(value[key], str) or not value[key].strip() or len(value[key]) > 1000 or '\x00' in value[key]:
+            raise ValueError('Spot assumption notes must contain 1–1000 characters')
+    return dict(value)
+
+
+def independent_spot(value, strategy):
+    """Validate reviewed inputs without inheriting linear fees or instrument limits."""
+    if not isinstance(value, dict) or set(value) != {'version', 'profile', 'assumptions'} or type(value['version']) is not int or value['version'] != 1:
+        raise ValueError('Spot benchmark N/A: an independently specified spot execution profile and explicit spot fee assumption are required')
+    raw = value['profile']
+    if not isinstance(raw, dict) or any(key not in raw for key in (*SPOT_EXECUTION_FIELDS, 'market', 'symbol', 'capital')):
+        raise ValueError('Spot benchmark N/A: explicitly supply all spot costs, precision and order limits')
+    if 'tier_assumption' in raw and not isinstance(raw['tier_assumption'],str):
+        raise ValueError('Spot tier assumption must be text')
+    p = Profile(**raw)
+    if (p.market != 'spot' or p.symbol != strategy.symbol or dec(p.capital) != dec(strategy.capital)
+            or p.execution_minutes != strategy.execution_minutes or p.version != 1 or dec(p.leverage) != 1
+            or p.position_management is not None or dec(p.stop_loss) or dec(p.take_profit)):
+        raise ValueError('Independent spot settings must match symbol, capital and resolution without leverage or protection')
+    # Passive scheduling owns deployment. These fixed account conventions cannot
+    # acquire strategy sizing, funding or maintenance policies by accident.
+    p = Profile(**{**p.snapshot(), 'primary_minutes':p.execution_minutes, 'sizing':'percent', 'allocation':'100',
+                   'evaluation':'closed', 'funding_mode':'assumed_zero', 'mark_mode':'last_proxy',
+                   'maintenance_rate':'0', 'gap_policy':'reject', 'tier_assumption':'Unleveraged passive spot account; no funding or margin'})
+    assumptions = execution_assumptions(value['assumptions'])
+    return {'version':1, 'profile':p.snapshot(), 'assumptions':assumptions}
 
 
 def validate_document(document, profile, dataset, runtime=None):
-    if not isinstance(document,dict) or set(document)!={'benchmark','version','start','end','interval'} or document['benchmark']!='passive' or type(document['version']) is not int or document['version']!=VERSION:
+    if not isinstance(document,dict) or set(document)-{'execution_assumptions'}!={'benchmark','version','start','end','interval'} or document['benchmark']!='passive' or type(document['version']) is not int or document['version']!=VERSION:
         raise ValueError('Invalid benchmark document')
+    if 'execution_assumptions' in document:execution_assumptions(document['execution_assumptions'])
     if profile.version != 1:
         raise ValueError('Passive execution requires profile version 1')
-    return contract(profile,dataset,document['start'],document['end'],document['interval'],runtime)
+    return contract(profile,dataset,document['start'],document['end'],document['interval'],runtime,document.get('execution_assumptions'))
 
 
-def start_or_reuse(jobs, profile, dataset_id, start, end, interval='weekly', owner=None):
+def start_or_reuse(jobs, profile, dataset_id, start, end, interval='weekly', owner=None, execution_assumptions=None):
     if not isinstance(profile,Profile):profile=Profile(**profile)
     document=dict(benchmark='passive',version=VERSION,start=start,end=end,interval=interval)
+    if execution_assumptions is not None:document['execution_assumptions']=execution_assumptions
     frozen=validate_document(document,profile,jobs.datasets.describe(dataset_id))
     jobs.datasets.check_profile(jobs.datasets.describe(dataset_id),profile)
     with jobs.lock:
@@ -57,7 +98,7 @@ def schedule(start, end, interval):
     return dates
 
 
-def contract(profile, dataset, start, end, interval='weekly', runtime=None):
+def contract(profile, dataset, start, end, interval='weekly', runtime=None, assumptions=None):
     if not isinstance(profile, Profile): profile = Profile(**profile)
     if profile.market != 'spot' or dataset['market'] != 'spot' or dataset['symbol'] != profile.symbol:
         raise ValueError('Passive alternatives require actual matching spot history')
@@ -66,10 +107,15 @@ def contract(profile, dataset, start, end, interval='weekly', runtime=None):
     if not dataset['range'][0] <= start < end <= dataset['range'][1]:
         raise ValueError('Benchmark range outside source history')
     dates = schedule(start,end,interval)
+    seconds=profile.execution_minutes*60
+    if start%seconds or end%seconds or any(t%seconds for t in dates):
+        raise ValueError('Benchmark schedule and range must align to execution candles')
+    if dataset.get('interval_seconds',60)!=seconds:raise ValueError('Benchmark dataset resolution differs')
     value = dict(version=VERSION,metric_version=VERSION,execution='retained-nautilus',source=dataset['source'],
         dataset_id=dataset['id'],content_sha256=dataset['content_sha256'],symbol=profile.symbol,
         profile=profile.snapshot(),start=start,end=end,schedule=interval,purchases=dates,
         end_treatment='full_close_with_costs',cash_yield='0',external_cashflows=False,runtime=runtime if runtime is not None else runtime_snapshot())
+    if assumptions is not None:value['execution_assumptions']=execution_assumptions(assumptions)
     return {**value,'contract_sha256':digest(value)}
 
 

@@ -1,17 +1,36 @@
+import {useState} from 'react';
 import { describe,it,expect,vi } from 'vitest';
-import { render,screen,fireEvent,waitFor } from '@testing-library/react';
-import App from './App';
+import { render,screen,fireEvent,waitFor,act } from '@testing-library/react';
+import App,{savedRunDate} from './App';
 import { api } from './api';
 import {invoke} from '@tauri-apps/api/core';
 const windowMock=vi.hoisted(()=>({close:null as null|((event:{preventDefault:()=>void})=>void)}));
 vi.mock('./GraphEditor',()=>({default:()=> <div>Graph workspace</div>}));
-vi.mock('./api',()=>({isDesktop:()=>true,api:vi.fn(async(command:string)=>command==='run_history'?{rows:[],next:null}:command.startsWith('list_')?[]:{strategy_id:'saved'})}));
+vi.mock('./api',()=>({isDesktop:()=>true,transportCapabilities:()=>({mode:'desktop',localService:true,nativeWindow:true,openExportsFolder:true,downloadArchives:false,stopService:false}),productVersion:async()=>(await import('@tauri-apps/api/app')).getVersion(),downloadArchive:vi.fn(),api:vi.fn(async(command:string)=>command==='run_history'||command==='library_batch_history'?{rows:[],next:null}:command.startsWith('list_')?[]:{strategy_id:'saved'})}));
 vi.mock('@tauri-apps/api/window',()=>({getCurrentWindow:()=>({onCloseRequested:async(fn:any)=>{windowMock.close=fn;return ()=>{windowMock.close=null;};}})}));
 vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn(async()=>{})}));
 vi.mock('@tauri-apps/api/app',()=>({getVersion:vi.fn(async()=>'0.3.0-dev')}));
 describe('research workspace',()=>{
+  it('opens the library first and preserves independent editor drafts and test capital',async()=>{
+    vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'||command==='library_batch_history'?{rows:[],next:null}:[]);
+    render(<App/>);
+    expect(await screen.findByText('Strategy lab')).toBeTruthy();
+    expect(screen.queryByText('Graph workspace')).toBeNull();
+    expect(screen.queryByRole('button',{name:/Run backtest/})).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+    fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'2222'}});
+    fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
+    fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
+    fireEvent.change(screen.getByLabelText('Strategy name'),{target:{value:'My working draft'}});
+    fireEvent.click(screen.getByRole('button',{name:'Lab'}));
+    fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+    expect((screen.getByLabelText('Research capital') as HTMLInputElement).value).toBe('2222');
+    fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
+    fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
+    expect((screen.getByLabelText('Strategy name') as HTMLInputElement).value).toBe('My working draft');
+  });
   it('captures physical undo before a canvas handler can stop propagation',async()=>{
-    render(<App/>);const canvas=await screen.findByText('Graph workspace');
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));const canvas=await screen.findByText('Graph workspace');
     fireEvent.click(screen.getByText('Add node',{selector:'button'}));
     expect((screen.getByText('Undo',{selector:'button'}) as HTMLButtonElement).disabled).toBe(false);
     canvas.addEventListener('keydown',event=>event.stopPropagation());
@@ -21,17 +40,17 @@ describe('research workspace',()=>{
     expect((screen.getByText('Undo',{selector:'button'}) as HTMLButtonElement).disabled).toBe(false);
   });
   it('saves a graph snapshot and exposes all required tabs',async()=>{
-    render(<App/>);
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
     await screen.findByText('Graph workspace');
-    await screen.findByText('RESEARCH 0.3-dev');
+    await screen.findByText('Local workspace · 0.3-dev');
     fireEvent.change(screen.getByLabelText('Strategy name'),{target:{value:'Causal trend'}});
     fireEvent.click(screen.getByText('Save',{selector:'button'}));
     await waitFor(()=>expect(api).toHaveBeenCalledWith('save_graph',expect.objectContaining({name:'Causal trend',graph:expect.objectContaining({version:1})})));
-    expect(screen.getByText('Backtest',{selector:'button'})).toBeTruthy();
-    expect(screen.getByText('Results',{selector:'button'})).toBeTruthy();
+    expect(screen.getByText('Custom backtest',{selector:'button'})).toBeTruthy();
+    expect(screen.getByRole('button',{name:'Saved tests'})).toBeTruthy();
   });
   it('does not grant native execution consent on selection or save',async()=>{
-    vi.mocked(api).mockClear();render(<App/>);
+    vi.mocked(api).mockClear();render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
     fireEvent.click(screen.getByText('＋ Native Python'));
     expect(screen.getByLabelText('Python source preview')).toBeTruthy();
     fireEvent.click(screen.getByText('Save',{selector:'button'}));
@@ -47,8 +66,8 @@ describe('research workspace',()=>{
       if(command==='run_status')return {id:'active',status:'running',progress:{fraction:.2}};
       return {};
     });
-    render(<App/>);
-    fireEvent.click(screen.getByText('Backtest',{selector:'button'}));
+    render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
+    fireEvent.click(screen.getByText('Custom backtest',{selector:'button'}));
     await waitFor(()=>expect(screen.getByLabelText('Prepared dataset').querySelectorAll('option').length).toBe(2));
     fireEvent.change(screen.getByLabelText('Prepared dataset'),{target:{value:'dataset'}});
     fireEvent.click(screen.getByText('Run immutable snapshot'));
@@ -82,8 +101,8 @@ it('loads Results beyond 100 saved runs, preserves rows on error, and retries wi
   if(command.startsWith('list_'))return [];
   return {};
  });
- const {container}=render(<App/>);
- fireEvent.click(screen.getByText('Results',{selector:'button'}));
+ const {container}=render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
+ fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));fireEvent.click(screen.getByRole('button',{name:'Individual run reports'}));
  await waitFor(()=>expect(container.querySelectorAll('.run-list button')).toHaveLength(50));
  fireEvent.click(screen.getByRole('button',{name:'Load older runs'}));
  await screen.findByText(/Synthetic history failure/);
@@ -99,7 +118,7 @@ it('loads Results beyond 100 saved runs, preserves rows on error, and retries wi
 it('distinguishes initial Results loading from an empty history',async()=>{
  let finish!:(value:any)=>void;
  vi.mocked(api).mockImplementation(async(command:string)=>command==='run_history'?new Promise(resolve=>{finish=resolve;}):[]);
- render(<App/>);fireEvent.click(screen.getByText('Results',{selector:'button'}));
+ render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));fireEvent.click(screen.getByRole('button',{name:'Individual run reports'}));
  expect(screen.getByText('Loading run history…')).toBeTruthy();
  expect(screen.queryByText('No saved runs.')).toBeNull();
  finish({rows:[],next:null});
@@ -116,11 +135,146 @@ it('prompts and cancels background replay before desktop exit',async()=>{
   if(command.startsWith('list_'))return [];
   return {};
  });
- render(<App/>);await screen.findByText('Graph workspace');
+ render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));await screen.findByText('Graph workspace');
  windowMock.close!({preventDefault:vi.fn()});
  fireEvent.click(await screen.findByText('Cancel run and exit'));
  await waitFor(()=>expect(invoke).toHaveBeenCalledWith('close_application'));
  expect(api).toHaveBeenCalledWith('replay_cancel',{replay_id:'replay'});
  const cancel=vi.mocked(api).mock.calls.findIndex(([c])=>c==='replay_cancel');
+ expect(vi.mocked(api).mock.invocationCallOrder[cancel]).toBeLessThan(vi.mocked(invoke).mock.invocationCallOrder[0]);
+});
+
+it('does not let a delayed previous run replace the current trade table',async()=>{
+ const pending:Record<string,(value:any)=>void>={};
+ const rows=['A','B'].map(id=>({id,created_at:'2026-01-01',status:'completed',summary:{profile:{symbol:id},metrics:{net_pnl:0}}}));
+ vi.mocked(api).mockImplementation(async(command:string,p:any)=>{
+  if(command==='run_history')return {rows,next:null};
+  if(command==='result_page')return new Promise(resolve=>{pending[p.run_id]=resolve;});
+  if(command==='library_batch_history')return {rows:[],next:null};
+  if(command.startsWith('list_')||command==='library_catalog'||command==='library_batches')return [];
+  throw Error('Unneeded report detail in this fixture');
+ });
+ const {container}=render(<App/>);fireEvent.click(screen.getByRole('button',{name:'Saved tests'}));fireEvent.click(screen.getByRole('button',{name:'Individual run reports'}));
+ await waitFor(()=>expect(container.querySelectorAll('.run-list button')).toHaveLength(2));
+ fireEvent.click(Array.from(container.querySelectorAll('.run-list button')).find(b=>b.querySelector('strong')?.textContent==='A')!);await waitFor(()=>expect(pending.A).toBeDefined());
+ fireEvent.click(Array.from(container.querySelectorAll('.run-list button')).find(b=>b.querySelector('strong')?.textContent==='B')!);await waitFor(()=>expect(pending.B).toBeDefined());
+ const trades=(reason:string)=>({rows:[{entry:{side:'buy',time_ns:1000000000,price:'10',quantity:'1'},exit:{price:'11',reason},net_pnl:'1'}],total:1,next:null});
+ await act(async()=>pending.B(trades('current-B')));expect(screen.getByText('current-B')).toBeTruthy();
+ await act(async()=>pending.A(trades('stale-A')));expect(screen.queryByText('stale-A')).toBeNull();expect(screen.getByText('current-B')).toBeTruthy();
+});
+
+
+it('suspends setup for the active-work exit prompt and restores inputs on return',async()=>{
+ vi.mocked(invoke).mockClear();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(command:string)=>{
+  if(command==='library_catalog')return [{id:'trend',version:1,name:'Test trend',family:'trend',markets:['spot'],directions:['long'],local_default_minutes:1440,timeframes:[60,1440],parameters:{}}];
+  if(command==='replay_status')return {id:'replay',status:'running'};
+  if(command==='run_history')return {rows:[],next:null};
+  if(command==='library_batch_history')return {rows:[],next:null};
+  if(command.startsWith('list_')||command==='library_batches')return [];
+  return {};
+ });
+ render(<App/>);
+ fireEvent.click(await screen.findByRole('button',{name:'Test this strategy'}));
+ expect(screen.getByRole('dialog',{name:'Set up backtest'})).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'4321'}});
+ await act(async()=>windowMock.close!({preventDefault:vi.fn()}));
+ expect(await screen.findByRole('dialog',{name:'Close during active run'})).toBeTruthy();
+ expect(screen.queryByRole('dialog',{name:'Set up backtest'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Return to application'}));
+ expect(screen.getByRole('dialog',{name:'Set up backtest'})).toBeTruthy();
+ expect((screen.getByLabelText('Research capital') as HTMLInputElement).value).toBe('4321');
+ expect(vi.mocked(api).mock.calls.some(([command])=>/start|cancel|trust/.test(command))).toBe(false);
+ expect(invoke).not.toHaveBeenCalled();
+});
+
+it('shows Linux capability limits and disables native execution without blocking graph editing',async()=>{
+ vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(command:string)=>{
+  if(command==='platform_capabilities')return {platform:'linux',native_execution:{available:false,reason:'Native execution is unavailable on Linux'}};
+  if(command==='run_history')return {rows:[],next:null};
+  if(command.startsWith('list_'))return [];
+  return {};
+ });
+ render(<App/>);
+ expect(await screen.findByText(/Linux preview · graph research available/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Strategy editor'}));
+ expect((screen.getByRole('button',{name:/Run backtest/}) as HTMLButtonElement).disabled).toBe(false);
+ fireEvent.click(screen.getByText('＋ Native Python'));
+ expect((screen.getByRole('button',{name:/Run backtest/}) as HTMLButtonElement).disabled).toBe(true);
+ expect(screen.getByLabelText('Python source preview')).toBeTruthy();
+ expect(vi.mocked(api).mock.calls.some(([command])=>command==='start_run')).toBe(false);
+});
+
+vi.mock('./LiveChart',()=>({default:()=>{const [minutes,setMinutes]=useState('1');return <select aria-label="Chart display timeframe" value={minutes} onChange={e=>setMinutes(e.target.value)}><option value="1">1m</option><option value="240">4H</option></select>;}}));
+it('round trips Market and Lab without resetting view state or changing the test profile',async()=>{
+ vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async(command:string)=>{
+  if(command==='run_history')return {rows:[],next:null};
+  if(command==='live_status')return {active:false,market:{active:true,market:'spot',symbol:'BTCUSDT',fresh:false},terminal_state:'RECONNECTING'};
+  if(command==='library_batch_history')return {rows:[],next:null};
+  if(command==='library_catalog'||command.startsWith('list_')||command==='library_batches')return [];
+  return {};
+ });
+ render(<App/>);
+ fireEvent.click(screen.getByRole('button',{name:'Edit test setup'}));
+ fireEvent.change(screen.getByLabelText('Research capital'),{target:{value:'2222'}});
+ fireEvent.click(screen.getByRole('button',{name:'Back to strategies'}));
+ fireEvent.click(screen.getByRole('button',{name:'Market'}));
+ expect(screen.queryByLabelText('Strategy name')).toBeNull();
+ fireEvent.change(screen.getByLabelText('Chart display timeframe'),{target:{value:'240'}});
+ await waitFor(()=>expect(api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT'}));
+ fireEvent.click(screen.getByRole('button',{name:'Lab'}));
+ expect(screen.getByText('2222 USDT')).toBeTruthy();
+ await waitFor(()=>expect(vi.mocked(api).mock.calls.filter(([command])=>command==='market_close')).toHaveLength(1));
+ fireEvent.click(screen.getByRole('button',{name:'Market'}));
+ expect((screen.getByLabelText('Chart display timeframe') as HTMLSelectElement).value).toBe('240');
+ await waitFor(()=>expect(vi.mocked(api).mock.calls.filter(([command])=>command==='market_open')).toHaveLength(2));
+ expect(vi.mocked(api).mock.calls.some(([command])=>['start_run','library_batch_start','history_prepare','live_start_terminal','paper_start_manual'].includes(command))).toBe(false);
+});
+
+
+it('formats only valid saved-report dates and falls back to matching history',()=>{
+ const date='2026-01-01T00:00:00Z',history=[{id:'run',created_at:date}];
+ expect(savedRunDate({id:'run'},history)).toBe(new Date(date).toLocaleString());
+ expect(savedRunDate({id:'run',created_at:'invalid'},history)).toBe(new Date(date).toLocaleString());
+ expect(savedRunDate({id:'other'},history)).toBeNull();
+ expect(savedRunDate({id:'run',created_at:null},[{id:'run',created_at:'invalid'}])).toBeNull();
+ expect(savedRunDate({id:'run',created_at:date},[])).toBe(new Date(date).toLocaleString());
+});
+
+it('prompts for background import and targets its attempt before desktop exit',async()=>{
+ vi.mocked(invoke).mockClear();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async command=>{
+  if(command==='scheduler_status')return {reservation:'archive:operation'};
+  if(command==='archive_import_status')return {execution:{attempt_key:'attempt'}};
+  if(command==='run_history'||command==='library_batch_history')return {rows:[],next:null};
+  if(command.startsWith('list_'))return [];
+  return {};
+ });
+ render(<App/>);await waitFor(()=>expect(windowMock.close).toBeTruthy());
+ windowMock.close!({preventDefault:vi.fn()});
+ fireEvent.click(await screen.findByText('Cancel run and exit'));
+ await waitFor(()=>expect(invoke).toHaveBeenCalledWith('close_application'));
+ expect(api).toHaveBeenCalledWith('archive_import_cancel',{operation_id:'operation',attempt_key:'attempt'});
+ const cancel=vi.mocked(api).mock.calls.findIndex(([c])=>c==='archive_import_cancel');
+ expect(vi.mocked(api).mock.invocationCallOrder[cancel]).toBeLessThan(vi.mocked(invoke).mock.invocationCallOrder[0]);
+});
+
+it('prompts for background export and targets its identity before desktop exit',async()=>{
+ vi.mocked(invoke).mockClear();vi.mocked(api).mockClear();
+ vi.mocked(api).mockImplementation(async command=>{
+  if(command==='scheduler_status')return {reservation:'export:operation'};
+  if(command==='archive_import_status')return {execution:{attempt_key:'attempt'}};
+  if(command==='run_history'||command==='library_batch_history')return {rows:[],next:null};
+  if(command.startsWith('list_'))return [];
+  return {};
+ });
+ render(<App/>);await waitFor(()=>expect(windowMock.close).toBeTruthy());
+ windowMock.close!({preventDefault:vi.fn()});
+ fireEvent.click(await screen.findByText('Cancel run and exit'));
+ await waitFor(()=>expect(invoke).toHaveBeenCalledWith('close_application'));
+ expect(api).toHaveBeenCalledWith('archive_export_cancel',{export_id:'operation'});
+ const cancel=vi.mocked(api).mock.calls.findIndex(([c])=>c==='archive_export_cancel');
  expect(vi.mocked(api).mock.invocationCallOrder[cancel]).toBeLessThan(vi.mocked(invoke).mock.invocationCallOrder[0]);
 });

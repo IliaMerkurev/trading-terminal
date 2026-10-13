@@ -1,6 +1,6 @@
 # Strategy source shortlist (0.6)
 
-Static compatibility triage of 13 primary-source candidates. No advertised return was used. Five entries have focused synthetic and finite cached-market integration evidence. Rejected sources were not executed or copied.
+Initial compatibility triage of 13 primary-source candidates, followed by two longer-horizon graph additions (15 reviewed candidates). No advertised return was used. Five entries have focused synthetic and finite cached-market integration evidence. Rejected sources were not executed or copied.
 
 Nautilus sources: Nautech Systems Pty Ltd, LGPL-3.0, commit `27a8e54e7ac3c57d6cbf8891f0283dfbaee97317`, installed package 1.231.0. Hashes below identify the inspected file bytes. The native EMA module imports installed engine/Pandas/Decimal APIs, defines classes at import, and has no direct credential, process or file writes; requested bars/tick subscriptions are disabled through existing config. The library wrapper checks its installed source hash before import.
 
@@ -25,3 +25,29 @@ Lean sources are Apache-2.0, QuantConnect Corporation, pinned commit shown in li
 All sources use current/past observations in their stated callbacks. Native EMA v2 adds a disclosed temporal subclass for preceding indicator warmup without trading, while importing the unchanged pinned implementation. New source consent is required. EMA and RSI passed independent synthetic behavior and alternate-timeframe checks plus finite cached BTCUSDT linear runs at 1m/5m with actual spot alternatives; see [ADR 0023](../adr/0023-native-library-window.md). Source review, compatibility and investment performance remain separate. Five distinct implementations cover trend, mean reversion and momentum; later-period and full release acceptance remain separate.
 
 Pinned source commit dates: Nautilus 2026-08-02T11:26:46Z; Lean 2026-09-18T14:03:24Z. Dates identify source versions, not evidence that authors had not observed the evaluated market history.
+
+
+## Research workspace additions
+
+EMA trend filter and Donchian breakout use the same pinned Lean commit and
+Apache-2.0 license. Source paths, exact hashes, static review, adaptation differences
+and local defaults are recorded in [ADR 0026](../adr/0026-research-workspace-and-trend-candidates.md).
+No external code was copied, installed or executed. The Donchian source is an
+indicator reference, not an upstream complete strategy. The EMA graph expands
+spot/coarse access to an existing family. Seven templates cover four families;
+this does not imply seven unrelated investment ideas.
+
+## Later daily rule candidates — 2026-10-11
+
+C12 Double 7's and C13 Improved R2 add daily spot long/flat rule adaptations,
+separately from the original seven templates and completed frozen research.
+Primary sources are [Cesar Alvarez's Double 7's exposition (2016-02-10)](https://alvarezquanttrading.com/blog/double-7s-strategy/)
+and [Larry Connors' Improved R2 rules (2007-02-21)](https://tradingmarkets.com/recent/the_improved_r2_strategy_84_correct_with_just_6_rules_-674361),
+independently reviewed on 2026-10-11. No source code or article text is copied;
+referenced articles retain their own rights. Source commit is not applicable.
+Catalog SHA256 hashes identify exact project-authored UTF-8 bounded rule strings
+in terminal/daily_rules.py, including final newline, not upstream page content.
+See [ADR 0039](../adr/0039-daily-reversion-candidates.md) for exact rules, source
+versus local parameters, RSI/execution adaptations and independent fixtures.
+Both are synthetic implementation-verified; empirical validation is not performed.
+No source return claim transfers to these implementations.

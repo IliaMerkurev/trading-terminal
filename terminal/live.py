@@ -2,6 +2,7 @@
 from collections import deque
 from dataclasses import asdict
 import json
+import os
 import queue
 import threading
 import time
@@ -18,6 +19,7 @@ from terminal.market_state import MarketState
 from terminal.market_hub import MarketHub, MarketFeed
 from terminal.chart_history import ChartHistory
 from terminal.storage import identifier
+from terminal.market_sources import validate_source
 
 
 class PendingSignals:
@@ -40,7 +42,7 @@ class LiveManager:
         self.store=store
         self.journal=LiveStore(store)
         self.stream_factory,self.history_factory=stream_factory,history_factory
-        self.thread=None;self.stop=threading.Event();self.lock=threading.RLock()
+        self.thread=None;self.warmup_thread=None;self.stop=threading.Event();self.lock=threading.RLock()
         self.session_id=None;self.view={};self.log=deque(maxlen=200)
         self.market=MarketState();self.manual_pending=None
         self.hub=MarketHub(stream_factory)
@@ -53,6 +55,7 @@ class LiveManager:
         self.paper_revalidate=threading.Event()
         with store.connect() as db:
             db.executescript('''
+                CREATE TABLE IF NOT EXISTS market_preferences(key TEXT PRIMARY KEY,value TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS live_options(session_id TEXT PRIMARY KEY,options TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS paper_observations(session_id TEXT NOT NULL,sequence INTEGER NOT NULL,
                     observation TEXT NOT NULL,result TEXT NOT NULL,PRIMARY KEY(session_id,sequence));
@@ -75,15 +78,27 @@ class LiveManager:
         if 'paper' in values and self.session_id:
             with self.store.connect() as db:db.execute('INSERT OR REPLACE INTO paper_terminal_summary VALUES(?,?)',(self.session_id,canonical(values['paper']).decode()))
 
+    def _check_channels(self,channels):
+        from terminal.notifications import NotificationError
+        for channel in channels:
+            if channel=='telegram':self.telegram.require_available()
+            elif os.name!='nt':
+                raise NotificationError(f'{channel.title()} notifications are unavailable on this platform')
+
     def start(self,strategy_id,profile,paper,channels,execution_source='strategy'):
+        self._bybit_execution()
         if self.thread and self.thread.is_alive():raise ValueError('Only one live session may run at a time')
         if type(paper) is not bool or not isinstance(channels,list) or len(set(channels))!=len(channels) or any(c not in ('windows','sound','telegram') for c in channels):
             raise ValueError('Invalid paper mode or notification channels')
+        self._check_channels(channels)
         strategy=self.store.strategy(strategy_id)
         if strategy['kind']!='graph':raise ValueError('Live currently requires a visual Strategy IR; native source is never converted or executed here')
         profile=Profile(**profile)
+        if profile.execution_minutes!=1:raise ValueError("Live/Paper requires M1 execution resolution")
         if execution_source not in ('strategy','manual'):raise ValueError('Invalid paper execution source')
         graph=strategy['document']['graph']
+        from terminal.rule_strategy import reject_frozen
+        reject_frozen(graph, 'live/PAPER')
         from terminal.graph import POSITION_FIELDS
         if paper and any(node['type'] in POSITION_FIELDS for node in graph['nodes']) and profile.position_management is None:
             raise ValueError('Live position nodes require an enabled Position Management paper account')
@@ -97,8 +112,10 @@ class LiveManager:
         return {'session_id':sid}
 
     def start_manual(self,profile):
+        self._bybit_execution()
         if self.thread and self.thread.is_alive():raise ValueError('Only one live/paper session may run at a time')
         profile=Profile(**profile)
+        if profile.execution_minutes!=1:raise ValueError("Live/Paper requires M1 execution resolution")
         graph={'version':1,'nodes':[{'id':'idle','type':'constant','inputs':{},'params':{'value':0}}],
                'outputs':{key:None for key in ('entry_long','exit_long','entry_short','exit_short')}}
         pm=profile.position_management or {}
@@ -113,12 +130,16 @@ class LiveManager:
         return {'session_id':sid}
 
     def resume(self,session_id,revalidate_paper):
+        self._bybit_execution()
         if type(revalidate_paper) is not bool:raise ValueError('Paper revalidation acknowledgement must be explicit')
         if self.thread and self.thread.is_alive():
             if session_id!=self.session_id:raise ValueError('Another live session is active')
             if revalidate_paper:self.paper_revalidate.set()
             return {'session_id':session_id}
         snapshot=self.journal.get(session_id)['snapshot']
+        with self.store.connect() as db:
+            row=db.execute('SELECT options FROM live_options WHERE session_id=?',(session_id,)).fetchone()
+        self._check_channels(json.loads(row['options']).get('channels',[]) if row else [])
         self.hub.open(snapshot['profile']['market'],snapshot['profile']['symbol'])
         self.session_id=session_id;self.stop.clear();self.paper_revalidate.clear()
         if revalidate_paper:self.paper_revalidate.set()
@@ -158,6 +179,7 @@ class LiveManager:
                 trades=db.execute("SELECT result FROM paper_observations WHERE session_id=? AND json_array_length(json_extract(result,'$.fills'))>0 ORDER BY sequence DESC LIMIT 50",(self.session_id,)).fetchall()
                 view['paper_history']=[json.loads(r['result']) for r in trades]
         view['active']=bool(self.thread and self.thread.is_alive() and not self.stop.is_set())
+        view['display_source']=self.market_preferences()['source']
         view['market']=self.hub.snapshot() if self.hub.started is not None else self.market.snapshot()
         status=view.get('session',{}).get('status','PAUSED')
         view['terminal_state']='DEGRADED' if status=='CONNECTED' and not view['market']['fresh'] else status
@@ -171,14 +193,27 @@ class LiveManager:
         view['telegram']=self.telegram.status()
         return view
 
-    def market_open(self,market,symbol):
+    def market_preferences(self):
+        with self.store.connect() as db:
+            row=db.execute("SELECT value FROM market_preferences WHERE key='source'").fetchone()
+        return {'source':row[0] if row and row[0] in ('bybit','okx') else 'bybit'}
+
+    def _bybit_execution(self):
+        if self.market_preferences()['source']!='bybit':
+            raise ValueError('OKX is chart-only. Select Bybit before starting or resuming strategy/paper monitoring.')
+
+    def market_open(self,market,symbol,source='bybit'):
+        validate_source(source)
         if self.thread and self.thread.is_alive():
             profile=self.journal.get(self.session_id)['snapshot']['profile']
-            if (market,symbol)!=(profile['market'],profile['symbol']):raise ValueError('Pause monitoring before changing the market')
-        self.hub.open(market,symbol);self.market=self.hub.state
+            if source!='bybit' or (market,symbol)!=(profile['market'],profile['symbol']):raise ValueError('Pause monitoring before changing the market')
+        if (source,market,symbol)!=(self.hub.source,self.hub.market,self.hub.symbol):self.chart_history.supersede()
+        self.hub.open(market,symbol,source);self.market=self.hub.state
+        with self.store.connect() as db:db.execute("INSERT OR REPLACE INTO market_preferences VALUES('source',?)",(source,))
         return self.hub.snapshot()
 
     def market_close(self):
+        self.chart_history.supersede()
         # Leaving Live does not stop an explicitly active strategy session.
         if not (self.thread and self.thread.is_alive()):self.hub.close()
         return {'active':self.hub.snapshot()['active']}
@@ -234,6 +269,7 @@ class LiveManager:
 
     def test_notification(self,channel):
         if channel not in ('windows','sound','telegram'):raise ValueError('Unsupported notification channel')
+        self._check_channels([channel])
         self.delivery_queue.put_nowait((None,[channel],'Trading Terminal: notification test'))
         return {'queued':True}
 
@@ -300,6 +336,7 @@ class LiveManager:
                 finally:initialized.set()
             if self.hub.started is not None:
                 warmup_thread=threading.Thread(target=initialize,daemon=True,name='strategy-history-initialization')
+                self.warmup_thread=warmup_thread
                 warmup_thread.start()
             else:
                 initialize()
@@ -410,7 +447,20 @@ class LiveManager:
             if paper:paper.close()
 
     def close(self):
-        self.pause()
-        if self.thread:self.thread.join(timeout=4)
-        self.hub.close();self.chart_history.close()
-        self.delivery_stop.set();self.delivery_thread.join(timeout=1)
+        # Stop signals do not depend on journal availability. Preserve failures,
+        # but never let a failed PAUSED write skip the remaining owned cleanup.
+        errors=[]
+        self.stop.set();self.delivery_stop.set()
+        self.hub.stop.set();self.chart_history.stop.set()
+        def attempt(action):
+            try:action()
+            except Exception as exc:errors.append(exc)
+        attempt(self.pause)
+        if self.thread:attempt(lambda:self.thread.join(timeout=4))
+        attempt(self.hub.close)
+        attempt(self.chart_history.close)
+        attempt(lambda:self.delivery_thread.join(timeout=1))
+        if any(thread and thread.is_alive() for thread in
+               (self.thread,self.warmup_thread,self.hub.thread,self.chart_history.thread,self.delivery_thread)):
+            errors.append(RuntimeError('Live shutdown is incomplete; workspace ownership must be retained'))
+        if errors:raise ExceptionGroup('Live shutdown cleanup failed',errors)

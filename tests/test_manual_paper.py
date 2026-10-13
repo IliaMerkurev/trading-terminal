@@ -20,6 +20,8 @@ class ManualPaperTests(unittest.TestCase):
         self.profile=Profile(primary_minutes=1,allocation='100',fee_rate='.001',stop_loss='.05',take_profit='.2')
         self.sid=self.manager.journal.create(example_graph(),self.profile,'fixture','Synthetic manual PAPER')
         self.manager.session_id=self.sid;self.manager.thread=Mock();self.manager.thread.is_alive.return_value=True
+        # The synthetic active session must become stopped when shutdown joins it.
+        self.manager.thread.join.side_effect=lambda timeout=None:setattr(self.manager.thread.is_alive,'return_value',False)
         self.manager.journal.state(self.sid,'CONNECTED','Fixture synchronized')
         with self.manager.store.connect() as db:db.execute('INSERT INTO live_options VALUES(?,?)',(self.sid,json.dumps({'paper':True,'channels':[],'execution_source':'manual'})))
         self.manager.market.ticker_update({'lastPrice':'100'},100000)

@@ -12,7 +12,7 @@ it('chart interval updates only presentation, maintains recorded values and clea
  fireEvent.change(screen.getByLabelText('Chart display timeframe'),{target:{value:'60'}});
  fireEvent.change(screen.getByLabelText('Live chart indicator'),{target:{value:'ema'}});
  await waitFor(()=>expect(mock.setData).toHaveBeenCalledWith([{time:3600,value:102.5,observed:60}]));
- expect(mock.api.mock.calls.every(call=>['live_chart','market_chart'].includes(call[0]))).toBe(true);
+ expect(mock.api.mock.calls.every(call=>['live_chart','market_chart','chart_indicator_settings','chart_drawing_settings'].includes(call[0]))).toBe(true);
  expect(mock.api).toHaveBeenCalledWith('market_chart',{market:'spot',symbol:'BTCUSDT',minutes:60,before:null});
  unmount();expect(mock.remove).toHaveBeenCalledOnce();
 });
@@ -82,4 +82,61 @@ it('keeps a failed older page retryable and prepends only a successful page with
  expect(mock.fit).toHaveBeenCalledOnce();
  expect((screen.getByRole('button',{name:'Older history'}) as HTMLButtonElement).disabled).toBe(false);
  unmount();mock.visible.mockReturnValue(null);
+});
+
+it('retains display interval, candles and viewport across hidden navigation without polling',async()=>{
+ mock.api.mockClear();mock.fit.mockClear();mock.candles.mockClear();
+ mock.api.mockResolvedValue({candles:[{time:0,open:100,high:110,low:90,close:105,volume:1}],loading:false});
+ const {rerender}=render(<LiveChart fresh active/>);
+ fireEvent.change(screen.getByLabelText('Chart display timeframe'),{target:{value:'240'}});
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_chart',{market:'spot',symbol:'BTCUSDT',minutes:240,before:null}));
+ await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([expect.objectContaining({time:14400,close:105})]));
+ const fits=mock.fit.mock.calls.length;
+ rerender(<LiveChart fresh={false} active={false}/>);
+ const count=mock.api.mock.calls.length;
+ await new Promise(resolve=>setTimeout(resolve,1100));
+ expect(mock.api.mock.calls).toHaveLength(count);
+ expect((screen.getByLabelText('Chart display timeframe') as HTMLSelectElement).value).toBe('240');
+ expect(mock.candles).toHaveBeenLastCalledWith([expect.objectContaining({time:14400,close:105})]);
+ rerender(<LiveChart fresh active/>);
+ await waitFor(()=>expect(mock.api.mock.calls.length).toBeGreaterThan(count));
+ expect(mock.fit).toHaveBeenCalledTimes(fits);
+ expect(mock.api.mock.calls.every(c=>['market_chart','chart_indicator_settings','chart_drawing_settings'].includes(c[0]))).toBe(true);
+});
+
+it('drops old-source chart replies and requests separate settings after a source switch',async()=>{
+ mock.api.mockClear();mock.candles.mockClear();let finishOld:(v:any)=>void=()=>{};
+ const old=new Promise(resolve=>{finishOld=resolve;});
+ const candle=(close:number)=>({time:0,open:close,high:close+1,low:close-1,close,volume:1});
+ mock.api.mockImplementation((command:string,p:any)=>{
+  if(command==='chart_indicator_settings')return Promise.resolve({version:1,revision:0,instances:[],origins:{}});
+  if(command==='market_chart')return p.source==='okx'?Promise.resolve({candles:[candle(200)],source:'okx'}):old;
+  return Promise.resolve({});
+ });
+ const {rerender}=render(<LiveChart fresh source="bybit"/>);
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_chart',expect.objectContaining({symbol:'BTCUSDT'})));
+ rerender(<LiveChart fresh source="okx"/>);
+ await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([{...candle(200),time:60}]));
+ finishOld({candles:[candle(10)],source:'bybit'});
+ await waitFor(()=>expect(mock.candles).toHaveBeenLastCalledWith([{...candle(200),time:60}]));
+ expect(mock.api).toHaveBeenCalledWith('chart_indicator_settings',{market:'spot',symbol:'BTCUSDT',source:'okx'},expect.objectContaining({signal:expect.any(AbortSignal)}));
+});
+
+it('integrates indicator management and drawing context before the plot in the production chart',async()=>{
+ mock.api.mockImplementation(async(command:string,p:any)=>{
+  if(command==='chart_indicator_settings')return {version:1,revision:1,instances:[{id:'ema',type:'ema',params:{period:20},color:'#7eabff',visible:true}],origins:{}};
+  if(command==='chart_drawing_settings')return {version:1,revision:1,drawings:[]};
+  if(command==='chart_indicator_read')return {status:'ready',times:[],columns:{},volume_unit:'source-native units (unverified)'};
+  return {candles:[{time:0,open:100,high:110,low:90,close:105,volume:1}],evaluations:[]};
+ });
+ const {container}=render(<LiveChart fresh/>);
+ const legend=await screen.findByRole('list',{name:'Chart indicator legend'});
+ const chart=container.querySelector('.chart-plot')!;
+ expect(legend.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(legend.closest('.live-chart-toolbar')).toBeNull();
+ expect(container.querySelector('.drawing-context')!.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Settings for 1 EMA'}));
+ expect(screen.getByLabelText('1 EMA period')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Cancel edits'}));
+ expect(screen.queryByLabelText('1 EMA period')).toBeNull();
 });

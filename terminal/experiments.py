@@ -1,4 +1,6 @@
 """Bounded sequential research, immutable selection and separate-period validation."""
+from terminal import research_evidence
+import sqlite3
 import copy
 from datetime import datetime,timezone
 from decimal import Decimal
@@ -18,11 +20,13 @@ MAX_MINUTE_RUNS=2_000_000
 
 
 def parameter_fields(graph,profile=None):
+    from terminal.rule_strategy import reject_frozen
+    reject_frozen(graph, 'parameter experiments')
     fields=[]
     for node in graph['nodes']:
         for key,value in node['params'].items():
             fields.append({'key':f"node.{node['id']}.{key}",'label':f"{node['id']} / {key}",
-                'type':'integer' if key in ('period','fast','slow','signal') else 'number' if isinstance(value,(int,float)) else 'choice',
+                'type':'integer' if key in ('period','fast','slow','signal','upper_period','lower_period','bars') else 'number' if isinstance(value,(int,float)) else 'choice',
                 'choices':['open','high','low','close','volume'] if key=='field' else ['>','>=','<','<=','==','!='] if key=='operator' else None,'current':value})
     fields.extend({'key':f'profile.{key}','label':label,'type':'fraction' if key in ('stop_loss','take_profit') else 'number','choices':None,'current':None}
         for key,label in [('stop_loss','Stop loss (fraction)'),('take_profit','Take profit (fraction)'),('allocation','Capital allocation'),('leverage','Leverage')])
@@ -89,10 +93,14 @@ def normalize_axes(graph,axes,profile=None):
 
 
 def warmup_bars(graph):
+    from terminal.rule_strategy import reject_frozen
+    reject_frozen(graph, 'estimated warmup/research windows')
     nodes={n['id']:n for n in graph['nodes']};required={}
     for ident in validate_graph(graph):
         node=nodes[ident];p=node['params'];prior=max((required[ref.split('.')[0]] for ref in node['inputs'].values()),default=0)
         own=p.get('period',p.get('slow',0)+p.get('signal',0))
+        if node['type']=='lag':own=p['bars']
+        if node['type']=='donchian':own=max(p['upper_period'],p['lower_period'])+1
         required[ident]=prior+own+(1 if node['type'].startswith('cross_') else 0)
     return max(required.values(),default=0)
 
@@ -119,6 +127,7 @@ class ExperimentManager:
         strategy=self.store.strategy(strategy_id)
         if strategy['kind']!='graph':raise ValueError('Parameter experiments support saved visual strategies only')
         graph=strategy['document']['graph'];validate_graph(graph);profile=Profile(**profile)
+        if profile.execution_minutes!=1:raise ValueError('Parameter experiments retain M1 execution; use Library for coarse timeframe comparisons')
         manifest=self.jobs.datasets.describe(dataset_id);self.jobs.datasets.check_profile(manifest,profile)
         validate_range(is_range,manifest['range'],'In-sample range');validate_range(oos_range,manifest['range'],'Out-of-sample range')
         if is_range[1]>oos_range[0]:raise ValueError('Out-of-sample must be later and disjoint from in-sample')
@@ -146,6 +155,7 @@ class ExperimentManager:
 
     def _reserve(self,ident,target):
         with self.jobs.lock:
+            self.jobs.require_storage_ready()
             if self.active or self.jobs.active or self.jobs.reservation:raise ValueError('One calculation or experiment is already active')
             self.jobs.reservation=ident
             self.active={'id':ident,'stop':threading.Event(),'thread':None}
@@ -178,7 +188,9 @@ class ExperimentManager:
             monitor.join(timeout=.1)
             if active['stop'].is_set():
                 with self.jobs.lock:
-                    if self.jobs.active and self.jobs.active['id']==run_id and not self.jobs.active['cancelled']:self.jobs.cancel(run_id)
+                    cancel=bool(self.jobs.active and self.jobs.active['id']==run_id and not self.jobs.active['cancelled'])
+                if cancel:self.jobs.cancel(run_id)
+        self.jobs.require_storage_ready()
         return self.store.get(run_id)
 
     def _grid(self,active):
@@ -186,6 +198,7 @@ class ExperimentManager:
         try:
             report=self.get(ident);snapshot=report['snapshot']
             for row in report['rows']:
+                self.jobs.require_storage_ready()
                 if active['stop'].is_set():break
                 def started(run_id):
                     with self.store.connect() as db:db.execute("UPDATE experiment_rows SET run_id=?,status='running' WHERE experiment_id=? AND ordinal=?",(run_id,ident,row['ordinal']))
@@ -203,8 +216,20 @@ class ExperimentManager:
                 if failed:status='completed_with_errors'
         except Exception as exc:status='failed';error=str(exc)[:2000]
         finally:
-            with self.store.connect() as db:db.execute('UPDATE experiments SET status=?,error=? WHERE id=?',(status,error,ident))
-            with self.jobs.lock:self.active=None;self.jobs.reservation=None
+            self._finalize(ident,'experiment','experiments',status,error)
+
+    def _finalize(self,ident,kind,table,status,error):
+        # Called only with internal table constants. Latch before releasing the
+        # reservation so no competing start can slip past failed persistence.
+        with self.jobs.lock:
+            try:
+                with self.store.connect() as db:
+                    db.execute(f'UPDATE {table} SET status=?,error=? WHERE id=?',(status,error,ident))
+            except Exception:
+                self.jobs.latch_storage_failure(ident,kind)
+            finally:
+                self.active=None
+                self.jobs.reservation=None
 
     def recent(self):
         with self.store.connect() as db:rows=db.execute('SELECT id,created_at,status,error,json_extract(snapshot,\'$.name\') AS name FROM experiments ORDER BY created_at DESC LIMIT 100').fetchall()
@@ -217,16 +242,25 @@ class ExperimentManager:
             rows=db.execute('SELECT e.*,r.summary FROM experiment_rows e LEFT JOIN runs r ON r.id=e.run_id WHERE experiment_id=? ORDER BY ordinal',(experiment_id,)).fetchall()
             validations=db.execute('SELECT * FROM validations WHERE experiment_id=? ORDER BY created_at',(experiment_id,)).fetchall()
         result=dict(record);result['snapshot']=json.loads(result['snapshot']);result['rows']=[{**dict(r),'parameters':json.loads(r['parameters']),'summary':json.loads(r['summary']) if r['summary'] else None} for r in rows]
-        result['validations']=[{**dict(r),'snapshot':json.loads(r['snapshot']),'summary':self.store.get(r['run_id'])['summary'] if r['run_id'] else None} for r in validations]
+        for row in result['rows']:
+            if row['status']=='running' and row['run_id']:
+                live=self.jobs.status(row['run_id']);row['progress']=live.get('progress');row['finalization']=live.get('finalization');row['worker_active']=live.get('worker_active')
+                if live['status'] in ('finalizing','cancel_requested'):row['status']=live['status']
+        result['validations']=[{**dict(r),'snapshot':json.loads(r['snapshot']),'storage_failure':self.jobs.storage_diagnostic(),'summary':self.store.get(r['run_id'])['summary'] if r['run_id'] else None} for r in validations]
+        with self.store.connect() as db:
+            for validation in result['validations']:
+                validation['research_evidence']=research_evidence.frozen_review(db,'experiment',validation['id'])
         result['finished']=sum(r['status'] in ('completed','failed','cancelled','interrupted') for r in rows)
         result['active_id']=self.active['id'] if self.active else None
+        result['storage_failure']=self.jobs.storage_diagnostic()
         return result
 
     def cancel(self,active_id):
         with self.jobs.lock:
             if not self.active or self.active['id']!=active_id:raise ValueError('That experiment or validation is not active')
             self.active['stop'].set()
-            if self.jobs.active:self.jobs.cancel(self.jobs.active['id'])
+            run_id=self.jobs.active['id'] if self.jobs.active else None
+        if run_id:self.jobs.cancel(run_id)
         return {'status':'cancel_requested'}
 
     def freeze(self,experiment_id,ordinal):
@@ -239,7 +273,17 @@ class ExperimentManager:
         snapshot={**source,'graph':graph,'profile':profile,'candidate_ordinal':ordinal,'candidate_run_id':row['run_id'],'parameters':row['parameters']}
         snapshot['candidate_sha256']=digest({'graph':graph,'profile':profile,'dataset':source['dataset'],'runtime':source['runtime'],'oos_range':source['oos_range']})
         ident=uuid.uuid4().hex
-        with self.store.connect() as db:db.execute('INSERT INTO validations VALUES(?,?,?,?,?,NULL,NULL)',(ident,experiment_id,datetime.now(timezone.utc).isoformat(),'frozen',canonical(snapshot).decode()))
+        dataset=self.jobs.datasets.describe(source['dataset']['id'])
+        evidence=research_evidence.event(dataset,profile,*source['oos_range'],route='experiment',owner_id=ident,
+            identity={'experiment_id':experiment_id,'ordinal':ordinal,'candidate_sha256':snapshot['candidate_sha256']})
+        self.jobs.require_storage_ready()
+        try:
+            with self.store.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                research_evidence.append(db,'frozen:experiment:'+ident,'frozen',evidence)
+                db.execute('INSERT INTO validations VALUES(?,?,?,?,?,NULL,NULL)',(ident,experiment_id,datetime.now(timezone.utc).isoformat(),'frozen',canonical(snapshot).decode()))
+        except (OSError,sqlite3.Error):
+            self.jobs.latch_storage_failure(ident,'research_freeze');raise
         return {'validation_id':ident,'candidate_sha256':snapshot['candidate_sha256'],'warning':'Changing parameters requires a new frozen candidate. Reusing a holdout is another attempt, not an independent discovery.'}
 
     def validate(self,validation_id):
@@ -265,8 +309,7 @@ class ExperimentManager:
             if result:status=result['status'];error=result['error']
         except Exception as exc:status='failed';error=str(exc)[:2000]
         finally:
-            with self.store.connect() as db:db.execute('UPDATE validations SET status=?,error=? WHERE id=?',(status,error,ident))
-            with self.jobs.lock:self.active=None;self.jobs.reservation=None
+            self._finalize(ident,'validation','validations',status,error)
 
     def copy_candidate(self,experiment_id,ordinal):
         report=self.get(experiment_id)
@@ -278,9 +321,11 @@ class ExperimentManager:
         return {'strategy_id':ident}
 
     def close(self):
-        with self.jobs.lock:
-            active=self.active
-            if active:self.cancel(active['id'])
+        errors=[]
+        with self.jobs.lock:active=self.active
         if active:
+            try:self.cancel(active['id'])
+            except Exception as exc:errors.append(exc)
             active['thread'].join(timeout=15)
-            if active['thread'].is_alive():raise RuntimeError('Experiment shutdown has not completed')
+            if active['thread'].is_alive():errors.append(RuntimeError('Experiment shutdown has not completed'))
+        if errors:raise ExceptionGroup('Experiment shutdown cleanup failed',errors)

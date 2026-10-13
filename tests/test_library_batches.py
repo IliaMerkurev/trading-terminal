@@ -41,6 +41,7 @@ class LibraryBatchTests(unittest.TestCase):
         self.fail('Batch exceeded bounded deadline')
 
     def test_window_parity_benchmarks_archive_and_exact_cache(self):
+        before=self.manager.preview(**self.params)
         report=self.wait(self.start())
         self.assertEqual(report['status'],'completed',report)
         self.assertEqual(len(report['rows']),4)
@@ -50,6 +51,7 @@ class LibraryBatchTests(unittest.TestCase):
             result=self.jobs.store.result(row['run_id'])
             self.assertEqual(result['metrics'],standalone['metrics'])
             self.assertEqual(result['trades'],standalone['trades'])
+            self.assertEqual(result['indicators'],standalone['indicators'])
             self.assertGreater(len(result['trades']),0)
             self.assertEqual(row['metrics'],metrics(standalone,self.params['start'],self.params['end']))
             validate_snapshot(self.jobs.store.get(row['run_id'])['manifest'])
@@ -65,6 +67,7 @@ class LibraryBatchTests(unittest.TestCase):
             self.assertTrue(all(p['time_ns']>=self.params['start']*1_000_000_000 for p in curve['points']))
             self.assertEqual(curve['points'][-1]['equity'],self.jobs.store.result(curve['run_id'])['metrics']['final_equity'])
         with self.assertRaisesRegex(ValueError,'strategy row'):self.manager.equity(report['id'],2)
+        self.assertEqual(self.manager.preview(**self.params),before)  # Warm cache never discounts admission.
         second=self.wait(self.start())
         self.assertEqual([r['run_id'] for r in second['rows'][2:]],previous)
         self.assertTrue(all(r['reused'] for r in second['rows'][2:]))
@@ -112,6 +115,55 @@ class LibraryBatchTests(unittest.TestCase):
         self.assertIn('checksum',report['error'])
         self.assertTrue(all(r['run_id'] is None for r in report['rows']))
         self.assertIsNone(self.jobs.reservation)
+
+
+    def test_all_catalog_matrix_shared_contract_and_durable_unavailable_rows(self):
+        from terminal.library import catalog, MAX_LIBRARY_ROWS
+        entries=[e for e in catalog() if not e.get('candidate_id')]  # Original seven-entry matrix stays frozen.
+        params=copy.deepcopy(self.params)
+        params['selections']=[dict(entry_id=e['id'],version=e['version'],minutes=m,parameters={}) for e in entries for m in (1,3)]
+        # Small independent history needs a later window for all default warmups.
+        bars=[Candle(i*60,100,101,99,100,100) for i in range(600)]
+        data=self.jobs.datasets.save('spot','BTCUSDT',0,36000,bars,[],{},metadata={},provenance=[])
+        params.update(dataset_id=data['id'],start=18000,end=36000)
+        self.assertEqual(self.manager.warmup(params['selections'],data['id'])['start'],10080)
+        frozen=self.manager.prepare(**params)
+        self.assertEqual(len(frozen['rows']),16)
+        self.assertEqual(sum(bool(r['error']) for r in frozen['rows']),2)
+        for row in frozen['rows']:
+            self.assertEqual(row['dataset']['id'],data['id'])
+            self.assertEqual(row['profile']['capital'],'180')
+            self.assertEqual(row['profile']['fee_rate'],params['profile']['fee_rate'])
+        ident='a'*32
+        self.manager._save(ident,frozen,'frozen')
+        self.manager.close()
+        self.manager=LibraryBatchManager(self.jobs)
+        reopened=self.manager.get(ident)
+        self.assertEqual(reopened['snapshot']['inputs'],params)
+        self.assertEqual(sum(r['status']=='incompatible' for r in reopened['rows']),2)
+        self.assertTrue(all(r['metrics'] is None for r in reopened['rows']))
+        too_many=[params['selections'][0]]*(MAX_LIBRARY_ROWS+1)
+        with self.assertRaisesRegex(ValueError,'1–96'):
+            self.manager.preview(**{**params,'selections':too_many})
+        with self.assertRaisesRegex(ValueError,'1–96'):
+            self.manager.warmup(too_many,data['id'])
+
+
+    def test_optional_native_source_failure_does_not_abort_graph_matrix(self):
+        from terminal import library
+        actual=library.prepare
+        params=copy.deepcopy(self.params)
+        params['selections'].append(dict(entry_id='native-ema-cross',version=2,minutes=1,parameters={}))
+        def unavailable(**selection):
+            if selection['entry_id']=='native-ema-cross':raise ValueError('Reviewed native dependency source changed')
+            return actual(**selection)
+        with patch('terminal.library_batches.library.prepare',side_effect=unavailable):
+            self.assertTrue(self.manager.warmup(params['selections'],params['dataset_id'])['available'])
+            frozen=self.manager.prepare(**params)
+            self.assertFalse(frozen['rows'][0]['error'])
+            self.assertIn('Native preparation unavailable',frozen['rows'][2]['error'])
+            self.assertIsNone(frozen['rows'][2]['document'])
+            self.manager._unchanged(frozen)
 
 
 if __name__=='__main__':unittest.main()

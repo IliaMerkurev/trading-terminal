@@ -1,0 +1,67 @@
+/* Lab keeps the catalog primary; shared inputs live in one explicit dialog. */
+.lab-studio.research-studio{padding-top:22px}
+.lab-studio .studio-heading{margin-bottom:18px}
+.lab-studio .studio-heading h1{font-size:27px;margin-bottom:8px}
+.lab-studio .studio-filterbar{margin-bottom:14px;gap:16px}
+.lab-studio .studio-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:16px}
+.lab-studio .research-setup-host{grid-column:1;grid-row:1;height:auto;align-self:start}
+.lab-studio .strategy-grid{grid-column:1;grid-row:2;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.lab-studio .strategy-card{padding:16px}
+.lab-studio .card-topline{margin-bottom:10px}
+.lab-studio .strategy-card h3{font-size:17px}
+.lab-studio .card-description{min-height:62px;font-size:12px;line-height:1.5;margin-bottom:10px}
+.lab-studio .card-tags{margin-bottom:12px}
+.lab-studio .card-timeframe{padding-top:10px;gap:6px}
+.lab-studio .test-strategy{margin:0 0 12px;min-height:36px}
+.lab-studio .card-results{margin:12px 0;min-height:65px}
+.lab-studio .card-details{margin-top:10px;padding-top:10px}
+.lab-context{display:flex;align-items:center;flex-wrap:wrap;gap:12px 22px;padding:13px 16px;border:1px solid #32443f;border-radius:9px;background:#141f27}
+.lab-context>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.lab-context small{font-size:10px;color:#8fa5b7}
+.lab-context strong{font-size:12px;font-weight:550;color:#d2e5df;overflow-wrap:anywhere}
+.lab-context-history{flex:1;min-width:180px!important}
+.lab-context-history>span{font-size:10px;color:#9aacbd}
+.lab-context button{font-size:12px;min-height:34px;white-space:nowrap}
+.lab-running{font-size:12px;color:#83dfc6}
+.lab-observation-context{flex-basis:100%;display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;border-top:1px solid #32443f;padding-top:10px}
+.lab-observation-context>div{display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
+.lab-observation-context span{font-size:10px;color:#9aacbd;overflow-wrap:anywhere}
+.lab-studio.saved-studio .studio-body{display:block}
+@media(min-width:761px){
+ /* One Lab scroll surface lets controls yield space to complete cards. */
+ .lab-studio.research-studio:not(.saved-studio){display:block;overflow:auto}
+ .lab-studio.research-studio:not(.saved-studio) .studio-body{grid-template-rows:auto auto;overflow:visible}
+ .lab-studio.research-studio:not(.saved-studio) .strategy-grid{height:auto;overflow:visible;scrollbar-gutter:auto}
+ .lab-studio.research-studio:not(.saved-studio) .research-setup-host{height:auto;min-height:0}
+}
+@media(max-width:1020px){.lab-studio .strategy-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){
+ .lab-studio .studio-body{display:flex;gap:14px}
+ .lab-studio .strategy-grid{grid-template-columns:1fr}
+ .lab-studio .card-description{min-height:0}
+ .lab-context{gap:12px 18px}
+ .lab-context-history{flex-basis:100%}
+ .lab-studio .studio-stats{display:flex}
+}
+
+.profile-transfer-options { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px; margin:16px 0; font-size:13px; overflow-wrap:anywhere; }
+
+.card-ordering{flex-shrink:0;border:1px solid #30434d;border-radius:8px;padding:10px 12px;margin-bottom:14px;min-width:0;background:#121e27}
+.card-order-controls{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 14px;min-width:0}
+.card-order-controls label{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:11px;color:#a7bac8}
+.card-order-controls select{max-width:100%;min-width:0;font-size:12px}
+.card-order-controls button{min-height:34px;font-size:12px}
+.card-order-group{flex:1 1 320px}
+.card-ordering p{font-size:11px;line-height:1.5;color:#a8bac8;margin:8px 0 0;overflow-wrap:anywhere}
+.card-order-context{flex:1 1 350px;min-width:0;margin:0;padding:0;border:0;align-self:center}
+.card-order-comparison{font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.card-order-comparison strong{color:#d2e5df}
+.card-order-comparison small{display:block;font-size:10px;margin:3px 0 0}
+.card-order-config{padding-top:10px}
+.card-order-config>.card-order-controls{margin-top:8px}
+.card-result-state{grid-column:1/-1}
+.card-result-ordered{border-left:2px solid #78ccb5;padding-left:7px}
+.card-order-value{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:6px 0;color:#d2e5df;font-size:10px}
+.card-order-value>strong{font-size:14px;white-space:nowrap}
+.card-order-unavailable{font-size:11px;line-height:1.5;color:#9daeba;margin:0 0 8px;overflow-wrap:anywhere}
+@media(max-width:760px){.card-order-controls>label{flex:1 1 150px}.card-order-controls>.card-order-group,.card-order-context{flex-basis:100%}}

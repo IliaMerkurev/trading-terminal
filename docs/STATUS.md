@@ -1,233 +1,221 @@
-# Implementation status
-
-## Product 0.6-dev — five-strategy candidate awaiting owner acceptance
-
-The authorized Library core contains five independently verified implementations
-across trend, mean reversion and momentum: Native EMA trend v2, and explicit graph
-adaptations RSI threshold reversion, Bollinger RSI reversion, MACD normalized
-momentum and Historical return direction. Thirteen primary-source candidates
-were reviewed. Native EMA remains historical/linear-only with explicit source-
-bound consent and a disclosed warmup adapter; the four graphs support spot and
-linear closed-bar research. No author-recommended interval is invented. See the
-[source matrix](library/SOURCES.md) and [strategy evidence](library/VERIFICATION.md).
-
-Library controls freeze source/parameter/timeframe/profile/runtime/data contracts,
-preflight asynchronously, and use the existing sequential managed-job slot.
-Cancellation retains completed rows; explicit resume runs pending rows only.
-Independent accounts use common initial capital and dates. Actual spot Buy & Hold
-and scheduled DCA execute through retained Nautilus accounting, with full close,
-fees/precision and cash included. Annualization is N/A below 365 days; losses and
-no-trade results are retained. Baselines reuse only exact immutable contracts.
-See [ADR 0021](adr/0021-passive-benchmarks.md), [ADR 0022](adr/0022-library-batches.md)
-and [ADR 0023](adr/0023-native-library-window.md).
-
-Cards/table expose saved metrics, prior-run state, cohort-aware sorting/filtering,
-ordinary reports, copy actions and a sampled three-curve equity comparison.
-Later-period verification freezes a completed selection before an explicit start,
-restarts accounts/baselines on non-overlapping dates, and stays outside selection
-ranking/card results. It records attempted variants, holdout reuse and pinned
-source dates; it cannot prove external authors had not seen that history.
-See [ADR 0024](adr/0024-library-later-period-validation.md).
-
-Final combined verification on the five-strategy/later-period implementation:
-**210 Python tests passed in 151.599s; 67 frontend tests across 19 files passed
-in 6.81s.** TypeScript/Vite passed; locked offline Windows/Rust build passed in
-4.81s with verified Python 3.12.14/NautilusTrader 1.231.0. Final review completed
-missing card metrics and filter/delta-sort controls; the affected 7 frontend
-checks passed in 3.13s. The affected TypeScript/Vite and Windows build passed (Rust 4.08s) after adding
-the filter helper return type required by strict test compilation. Unchanged
-Python tests were not repeated for that frontend-only change.
-
-Copied-data compatibility preserved all 20 existing tables and 1,428,407 rows
-with matching logical hashes and SQLite integrity. Library tables are additive;
-later-period metadata uses existing snapshots. Normal owner data, immutable
-artifacts and the experimental runtime lock were not modified. Accepted 0.5.1
-source/runtime/executable remain independently runnable.
-
-The bounded common cached BTCUSDT spot cohort (2026-09-01 12:00–24:00 UTC) completed
-all four graph strategies at 1m/5m and both alternatives. Native EMA's verified
-linear runs on the same dates retain actual separate spot alternatives. Existing
-independent benchmark/accounting, native trust, batch parity and cancellation/
-resume checks are included in the regression suite. No tuning, new endurance
-session or optional sixth strategy was attempted. Compiled Windows smoke displayed all five cards, opened the predeclared frozen
-later-period contract, completed its strategy and two baselines, and retained
-separate verification labels and disabled selection ranking. The corrected
-compiled UI reopened the completed 10-row cohort, displayed full prior-run card
-metrics, and filtered momentum rows without hiding their losses/no-trade states.
-Earlier compiled copy/stale/equity/report smoke and focused backend chart evidence
-are retained for unchanged paths. Remaining non-failing advisories are the
-frontend bundle size and native Pandas deprecation; this is not a release or
-investment-performance claim.
-
-Maintenance PR #6 was conditionally squash-merged as
-`1d6918c939ffa9db7480ee179b12cca6a9ca3368`, with a tree identical to approved head
-`69741c7cb990cf94861eef27512b4227d1a4f3e4`. Fresh isolated accepted startup passed.
-The following maintenance sections retain the evidence recorded before that merge.
-
-## Product 0.5.1-dev — maintenance candidate awaiting owner acceptance
-
-The authorized ILI-134 maintenance scope is implemented on `codex/051`; owner acceptance and merge remain pending. See [acceptance steps](DEMO_051.md) and [ADR 0020](adr/0020-maintenance-paging-replay.md). No new dependencies, financial execution rules or stored result formats were introduced.
-
-- **ILI-135:** chart paging distinguishes loading, retryable failure, ready and confirmed exhaustion. Failure retains current candles and permits a successful viewport-preserving retry. Focused verification: 6 Python tests passed (11.250s), 8 frontend tests passed (4.49s after one fixture correction).
-- **ILI-136:** Results exposes bounded keyset pagination in deterministic newest-first order, with loading/error/empty/end states. A 125-record fixture covers timestamp ties and concurrent newer insertion without duplicates. Focused verification: 2 Python tests passed (1.061s), 7 frontend tests passed (2.93s after one fixture correction). Experiments and saved Live session paging remain outside this maintenance scope.
-- **ILI-137:** Replay uses the existing managed worker slot with start/status/progress/completion/error/cancellation and persisted lifecycle. A deliberately slow worker exceeds the old 30-second request duration while ordinary service commands remain responsive. Cancellation never publishes a successful result. Initial focused verification: 10 Python tests passed (39.000s), 24 frontend tests passed (3.13s).
-- **ILI-138 combined Windows verification:** `python -m unittest discover -s tests -v` passed **187 tests in 134.687s**; `node node_modules/vitest/vitest.mjs run` passed **60 tests across 17 files in 6.17s**. The pinned CPython 3.12.14 / NautilusTrader 1.231.0 runtime verified. TypeScript/Vite passed (1.41s); a fresh isolated locked/offline Windows/Rust build passed (1m 28s). Existing bundle-size and native Pandas advisories remain non-failing.
-- Compiled Windows launch displayed `0.5.1-dev`. Native synthetic smoke verified chart failure followed by successful retry with anchored viewport/current market retained, and Results loading older pages to the end of a 125-record fixture. Background Replay progress and panel navigation remained responsive; the close confirmation exposed return/cancel-and-exit controls.
-- The final native cancellation smoke exposed a Windows SQLite WAL lifetime failure. One corrective change keeps a service connection alive through worker termination and terminal-state publication. The affected Python regression rerun passed **10 tests in 38.903s**, including cancellation inside an actual read transaction and SQLite integrity. The corrected diagnostic IPC check ended cancelled without a result or stderr error, and corrected compiled Windows UI smoke displayed `Replay: cancelled`. The full suites and native build above preceded this Python-only correction; only its affected surface was rerun.
-- Copied migration verification preserved **19 preexisting tables, 21 runs, 8 strategies and 105 immutable run artifacts**, with SQLite integrity intact. `replay_jobs` is additive. Subsequent read-only comparison confirmed the ordinary data's 19 tables and 105 artifacts unchanged; the experimental Windows lockfile remained unchanged. Destructive checks used isolated synthetic data only.
-
-The corrected native short Replay also completed with **MATCH and 3 independently expected recorded signal events**. The isolated application then closed normally. Publication checks use pinned Gitleaks 8.30.1 on staged changes, the tracked tree and all outgoing commits; no secret findings were detected.
-
-These are automated regression and synthetic Windows lifecycle observations, not owner acceptance, natural-network endurance or production readiness. Valid 0.5 financial and public-market evidence below is retained. No additional 30-minute public-market test or real Telegram delivery test was performed; ILI-37 remains untouched. No authorized issue required deferral to Backlog, no new Linear tasks were created, and product 0.6 was not started.
-
-## Product 0.5-dev — owner-accepted development build
-
-The owner manually accepted the current 0.5-dev build at `c7aae69005df81a5cee09f6ed1c6373c29ddee98` and authorized squash merge through [PR #5](https://github.com/IliaMerkurev/trading-terminal/pull/5). Remaining UI/UX issues are accepted as non-blocking and intentionally deferred; no redesign is part of this merge. Telegram delivery remains outside acceptance. This is an early development build, not stable or production-ready. See [demonstration](DEMO_05.md), [0.5 requirements](../PROJECT.md#21-product-05-independent-market-terminal-and-position-management), [market lifecycle](adr/0018-independent-market-lifecycle.md) and [position policy](adr/0019-shared-position-management.md).
-
-- Market socket ownership is independent from optional strategy history and PAPER. Native 1m/5m/15m/1H/4H/1D chart pages have a confirmed-history cache, bounded recent history, incremental updates and viewport-preserving prepend. The chart never derives coarse history from a partially warmed M1 strategy.
-- Optional policy schema 1 shares bounded scaling/DCA, partial TP, trailing, cost-aware break-even, confirmed-primary ATR protections and risk constraints across retained-engine Backtest/Paper. Legacy profiles without the policy retain their old snapshots and behavior.
-- Explicit read-only position nodes use pre-decision account context; live records that context for replay. Manual PAPER may start without a strategy, and Add/Reduce25/Reduce50/Close share the same account/journal. Settings, backend protection lines and paged position lifecycle views are integrated.
-- Experiments expose validated position axes with fixed risk caps and the same ordinary worker execution. Actual grid candidates equal standalone runs across metrics/fills/trades/indicators/equity; frozen later-period validation retains the policy.
-- Merge regression rerun: **182 Python tests passed in 101.558s; 54 frontend tests across 16 files passed in 4.48s.** TypeScript/Vite passed; fresh isolated locked Windows/Rust build passed in **1m 24s**. Existing frontend bundle-size and native Pandas advisories remain non-failing. No dependency or license was changed.
-- ATR readiness has a dedicated regression: an initialized value from partial historical warmup cannot enable protected manual actions; current history must finish first. Independent financial/temporal goldens verify weighted long/short entries, scaling after reduction, partial/full exits, fees/funding, cash/equity/margin/liquidation, rounding/rejections, trailing/ATR/cost-aware break-even, historical crossings, observed gaps and future perturbation. Full regressions retain native historical, editor, live/replay/recovery and notification behavior. Mocked notification tests do not establish native delivery.
-- Fresh copied additive migration preserved all preexisting table records, result checksums and SQLite integrity. Ordinary user data was not used for tests. The separate synthetic demo completes two managed candidates and one frozen later-period validation.
-
-### Startup evidence and native acceptance boundary
-
-An isolated H1 service reproduction measured the old subscription delay at 88.609s. The first market milestone measured cold chart 1.625s, ticker/book 2.25s and trades 2.578s while causal warmup continued; warm cached chart appeared at 0.047s. These are bounded service timings with PAPER disabled, not UI latency guarantees. Earlier native Windows checks observed no-strategy chart/book/tape, H1 progress with current market retained, historical page prepend and independent market after monitoring pause.
-
-The final automated Windows UI inspection could not complete because the automation helper returned `foreground window did not report a process id`. This is an automation limitation, not evidence of a product failure. Subsequent owner manual acceptance supersedes that blocker for this merge. It does not turn process launch or the service endurance check into automated native control/viewport/responsiveness evidence. No completed automated integrated native 30-minute session is claimed.
-
-### Final public-data service evidence — 2026-09-13
-
-A **31m 0.8s service-only run**, 07:27:53–07:58:54 UTC, observed one public connection, 2,833 ticker updates, 956 forming-M1 updates, 31 finalized M1 candles, 26,360 book updates and 4,818 trades. No natural reconnect or connection error occurred. Deterministic reconnect/reset/gap tests are separate evidence. The recent-trades buffer stayed at 100 rows; the log reached 35 rows. After warmup, interpreter working set stayed at **206.74–207.28 MiB**; one service interpreter with no direct child was sampled, with 26 OS threads (7 Python threads after warmup). This does not measure React/WebView memory or native UI responsiveness. Notifications were disabled in this probe; it does not establish native delivery or notification-storm behavior.
-
-Cold service timing with non-ATR managed PAPER: chart 1.594s, ticker/book/PAPER ready 2.125s, trades 4.328s, H1 strategy ready 93.235s. Required causal history was retained. The recorded virtual lifecycle executed Buy 0.012, Add 0.012, Reduce25 0.006, Reduce50 0.009 and Close 0.009. A smaller preliminary fixture visibly rejected a below-minimum reduction; request processing is labeled separately from fills/rejections in the UI.
-
-A bounded restart restored the same closed PAPER balance, initially required revalidation, and passed explicit revalidation. Cached chart appeared at 0.015s, market at 1.953s and strategy at 2.812s. Market updates continued after strategy pause. Recorded replay matched with **zero new H1 signal events** because the interval contained no new primary-hour close. Nonzero transition/context/future-perturbation proof comes from deterministic tests, not this zero-event comparison.
-
-Actual REST paging also passed on all six supported intervals: 300 recent + 300 older candles each, ordered/contiguous/unique, 12 requests total. Reopening older pages reused the cache without new requests. Owner manual acceptance permits publication of the implementation through PR #5; the measured service evidence remains distinct from unperformed automated native measurements.
-
-Telegram ILI-37 remains intentionally deferred/open. Windows/sound acceptance from 0.4 is retained; Telegram delivery is not claimed. The owner authorized only the 0.5 squash merge and verification, without a release or product 0.6 development.
-
-## Product 0.4 development build — accepted and merged
-
-The owner accepted product **0.4-dev** with real Telegram delivery explicitly unverified. [PR #4](https://github.com/IliaMerkurev/trading-terminal/pull/4) was squash-merged into `main` on 2026-09-12 as `f26cec685d9ef0bf6bd5ac53962ae4935e2604bd`, from the exact accepted head `348fce7324eaf89c14ee8da82aa53f3e19242a65`.
-
-The pre-merge rerun passed **142 Python tests in 74.862s**, **40 frontend tests in 29.26s**, targeted **46 Python tests in 16.043s** and **20 frontend tests in 2.18s**. TypeScript/Vite and the locked offline Windows/Rust build passed (Rust **24.13s**). Gitleaks 8.30.1 found no leaks in the complete tracked tree or all four outgoing commits. The targets cover Live Terminal/chart/editor behavior, live/replay, reconnect/book recovery, manual paper accounting and notification diagnostics. Telegram mocked transport results do not establish delivery.
-
-After merge, the normal main checkout rebuilt successfully (Windows/Rust **6.39s**) and launched as Trading Terminal **0.4-dev** on the ordinary user data root. A fresh backup, copied migration check and post-launch comparison preserved all preexisting table rows, **8 strategies, 21 saved runs and 105 result files**, with SQLite integrity and result checksums intact. Separate demo/live journals were not imported or replaced. No dependency on a temporary acceptance root is required.
-
-Product **0.4-dev** adds the chart-led Live Terminal over the accepted 0.3 engine and shared Strategy IR. It is an early development build, not stable or production-ready. See the [0.4 demonstration](DEMO_04.md), [scope](../PROJECT.md#20-product-04-live-terminal), [shared market state](adr/0016-shared-market-terminal.md) and [manual PAPER semantics](adr/0017-manual-paper-source.md).
-
-Implemented: one centrally owned public ticker/M1/order-book/trade pipeline; fresh/stale market header; forming/final candlestick chart and recorded IR overlays; independent display intervals; snapshot/delta book with 15 displayed levels per side; bounded recent-trades tape; compact settings and switchable terminal panels; manual virtual Buy/Sell/full Close through the retained paper account. Reconnect invalidates the old book/tape and retains confirmed-minute recovery and paper revalidation.
-
-Final regression evidence: **142 Python tests passed in 72.663s**, **40 frontend tests across 13 files passed in 4.14s**. TypeScript/Vite production build and locked offline Windows/Rust build passed (final Rust build 4.17s). The opt-in native toast-history test passed. No dependency version or license was changed. Existing Pandas deprecation and frontend bundle-size advisories remain non-failing.
-
-Deterministic checks include book snapshot/delta/zero removal/order/reset, one subscription set per connection, bounded tape, display interval/IR independence, stored-value and future-perturbation checks, manual spot/perpetual accounting, protection prices, no strategy orders in Manual mode, request deduplication/expiry/restart, restored paper accounting and existing live/replay/recovery regressions. Independent manual spot equity is 1009.79 after 0.21 fees; the perpetual short golden ends at 1019.62 after 0.38 fees. Native checks observed virtual long/short entry/full close, a 5m chart with unchanged 1m/closed strategy and connection, recorded SMA values, panel/settings navigation, minimize/restore and normal paused reopening.
-
-### Real public-market measurement
-
-The compiled Windows terminal monitored public linear BTCUSDT for a **32-minute measurement on 2026-09-11**, starting at 20:36:36 UTC. Its 127 resource samples span 20:36:36–21:08:32 UTC (31.923 minutes between first/last sample); monitoring continued until the final UI capture at 21:09:27 UTC, then paused normally. Final cumulative subscription counters were **34 finalized candles, 1,400 forming updates, 13,248 ticker updates, 63,377 book updates and 27,304 trades**. The subscription began shortly before measurement, so these are cumulative totals rather than exact measurement-window deltas. Strategy evaluation reached 21:09 UTC, chart/book/tape continued updating and the interface remained responsive.
-
-- There was exactly **one successful subscription set** and **no natural disconnect** in this run. A separate deterministic reconnect recovered two missing candles, invalidated old book/tape state and opened exactly two subscription sets. An actual normal restart before measurement recovered one missing candle and required paper continuity revalidation. Missing tape/ticks were not invented.
-- Application plus descendant process count stayed **11**. Combined working set was **702.37 → 768.85 MiB**, maximum **776.86 MiB**; combined private memory was **979.61 → 1033.02 MiB**. Python working set was **213.36 → 219.08 MiB**, maximum **219.09 MiB**, and stabilized during the run. Most additional working memory was in WebView. This finite measurement does not prove indefinite memory stability; longer sessions remain an acceptance boundary.
-- Chart history, book, trade IDs/tape, event/signal displays, notification queue and manual request history have explicit bounds. No duplicate subscription, retry loop or service error was observed. Automatic notification channels were disabled during the measured session; one explicit native sound Test dispatched successfully. Anti-spam semantics are covered by durable transition/claim tests, not a claim of sustained real notification delivery.
-- Paused replay reported **MATCH for all 22 recorded signal events**. A separate consistent journal copy reconstructed **12,387 committed paper observations exactly** and matched its then-current 15 signals. Real manual actions ended flat; recording and replay did not alter ordinary user data. A separate 12.02-second real spot probe also observed ticker, forming candle, book and trade updates; it is not the long-run evidence.
-- The prolonged run used integration commit `6313c09`. Follow-up `277d822` changes only chart projection/formatting and strengthens tests: omit a truncated leading coarse candle, constrain indicator samples to visible history, preserve the evaluation timestamp and format funding precisely. The final executable was rebuilt afterward and reopened the saved paused session. Native checks observed its 5m chart, recorded SMA and fresh funding display after recovery; the backend/transport/account used in the prolonged run is unchanged.
-
-The owner accepted the non-Telegram 0.4 functionality. This does not turn unperformed automated checks into measurements: no controlled 100%/125%/150% DPI matrix, physical sleep/wake measurement or multi-hour resource guarantee is claimed. Native Windows toast history was checked; Telegram real delivery was not. Product 0.4 is now in `main` and remains an early development build, not stable or production-ready.
-
-Additive migration on a consistent copy preserved all preexisting records, result checksums and SQLite integrity (8 strategies, 21 saved runs). All public-market/demo work uses isolated data, not the ordinary user database.
-
-**Telegram remains a known acceptance issue (ILI-37).** The request matches the official Bot API; no real delivery root cause was established. Safe actionable HTTP/API/network/TLS diagnostics were added and malicious-response tests pass. Credentials remain in Windows Credential Manager. No real Telegram delivery success is claimed; a new owner Test notification is required. Windows and sound behavior retain their separate accepted baseline.
-
-## Product 0.3 development build — acceptance evidence
-
-Product **0.3-dev** is accepted by the owner with Telegram delivery as an explicit exception. It is an early development build, not stable or production-ready. See the [0.3 demonstration](DEMO_03.md) and [scope](../PROJECT.md#19-product-03-live-monitoring-and-paper-trading).
-
-**Verified:** Live Bybit monitoring, reconnect/recovery, Windows notifications, sound notifications, paper trading, Live/Replay consistency and node deletion. The owner completed manual acceptance of the non-Telegram functionality in addition to the automated evidence below.
-
-**Known issue — Telegram:** notification integration is implemented, but owner acceptance is currently failing. Test notification did not deliver despite credentials configured through the UI. Windows notifications and sound are verified. Telegram delivery remains open for investigation in [ILI-37](https://linear.app/ilia-merkurev/issue/ILI-37/fix-telegram-notification-delivery-after-03-owner-acceptance); ILI-30 remains In Review. Automated transport tests do not establish successful delivery.
-
-Pre-merge regression rerun: **121 Python tests passed in 54.336s**, **28 frontend tests passed in 24.32s**, TypeScript/Vite production build passed, and the locked offline Windows/Rust build passed in **19.91s**. Targeted runs passed **29 Python tests** covering shared signals/replay, deduplication, recovery, paper accounting and notification isolation, plus **14 frontend tests** covering deletion/Undo/Redo and Live. The opt-in native Windows toast-history test passed again. Sound audibility is verified by owner acceptance, separately from automated dispatch checks. The existing frontend bundle-size advisory remains non-failing.
-
-- Shared historical/live/replay Strategy IR, confirmed-minute closed/forming evaluation, false-to-true event transitions, atomic recording and durable at-most-once notification claims are implemented. Independent goldens and future-perturbation checks pass.
-- Public Bybit spot/linear ticker and M1 subscriptions, stale/duplicate/out-of-order checks, heartbeat, bounded reconnect backoff and complete REST gap reconstruction are implemented. A 10-minute actual linear session recovered two missing candles after an interruption injected only into its own socket. Exactly two successful subscription sets were opened (initial and reconnect).
-- That session recorded **4,105 observed paper inputs** and **6 signal events**; fresh replay matched all six. Paper entry/exit and explicit post-gap revalidation ran. Sampled Python working set increased from **199.9 to 204.1 MiB**, with a 204.1 MiB maximum; this bounded observation is not an always-on memory guarantee. The worker stopped normally.
-- Paper uses the retained Nautilus account/risk/protection and position policy with later observed executable quotes, explicit costs, mark and confirmed funding. Tests verify independent long/short balances, fees/slippage, gap stops/takes, mark liquidation, delayed funding, restart without double charging and write-failure safety. Missing ticks are never manufactured from historical candles.
-- Live dashboard, frozen session settings, saved-session selection, signal/event history, paper account/fills, recovery controls and replay verification are implemented. Native Windows checks observed actual spot updates, signal state, a virtual position, minimize/restore, normal shutdown and paused state on reopening.
-- Windows toast/sound and direct Telegram dispatch have separate controls and bounded error isolation. A real Windows Credential Manager synthetic write/read/clear passed. The opt-in Rust test confirmed a real toast was retained in **this application's** Windows notification history. Subsequent owner acceptance verified Windows and sound, but Telegram Test did not deliver.
-- Delete/context Delete share one operation, preserve fixed outputs, clean edges and support Undo/Redo. Component tests cover multiple selection and typing guards. Native Delete, Undo/Redo buttons, both context menus and restored connections were checked. Controlled node measurements are preserved to prevent an initially blank canvas.
-- **121 Python tests passed in 51.809s; 28 frontend tests passed.** TypeScript/Vite and the locked offline Windows Rust build passed (4.13s). Seven focused transport/manager tests passed after tightening stale-ticker/forming-order validation. Existing native Pandas deprecation and frontend bundle-size advisories remain non-failing.
-- Additive migration on a consistent copy preserved every preexisting table row/hash, immutable result checksums and SQLite integrity. Ordinary user data was not used for experiments. New live/paper tables do not rewrite 0.1/0.2 records.
-- The isolated offline demo checks three signal timelines (2/2/1 events), replay equality and independently expected paper equity **1009.79**. Synthetic labels and data roots remain distinct from public market recordings and user data.
-
-### Owner acceptance and evidence limits
-
-The owner accepted non-Telegram functionality; Telegram Test remains failed and requires a later delivery check. Earlier automation did not demonstrate localized physical keyboard chords, a controlled 100%/125%/150% scale matrix or physical sleep/wake. Owner acceptance does not retroactively turn those into measured automated checks. Stale/gap reconstruction is covered deterministically and by the isolated public-connection interruption. No system setting was changed to manufacture a pass.
-
-Live accepts visual IR only; compatible native Python remains historical-only and fails visibly if selected for Live. Forming-primary semantics advance at confirmed M1 boundaries, not every live tick. Funding-history delays can pause account processing while observed quotes queue; missing funding continuity or exhausted retries require review. At-most-once notifications can be missed after an uncertain crash outcome. This is one active instrument/strategy session, without real orders, exchange trading credentials, cloud service, background daemon or installer.
-
-## Historical accepted main baseline: 0.2 development build
-
-Product milestones previously called V1 and V2 are now 0.1 and 0.2. These names never meant stable 1.0/2.0 releases. Protocol/schema/profile integers and ADR numbers are unchanged. The normal main checkout builds and launches `Trading Terminal`, with `0.2-dev` shown separately from the permanent window title. Product version comes from Cargo package metadata; no temporary parallel checkout is required.
-
-The versioning/housekeeping verification passed **92 Python tests in 43.867s**, **20 frontend tests in 23.57s**, TypeScript/Vite and the offline locked Windows/Rust build (**30.29s**). The compiled main application opened with the ordinary data root and the expected title/version badge. A fresh backup and copied migration check preserved **17 runs and 8 strategies**; the ordinary additive migration also preserved all rows and result checksums. Synthetic demonstration data stayed separate. The frontend bundle-size advisory remains; no dependency upgrade, installer or release binary was introduced.
-
-## Accepted 0.2 milestone history
-
-0.2 passed owner acceptance and was squash-merged into main through [PR #2](https://github.com/IliaMerkurev/trading-terminal/pull/2), commit `1309b4a1f97e2cb889240f510abf707ee94e6740`, on 2026-09-11. 0.1 behavior and data remain supported. The [product specification](../PROJECT.md) remains authoritative. The [0.2 demonstration](DEMO_V2.md) and [retained 0.1 demonstration](DEMO.md) distinguish automated verification from native/manual acceptance.
-
-The mandatory pre-merge checks were rerun on the exact accepted 0.2 head: **92 Python tests passed in 73.457s**, **20 frontend tests passed in 34.68s**, TypeScript/Vite passed, and a separate offline locked Windows/Rust build passed in **1m 35s**. Runtime verification and `pip check` passed. Gitleaks 8.30.1 found no secrets in either outgoing 0.2 commit. The existing frontend bundle-size advisory remains. No installed dependency, user database or running build was replaced.
-
-The owner reported successful manual 0.2 verification and accepted the remaining review items. The observations below retain the original automated/native evidence and its limitations; owner acceptance does not retroactively turn unperformed automation scenarios into executed tests. No installer, release or 0.3 scope is included.
-
-## 0.2 evidence — 2026-09-11
-
-- Profile version 2 adds continuous intraminute protection crossings; version 1 retains discrete observations. Independent long/short 95/105 versus 80/120 goldens, gaps, fees/slippage, funding/mark liquidation and partial-H1 future perturbations pass. See [execution model](adr/0010-execution-v2.md).
-- Sequential parameter grids, immutable editor/runtime/data snapshots, cancellation/errors/interruption and frozen later-period validation use the same worker service. Actual Windows tests compare a 2×2 grid with four independent runs, and OOS with a standalone window run. Altering only future OOS candles leaves IS metrics/ranking and frozen graph/parameters unchanged. Shared source candles are not duplicated per combination; archives retain research provenance. See [experiments](adr/0011-experiments.md).
-- Context-menu search, keyboard selection, graph history/duplication/validation, compact fill groups, viewport preservation and comparison labels are implemented. Component tests use mocked React Flow transforms/IPC and do not establish native Windows scaling or picker behavior.
-- The full Python suite passed **92 tests in 41.302s**. The final frontend suite passed **20 tests across 10 files in 16.96s**. TypeScript, production Vite build and offline locked Windows Cargo build passed using the existing tools. No dependency was added or updated. The approximately 651 KiB JavaScript bundle still produces a size advisory.
-- Additive migration on a separate consistent 0.1 copy preserved **17 runs and 8 strategies**, all existing records/result checksums and SQLite integrity. Existing environments and the running older build were preserved; no destructive migration is required.
-- The synthetic 16-combination demonstration plus one frozen OOS validation and matching standalone run completed in **28.194s**, with **140.0 MiB sampled combined service/worker working set**. This is a bounded 240-minute fixture, not a guarantee at the maximum grid/history size. The limits are validated before materializing a grid: 256 combinations and 2,000,000 minute-runs including warmup. No date range is silently truncated to satisfy a budget.
-
-The final compiled 0.2 window opened with its separate synthetic workspace and a working service connection. Actual native checks verified full-name context search, Enter creating exactly one selected node at the original click, Undo/Redo, independent node duplication and visible disconnected-input validation. The saved 16/16 experiment reopened, its candidate report displayed candles, fill markers and equity, and its frozen candidate displayed separate IS/OOS metrics matching the recorded demo. Two automation drag attempts produced no visible movement; native dragging and one-drag Undo remain unverified. Native Windows picker import, visibly active cancel-and-exit, and actual 100%/125%/150% scaling also remain manual 0.2 acceptance checks. No other application or system scaling was changed for testing. The separate development build/demo is ready for those checks; no installer, binary release or 0.3 work is included.
-
-## Retained 0.1 evidence
-
-## Implemented and tested
-
-| Area | Evidence |
-| --- | --- |
-| Engine and account model | [ADR 0001](adr/0001-engine.md), [ADR 0002](adr/0002-simulation-profile.md); independent spot/perpetual long/short, sizing, costs, funding, mark liquidation and protection fixtures |
-| Causal strategy graphs | [ADR 0003](adr/0003-strategy-ir.md); all 0.1 indicators/operators, typed acyclic IR, partial H1 and future perturbation tests |
-| Public history and replay | [ADR 0004](adr/0004-data-manifests.md); separate trade/mark/funding, hashes, coverage/gaps and repeated offline results |
-| Managed calculations | [ADR 0005](adr/0005-workers-storage.md); snapshots, SQLite history, bounded IPC, actual Windows worker-tree cancellation |
-| Native Python | [ADR 0006](adr/0006-native-import.md); AST-only preview, source-bound consent, installed licensed EMA example, declared multiple native bar timeframes and visible unsupported behavior |
-| Desktop research UI | [ADR 0007](adr/0007-desktop.md); editor/settings, downloads, real workers, saved charts/indicators, trade navigation and window lifecycle |
-| Comparison and archives | [ADR 0008](adr/0008-archives-comparison.md); input/version differences, JSON-only bounded archive, fresh imported IDs, nonexecuting import and omitted history |
-
-## Executed Windows checks
-
-On 2026-09-11, `.venv/Scripts/python.exe -m unittest discover -s tests -v` passed **79 tests in 14.818s**. A separate newly created Windows Python environment installed all **17 hash-pinned packages** from verified wheels, passed `pip check`, and passed the same 79-test suite in 14.937s. The existing environment was preserved.
-
-`node node_modules/vitest/vitest.mjs run` passed **8 tests across 6 files**. These cover typed graph wiring, save/native consent behavior, stored-value chart projection, comparison, exact archive File chunk transfer, sequential polling, and cancellation-before-desktop-exit ordering. Component tests mock IPC and are not native desktop automation.
-
-`./scripts/setup.ps1` completed with the configured toolchain. `./scripts/launch.ps1 -NoLaunch` passed TypeScript, the production frontend build and locked offline Windows Rust build using existing MSVC/SDK. The frontend emits a 500 KiB chunk-size advisory (approximately 630 KiB JavaScript before compression); it is not a build failure.
-
-Actual compiled desktop checks verified graph save into SQLite, a real cached BTCUSDT spot run, restart/reopening, visible candles/fill markers/equity, trade-to-chart navigation, comparison and export. A fresh public BTCUSDT spot day downloaded through the UI with **1,440 candles and complete requested coverage**. Active minimize/restore continued the worker to completion. Closing while active displayed the return/cancel dialog; returning preserved work. Completed-run exit closed the application.
-
-One real BTCUSDT day for each market was previously downloaded and replayed twice offline with identical normalized results. The integrated spot example produced five completed trades, final equity 999.31274578 and fees 0.99993082 USDT; this is verification evidence, not a recommendation. The four offline demo cases separately pass hard-coded independent PnL/trade expectations.
-
-## Performance and limits
-
-A seven-day, 10,080-minute synthetic intrabar fixture measured **1.464s**, **260.5 MiB peak working set**, and **9.13 MiB normalized JSON** on Windows. A 30-day synthetic dataset also completed in the compiled desktop lifecycle checks. These are bounded measurements, not a guarantee for arbitrary native strategies or long histories. Run one calculation at a time; chart windows and IPC pages are bounded. Larger-scale memory budgets need further measurement before expanding supported workloads.
-
-The model implements one single-position cross-margin profile, not full Bybit UTA or isolated margin. Minute paths and historical precision/risk-tier assumptions are explicit. Historical tier changes remain unknown. Native workers are not security sandboxes. Unsupported orders/feeds or unavailable dependencies fail visibly. Archives omit raw history and logs; checksums do not authenticate imported performance claims. No installer or binary release is provided; the project license remains undecided.
-
-## Historical 0.1 acceptance notes
-
-The native Windows file-picker import and a cancel-and-exit click before a desktop calculation finishes remain manual acceptance checks. The automation helper could not address the WebView-owned picker; bounded calculations completed before the exit click. Backend archive roundtrip, browser File transfer, close-dialog IPC ordering and actual worker cancellation pass independently. These observations do not establish that the unperformed native actions were tested.
-
-Review the complete [demonstration](DEMO.md), including source trust, edited strategy wiring, indicator display and usability. Owner acceptance is distinct from implementation and automated checks. Deferred live trading, AI, optimization, DCA, multiple instruments and other post-0.1 features remain outside this build.
+# Current implementation status
+
+Updated 2026-10-13. This is a concise current-state summary, not a chronological
+work log. [PROJECT.md](../PROJECT.md) remains the product specification. Detailed
+contracts, reproducible checks and qualifications live in the linked documents.
+
+## Product and release boundary
+
+- Product remains **0.6-dev** on `codex/terminal-mvp`; it is a development build,
+  not an owner-accepted release. No merge, version bump or deployment is included.
+- Historical accepted baselines remain in Git. Current work preserves versioned
+  simulation contracts, existing tests and immutable saved results.
+- The application is a local strategy-research workspace. Example rules and
+  synthetic results are test cases, not recommendations or profitability claims.
+- The project uses MIT; component licenses, formula-file exceptions and market
+  data terms remain separate. See [third-party notices](../THIRD_PARTY_NOTICES.md).
+
+## Available workflow
+
+The card-first Lab and Pro editor retain local history, cancellable backtests,
+saved reports/trade review, comparisons and project archives. Market retains
+display indicators/panes/presets, local alerts, current agreement and cache-only
+rule research. Capability availability does not establish platform acceptance.
+
+Recovered pane/alert/agreement/history scope is recorded in
+[RECOVERY.md](RECOVERY.md) and the [88-row acceptance ledger](RECOVERY_ACCEPTANCE.md).
+Recovery reconstructed documented behavior; it does not establish byte identity
+with unavailable former source or compatibility with unavailable old databases.
+
+## Current bounded slice: prospective graph evaluation journal
+
+New ordinary closed-bar graph backtests now retain versioned, bounded observations
+before signal application: actual output states/node values, snapshot identity,
+source/primary candle intervals and separate exact engine clocks. Results offers
+a read-only run-level journal backed by local admission/finalization receipts.
+It never infers an order/fill link, reconstructs old reasons or promotes imported
+payloads to local evidence. Unsupported scope and incomplete metadata are explicit.
+See [recording, read limits and preservation](RECORDED_EVALUATIONS.md).
+
+Focused verification established 40 independent backend checks plus 73 nearest
+existing checks, 34 distinct frontend checks, TypeScript and production build.
+These are unions across overlapping passes; private fixture/timing corrections
+and exact commands are retained with the version-linked test archive. An existing
+5-second App test timeout passed a targeted 15-second recheck with assertions
+unchanged. The existing bundle-size advisory remains. No full-product/CI, actual
+GUI, Windows/native or owner acceptance is claimed; own-cloud GUI remains blocked
+by the previously verified loopback connection refusal. Published tests stay intact.
+
+## Preserved independent research from saved inputs
+
+Results now offers explicit local input-availability checks and guarded creation
+of an independent unsaved graph draft. It preserves frozen profile/data identity,
+requires acknowledgement of changed runtime evidence, and never starts a run,
+download or native trust action. Unsupported contracts and missing/invalid inputs
+remain distinct from inspection-budget exceedance. Existing results stay intact.
+See [supported cases, limits and workflow](SAVED_RUN_RESEARCH.md).
+
+Focused verification passed 115 frontend checks across 8 files, 53 backend
+checks, TypeScript and production build. The existing bundle-size advisory
+remains. Added tests remain in a private version-linked archive. Saved output
+authenticity, full-product/CI, actual GUI, Windows/native and owner acceptance are
+not established by this bounded input-readiness slice.
+
+## Preserved closed-workspace recovery
+
+The offline backup/verify/restore CLI preserves every regular file and directory
+in an explicitly selected closed data root, except its transient ownership lock.
+It includes SQLite sidecars, datasets, saved artifacts/logs, research, alerts,
+presets, operation receipts and auxiliary files. Checksummed bundles restore only
+to a fresh isolated root; no application startup or execution is part of restore.
+Project ZIP exchange remains a smaller, separate contract.
+
+Focused Linux verification passed 29 checks including CLI roundtrip, crash-left
+WAL, corrupt/missing/extra files, lock contention, source changes, copy failures,
+and representative research-state reopening with no Arm/resume/native execution.
+Source and backup byte inventories remained unchanged. Added tests are retained
+in the separate version-linked regression archive. Frontend/runtime behavior is
+unchanged; no new GUI, Windows, authentic owner-DB or full-suite pass is claimed.
+See [the operational procedure and exact boundaries](WORKSPACE_BACKUP.md).
+
+## Preserved compatible custom-backtest history
+
+Custom history choices now share Lab's market/instrument/execution-resolution
+checks, with disabled mismatches and visible reasons. Counts are stored bars,
+with native timeframe, source and actual UTC coverage; missing metadata remains
+unknown. Profile/list changes revalidate selection, stale refreshes cannot erase
+newer choices, and unavailable observation sources block Lab review/start.
+Data estimates are labeled total requested candles before local reuse.
+
+Focused frontend and backend regression, TypeScript and production build were
+checked. Existing published tests stay unchanged; private asynchronous timing
+corrections and added regression tests are in the version-linked archive.
+Actual GUI/native acceptance remains unestablished. See the [history selection
+contract and verification limits](BACKTEST_HISTORY.md).
+
+## Preserved safe strategy draft replacement
+
+The editor now uses a shared Save/Discard/Cancel guard for saved Open, New, Copy,
+Lab customization, experiment copies, imports and converted-rule opening. Draft
+fields and Undo/Redo survive cancellation and failed loading/saving. Synchronous
+revision, replacement-generation and intent checks prevent late work from
+replacing newer edits. Pending/uncertain saves conservatively invalidate the old
+saved baseline. Created conversion receipts remain reopenable.
+
+Focused verification passed 80 frontend checks across 8 files, TypeScript and
+production build. Existing published tests are unchanged; added tests belong to
+the private version-linked archive. Actual own-cloud GUI/screenshot acceptance
+is blocked by a current loopback connection refusal. No full suite, Windows or
+owner acceptance is claimed. See [workflow and limits](STRATEGY_DRAFTS.md).
+
+## Preserved latest daily BTC sentiment
+
+Market now includes a small collapsible Fear & Greed semicircle with a latest
+BTC/daily label, exact UTC source date and adjacent Alternative.me attribution.
+A separate bounded fetch worker/cache never changes chart prices, strategies,
+backtests, alerts or agreement. Invalid/future data is rejected; offline/invalid/
+outdated states preserve only dated last-good data. See [display contract and
+acceptance](FEAR_GREED.md) for schedules, cancellation and cache boundaries.
+
+Focused verification passed 22 backend and 50 frontend checks initially, followed
+by 18 backend and 12 frontend checks for review corrections (overlapping totals),
+TypeScript and production build. The application worker also obtained the actual
+provider value 69 / Greed, source date 2026-10-12. Runtime availability is not an
+uptime guarantee. The existing bundle-size advisory remains.
+
+Actual production-browser visual/keyboard/layout acceptance is blocked by the
+current own-cloud control route. No screenshot, Windows/native, full-product or
+owner acceptance is claimed. New/modified tests remain outside Git; its private version-linked archive and
+remote checkpoint were independently verified.
+
+## Preserved saved comparison conditions
+
+Results retains a 28-condition read-only review of saved Data, Period, Capital
+and Costs & execution, with matched/different/unknown per-run evidence. It does
+not rerun, reprice or rank results; missing historical evidence remains unknown.
+The prior comparability acceptance passed 25 backend and 30 frontend checks,
+TypeScript/build and actual own-cloud synthetic production-browser checks. These
+are historical counts, not newly rerun totals. Its separate owner-only regression
+archive is required to reproduce that coverage; tracked tests remain unchanged.
+See [comparability acceptance](BACKTEST_COMPARABILITY.md) for all source-evidence,
+clock, provider-authentication, archive and platform limitations.
+
+## Preserved saved trade review
+
+The selected-trade inspector retains exact saved gross PnL, fees, signed funding,
+net PnL and managed lifecycle fills. Entry/exit/lifecycle chart targeting preserves
+nanosecond source ownership. Original frozen conditions come from immutable
+snapshots; context is not causal proof. Missing underlying leaf numerics/member
+votes, candle-free imports and oversized legacy clock decoration stay explicit.
+
+Its prior acceptance established 50 backend and 56 frontend checks (requiring its
+separate private regression patch), TypeScript/build and production-browser
+synthetic lifecycle/clock/cancellation/reload/keyboard checks. These are historical
+trade-review evidence, not newly rerun totals. See [trade-review acceptance](BACKTEST_TRADE_REVIEW.md).
+
+## Preserved saved-rule conversion
+
+An explicitly reviewed saved rule becomes an independent editable graph strategy.
+Its frozen node retains original definition, formula/weight contracts, parameters,
+context, origin, identity/revisions and hash. Ordinary outputs, exits and risk/cost
+settings remain editable. Conversion starts no run or external operation.
+
+First-slice execution requires matching Bybit source/market/instrument, native M1,
+closed primary bars, M1 execution, contiguous full-origin reject-on-gap data and
+matching recorded provenance or explicit synthetic attribution. The 10,000-bar
+and estimated 256 MiB bounds are admission limits, not measured process peaks.
+Other contexts, uncertain provenance, reseeding, experiments and live/PAPER refuse
+visibly. Durable identities support read-only lost-response recovery. The linked
+conversion acceptance record retains complete usage, limits and evidence.
+
+## Remaining acceptance and preservation
+
+- Windows/native execution and packaging, live providers, authentic old-owner
+  database compatibility, full-product regression and independent owner review
+  remain unestablished by this bounded synthetic acceptance.
+- Reconstructed functionality does not recover missing application data. Preserve
+  the complete selected data root with the [closed-workspace procedure](WORKSPACE_BACKUP.md):
+  strategy archives omit alert journal and research records, and regression
+  archives contain no application data.
+- Broader signal debugging, conversion contexts and broader comparison enhancements are
+  separate work. Missing historical evidence is not a license to reconstruct it
+  from current settings or substitute a nearby candle.
+- Next: owner review of saved conditions alongside the existing saved-rule →
+  editor → backtest → trade-review workflow within its stated limits. No later roadmap slice, merge or release is
+  implied by these development checkpoints.
+
+## Durable checkpoints and documentation
+
+- [Trade-review implementation](https://github.com/IliaMerkurev/trading-terminal/commit/9c64e945de5c33e7eb92f6a2b640be719d332509)
+- [Trade-review acceptance and reproduction](BACKTEST_TRADE_REVIEW.md)
+- [Saved-rule conversion and reproduction](RULE_STRATEGY_CONVERSION.md)
+- [Recovery evidence and limitations](RECOVERY_ACCEPTANCE.md)
+- [Development and isolated acceptance guide](DEVELOPMENT.md)
+- [Alert UI](ALERT_UI.md), [runtime API](ALERT_RUNTIME_API.md),
+  [historical research UI](ALERT_RESEARCH_UI.md)
+- [Architecture decisions](adr/) and [research contracts](RESEARCH.md)
+- [Branch commit history](https://github.com/IliaMerkurev/trading-terminal/commits/codex/terminal-mvp/)
+
+Older status entries remain recoverable from Git history. Do not create another
+growing status archive. Replace current facts here and link detailed evidence.
+
+## Older anchored references
+
+<a id="combined-ux-series-verification--2026-10-10"></a>
+<a id="durable-archive-import-inspection--2026-10-10"></a>
+<a id="explicit-chart-to-observation-period-capture--2026-10-10"></a>
+<a id="explicit-saved-equity-inspection--2026-10-10"></a>
+<a id="final-bounded-ux-candidate-verification--2026-10-10"></a>
+<a id="historical-bounded-mvp-verification--2026-10-10"></a>
+<a id="independent-saved-history-date-navigation--2026-10-10"></a>
+<a id="named-indicator-preset-candidate--2026-10-11"></a>
+<a id="natural-lab-catalog-scrolling--2026-10-10"></a>
+<a id="saved-comparison-card-ordering--2026-10-10"></a>
+<a id="saved-history-display-intervals--2026-10-10"></a>
+<a id="saved-history-ohlcv-inspection--2026-10-10"></a>
+<a id="saved-test-filter-outcome-clarity--2026-10-10"></a>
+
+Links from earlier checkpoint documents land here so they remain usable. Their
+original evidence is retained in the [previously published status snapshot](https://github.com/IliaMerkurev/trading-terminal/blob/57a94568c37af2bbf28a8c6b3e0c215afa485381/docs/STATUS.md).
+Use its section headings for the historical verification; the current acceptance
+limits and latest checks are stated above.

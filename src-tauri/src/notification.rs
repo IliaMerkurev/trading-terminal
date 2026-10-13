@@ -1,5 +1,7 @@
+#[cfg(windows)]
 use windows::{core::HSTRING, Data::Xml::Dom::XmlDocument, UI::Notifications::{NotificationSetting, ToastNotification, ToastNotificationManager}, Win32::System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED}};
 
+#[cfg(windows)]
 pub fn show(text: &str) -> Result<(), String> {
     if text.len() > 1000 { return Err("Notification text exceeds the supported size".into()); }
     unsafe { RoInitialize(RO_INIT_MULTITHREADED).map_err(|_| "Windows notification initialization failed")?; }
@@ -13,7 +15,23 @@ pub fn show(text: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(not(windows))]
+pub fn show(_text: &str) -> Result<(), String> {
+    Err("Windows notifications are unavailable on this platform".into())
+}
+
+#[cfg(all(test, not(windows)))]
+mod unavailable_tests {
+    #[test]
+    fn windows_notification_is_explicitly_unavailable() {
+        assert_eq!(
+            super::show("Test notification"),
+            Err("Windows notifications are unavailable on this platform".into())
+        );
+    }
+}
+
+#[cfg(all(test, windows))]
 mod tests {
     use super::*;
 

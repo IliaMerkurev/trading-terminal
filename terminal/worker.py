@@ -6,11 +6,28 @@ import sys
 
 
 def main():
-    # Parent attaches the Windows Job Object before sending the bounded request.
+    if sys.platform == "linux" and os.environ.get("_TRADING_TERMINAL_SUPERVISOR") == "1":
+        from terminal.linux_worker import supervise
+        return supervise()
+    # Parent establishes platform lifetime control before sending the request.
     line=sys.stdin.buffer.readline(1024*1024+1)
     if len(line)>1024*1024: raise ValueError("Worker input exceeds budget")
     request=json.loads(line)
-    if request.get("version")!=1 or request.get("command") not in ('run','replay'): raise ValueError("Invalid worker command")
+    if request.get("version")!=1 or request.get("command") not in ('run','replay','archive_import','archive_export','finalize_run','chart_read'): raise ValueError("Invalid worker command")
+    if request['command']=='chart_read':
+        from terminal.chart_reads import execute
+        return execute(request)
+    if request['command']=='finalize_run':
+        from terminal.result_finalization import execute
+        return execute(request)
+    if request['command']=='archive_export':
+        from terminal.archive_export import execute
+        execute(request)
+        return
+    if request['command']=='archive_import':
+        from terminal.archive_execution import execute
+        execute(request)
+        return
     if request['command']=='replay':
         replay(request)
         return
@@ -32,7 +49,7 @@ def main():
         if runtime_snapshot()!=snapshot["runtime"]:
             raise ValueError("Runtime changed after the run snapshot was prepared")
         profile=Profile(**snapshot["profile"])
-        _,bars,marks,funding=DatasetStore(root/"datasets").for_run(snapshot["dataset"]["id"],profile)
+        dataset,bars,marks,funding=DatasetStore(root/"datasets").for_run(snapshot["dataset"]["id"],profile)
         strategy=snapshot["strategy"]
         window=snapshot.get('research',{}).get('window')
         if window:
@@ -45,9 +62,13 @@ def main():
         if 'benchmark' in strategy:
             from terminal.benchmarks import validate_document,run
             dataset=DatasetStore(root/'datasets').describe(snapshot['dataset']['id'])
-            validate_document(strategy,profile,dataset)
+            frozen=validate_document(strategy,profile,dataset,snapshot['runtime'])
+            if snapshot.get('research')!={'benchmark_contract':frozen['contract_sha256']}:
+                raise ValueError('Worker benchmark contract mismatch')
             result=run(bars,profile,strategy['start'],strategy['end'],strategy['interval'],progress)
         elif strategy.get("engine")=="nautilus_trader":
+            from terminal.process_lifecycle import require_native_execution
+            require_native_execution()
             from terminal.native import trust_identity,load_trusted
             if window:
                 from terminal.library import native_window_document
@@ -67,7 +88,11 @@ def main():
                 result['indicators']=[p for p in result['indicators'] if p['time']>=window['start']]
                 result['gaps']=[p for p in result['gaps'] if p[1]>=window['start']]
         else:
-            result=run_backtest(bars,profile,GraphEvaluator(strategy),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None)
+            from terminal.rule_strategy import frozen_nodes,FrozenSchedule
+            from terminal.evaluation_evidence import Recorder,supported
+            schedule=FrozenSchedule(strategy,profile,dataset,bars,research=snapshot.get('research')) if frozen_nodes(strategy) else None
+            recorder=Recorder(snapshot) if supported(snapshot) else None
+            result=run_backtest(bars,profile,GraphEvaluator(strategy,frozen_schedule=schedule),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None,evaluation_recorder=recorder)
         result["manifest_sha256"]=snapshot["snapshot_sha256"]
         if snapshot.get('research',{}).get('experiment') or snapshot.get('research',{}).get('library'):
             result['candles_reference']={'dataset_id':snapshot['dataset']['id'],'range':[window['start'],window['end']]}
@@ -103,4 +128,4 @@ def replay(request):
 
 
 if __name__=="__main__":
-    main()
+    raise SystemExit(main())

@@ -1,0 +1,262 @@
+/* Market and Lab are peer tasks; editor chrome is local to editor routes. */
+.app header,.research-mode header{height:58px;min-height:58px;padding:0 24px}
+.browser-service{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:6px 24px;font-size:11px;background:#15232d!important}
+.browser-service>span{flex:1}.browser-service button{float:none;min-height:27px;padding:4px 9px;border:1px solid #6e4752;font-size:11px}.browser-service p{margin:0;width:100%}
+.capability-note{margin:0;padding:5px 24px;border:0;border-bottom:1px solid #273340;background:#111b24;flex-shrink:0}
+.capability-note summary{font-size:10px;color:#aab7c4}.capability-note p{margin:8px 0;font-size:12px}
+.primary-navigation button:nth-child(-n+2){font-size:15px;min-width:64px}
+.primary-navigation button:nth-child(3){margin-left:20px}
+.market-host{overflow:hidden}.market-host>.live-terminal{width:100%}
+.market-workspace-heading{display:flex;align-items:center;gap:22px;padding:16px 24px 12px;flex-shrink:0}
+.market-workspace-heading h1{font-size:25px;letter-spacing:-.6px;margin:0 0 4px}.market-workspace-heading p{margin:0;font-size:12px}
+.market-workspace-heading label{display:flex;gap:9px;align-items:center;color:#adbfcd;font-size:12px}.market-workspace-heading select{min-width:138px}
+.market-workspace-heading>small{margin-left:auto;max-width:220px;font-size:10px}
+.market-header{padding:9px 24px;background:#111c25;flex-shrink:0;gap:20px}.market-header b{font-size:22px}.market-header>div:first-child{display:none}
+.market-advanced,.market-diagnostics{margin:0;padding:0;border:0;flex-shrink:0}
+.market-advanced>summary,.market-diagnostics>summary{padding:10px 24px;background:#131e28;border-bottom:1px solid #293846;list-style-position:inside;font-size:12px}
+.market-advanced>summary span,.market-diagnostics>summary span{margin-left:14px;color:#7f96a9;font-size:11px}
+.market-advanced[open]{max-height:34vh;overflow:auto}.market-advanced .terminal-controls{padding:14px 24px;gap:10px;align-items:center}
+.market-advanced .live-settings[open]>div{position:static;width:min(620px,80vw);max-height:none}.market-advanced .live-settings{margin:0;padding:0;border:0}
+.market-diagnostics>.terminal-bottom{height:230px;min-height:0}.market-diagnostics .terminal-bottom nav{padding:0 18px;gap:14px}
+.market-diagnostics .terminal-bottom nav button{white-space:nowrap}.market-diagnostics .terminal-bottom nav{overflow-x:auto}
+.market-host .terminal-market{min-height:230px;grid-template-columns:minmax(0,1fr) 230px}
+.market-host .live-chart{padding:12px 16px 8px}.market-host .live-chart-toolbar{gap:9px;margin-bottom:10px}.market-host .live-chart-canvas{min-height:190px}
+.chart-empty{position:absolute;inset:45px 20px 40px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;color:#9aafbf;text-align:center}.chart-empty strong{font-weight:500;font-size:15px;color:#c1d1dc}.chart-empty p{max-width:420px;font-size:12px;margin:9px}.chart-plot{position:relative;display:flex;flex:1;min-height:190px}.chart-plot>.live-chart-canvas{width:100%}
+@media(max-width:900px){.market-host .terminal-market{grid-template-columns:minmax(0,1fr) 190px}.market-workspace-heading{padding:13px 18px;gap:16px}.market-workspace-heading>small{display:none}.primary-navigation button:nth-child(3){margin-left:4px}.primary-navigation{gap:15px}.market-header{padding:8px 18px;gap:14px}}
+@media(max-width:760px){nav[aria-label=Workspace]{height:auto;min-height:48px;flex-wrap:wrap;gap:0 16px;padding:4px 16px}.primary-navigation{gap:8px 16px;flex-wrap:wrap}.primary-navigation button:nth-child(-n+2){min-width:50px}.primary-navigation button:nth-child(3){margin-left:0}.market-host .live-terminal{overflow:auto}.market-host .terminal-market{display:flex;flex-direction:column;min-height:620px;overflow:visible;flex-shrink:0}.market-host .live-chart{min-height:400px;border:0}.market-host .market-side{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:180px;flex-shrink:0}.market-workspace-heading{flex-wrap:wrap}.market-header>div:nth-child(n+5){display:none}.market-advanced>summary span,.market-diagnostics>summary span{display:none}.browser-service{padding:5px 16px}.capability-note{padding:5px 16px}}
+/* Lightweight Charts owns positioned canvases; keep the no-data explanation above them. */
+.chart-empty{z-index:5;background:#111720e8;border-radius:8px}
+.market-host .terminal-market,.market-host .market-side,.market-host .live-chart,.market-host .chart-plot{min-width:0}
+@media(max-width:900px){
+ .market-host .live-terminal{overflow:auto}
+ .market-host .terminal-market{display:flex;flex-direction:column;flex:none;min-height:0;overflow:visible}
+ .market-host .live-chart{height:420px;min-height:420px;flex:none;border-right:0}
+ .market-host .market-side{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:190px;flex:none;width:100%;border-top:1px solid #303848}
+ .market-host .market-side section{min-width:0}
+ .market-header{flex-wrap:wrap}.market-header>strong:last-child{margin-left:0}
+ .market-workspace-heading{flex-wrap:wrap}
+}
+.market-source-nav{display:flex;gap:8px;padding:12px 24px;border-bottom:1px solid var(--border,#283344)}
+.observation-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px}
+.observation-layout>section,.observation-layout>aside{min-width:0}
+.observation-item{display:block;text-align:left;width:100%;margin-bottom:10px;white-space:normal;overflow-wrap:anywhere}
+.observation-item strong,.observation-item small{display:block}
+.observations textarea{min-height:85px}
+@media(max-width:850px){.observation-layout{grid-template-columns:minmax(0,1fr)}}
+
+/* Saved history keeps price and source volume on one opening-time scale. */
+.observation-chart{min-width:0;border:1px solid #2b374b;border-radius:8px;overflow:hidden;background:#111722}
+.observation-chart-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:10px 12px}
+.observation-chart-toolbar strong{margin-right:auto;font-size:12px}.observation-chart-toolbar span{font-size:11px;color:#a1aec2}
+.observation-chart-toolbar button{padding:5px 8px;font-size:11px}
+.observation-chart-plot{position:relative;min-width:0}.observation-chart-plot>[role=img]{height:360px;outline-offset:-2px}
+.observation-chart-plot>[role=img]:focus-visible{outline:2px solid #8db8ff}
+.observation-gap-overlay{position:absolute;top:0;left:0;pointer-events:none;overflow:hidden;z-index:2}
+.observation-gap-overlay>span{position:absolute;top:0;bottom:0;min-width:1px;background:repeating-linear-gradient(135deg,#d8b65a24 0 2px,transparent 2px 5px);border-left:1px solid #d8b65a88}
+.observation-inspector{padding:10px 12px;border-top:1px solid #2b374b;background:#151e2b}
+.observation-inspector-heading{display:flex;gap:6px 14px;flex-wrap:wrap;align-items:baseline}.observation-inspector-heading strong{font-size:12px;font-variant-numeric:tabular-nums}.observation-inspector-heading span{font-size:11px;color:#a1aec2}
+.observation-inspector dl{display:flex;flex-wrap:wrap;gap:8px 20px;margin:10px 0 0}.observation-inspector dl>div{min-width:55px}.observation-inspector dt{font-size:10px;color:#9cabc0}.observation-inspector dd{margin:4px 0 0;font-size:12px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.observation-inspector p{margin:10px 0 0;font-size:12px;color:#d8bc7b}
+.observation-chart-help{font-size:11px;line-height:1.5;margin:8px 12px;color:#99a9bf}
+.observation-display-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:10px 0}.observation-display-controls label{display:flex;align-items:center;gap:8px;font-size:12px}.observation-display-controls select{width:auto;min-width:125px}.observation-display-controls>span,.observation-display-limit{font-size:11px;color:#a1aec2}.observation-display-limit{margin:5px 0}
+
+/* Navigation is independent of note dates and remains available after read failure. */
+.observation-navigation{min-width:0;margin:12px 0;padding:12px;border:1px solid #2b374b;border-radius:8px}
+.observation-date-jump{display:flex;align-items:flex-end;flex-wrap:wrap;gap:8px 12px}.observation-date-jump .field{flex:1;min-width:190px;max-width:310px;margin:0}.observation-date-jump input{width:100%;min-width:0;font-variant-numeric:tabular-nums}.observation-date-jump button{margin:0}
+.observation-navigation .run-actions{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.observation-navigation .run-actions button{padding:7px 9px;font-size:11px}.observation-navigation p{font-size:11px;line-height:1.5;overflow-wrap:anywhere;margin:8px 0}.observation-page-error{overflow-wrap:anywhere}
+
+.chart-indicator-controls{flex-basis:100%;padding:12px;border:1px solid #53647d;border-radius:6px;background:#151d29;max-width:100%;box-sizing:border-box}
+.chart-indicator-controls fieldset{border:1px solid #53647d;margin:8px 0;min-width:0}.chart-indicator-fields,.chart-indicator-add{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.chart-indicator-fields input[type=number]{width:78px}.chart-indicator-fields input[type=color]{width:42px;padding:2px}.chart-indicator-controls p{margin:6px 0}.chart-indicator-controls small{display:block;margin-top:8px}.chart-indicator-controls :focus-visible,.chart-indicator-details :focus-visible{outline:2px solid #b3d4ff;outline-offset:2px}.chart-indicator-readout{display:flex;flex-wrap:wrap;gap:6px 15px;font-size:11px;color:#c5d4e8}.chart-indicator-details{font-size:11px;color:#b6c7dc;margin:6px 0}.chart-indicator-details small{display:block;margin:5px 0}.chart-indicator-details summary{cursor:pointer}.chart-indicator-details p{max-width:100%;overflow-wrap:anywhere}
+
+/* One visible scroll owner contains every chart control and pane. The chart
+   grows with its panes rather than overflowing a clipped flex/grid child. */
+.market-host > .live-terminal {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+.market-host > .live-terminal:focus-visible {
+  outline: 2px solid #b3d4ff;
+  outline-offset: -2px;
+}
+.market-host .terminal-market {
+  flex: none;
+  overflow: visible;
+  align-items: start;
+}
+.market-host .live-chart {
+  height: auto;
+  min-height: 0;
+  flex: none;
+  align-self: stretch;
+  width: 100%;
+  box-sizing: border-box;
+}
+.market-host .chart-plot {
+  flex: none;
+  min-height: 320px;
+}
+.market-host .live-chart-toolbar,
+.market-host .chart-indicator-readout,
+.market-host .chart-indicator-details,
+.market-host .live-chart > small {
+  flex-shrink: 0;
+}
+.market-host .market-side {
+  height: 420px;
+  align-self: start;
+}
+@media (max-width: 900px) {
+  .market-host .market-side { height: auto; }
+}
+
+/* Bounded research-chart workspace: controls wrap; chart retains its own area. */
+.chart-ohlcv{display:flex;flex-wrap:wrap;gap:7px 15px;align-items:center;color:#b9cce0;font-size:12px;min-height:34px;font-variant-numeric:tabular-nums}
+.chart-ohlcv strong{color:#e2ebf4}.chart-quick-timeframes{display:flex;gap:3px;flex-wrap:wrap}
+.live-chart button[aria-pressed=true]{background:#284365;border-color:#83b2f0;color:#fff}
+.chart-indicator-controls{max-height:360px;overflow-y:auto}.chart-indicator-add input{max-width:155px}
+.drawing-workspace{min-width:0;width:100%;margin-top:5px}.drawing-stage{position:relative;padding-left:42px;min-height:390px}.drawing-stage>.chart-plot{min-height:390px}
+.drawing-toolbar{position:absolute;left:0;top:0;width:34px;display:flex;flex-direction:column;gap:3px;z-index:3}.drawing-toolbar button{width:33px;height:27px;padding:2px;font-size:19px;line-height:20px}
+.drawing-overlay{position:absolute;left:42px;top:0;z-index:2;overflow:hidden;touch-action:none;outline-offset:-2px}
+.drawing-properties{display:flex;flex-wrap:wrap;align-items:center;gap:7px;font-size:10px;padding:8px 0;color:#a9bdd3}.drawing-properties label{display:flex;align-items:center;gap:4px}.drawing-properties input[type=color]{width:28px;height:23px;padding:1px}.drawing-properties button,.drawing-properties select{font-size:10px;padding:4px}.drawing-properties input[type=text],.drawing-properties input:not([type]){max-width:160px}.drawing-properties [role=alert]{flex-basis:100%;color:#f0a2a7}
+.drawing-workspace :focus-visible,.chart-quick-timeframes :focus-visible{outline:2px solid #afceff;outline-offset:1px}.drawing-hit-target text{fill-opacity:0}
+@media(max-width:760px){.drawing-properties{gap:5px}.chart-ohlcv{font-size:11px;gap:5px 9px}.live-chart-toolbar{gap:5px!important}.drawing-properties>span[role=status]{flex-basis:100%}}
+
+/* In-flow controls precede the plot: no axis, attribution, or handle occlusion. */
+.chart-indicator-manager{min-width:0;width:100%;flex-shrink:0;font-size:11px}
+.chart-indicator-heading,.indicator-editor-heading,.drawing-context-header{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chart-indicator-heading small{color:#9baec7}.chart-indicator-legend{list-style:none;margin:5px 0;padding:0;display:flex;flex-wrap:wrap;gap:5px}
+.chart-indicator-legend li{display:flex;align-items:center;gap:5px;max-width:100%;min-width:0;padding:3px 5px;border:1px solid #344359;border-radius:5px;background:#151e2a}
+.indicator-swatch{width:8px;height:8px;border-radius:2px;flex-shrink:0}.indicator-hidden .indicator-swatch{opacity:.35}
+.chart-indicator-legend button{font-size:10px;padding:3px 5px}.chart-indicator-legend .indicator-settings-link{display:flex;gap:6px;align-items:center;flex-wrap:wrap;text-align:left;min-width:0;background:transparent;border-color:transparent}
+.indicator-settings-link span{color:#b6c7dc;overflow-wrap:anywhere}.indicator-hidden .indicator-settings-link strong{text-decoration:line-through;color:#9baec7}
+.indicator-unit-note{color:#b6c7dc;margin:4px 0}.indicator-unit-note summary{cursor:pointer}.indicator-unit-note p{margin:5px 0;overflow-wrap:anywhere}
+.indicator-editor-heading{justify-content:space-between;position:sticky;top:-12px;background:#151d29;z-index:1;padding:5px 0}
+.chart-indicator-manager :focus-visible{outline:2px solid #b3d4ff;outline-offset:2px}
+.drawing-context{margin-bottom:6px;border:1px solid #344359;border-radius:5px;background:#151e2a;padding:5px 8px}
+.drawing-context-header{font-size:11px}.drawing-context-header button,.drawing-context-header select{font-size:11px;padding:4px 6px;max-width:100%}
+.drawing-context-header select{min-width:0;max-width:260px;flex:1}
+.drawing-properties{max-height:220px;overflow-y:auto;align-items:flex-start}.drawing-properties[hidden]{display:none}.drawing-properties>div{flex-basis:100%;max-width:100%}
+.drawing-properties>div small{display:block;margin:4px 0;overflow-wrap:anywhere}.drawing-properties label{flex-wrap:wrap}.drawing-properties strong{align-self:center}
+.drawing-feedback{font-size:10px;color:#9baec7}.drawing-feedback [role=alert]{display:block;color:#f0a2a7;overflow-wrap:anywhere}.drawing-feedback button{font-size:10px;margin-left:5px}
+@media(max-width:760px){.drawing-context{padding:5px}.chart-indicator-legend li{flex-wrap:wrap}.indicator-settings-link span{font-size:10px}.drawing-properties{max-height:190px}}
+
+.chart-navigation{display:flex;flex-wrap:wrap;gap:5px 12px;align-items:center;margin:4px 0 10px;color:#a5b3c9;font-size:12px}
+.chart-navigation strong{color:#d5e6f7}
+
+/* Focus is a reversible App layout, not browser fullscreen or another chart. */
+.market-workspace-heading{flex-wrap:wrap}
+.chart-focus-status{display:none}
+.chart-focus-toggle{white-space:nowrap}
+.app.market-chart-focused{height:100dvh}
+.market-chart-focused>header,
+.market-chart-focused>.browser-service,
+.market-chart-focused>.capability-note,
+.market-chart-focused>footer,
+.market-chart-focused main>nav[aria-label=Workspace],
+.market-chart-focused main>.market-source-nav{display:none}
+.market-chart-focused main{min-height:0}
+.market-chart-focused .market-header,
+.market-chart-focused .market-advanced,
+.market-chart-focused .market-diagnostics,
+.market-chart-focused .market-side{display:none}
+.market-chart-focused .market-workspace-heading{
+ position:sticky;top:0;z-index:10;flex-wrap:wrap;gap:7px 14px;padding:8px 12px;
+ background:#111c25;border-bottom:1px solid #344359;
+}
+.market-chart-focused .market-workspace-heading>div,
+.market-chart-focused .market-workspace-heading>small{display:none}
+.market-chart-focused .chart-focus-toggle{order:-1;margin-right:auto}
+.market-chart-focused .market-workspace-heading label{font-size:11px;gap:5px}
+.market-chart-focused .market-workspace-heading select{min-width:0;padding:5px;max-width:140px}
+.market-chart-focused .chart-focus-status{display:block;flex-basis:100%;font-size:11px;color:#c2d4e7;overflow-wrap:anywhere}
+.market-chart-focused .market-source-note{flex:none;margin:6px 12px;font-size:11px;overflow-wrap:anywhere}
+.market-chart-focused .terminal-message{flex:none;overflow-wrap:anywhere}
+.market-chart-focused .terminal-market{display:flex;flex:1 0 auto;min-height:0;align-items:stretch}
+.market-chart-focused .live-chart{flex:1;padding:8px 12px;border:0}
+.market-chart-focused .drawing-workspace{display:flex;flex:1;flex-direction:column}
+.market-chart-focused .drawing-context{flex:none}
+.market-chart-focused .drawing-stage{display:flex;flex:1}
+.market-chart-focused .drawing-stage>.chart-plot{flex:1}
+/* Long editors use the same outer scroll owner; Exit remains sticky above it. */
+.market-chart-focused .chart-indicator-controls,
+.market-chart-focused .drawing-properties{max-height:none;overflow:visible}
+.market-chart-focused .indicator-editor-heading{position:static}
+@media(max-width:480px){
+ .market-chart-focused .market-workspace-heading{gap:6px 8px;padding:6px 8px}
+ .market-chart-focused .chart-focus-toggle{padding:7px 8px}
+ .market-chart-focused .market-workspace-heading label{gap:3px;font-size:10px}
+ .market-chart-focused .market-workspace-heading select{max-width:108px;font-size:10px}
+ .market-chart-focused .live-chart{padding:6px 8px}
+}
+
+/* Compact native toolbar and in-flow catalog: no floating surface over price. */
+.chart-instrument{display:flex;flex-direction:column;gap:2px;font-size:13px}
+.chart-instrument small{font-size:10px;font-weight:400;color:#9baec7}
+.chart-timeframe-select{display:none!important}
+.chart-options{font-size:11px;min-width:0}
+.chart-options summary{cursor:pointer;padding:6px;border:1px solid #53647d;border-radius:4px}
+.chart-options[open]{flex-basis:100%}
+.chart-options[open] summary{width:fit-content}
+.chart-options>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0}
+.chart-options:focus-visible,.chart-options :focus-visible{outline:2px solid #b3d4ff;outline-offset:2px}
+.chart-navigation{font-size:11px;margin:3px 0 6px}
+.chart-navigation button{font-size:11px;padding:4px 7px;margin-left:auto}
+.chart-indicator-controls{max-height:none;overflow:visible;padding:10px;margin:5px 0}
+.indicator-editor-heading{position:static;padding:0 0 7px}
+.indicator-workbench{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px}
+.indicator-catalog,.indicator-instance-editor{min-width:0}
+.indicator-catalog-filters{display:flex;flex-wrap:wrap;align-items:end;gap:8px}
+.indicator-catalog-filters label,.indicator-instance-editor>label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.indicator-catalog-filters input{width:170px;max-width:100%;box-sizing:border-box}
+.indicator-instance-editor select{width:100%;min-width:0;max-width:100%}
+.indicator-catalog-list{list-style:none;padding:0;margin:7px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.indicator-catalog-list li{display:flex;min-width:0;border:1px solid #344359;border-radius:4px}
+.indicator-catalog-add{display:flex;flex:1;flex-direction:column;align-items:flex-start;min-width:0;text-align:left;padding:5px 6px;border:0;background:transparent;font-size:11px}
+.indicator-catalog-add span{overflow-wrap:anywhere;font-size:10px;color:#bbcee5}
+.indicator-catalog-add small{font-size:9px;color:#93a9c2;margin:2px 0 0}
+.indicator-favorite{align-self:flex-start;border:0;background:transparent;padding:5px;color:#b6c7dc;font-size:16px}
+.indicator-favorite[aria-pressed=true]{color:#e8c56d}
+.chart-indicator-controls .chart-indicator-fields{align-items:end;gap:8px}
+.chart-indicator-fields>label{display:flex;flex-direction:column;gap:4px}
+.chart-indicator-controls fieldset:focus{outline:2px solid #b3d4ff;outline-offset:1px}
+@media(max-width:760px){
+ .chart-timeframe-select{display:flex!important}
+ .chart-quick-timeframes{display:none}
+ .indicator-workbench{grid-template-columns:minmax(0,1fr)}
+ .indicator-catalog-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:480px){
+ .indicator-catalog-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .indicator-catalog-filters input{width:145px}
+ .chart-navigation span{flex-basis:100%}
+}
+.chart-options:not([open])>div{display:none}
+.indicator-workbench.indicator-editor-only{grid-template-columns:minmax(0,1fr)}
+
+.indicator-catalog-pages{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11px}
+
+/* Instance count is unrestricted; keep the legend and selector within the viewport. */
+.chart-indicator-legend{max-height:132px;overflow-y:auto;overflow-x:hidden}
+.indicator-instance-editor{min-width:0;max-width:100%}
+.indicator-instance-editor>label{display:flex;min-width:0;max-width:100%;align-items:center;gap:6px}
+.indicator-instance-editor>label select{min-width:0;max-width:100%;flex:1}
+
+/* VMC groups remain in the ordinary scroll surface at narrow/short sizes. */
+.chart-indicator-fields>.vmc-parameter-group{flex:1 1 240px;display:flex;flex-wrap:wrap;align-items:end;gap:8px;max-width:100%}
+.vmc-parameter-group>label{display:flex;flex-direction:column;gap:4px;max-width:100%;font-size:12px}
+.vmc-parameter-group select{max-width:100%}
+.vmc-parameter-group input[type=checkbox]{align-self:flex-start}
+
+.indicator-presets { min-width: 0; margin: 6px 0; }
+.indicator-preset-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.indicator-preset-actions label { display: flex; flex-direction: column; min-width: 0; max-width: 100%; }
+.indicator-preset-actions select, .indicator-preset-actions input { max-width: 100%; }
+.indicator-preset-preview { max-height: 180px; overflow: auto; overflow-wrap: anywhere; }
+
+.chart-pane-editor { margin-top: 0.65rem; min-width: 0; }
+.chart-pane-editor fieldset { margin-top: 0.4rem; min-width: 0; }
+.chart-pane-editor label { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+.chart-pane-weights { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; margin: 0.4rem 0; }
+.chart-pane-weights input { width: 7rem; }
+.chart-pane-row { border-top: 1px solid var(--border, #354052); margin-top: 0.65rem; padding-top: 0.5rem; }
+.chart-pane-row select { max-width: 100%; }

@@ -12,7 +12,7 @@ const state=()=>({active:true,terminal_state:'CONNECTED',market:{fresh:true,tick
 
 it('allows manual account creation with no saved strategy',async()=>{
  mock.api.mockImplementation(async(command:string)=>command==='live_status'?{active:false,market:{active:true,fresh:true},terminal_state:'CONNECTED'}:{});
- render(<Live strategyId={null} profile={defaultProfile}/>);
+ render(<Live strategyId={null} profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  fireEvent.click(screen.getByRole('button',{name:'Start manual paper account'}));
  await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('paper_start_manual',{profile:defaultProfile}));
 });
@@ -21,7 +21,7 @@ it('uses paper readiness while strategy warms and exposes shared Add/Reduce oper
  const s:any=state();s.session.status='RECOVERING DATA';s.strategy_state='WARMING UP';s.paper_ready=true;
  s.session.snapshot.profile.position_management=positionDefaults(defaultProfile);s.paper.position={side:'long',quantity:'4',entry:'100'};
  mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{status:'queued'});
- render(<Live strategyId="s" profile={defaultProfile}/>);
+ render(<Live strategyId="s" profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  await waitFor(()=>expect((screen.getByRole('button',{name:'Reduce 25%'}) as HTMLButtonElement).disabled).toBe(false));
  fireEvent.click(screen.getByRole('button',{name:'Reduce 25%'}));
  await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('paper_manual',expect.objectContaining({action:'reduce_25',session_id:'s'})));
@@ -29,7 +29,7 @@ it('uses paper readiness while strategy warms and exposes shared Add/Reduce oper
 });
 
 it('keeps chart-led layout, frozen strategy timeframe and switchable panels',async()=>{
- mock.api.mockResolvedValue(state());render(<Live strategyId="s" profile={defaultProfile}/>);
+ mock.api.mockResolvedValue(state());render(<Live strategyId="s" profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  await screen.findByText('Strategy timeframe: 60m / closed');
  expect(screen.getByLabelText('Live candlestick chart')).toBeTruthy();
  expect(screen.getByLabelText('Order book')).toBeTruthy();expect(screen.getByLabelText('Recent trades')).toBeTruthy();
@@ -41,7 +41,7 @@ it('keeps chart-led layout, frozen strategy timeframe and switchable panels',asy
 
 it('manual PAPER actions use a unique request and spot shorts stay disabled',async()=>{
  mock.api.mockImplementation(async(command:string)=>command==='live_status'?state():{status:'queued'});
- render(<Live strategyId="s" profile={defaultProfile}/>);
+ render(<Live strategyId="s" profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  await waitFor(()=>expect((screen.getByRole('button',{name:'Paper Buy'}) as HTMLButtonElement).disabled).toBe(false));
  expect((screen.getByRole('button',{name:'Paper Sell'}) as HTMLButtonElement).disabled).toBe(true);
  fireEvent.click(screen.getByRole('button',{name:'Paper Buy'}));
@@ -50,13 +50,13 @@ it('manual PAPER actions use a unique request and spot shorts stay disabled',asy
 
 it('disables manual actions in Strategy source and degraded market state',async()=>{
  const s=state();s.terminal_state='DEGRADED';s.options.execution_source='strategy';mock.api.mockResolvedValue(s);
- render(<Live strategyId="s" profile={defaultProfile}/>);await screen.findByText('● DEGRADED');
+ render(<Live strategyId="s" profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));await screen.findByText('● DEGRADED');
  expect((screen.getByRole('button',{name:'Paper Buy'}) as HTMLButtonElement).disabled).toBe(true);
 });
 
 it('shows safe Telegram diagnostics without credential fields in reports',async()=>{
  mock.api.mockResolvedValue({...state(),log:[{time:1000,message:'Telegram test failed: chat not found. Check the Chat ID and start the bot.'}]});
- render(<Live strategyId="s" profile={defaultProfile}/>);fireEvent.click(screen.getByRole('button',{name:'Notifications'}));
+ render(<Live strategyId="s" profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));fireEvent.click(screen.getByRole('button',{name:'Notifications'}));
  expect(await screen.findByText(/Telegram test failed: chat not found/)).toBeTruthy();expect(screen.queryByLabelText('Bot token')).toBeNull();
 });
 
@@ -90,7 +90,7 @@ it('indicator display samples only recorded IR values without recomputing indica
 
 it('formats small funding rates without floating-point tails',async()=>{
  const s=state();s.market.ticker={...s.market.ticker,fundingRate:'0.00000423'} as typeof s.market.ticker;
- mock.api.mockResolvedValue(s);render(<Live strategyId="s" profile={defaultProfile}/>);
+ mock.api.mockResolvedValue(s);render(<Live strategyId="s" profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  expect(await screen.findByText('0.000423%')).toBeTruthy();
 });
 
@@ -104,7 +104,7 @@ it('does not fabricate a coarse candle from truncated leading history',()=>{
 it('does not draw a saved account or stale ticker on a different market',async()=>{
  const s:any=state();s.active=false;s.market.symbol='BTCUSDT';s.market.market='spot';s.paper.position={side:'long',quantity:'4',entry:'100'};
  mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
- render(<Live strategyId="s" profile={{...defaultProfile,symbol:'ETHUSDT'}}/>);
+ render(<Live strategyId="s" profile={{...defaultProfile,symbol:'ETHUSDT'}}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  expect(await screen.findByText(/Saved PAPER account belongs to BTCUSDT/)).toBeTruthy();
  expect(screen.getByLabelText('Live candlestick chart').getAttribute('data-paper')).toBe('false');
  expect(screen.getByLabelText('Live candlestick chart').getAttribute('data-session')).toBe('');
@@ -118,7 +118,7 @@ it('explains ATR history readiness for a manual account without a strategy',asyn
  const s:any=state();s.strategy_state='NOT SELECTED';s.paper_ready=false;s.protection_ready=false;s.warmup={recovered:28,required:960};
  s.options.strategy_enabled=false;s.session.status='RECOVERING DATA';
  mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
- render(<Live strategyId={null} profile={defaultProfile}/>);
+ render(<Live strategyId={null} profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  expect(await screen.findByText('Paper: WAITING FOR ATR HISTORY')).toBeTruthy();
  expect(screen.getByText('Preparing history: 28 / 960 M1')).toBeTruthy();
  expect((screen.getByRole('button',{name:'Paper Buy'}) as HTMLButtonElement).disabled).toBe(true);
@@ -128,6 +128,95 @@ it('explains ATR history readiness for a manual account without a strategy',asyn
 it('does not label a processed request as a guaranteed position fill',async()=>{
  const s:any=state();s.manual_requests=[{id:'r',action:'reduce_25',status:'applied'}];
  mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
- render(<Live strategyId="s" profile={defaultProfile}/>);
+ render(<Live strategyId="s" profile={defaultProfile}/>);fireEvent.click(screen.getByText('Strategy & paper controls'));fireEvent.click(screen.getByText('Paper account, signals & diagnostics'));
  expect(await screen.findByText('PAPER reduce 25: processed; see fills/rejections')).toBeTruthy();
+});
+
+it('keeps one visible market owner and releases viewing while preserving active monitoring semantics',async()=>{
+ mock.api.mockClear();mock.api.mockImplementation(async(command:string)=>command==='live_status'?{active:false,market:{active:true,fresh:false},terminal_state:'RECONNECTING'}:{});
+ const {rerender,unmount}=render(<Live strategyId={null} profile={defaultProfile} visible/>);
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT'}));
+ expect(screen.getByText('Strategy & paper controls').closest('details')?.open).toBe(false);
+ expect(screen.getByText('Paper account, signals & diagnostics').closest('details')?.open).toBe(false);
+ rerender(<Live strategyId={null} profile={defaultProfile} visible={false}/>);
+ await waitFor(()=>expect(mock.api.mock.calls.filter(c=>c[0]==='market_close')).toHaveLength(1));
+ const count=mock.api.mock.calls.filter(c=>c[0]==='live_status').length;
+ await new Promise(resolve=>setTimeout(resolve,550));
+ expect(mock.api.mock.calls.filter(c=>c[0]==='live_status')).toHaveLength(count);
+ rerender(<Live strategyId={null} profile={defaultProfile} visible/>);
+ await waitFor(()=>expect(mock.api.mock.calls.filter(c=>c[0]==='market_open')).toHaveLength(2));
+ expect(mock.api.mock.calls.some(c=>['live_pause','live_start_terminal','paper_start_manual','start_run'].includes(c[0]))).toBe(false);
+ unmount();await waitFor(()=>expect(mock.api.mock.calls.filter(c=>c[0]==='market_close')).toHaveLength(2));
+});
+it('displays the frozen active session instrument and disables market switching',async()=>{
+ const s:any=state();s.session.snapshot.profile.symbol='ETHUSDT';s.market.symbol='ETHUSDT';s.market.market='spot';
+ mock.api.mockImplementation(async(command:string)=>command==='live_status'?s:{});
+ render(<Live strategyId="s" profile={defaultProfile}/>);
+ expect(await screen.findByText('Explore ETHUSDT · public market data')).toBeTruthy();
+ expect((screen.getByLabelText('Market view market') as HTMLSelectElement).disabled).toBe(true);
+ expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'ETHUSDT'});
+});
+
+
+it('allows keyboard focus on the scrollable market workspace',()=>{
+ mock.api.mockResolvedValue({active:false,market:{},terminal_state:'PAUSED'});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ const workspace=screen.getByRole('region',{name:'Live Terminal'});
+ expect(workspace.tabIndex).toBe(0);
+ workspace.focus();
+ expect(document.activeElement).toBe(workspace);
+});
+
+it('serializes source switches, hides mismatched quotes and keeps OKX display-only',async()=>{
+ mock.api.mockClear();let finishFirst:(v:any)=>void=()=>{};
+ const first=new Promise(resolve=>{finishFirst=resolve;});let opens=0;
+ mock.api.mockImplementation((command:string)=>{
+  if(command==='market_open')return ++opens===1?first:Promise.resolve({});
+  if(command==='market_preferences')return Promise.resolve({source:'bybit'});
+  if(command==='live_status')return Promise.resolve({active:false,terminal_state:'CONNECTED',market:{source:'bybit',symbol:'BTCUSDT',market:'spot',active:true,fresh:true,ticker:{lastPrice:'12345'}}});
+  return Promise.resolve({});
+ });
+ render(<Live strategyId="s" profile={defaultProfile}/>);
+ await waitFor(()=>expect(opens).toBe(1));expect(await screen.findByText('12345')).toBeTruthy();
+ fireEvent.change(screen.getByLabelText('Market data source'),{target:{value:'okx'}});
+ expect(screen.queryByText('12345')).toBeNull();
+ expect((screen.getByRole('button',{name:'Start manual paper account',hidden:true}) as HTMLButtonElement).disabled).toBe(true);
+ expect(opens).toBe(1);finishFirst({});
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT',source:'okx'}));
+ expect(mock.api.mock.calls.some(c=>['live_start_terminal','paper_start_manual','start_run'].includes(c[0]))).toBe(false);
+});
+
+it('restores the explicit source preference before opening any feed',async()=>{
+ mock.api.mockClear();mock.api.mockImplementation(async(command:string)=>command==='market_preferences'?{source:'okx'}:command==='live_status'?{active:false,market:{}}:{});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT',source:'okx'}));
+ expect((screen.getByLabelText('Market data source') as HTMLSelectElement).value).toBe('okx');
+ expect(mock.api.mock.calls.filter(c=>c[0]==='market_open')).toHaveLength(1);
+});
+
+
+it('never labels a retained Bybit session price as an OKX quote',async()=>{
+ mock.api.mockClear();mock.api.mockImplementation(async(command:string)=>command==='market_preferences'?{source:'okx'}:command==='live_status'?{active:false,price:'98765',terminal_state:'CONNECTING',market:{source:'okx',symbol:'BTCUSDT',market:'spot',ticker:{},active:true,fresh:false}}:{});
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ await waitFor(()=>expect((screen.getByLabelText('Market data source') as HTMLSelectElement).value).toBe('okx'));
+ expect(screen.queryByText('98765')).toBeNull();
+});
+
+it('does not let a late saved preference overwrite an explicit source choice',async()=>{
+ mock.api.mockClear();let finishPreference:(v:any)=>void=()=>{};
+ mock.api.mockImplementation((command:string)=>command==='market_preferences'?new Promise(resolve=>{finishPreference=resolve;}):Promise.resolve({active:false,market:{}}));
+ render(<Live strategyId={null} profile={defaultProfile}/>);
+ fireEvent.change(screen.getByLabelText('Market data source'),{target:{value:'okx'}});
+ await waitFor(()=>expect(mock.api).toHaveBeenCalledWith('market_open',{market:'spot',symbol:'BTCUSDT',source:'okx'}));
+ finishPreference({source:'bybit'});
+ await waitFor(()=>expect((screen.getByLabelText('Market data source') as HTMLSelectElement).value).toBe('okx'));
+ expect(mock.api.mock.calls.filter(c=>c[0]==='market_open')).toHaveLength(1);
+});
+
+it('labels OKX perpetual volume, book and tape in contracts without converting them',async()=>{
+ mock.api.mockImplementation(async(command:string)=>command==='market_preferences'?{source:'okx'}:command==='live_status'?{active:false,market:{}}:{});
+ render(<Live strategyId={null} profile={{...defaultProfile,market:'linear'}}/>);
+ expect(await screen.findByText('24h volume (contracts)')).toBeTruthy();
+ expect(screen.getByText('Size (contracts)')).toBeTruthy();
+ expect(screen.getByText(/Size: contracts/)).toBeTruthy();
 });

@@ -5,10 +5,11 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 from terminal.archives import ArchiveManager,read_archive,privacy_check,CHUNK
 from terminal.comparison import compare_runs
-from terminal.data import DatasetStore,run_manifest,canonical,digest
+from terminal.data import DatasetStore,run_manifest,canonical,digest,write_new
 from terminal.graph import example_graph,GraphEvaluator
 from terminal.profile import Profile
 from terminal.series import Candle
@@ -17,6 +18,21 @@ from terminal.storage import RunStore
 
 
 class ArchiveTests(unittest.TestCase):
+    def test_library_ordinal_bound_accepts_large_batches_and_legacy_rows(self):
+        from terminal.archives import validate_snapshot
+        from terminal.library import MAX_LIBRARY_ROWS
+        snapshot=copy.deepcopy(self.store.get(self.run_id)['manifest'])
+        snapshot['research']={'window':{'start':600,'end':3600,'warmup_start':0},'library':{
+            'batch_id':'b'*32,'ordinal':11,'batch_sha256':'c'*64,
+            'contract':{'document_sha256':digest({'graph':snapshot['strategy'],'layout':{}})}}}
+        for ordinal in (11,MAX_LIBRARY_ROWS-1):
+            snapshot['research']['library']['ordinal']=ordinal
+            snapshot['snapshot_sha256']=digest({k:v for k,v in snapshot.items() if k!='snapshot_sha256'})
+            validate_snapshot(snapshot)
+        snapshot['research']['library']['ordinal']=MAX_LIBRARY_ROWS
+        snapshot['snapshot_sha256']=digest({k:v for k,v in snapshot.items() if k!='snapshot_sha256'})
+        with self.assertRaisesRegex(ValueError,'Invalid library provenance'):validate_snapshot(snapshot)
+
     def test_passive_benchmark_archive_preserves_contract_and_result(self):
         from terminal.benchmarks import validate_document,run
         document={'benchmark':'passive','version':1,'start':0,'end':3600,'interval':'once'}
@@ -53,6 +69,59 @@ class ArchiveTests(unittest.TestCase):
         transfer=manager.begin(len(raw))
         for offset in range(0,len(raw),CHUNK):manager.append(transfer['upload_id'],offset,base64.b64encode(raw[offset:offset+CHUNK]).decode())
         return manager.finish(transfer['upload_id'])
+
+    def two_run_archive(self):
+        second=self.store.create(self.store.get(self.run_id)['manifest'])
+        self.store.status(second,'running');self.store.complete(second,self.store.result(self.run_id))
+        info=self.manager.export(self.strategy,self.profile.snapshot(),[self.run_id,second])
+        return (self.store.root/'exports'/info['filename']).read_bytes()
+
+    def test_partial_two_run_failure_has_durable_mapping_and_preserves_bytes(self):
+        raw=self.two_run_archive();destination=RunStore(self.root/'partial');manager=ArchiveManager(destination)
+        existing=destination.create(self.store.get(self.run_id)['manifest'])
+        destination.status(existing,'running');destination.complete(existing,self.store.result(self.run_id))
+        before={p:p.read_bytes() for p in destination.directory(existing).glob('*.json')}
+        original=manager.receipts.publish_run
+        def fail_second(operation_id,ordinal,*args):
+            if ordinal==1:raise OSError('private-storage-details-must-not-leak')
+            return original(operation_id,ordinal,*args)
+        with patch.object(manager.receipts,'publish_run',side_effect=fail_second),self.assertRaises(ValueError) as error:
+            self.upload(manager,raw)
+        operation=manager.recent()['rows'][0]['operation_id'];receipt=manager.status(operation)
+        self.assertEqual(receipt['outcome'],'partial')
+        self.assertEqual([item['publication_state'] for item in receipt['items']],['published','reserved','reserved'])
+        self.assertEqual([item['current_status'] for item in receipt['items']],['completed','importing','missing'])
+        self.assertIn(operation,str(error.exception));self.assertNotIn('private-storage',str(error.exception))
+        self.assertEqual(destination.strategies(),[]);self.assertIsNone(manager.upload)
+        self.assertEqual({p:p.read_bytes() for p in before},before)
+        self.assertEqual(len(destination.recent()),3)
+
+    def test_invalid_strategy_save_fields_are_rejected_before_any_run_write(self):
+        raw=self.two_run_archive()
+        for invalid in ('blank-name','oversized-document'):
+            with self.subTest(invalid=invalid):
+                project,docs=read_archive(raw)
+                if invalid=='blank-name':project['strategy']['name']='   '
+                else:project['strategy']['document']['layout']={'oversized':'x'*(1024*1024)}
+                buffer=io.BytesIO()
+                with zipfile.ZipFile(buffer,'w') as archive:
+                    for name,value in docs.items():archive.writestr(name,canonical(value))
+                destination=RunStore(self.root/invalid);manager=ArchiveManager(destination)
+                with self.assertRaises(ValueError):self.upload(manager,buffer.getvalue())
+                self.assertEqual(destination.recent(),[]);self.assertEqual(destination.strategies(),[])
+                self.assertFalse((destination.root/'runs').exists());self.assertIsNone(manager.upload)
+
+    def test_service_error_envelope_keeps_operation_identity_and_redacts_storage(self):
+        from terminal.service import AppService
+        service=AppService(self.root/'service');self.addCleanup(service.close)
+        raw=self.export();transfer=service.archives.begin(len(raw))
+        service.archives.append(transfer['upload_id'],0,base64.b64encode(raw).decode())
+        with patch.object(service.archives.receipts,'publish_run',side_effect=OSError('private')):
+            response=service.handle({'version':1,'id':'archive-error-test','command':'archive_finish','params':{'upload_id':transfer['upload_id']}})
+        self.assertEqual(response['type'],'error')
+        note=response['error']['message']
+        self.assertIn(transfer['operation_id'],note);self.assertIn('Do not retry blindly',note);self.assertNotIn('private',note)
+        self.assertEqual(service.archives.status(transfer['operation_id'])['outcome'],'failed')
 
     def test_roundtrip_preserves_metrics_but_never_bundles_history_or_overwrites_runs(self):
         raw=self.export();project,files=read_archive(raw)
@@ -102,7 +171,7 @@ class ArchiveTests(unittest.TestCase):
         with zipfile.ZipFile(output,'w') as archive:
             for name,value in docs.items():archive.writestr(name,canonical(value))
         destination=RunStore(self.root/'invalid');manager=ArchiveManager(destination)
-        with self.assertRaisesRegex(ValueError,'checksum'):self.upload(manager,output.getvalue())
+        with self.assertRaisesRegex(ValueError,'validation rejected'):self.upload(manager,output.getvalue())
         self.assertEqual(destination.recent(),[]);self.assertEqual(destination.strategies(),[])
         transfer=manager.begin(5)
         with self.assertRaises(ValueError):manager.append(transfer['upload_id'],1,base64.b64encode(b'abc').decode())

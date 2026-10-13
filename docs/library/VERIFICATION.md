@@ -45,3 +45,47 @@ PnL was -1.23921534 USDT for RSI and -18.33597263 for each passive alternative,
 with initial capital 1,000 USDT. Eight attempted selection contracts and first
 holdout use were recorded. The Lean source commit postdates both market periods;
 this is integration evidence, not a claim of externally unseen history.
+
+
+## Research workspace: longer-horizon public cohort
+
+Windows integration on 2026-09-30 used native Bybit BTCUSDT spot H4 history:
+2024-01-01 through 2026-09-01 exclusive, 5,844 source candles. Shared evaluation
+starts 2024-02-26 after 56 daily warmup bars (918 days). Every account starts with
+10,000 USDT; strategies allocate 95%, fee is 0.1% per fill, slippage 0.05%.
+Strategy parameters are the catalog defaults; no tuning or winning-row selection.
+Metadata is current exchange metadata, not verified historical precision tiers.
+Passive alternatives use the same total capital/costs and their fixed schedules.
+All positions are closed at the evaluation end. Coarse modeled paths are explicit.
+
+| Strategy | Timeframe | Net return | Max drawdown | Completed positions |
+|---|---|---:|---:|---:|
+| Donchian breakout | 4h | 40.51% | 26.15% | 36 |
+| Donchian breakout | Daily | 30.69% | 33.38% | 8 |
+| EMA trend filter | 4h | 10.09% | 44.40% | 77 |
+| EMA trend filter | Daily | 25.80% | 37.27% | 17 |
+| Historical return direction | 4h | -98.72% | 99.04% | 1459 |
+| Historical return direction | Daily | -33.33% | 54.29% | 233 |
+| MACD normalized momentum | 4h | 0.60% | 45.82% | 82 |
+| MACD normalized momentum | Daily | 17.90% | 40.15% | 22 |
+| Bollinger RSI reversion | 4h | -9.53% | 30.17% | 43 |
+| Bollinger RSI reversion | Daily | 5.54% | 24.28% | 6 |
+| RSI threshold reversion | 4h | 21.21% | 44.24% | 24 |
+| RSI threshold reversion | Daily | 13.77% | 28.82% | 4 |
+| Buy & Hold | Once | 51.45% | 54.20% | 1 |
+| Scheduled DCA | Weekly purchases | -0.45% | 45.75% | 1 |
+
+All 14 rows completed in **87.72s**, including subprocess/preflight overhead.
+Public history preparation took **3.59s**; exact verified offline reuse took
+**0.047s**. Both passive alternatives subsequently reused their immutable results.
+Checksums, interval-aware chart paging and three-curve comparison were checked.
+These are single-machine measurements, not a guarantee or an M1 speedup benchmark.
+H4 uses 240 times fewer source candles than M1 over the same calendar span, but
+its execution assumptions differ. Raw market data and local run artifacts are not published.
+
+New independent strategy fixtures include losing costed trades: Donchian buys 14,
+exits 9, fees 0.164266, net -35.874266 on the fixture allocation; EMA buys 14,
+exits 12, fees 0.185692, net -14.469692. Prior-window extrema, bounded state,
+partial updates, exact EMA recurrence and future perturbation passed.
+Source commit dates postdate the evaluated period; this is retrospective
+integration evidence, not untouched out-of-sample or future-profit evidence.

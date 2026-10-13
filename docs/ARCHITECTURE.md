@@ -1,5 +1,18 @@
 # Architecture
 
+## Current Market/Lab candidate
+
+The current `codex/terminal-mvp` candidate retains the engine and local service.
+Market and Lab are peer UI workflows; the loopback browser host and Tauri use
+the same command dispatcher and managed workers. Local observations, saved
+comparison metadata and bounded admission/display evidence add research context
+without rewriting financial snapshots. See the [current checkpoint](CHECKPOINT.md),
+[transport boundary](adr/0030-local-browser-research.md),
+[observation contract](adr/0033-local-history-observations.md) and
+[display evidence](adr/0034-displayed-period-evidence.md).
+
+## Retained architecture and milestone history
+
 The 0.5.1 maintenance candidate extends the existing JobManager/worker with asynchronous recorded Replay and additive replay job metadata. Results use bounded keyset pages, and chart paging exposes explicit success/error/end states. The retained 0.5 architecture below is unchanged elsewhere; see [ADR 0020](adr/0020-maintenance-paging-replay.md).
 
 Product 0.5 separates market socket ownership (`MarketHub`) and cached native chart pages (`ChartHistory`) from optional strategy/paper sessions. Market consumers remain centralized; coarse display candles never feed Strategy IR. See [ADR 0018](adr/0018-independent-market-lifecycle.md). Shared `PositionManager` decisions and actual-fill `PositionLedger` lifecycle projections extend the retained engine; [ADR 0019](adr/0019-shared-position-management.md) defines accounting, protections, position context and compatibility. The accepted 0.4 architecture below is retained where not explicitly superseded.

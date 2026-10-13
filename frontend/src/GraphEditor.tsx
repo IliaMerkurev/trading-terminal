@@ -1,3 +1,4 @@
+import {readFrozenRule} from './frozenRule';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlow, Background, Controls, Handle, Position, type ReactFlowInstance, type Connection, type NodeProps, type Node, type Edge, type NodeChange } from '@xyflow/react';
 import NodeMenu from './NodeMenu';
@@ -10,9 +11,10 @@ type FlowData = { label:string; kind:NodeKind|'output'; params:Record<string,num
 function StrategyNode({data,selected}:NodeProps<Node<FlowData>>) {
   const inputs = data.kind==='output' ? {signal:'boolean'} : catalog[data.kind].inputs;
   const outputs = data.kind==='output' ? {} : catalog[data.kind].outputs;
+  const frozen=data.kind==='frozen_rule'?readFrozenRule({id:'display',type:'frozen_rule',inputs:{},params:data.params}):null;
   const ports = Math.max(Object.keys(inputs).length,Object.keys(outputs).length,1);
   return <div className={`strategy-node ${data.kind==='output'?'output-node':''} ${selected?'selected':''}`} style={{minHeight:60+ports*22}}>
-    <strong>{data.label}</strong><small>{Object.entries(data.params).map(([k,v])=>`${k}: ${v}`).join(' · ') || (data.kind==='output'?'Signal output':'Logic')}</small>
+    <strong>{data.label}</strong><small>{data.kind==='frozen_rule'?`${frozen?.rule.name??'Invalid frozen source'} · native M1 · read-only`:Object.entries(data.params).map(([k,v])=>`${k}: ${v}`).join(' · ') || (data.kind==='output'?'Signal output':'Logic')}</small>
     {Object.keys(inputs).map((port,i)=><div className="port-label input" style={{top:60+i*22}} key={port}><Handle type="target" position={Position.Left} id={port} style={{top:7}}/>{port}</div>)}
     {Object.keys(outputs).map((port,i)=><div className="port-label output" style={{top:60+i*22}} key={port}>{port}<Handle type="source" position={Position.Right} id={port} style={{top:7}}/></div>)}
   </div>;
@@ -28,12 +30,12 @@ export default function GraphEditor({graph,layout,onChange,onSelect,onCreate,sel
   const [menu,setMenu]=useState<{screen:{x:number;y:number};graph:{x:number;y:number}}|null>(null);
   useEffect(()=>{if(selected)setSelectedNodes(ids=>ids.includes(selected)?ids:[selected]);},[selected]);
   useEffect(()=>{if(locate&&flow){setSelectedNodes([locate.id]);flow.fitView({nodes:[{id:locate.id}],duration:200,maxZoom:1.2});}},[locate,flow]);
-  function duplicate(){if(graph.nodes.length+selectedNodes.filter(id=>!id.startsWith('out:')).length>128)return;const result=duplicateNodes(graph,layout,selectedNodes);if(!result.selected.length)return;onChange(result.graph,result.layout);setSelectedNodes(result.selected);onSelect(result.selected[0]);}
+  function duplicate(){if(graph.nodes.length+graph.nodes.filter(n=>selectedNodes.includes(n.id)&&n.type!=='frozen_rule').length>128)return;const result=duplicateNodes(graph,layout,selectedNodes);if(!result.selected.length)return;onChange(result.graph,result.layout);setSelectedNodes(result.selected);onSelect(result.selected[0]);}
   function remove(ids:string[]){const result=deleteNodes(graph,layout,ids);if(result){onChange(result.graph,result.layout);setSelectedNodes(current=>current.filter(id=>!ids.includes(id)));onSelect(null);}setNodeMenu(null);}
   function deleteKey(event:React.KeyboardEvent){if(event.key==='Delete'&&!isTextEditing(event.target)){event.preventDefault();event.stopPropagation();if(selectedNodes.some(id=>!id.startsWith('out:')))remove(selectedNodes);else if(selectedEdges.length){removeEdges(edges.filter(e=>selectedEdges.includes(e.id)));setSelectedEdges([]);}}}
-  useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if(!menu&&!nodeMenu&&!isTextEditing(event.target)&&(event.ctrlKey||event.metaKey)&&shortcutKey(event)==='d'){event.preventDefault();duplicate();}};document.addEventListener('keydown',shortcut);return()=>document.removeEventListener('keydown',shortcut);});
+  useEffect(()=>{const shortcut=(event:KeyboardEvent)=>{if(!document.querySelector('dialog[open], [role=dialog][aria-modal=true]')&&!menu&&!nodeMenu&&!isTextEditing(event.target)&&(event.ctrlKey||event.metaKey)&&shortcutKey(event)==='d'){event.preventDefault();duplicate();}};document.addEventListener('keydown',shortcut);return()=>document.removeEventListener('keydown',shortcut);});
   const nodes=useMemo<Node<FlowData>[]>(()=>[
-    ...graph.nodes.map((n,i)=>({id:n.id,type:'strategy',data:{label:labels[n.type],kind:n.type,params:n.params},position:layout[n.id]??{x:60+(i%3)*260,y:70+Math.floor(i/3)*180}})),
+    ...graph.nodes.map((n,i)=>({id:n.id,type:'strategy',deletable:n.type!=='frozen_rule',data:{label:labels[n.type],kind:n.type,params:n.params},position:layout[n.id]??{x:60+(i%3)*260,y:70+Math.floor(i/3)*180}})),
     ...outputNames.map((name,i)=>({id:`out:${name}`,type:'strategy',deletable:false,data:{label:labels[name],kind:'output' as const,params:{}},position:layout[`out:${name}`]??{x:920,y:30+i*135}})),
   ],[graph,layout]);
   const flowNodes=useMemo(()=>nodes.map(n=>({...n,measured:measurements[n.id],selected:selectedNodes.includes(n.id)})),[nodes,measurements,selectedNodes]);
@@ -85,5 +87,5 @@ export default function GraphEditor({graph,layout,onChange,onSelect,onCreate,sel
     onEdgesChange={changes=>changes.forEach(c=>{if(c.type==='select')setSelectedEdges(ids=>c.selected?[...new Set([...ids,c.id])]:ids.filter(id=>id!==c.id));})}
     onNodeClick={(_,n)=>onSelect(n.id.startsWith('out:')?null:n.id)} onPaneClick={()=>onSelect(null)}
     isValidConnection={c=>!!c.source&&!!c.target&&!!c.sourceHandle&&!!c.targetHandle&&canConnect(graph,c.source,c.sourceHandle,c.target,c.targetHandle)}
-    fitView minZoom={0.25} maxZoom={2} colorMode="dark" proOptions={{hideAttribution:false}}><Background gap={24}/><Controls/><div className="duplicate-tool"><button disabled={!selectedNodes.some(id=>!id.startsWith('out:'))} onClick={duplicate}>Duplicate selection</button></div></ReactFlow>{menu&&<NodeMenu at={menu.screen} onClose={()=>setMenu(null)} onChoose={kind=>{onCreate(kind,menu.graph);setMenu(null);}}/>}{nodeMenu&&<DeleteNodeMenu at={nodeMenu} disabled={nodeMenu.id.startsWith('out:')} onClose={()=>setNodeMenu(null)} onDelete={()=>remove([nodeMenu.id])}/>}</div>;
+    fitView minZoom={0.25} maxZoom={2} colorMode="dark" proOptions={{hideAttribution:false}}><Background gap={24}/><Controls/><div className="duplicate-tool"><button disabled={!graph.nodes.some(n=>selectedNodes.includes(n.id)&&n.type!=='frozen_rule')} onClick={duplicate}>Duplicate selection</button></div></ReactFlow>{menu&&<NodeMenu at={menu.screen} onClose={()=>setMenu(null)} onChoose={kind=>{onCreate(kind,menu.graph);setMenu(null);}}/>}{nodeMenu&&<DeleteNodeMenu at={nodeMenu} disabled={nodeMenu.id.startsWith('out:')||graph.nodes.find(n=>n.id===nodeMenu.id)?.type==='frozen_rule'} onClose={()=>setNodeMenu(null)} onDelete={()=>remove([nodeMenu.id])}/>}</div>;
 }

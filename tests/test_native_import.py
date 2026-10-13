@@ -1,6 +1,7 @@
 from pathlib import Path
 from decimal import Decimal
 import tempfile
+import os
 import time
 import unittest
 
@@ -47,6 +48,7 @@ class NativeImportTests(unittest.TestCase):
             time.sleep(0.03)
         self.fail("Native worker timed out")
 
+    @unittest.skipUnless(os.name == "nt", "Native execution requires Windows Job Object containment")
     def test_preview_save_reopen_do_not_execute_then_trusted_example_runs_unchanged(self):
         sentinel=self.root/"import-side-effect.txt"
         source=f"from pathlib import Path\nPath({str(sentinel)!r}).write_text('import happened')\nprint('this is not IPC JSON')\n"+native_document()["source"]
@@ -84,6 +86,7 @@ class NativeImportTests(unittest.TestCase):
         self.trust(doc)
         with self.assertRaisesRegex(ValueError,"dependencies are missing"): self.run_native(doc)
 
+    @unittest.skipUnless(os.name == "nt", "Native execution requires Windows Job Object containment")
     def test_unsupported_historical_request_fails_visibly(self):
         doc=native_document();doc["config"]["request_bars"]=True
         self.trust(doc)
@@ -91,6 +94,7 @@ class NativeImportTests(unittest.TestCase):
         self.assertEqual(status["status"],"failed",status)
         self.assertIn("historical requests",status["error"])
 
+    @unittest.skipUnless(os.name == "nt", "Native execution requires Windows Job Object containment")
     def test_native_multiple_declared_timeframes_keep_engine_callbacks(self):
         source='''from nautilus_trader.config import StrategyConfig
 from nautilus_trader.trading.strategy import Strategy
@@ -132,6 +136,7 @@ class Multi(Strategy):
         self.assertEqual(status["status"],"completed",status)
         self.assertEqual(Decimal(self.service.store.result(run_id)["metrics"]["net_pnl"]),6)
 
+    @unittest.skipUnless(os.name == "nt", "Native execution requires Windows Job Object containment")
     def test_partial_exit_fails_instead_of_being_silently_reinterpreted(self):
         source='''from nautilus_trader.config import StrategyConfig
 from nautilus_trader.trading.strategy import Strategy
@@ -162,6 +167,7 @@ class Partial(Strategy):
         self.assertIn("partial exits",status["error"])
         with self.assertRaises(ValueError): self.service.store.result(run_id)
 
+    @unittest.skipUnless(os.name == "nt", "Native execution requires Windows Job Object containment")
     def test_unavailable_native_feed_does_not_succeed_with_silent_missing_data(self):
         doc=native_document();doc["config"]["subscribe_trade_ticks"]=True
         self.trust(doc)

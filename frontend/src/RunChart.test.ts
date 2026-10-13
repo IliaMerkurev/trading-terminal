@@ -7,3 +7,9 @@ it('plots stored availability values without recomputing an indicator from candl
   expect(points.indicator).toEqual([{time:60,value:73.125}]);
   expect(points.equity).toEqual([{time:60,value:1003}]);
 });
+it('labels daily source candles at close and retains recorded indicator values',()=>{
+ const points=chartPoints({interval_seconds:86400,series:{candles:[{time:0,open:10,high:12,low:9,close:11}],indicators:[{time:86400,values:{channel:9.75}}],equity:[{time_ns:28800e9,equity:'995'},{time_ns:86399999999999,equity:'1002'}]}},'channel');
+ expect(points.candles[0].time).toBe(86400);
+ expect(points.indicator).toEqual([{time:86400,value:9.75}]);
+ expect(points.equity).toEqual([{time:86400,value:1002}]);
+});

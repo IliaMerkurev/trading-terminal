@@ -53,6 +53,8 @@ def preview(document):
 
 def load_trusted(document,directory,instrument_id):
     """Call only after worker verifies recorded consent for this exact source hash."""
+    from terminal.process_lifecycle import require_native_execution
+    require_native_execution()
     report=preview(document)
     if report["dependency_problems"]:
         raise ValueError("Native dependencies are missing or incompatible; review and install them separately")
@@ -75,7 +77,8 @@ def load_trusted(document,directory,instrument_id):
             if isinstance(value,str) and re.fullmatch(r"\$bar:[0-9]+",value):
                 minutes=int(value.split(":")[1])
                 if minutes not in document["bar_minutes"]: raise ValueError("Config references an undeclared native timeframe")
-                return f"{instrument_id}-{minutes}-MINUTE-LAST-EXTERNAL"
+                from terminal.simulation import external_bar_type
+                return str(external_bar_type(instrument_id,minutes))
             if isinstance(value,dict): return {k:expand(v) for k,v in value.items()}
             if isinstance(value,list): return [expand(v) for v in value]
             return value

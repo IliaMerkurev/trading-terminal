@@ -39,13 +39,23 @@ class RunStore:
                     document TEXT NOT NULL, updated_at TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS native_trust(identity TEXT PRIMARY KEY, granted_at TEXT NOT NULL);
             """)
+            from terminal.result_finalization import initialize as initialize_local_finalization
+            initialize_local_finalization(db)
+            from terminal.archive_receipts import initialize as initialize_archive_receipts
+            initialize_archive_receipts(db)
+            from terminal.archive_execution import initialize as initialize_archive_execution
+            initialize_archive_execution(db)
+            from terminal.research_evidence import initialize
+            initialize(db)
+            from terminal.observations import initialize as initialize_observations
+            initialize_observations(db)
             db.execute(f"CREATE INDEX IF NOT EXISTS series_time ON series(run_id,kind,({TIME_SQL}))")
             if 'profile' not in {row[1] for row in db.execute('PRAGMA table_info(strategies)')}:
                 db.execute('ALTER TABLE strategies ADD COLUMN profile TEXT')
 
     @contextmanager
-    def connect(self):
-        db=sqlite3.connect(self.database,timeout=15)
+    def connect(self,*,timeout=15):
+        db=sqlite3.connect(self.database,timeout=timeout)
         db.row_factory=sqlite3.Row
         try:
             with db:
@@ -56,16 +66,23 @@ class RunStore:
     def directory(self,run_id):
         return self.root/"runs"/identifier(run_id)
 
-    def create(self,manifest):
+    def create(self,manifest,*,evidence=None,local_generation=None):
         run_id=uuid.uuid4().hex
         write_new(self.directory(run_id)/"snapshot.json",canonical(manifest))
         with self.connect() as db:
             db.execute("INSERT INTO runs(id,created_at,status,manifest) VALUES(?,?,?,?)",
                        (run_id,datetime.now(timezone.utc).isoformat(),"created",canonical(manifest).decode()))
+            if evidence is not None:
+                from terminal.research_evidence import append
+                append(db,'started:'+run_id,'started',evidence,run_id)
+            if local_generation is not None:
+                if evidence is None:raise ValueError('Local worker admission evidence is required')
+                from terminal.result_finalization import register
+                register(db,run_id,local_generation,manifest['snapshot_sha256'])
         return run_id
 
     def status(self,run_id,status,error=None):
-        if status not in ("created","running","cancel_requested","cancelled","failed","interrupted","importing"):
+        if status not in ("created","running","finalizing","cancel_requested","cancelled","failed","interrupted","importing"):
             raise ValueError("Invalid worker status")
         with self.connect() as db:
             changed=db.execute("UPDATE runs SET status=?,error=? WHERE id=? AND status!='completed'",
@@ -137,24 +154,42 @@ class RunStore:
             db.execute("UPDATE runs SET status='completed',result_hash=?,summary=? WHERE id=?",
                        (hashlib.sha256(raw).hexdigest(),canonical(summary).decode(),run_id))
 
-    def page(self,run_id,kind,offset=0,limit=200):
+    def page(self,run_id,kind,offset=0,limit=200,review=False):
         identifier(run_id)
         if kind not in SERIES or type(offset) is not int or offset<0 or type(limit) is not int or not 1<=limit<=1000:
             raise ValueError("Invalid bounded result-page request")
-        if self.get(run_id)["status"]!="completed": raise ValueError("No completed result available")
+        if type(review) is not bool or review and kind != 'trades':
+            raise ValueError("Trade review metadata is only supported for trade pages")
+        run=self.get(run_id)
+        if run["status"]!="completed": raise ValueError("No completed result available")
         with self.connect() as db:
             rows=db.execute("SELECT value FROM series WHERE run_id=? AND kind=? AND row_index>=? ORDER BY row_index LIMIT ?",
                             (run_id,kind,offset,limit)).fetchall()
             count=db.execute("SELECT COUNT(*) FROM series WHERE run_id=? AND kind=?",(run_id,kind)).fetchone()[0]
-        selected=[];size=0
+        selected=[];size=0;review_unavailable=False
         for row in rows:
-            size+=len(row["value"].encode())
+            value=json.loads(row["value"]);row_review_unavailable=False
+            if review:
+                from terminal.trade_review import decorate
+                decorated=decorate(value,run['manifest']['profile'])
+                if len(canonical(decorated))<=512*1024:
+                    value=decorated
+                else:
+                    # Keep an otherwise readable legacy row intact. Never omit
+                    # lifecycle events merely to make extra clock metadata fit.
+                    row_review_unavailable=True
+            # Include additive transport metadata in the existing page budget.
+            size+=len(canonical(value))
             if size>512*1024:
                 if not selected: raise ValueError("Individual result row exceeds IPC budget")
                 break
-            selected.append(json.loads(row["value"]))
+            selected.append(value)
+            review_unavailable=review_unavailable or row_review_unavailable
         next_offset=offset+len(selected)
-        return {"rows":selected,"total":count,"offset":offset,"next":next_offset if next_offset<count else None}
+        result={"rows":selected,"total":count,"offset":offset,"next":next_offset if next_offset<count else None}
+        if review_unavailable:
+            result['review_notice']='Exact clock metadata is unavailable for a large lifecycle row. All saved fills, events and costs are retained; unsupported chart targets are disabled.'
+        return result
 
     def result(self,run_id):
         run=self.get(run_id)
@@ -163,38 +198,49 @@ class RunStore:
         if hashlib.sha256(raw).hexdigest()!=run["result_hash"]: raise ValueError("Saved result checksum mismatch")
         return json.loads(raw)
 
-    def chart_window(self,run_id,start=None,minutes=240):
+    def chart_window(self,run_id,start=None,minutes=240,*,verified=None):
         run=self.get(run_id)
         if run["status"]!="completed": raise ValueError("No completed result available")
         if type(minutes) is not int or not 30<=minutes<=480 or (start is not None and (type(start) is not int or start%60)):
             raise ValueError("Chart requests require aligned start and 30–480 minutes")
         window=run['manifest'].get('research',{}).get('window')
         first,last=[window['start'],window['end']] if window else run["manifest"]["dataset"]["range"]
-        start=first if start is None else max(first,min(start,max(first,last-60)))
-        end=min(last,start+minutes*60)
-        result={"start":start,"end":end,"range":[first,last],"series":{}}
+        seconds=run['manifest']['profile'].get('execution_minutes',1)*60
+        start=first if start is None else max(first,min(start//seconds*seconds,max(first,last-seconds)))
+        end=min(last,start+minutes*seconds)
+        result={"start":start,"end":end,"range":[first,last],"interval_seconds":seconds,"series":{}}
         with self.connect() as db:
             for kind in ("candles","indicators","fills","equity"):
                 # Candle timestamps are interval starts; indicators are availability times.
-                lower,upper=(start,end) if kind=="candles" else (start+1e-6,end+1e-6)
-                rows=db.execute(f"SELECT value FROM series WHERE run_id=? AND kind=? AND ({TIME_SQL})>=? AND ({TIME_SQL})<? ORDER BY ({TIME_SQL}),row_index LIMIT 4000",(run_id,kind,lower,upper)).fetchall()
+                lower,upper=(start,end) if kind=="candles" else (start if kind=="fills" else start+1e-6,end+1e-6)
+                query=f"FROM series WHERE run_id=? AND kind=? AND ({TIME_SQL})>=? AND ({TIME_SQL})<? ORDER BY ({TIME_SQL}),row_index LIMIT 4000"
+                args=(run_id,kind,lower,upper)
+                # The dedicated journal owns prospective annotations. Keep this
+                # legacy chart projection and its payload budget unchanged.
+                projection="json_remove(value,'$.evaluation_evidence')" if kind=='indicators' else 'value'
+                budget=db.execute("SELECT COALESCE(SUM(n),0) FROM (SELECT length(CAST("+projection+" AS BLOB)) AS n "+query+")",args).fetchone()[0]
+                if budget>900*1024:raise ValueError("Chart window exceeds payload budget; choose a shorter window")
+                rows=db.execute("SELECT "+projection+" AS value "+query,args).fetchall()
                 result["series"][kind]=[json.loads(row[0]) for row in rows]
+        result['series']['fills']=[f for f in result['series']['fills'] if start*1_000_000_000<=f['time_ns']<end*1_000_000_000]
         for fill in result['series']['fills']:
             # Derive the candle association before JavaScript rounds epoch nanoseconds.
-            fill['chart_time']=(fill['time_ns']//60_000_000_000+1)*60
+            fill['chart_time']=(fill['time_ns']//(seconds*1_000_000_000)+1)*seconds
+            from terminal.trade_review import clock
+            fill['review_clock']=clock(fill,seconds)
         research=run['manifest'].get('research',{})
         if run['summary'].get('origin')=='local' and (research.get('experiment') or research.get('library')):
             from terminal.data import DatasetStore
-            import pyarrow.parquet as pq
+            from terminal.verified_chart import candle_window
             dataset=run['manifest']['dataset']
             try:
                 manifest=DatasetStore(self.root/'datasets').describe(dataset['id'])
                 if manifest['content_sha256']!=dataset['content_sha256']:raise ValueError('Shared candle identity changed')
                 path=self.root/'datasets'/dataset['id']/'trade.parquet'
-                with path.open('rb') as stream:
-                    checksum=hashlib.file_digest(stream,'sha256').hexdigest()
-                if checksum!=manifest['files_sha256']['trade']:raise ValueError('Shared candle checksum mismatch')
-                result['series']['candles']=pq.read_table(path,filters=[('time','>=',start),('time','<',end)]).to_pylist()
+                result['series']['candles'],result['missing'],identity=candle_window(path,manifest,start,end)
+                if verified:
+                    from terminal.observations import source_identity
+                    verified(dict(dataset_id=dataset['id'],source=source_identity(manifest),file_identity=identity))
             except FileNotFoundError:
                 result['history_note']='The shared dataset is unavailable; saved derived results are unchanged.'
         if len(canonical(result))>900*1024: raise ValueError("Chart window exceeds payload budget; choose a shorter window")
@@ -206,6 +252,13 @@ class RunStore:
         if len(canonical(document))>1024*1024: raise ValueError("Strategy exceeds size budget")
         strategy_id=identifier(strategy_id) if strategy_id else uuid.uuid4().hex
         with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            previous=db.execute('SELECT kind,document FROM strategies WHERE id=?',(strategy_id,)).fetchone()
+            if previous and previous['kind']=='graph':
+                from terminal.rule_strategy import frozen_nodes
+                original=frozen_nodes(json.loads(previous['document']).get('graph',{}))
+                if original and (kind!='graph' or frozen_nodes(document.get('graph',{}))!=original):
+                    raise ValueError('The frozen source node is immutable; create a new strategy from another reviewed rule')
             db.execute("INSERT INTO strategies(id,name,kind,document,updated_at,profile) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,kind=excluded.kind,document=excluded.document,updated_at=excluded.updated_at,profile=COALESCE(excluded.profile,strategies.profile)",
                        (strategy_id,name,kind,canonical(document).decode(),datetime.now(timezone.utc).isoformat(),canonical(profile).decode() if profile is not None else None))
         return strategy_id
@@ -222,7 +275,10 @@ class RunStore:
 
     def recover(self):
         with self.connect() as db:
-            db.execute("UPDATE runs SET status='interrupted',error='Application exited before worker or import completion' WHERE status IN ('created','running','cancel_requested','importing')")
+            db.execute("UPDATE runs SET status='interrupted',error='Application exited before worker or import completion' WHERE status IN ('created','running','finalizing','cancel_requested','importing')")
+
+            from terminal.result_finalization import recover
+            recover(db)
 
     def trust_native(self,identity):
         if not isinstance(identity,str) or not re.fullmatch(r"[a-f0-9]{64}",identity): raise ValueError("Invalid native trust identity")

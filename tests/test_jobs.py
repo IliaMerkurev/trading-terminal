@@ -27,7 +27,7 @@ class JobTests(unittest.TestCase):
         deadline=time.monotonic()+20
         while time.monotonic()<deadline:
             result=self.manager.status(run_id)
-            if result["status"] in ("completed","failed","cancelled"): return result
+            if result["status"] in ("completed","failed","cancelled") and not result.get("worker_active"): return result
             time.sleep(0.03)
         self.fail("Worker did not finish within bounded test deadline")
 

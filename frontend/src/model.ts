@@ -1,5 +1,5 @@
 export type PositionNodeKind = 'position_side' | 'position_size' | 'position_avg_entry' | 'position_unrealized_pnl_pct' | 'bars_since_entry';
-export type NodeKind = 'price' | 'constant' | 'multiply' | 'roc' | 'sma' | 'ema' | 'rsi' | 'bb' | 'macd' | 'atr' | 'compare' | 'cross_above' | 'cross_below' | 'and' | 'or' | 'not' | PositionNodeKind;
+export type NodeKind = 'frozen_rule' | 'price' | 'constant' | 'multiply' | 'donchian' | 'rolling_min' | 'rolling_max' | 'lag' | 'roc' | 'sma' | 'ema' | 'rsi' | 'bb' | 'macd' | 'atr' | 'compare' | 'cross_above' | 'cross_below' | 'and' | 'or' | 'not' | PositionNodeKind;
 export interface IRNode { id: string; type: NodeKind; inputs: Record<string,string>; params: Record<string,number|string> }
 export const outputNames = ['entry_long','exit_long','entry_short','exit_short'] as const;
 export type OutputName = typeof outputNames[number];
@@ -11,14 +11,20 @@ export interface PositionConfiguration {
   trailing_activation:string;trailing_distance:string;break_even_activation:string;atr_period:number;atr_stop_multiplier:string;atr_trailing_multiplier:string;
 }
 export type Profile = Record<string,string|number|PositionConfiguration|undefined> & {market:string;symbol:string;version:number;primary_minutes:number;evaluation:string;path:string;tier_assumption:string;position_management?:PositionConfiguration};
-export const labels: Record<string,string> = { price:'OHLCV', constant:'Value', sma:'SMA', ema:'EMA', rsi:'RSI', bb:'Bollinger Bands', macd:'MACD', atr:'ATR', compare:'Compare', cross_above:'Cross Above', cross_below:'Cross Below', and:'AND', or:'OR', not:'NOT', entry_long:'Entry Long',exit_long:'Exit Long',entry_short:'Entry Short',exit_short:'Exit Short' };
+export const labels: Record<string,string> = { frozen_rule:'Frozen rule', price:'OHLCV', constant:'Value', sma:'SMA', ema:'EMA', rsi:'RSI', bb:'Bollinger Bands', macd:'MACD', atr:'ATR', compare:'Compare', cross_above:'Cross Above', cross_below:'Cross Below', and:'AND', or:'OR', not:'NOT', entry_long:'Entry Long',exit_long:'Exit Long',entry_short:'Entry Short',exit_short:'Exit Short' };
 const numericSource = {source:'number'};
 Object.assign(labels,{position_side:'Position Side',position_size:'Position Size',position_avg_entry:'Average Entry',position_unrealized_pnl_pct:'Position PnL %',bars_since_entry:'Bars Since Entry'});
-labels.multiply='Multiply'; labels.roc='ROC';
+labels.rolling_min='Rolling Minimum'; labels.rolling_max='Rolling Maximum'; labels.lag='Closed-bar Lag';
+labels.donchian='Prior Donchian Channel'; labels.multiply='Multiply'; labels.roc='ROC';
 export const catalog: Record<NodeKind,{inputs:Record<string,string>;outputs:Record<string,string>;params:Record<string,string|number>}> = {
+  frozen_rule:{inputs:{},outputs:{value:'boolean'},params:{snapshot:''}},
+  donchian:{inputs:{},outputs:{upper:'number',middle:'number',lower:'number'},params:{upper_period:55,lower_period:20}},
   price:{inputs:{},outputs:{value:'number'},params:{field:'close'}},
   constant:{inputs:{},outputs:{value:'number'},params:{value:100}},
   multiply:{inputs:{left:'number',right:'number'},outputs:{value:'number'},params:{}},
+  rolling_min:{inputs:numericSource,outputs:{value:'number'},params:{period:7}},
+  rolling_max:{inputs:numericSource,outputs:{value:'number'},params:{period:7}},
+  lag:{inputs:numericSource,outputs:{value:'number'},params:{bars:1}},
   roc:{inputs:numericSource,outputs:{value:'number'},params:{period:1}},
   sma:{inputs:numericSource,outputs:{value:'number'},params:{period:20}},
   ema:{inputs:numericSource,outputs:{value:'number'},params:{period:20}},
