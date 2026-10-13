@@ -27,7 +27,24 @@ Recovered pane/alert/agreement/history scope is recorded in
 Recovery reconstructed documented behavior; it does not establish byte identity
 with unavailable former source or compatibility with unavailable old databases.
 
-## Current bounded slice: compatible custom-backtest history
+## Current bounded slice: closed-workspace recovery
+
+The offline backup/verify/restore CLI preserves every regular file and directory
+in an explicitly selected closed data root, except its transient ownership lock.
+It includes SQLite sidecars, datasets, saved artifacts/logs, research, alerts,
+presets, operation receipts and auxiliary files. Checksummed bundles restore only
+to a fresh isolated root; no application startup or execution is part of restore.
+Project ZIP exchange remains a smaller, separate contract.
+
+Focused Linux verification passed 29 checks including CLI roundtrip, crash-left
+WAL, corrupt/missing/extra files, lock contention, source changes, copy failures,
+and representative research-state reopening with no Arm/resume/native execution.
+Source and backup byte inventories remained unchanged. Added tests are retained
+in the separate version-linked regression archive. Frontend/runtime behavior is
+unchanged; no new GUI, Windows, authentic owner-DB or full-suite pass is claimed.
+See [the operational procedure and exact boundaries](WORKSPACE_BACKUP.md).
+
+## Preserved compatible custom-backtest history
 
 Custom history choices now share Lab's market/instrument/execution-resolution
 checks, with disabled mismatches and visible reasons. Counts are stored bars,
@@ -123,8 +140,9 @@ conversion acceptance record retains complete usage, limits and evidence.
   database compatibility, full-product regression and independent owner review
   remain unestablished by this bounded synthetic acceptance.
 - Reconstructed functionality does not recover missing application data. Preserve
-  the complete workspace database: strategy archives omit alert journal and
-  research records, and regression archives contain no application data.
+  the complete selected data root with the [closed-workspace procedure](WORKSPACE_BACKUP.md):
+  strategy archives omit alert journal and research records, and regression
+  archives contain no application data.
 - Broader signal debugging, conversion contexts and broader comparison enhancements are
   separate work. Missing historical evidence is not a license to reconstruct it
   from current settings or substitute a nearby candle.
