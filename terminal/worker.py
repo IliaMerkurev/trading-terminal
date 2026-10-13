@@ -89,8 +89,10 @@ def main():
                 result['gaps']=[p for p in result['gaps'] if p[1]>=window['start']]
         else:
             from terminal.rule_strategy import frozen_nodes,FrozenSchedule
+            from terminal.evaluation_evidence import Recorder,supported
             schedule=FrozenSchedule(strategy,profile,dataset,bars,research=snapshot.get('research')) if frozen_nodes(strategy) else None
-            result=run_backtest(bars,profile,GraphEvaluator(strategy,frozen_schedule=schedule),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None)
+            recorder=Recorder(snapshot) if supported(snapshot) else None
+            result=run_backtest(bars,profile,GraphEvaluator(strategy,frozen_schedule=schedule),marks=marks,funding=funding,progress=progress,trade_start=window['start'] if window else None,evaluation_recorder=recorder)
         result["manifest_sha256"]=snapshot["snapshot_sha256"]
         if snapshot.get('research',{}).get('experiment') or snapshot.get('research',{}).get('library'):
             result['candles_reference']={'dataset_id':snapshot['dataset']['id'],'range':[window['start'],window['end']]}

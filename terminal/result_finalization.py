@@ -175,12 +175,14 @@ def finalize(store, run_id, generation, checkpoint=lambda phase:None):
         raise ValueError('Worker result does not match the immutable snapshot')
     if result.get('schema_version')!=1 or any(not isinstance(result.get(kind),list) for kind in SERIES):
         raise ValueError('Invalid normalized result schema')
+    from terminal.evaluation_evidence import validate_result,summary_fields
+    validate_result(result,manifest)
     progress('encoding')
     raw=canonical(result);result_hash=hashlib.sha256(raw).hexdigest()
     summary=canonical({'metrics':result['metrics'],'profile':result['profile'],'engine':result['engine'],
         'engine_version':result['engine_version'],'metric_version':result['metric_version'],
         'dataset':manifest['dataset']['id'],'snapshot':result['manifest_sha256'],'origin':'local',
-        'history_omitted':result.get('history_omitted',False)}).decode()
+        'history_omitted':result.get('history_omitted',False),**summary_fields(result)}).decode()
     total=sum(len(result[kind]) for kind in SERIES)
     with transaction() as db:db.execute('UPDATE local_finalization SET total_rows=?,result_hash=? WHERE run_id=?',(total,result_hash,run_id))
     progress('artifact')

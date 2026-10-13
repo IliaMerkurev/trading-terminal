@@ -55,7 +55,7 @@ def make_instrument(profile):
 
 
 class ProfileStrategy(Strategy):
-    def __init__(self, asset, profile, candles, evaluator, progress,trade_start=None):
+    def __init__(self, asset, profile, candles, evaluator, progress,trade_start=None,evaluation_recorder=None):
         super().__init__(StrategyConfig(order_id_tag="001"))
         self.asset, self.profile = asset, profile
         self.bar_type = external_bar_type(asset.id,profile.execution_minutes)
@@ -67,6 +67,7 @@ class ProfileStrategy(Strategy):
         self.reason = "entry"
         self.protections = None
         self.trade_start=trade_start
+        self.evaluation_recorder = evaluation_recorder
         self.pm = None
         if profile.position_management is not None:
             from terminal.position_management import PositionManager
@@ -92,6 +93,8 @@ class ProfileStrategy(Strategy):
         signals = result.get("signals", {})
         self.indicators.append({"time":candle.time + self.profile.execution_minutes*60, "values":result.get("values", {}), "signals":signals})
         if self.pm: self.indicators[-1]['values']['position_management.atr'] = float(self.pm.atr) if self.pm.atr is not None else None
+        if self.evaluation_recorder is not None:
+            self.evaluation_recorder.capture(self.indicators[-1], result, candle, self.signal_stream.frames.current, bar.ts_init)
         self.apply_signals(signals,candle.time)
 
     def execute_position_action(self, action):
@@ -351,7 +354,7 @@ class Protections(SimulationModule):
 
 
 def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progress=lambda _:None,
-                 native_factory=None,native_timeframes=(1,),trade_start=None,benchmark=None):
+                 native_factory=None,native_timeframes=(1,),trade_start=None,benchmark=None,evaluation_recorder=None):
     if not candles:
         raise ValueError("No minute history available")
     if not isinstance(profile, Profile):
@@ -426,7 +429,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
     native = native_factory(asset) if native_factory else None
     strategy = (NativeController(asset,profile,native) if native else
                 PassiveStrategy(asset,profile,candle_map,progress,benchmark) if benchmark is not None else
-                ProfileStrategy(asset, profile, candle_map, evaluator, progress,trade_start))
+                ProfileStrategy(asset, profile, candle_map, evaluator, progress,trade_start,evaluation_recorder))
     funding_ns = {int(t)*NS:rate for t,rate in (funding or {}).items()} if profile.funding_mode == "history" else {}
     protection = Protections(profile, strategy, samples, funding_ns, progress)
     strategy.protections = protection
@@ -542,7 +545,7 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             equity = dec(point["equity"])
             peak = max(peak,equity)
             drawdown = max(drawdown,(peak-equity)/peak if peak else Decimal(0))
-        return {"schema_version":1, "status":"completed", "profile":profile.snapshot(),
+        result = {"schema_version":1, "status":"completed", "profile":profile.snapshot(),
             "execution_resolution_seconds":seconds,
             "engine":"nautilus_trader", "engine_version":"1.231.0", "metric_version":1,
             "strategy_format":"native" if native else "graph",
@@ -554,5 +557,8 @@ def run_backtest(candles, profile, evaluator, *, marks=None, funding=None, progr
             "fills":fills, "trades":trades, "events":protection.events, "equity":points, "engine_orders":engine_artifacts,
             "indicators":strategy.indicators, "diagnostics":strategy.diagnostics + [{"message":d} for d in guard.denials],
             "gaps":[g for g in gaps if trade_start is None or g[1]>=trade_start], "candles":[asdict(c) for c in candles if trade_start is None or c.time>=trade_start]}
+        if evaluation_recorder is not None:
+            evaluation_recorder.finish(result)
+        return result
     finally:
         engine.dispose()

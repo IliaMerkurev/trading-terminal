@@ -27,7 +27,26 @@ Recovered pane/alert/agreement/history scope is recorded in
 Recovery reconstructed documented behavior; it does not establish byte identity
 with unavailable former source or compatibility with unavailable old databases.
 
-## Current bounded slice: independent research from saved inputs
+## Current bounded slice: prospective graph evaluation journal
+
+New ordinary closed-bar graph backtests now retain versioned, bounded observations
+before signal application: actual output states/node values, snapshot identity,
+source/primary candle intervals and separate exact engine clocks. Results offers
+a read-only run-level journal backed by local admission/finalization receipts.
+It never infers an order/fill link, reconstructs old reasons or promotes imported
+payloads to local evidence. Unsupported scope and incomplete metadata are explicit.
+See [recording, read limits and preservation](RECORDED_EVALUATIONS.md).
+
+Focused verification established 40 independent backend checks plus 73 nearest
+existing checks, 34 distinct frontend checks, TypeScript and production build.
+These are unions across overlapping passes; private fixture/timing corrections
+and exact commands are retained with the version-linked test archive. An existing
+5-second App test timeout passed a targeted 15-second recheck with assertions
+unchanged. The existing bundle-size advisory remains. No full-product/CI, actual
+GUI, Windows/native or owner acceptance is claimed; own-cloud GUI remains blocked
+by the previously verified loopback connection refusal. Published tests stay intact.
+
+## Preserved independent research from saved inputs
 
 Results now offers explicit local input-availability checks and guarded creation
 of an independent unsaved graph draft. It preserves frozen profile/data identity,

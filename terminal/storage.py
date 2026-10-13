@@ -215,9 +215,12 @@ class RunStore:
                 lower,upper=(start,end) if kind=="candles" else (start if kind=="fills" else start+1e-6,end+1e-6)
                 query=f"FROM series WHERE run_id=? AND kind=? AND ({TIME_SQL})>=? AND ({TIME_SQL})<? ORDER BY ({TIME_SQL}),row_index LIMIT 4000"
                 args=(run_id,kind,lower,upper)
-                budget=db.execute("SELECT COALESCE(SUM(n),0) FROM (SELECT length(CAST(value AS BLOB)) AS n "+query+")",args).fetchone()[0]
+                # The dedicated journal owns prospective annotations. Keep this
+                # legacy chart projection and its payload budget unchanged.
+                projection="json_remove(value,'$.evaluation_evidence')" if kind=='indicators' else 'value'
+                budget=db.execute("SELECT COALESCE(SUM(n),0) FROM (SELECT length(CAST("+projection+" AS BLOB)) AS n "+query+")",args).fetchone()[0]
                 if budget>900*1024:raise ValueError("Chart window exceeds payload budget; choose a shorter window")
-                rows=db.execute("SELECT value "+query,args).fetchall()
+                rows=db.execute("SELECT "+projection+" AS value "+query,args).fetchall()
                 result["series"][kind]=[json.loads(row[0]) for row in rows]
         result['series']['fills']=[f for f in result['series']['fills'] if start*1_000_000_000<=f['time_ns']<end*1_000_000_000]
         for fill in result['series']['fills']:

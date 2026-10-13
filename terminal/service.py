@@ -91,6 +91,7 @@ class AppService:
             fields.update(paper_lifecycle={'session_id','before','limit'})
             fields.update(run_history={'before','limit'}, run_repeat_review={'run_id'},
                           run_repeat_prepare={'run_id','expected_review','acknowledge_runtime_change'})
+            fields.update(run_evaluation_page={'run_id','offset','limit','expected_identity'})
             fields.update(history_prepare={'market','symbol','start','end','minutes'})
             fields.update(replay_status={'replay_id'},replay_cancel={'replay_id'})
             fields.update(library_catalog=set(), library_copy={'entry_id','version','minutes','parameters'})
@@ -273,6 +274,9 @@ class AppService:
             elif command=="run_status": result=self.jobs.status(p["run_id"])
             elif command=="run_logs": result=self.jobs.logs(p["run_id"])
             elif command=="run_manifest": result=self.store.get(p["run_id"])["manifest"]
+            elif command=='run_evaluation_page':
+                from terminal.evaluation_evidence import page
+                result=page(self.store,**p)
             elif command in ('run_repeat_review', 'run_repeat_prepare'):
                 from terminal.run_repeat import review, prepare
                 result=(review if command=='run_repeat_review' else prepare)(self.store,self.datasets,**p)

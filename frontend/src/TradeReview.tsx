@@ -3,6 +3,7 @@ import {api} from './api';
 import RunChart from './RunChart';
 import PositionLifecycle from './PositionLifecycle';
 import FrozenRuleDetails from './FrozenRuleDetails';
+import RunEvaluations from './RunEvaluations';
 import './trade-review.css';
 
 export type SavedClock={time_ns:string;utc:string;source_open:number;source_close:number;available_through:number;interval_seconds:number};
@@ -68,6 +69,7 @@ export default function TradeReview({runId,page,offset,onPage,onRetry,pageHistor
       </>:<p>Select a trade below to review its saved costs, actual fills and original strategy context.</p>}
     </section>
     <RunChart runId={runId} focus={focus}/>
+    <RunEvaluations runId={runId}/>
     {trade&&<><OriginalConditions key={runId} runId={runId}/>{trade.position_id!=null?<details><summary>Position lifecycle · entries, reductions and other events</summary><PositionLifecycle trades={rows} selectedTrade={trade} onFill={(clock,label)=>navigate(clock,`Trade ${offset+selected!+1} · ${label}`)}/></details>:<p className="assumption">This legacy trade has no archived position lifecycle. Its saved entry, exit and cost totals are shown above.</p>}</>}
     <h3>Trades · select a row to review</h3>{page?.review_notice&&<p className="assumption">{page.review_notice}</p>}
     {!page?<p role="status">Loading saved trades…</p>:page.error?<p role="alert">Could not read saved trades: {page.error} <button onClick={onRetry}>Retry trades</button></p>:!rows.length?<p>No completed trades in this report. Open-position equity, if any, is included in the saved run metrics.</p>:<div className="table-scroll"><table ref={table} className="trade-review-table"><thead><tr><th>Trade</th><th>Direction</th><th>First entry (UTC)</th><th>Final exit (UTC)</th><th>First entry price</th><th>Final exit price</th><th>First fill quantity</th><th>Net PnL (USDT)</th><th>Exit reason</th></tr></thead><tbody>{rows.map((t,i)=><tr key={offset+i} tabIndex={0} aria-selected={i===selected} onClick={()=>select(i,true)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i,true);}}}><td>{offset+i+1}</td><td>{t.side??(t.entry?.side==='buy'?'Long':'Short')}</td><td>{shortClock(t.review?.entry)}</td><td>{t.exit?shortClock(t.review?.exit):'Open'}</td><td>{savedValue(t.entry?.price)}</td><td>{savedValue(t.exit?.price)}</td><td>{savedValue(t.entry?.quantity)}</td><td className={Number(t.net_pnl)>=0?'positive':'negative'}>{savedValue(t.net_pnl)}</td><td>{t.exit?.reason??'No final exit'}</td></tr>)}</tbody></table></div>}
