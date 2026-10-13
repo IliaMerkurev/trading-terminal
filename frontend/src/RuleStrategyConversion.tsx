@@ -1,3 +1,4 @@
+import type {PrepareStrategyOpen} from './useStrategyDraft';
 import {createContext,useContext,useEffect,useRef,useState,type ReactNode} from 'react';
 import {api} from './api';
 import {alertIdentity} from './AlertSession';
@@ -44,7 +45,7 @@ export function RuleStrategyAction({rule,scopeKey,disabled=false}:{rule:FrozenRu
   if(!bridge)return null;
   return <button disabled={disabled||bridge.blocked} onClick={()=>bridge.open(structuredClone(rule),token.current)}>Create strategy from rule</button>;
 }
-export function RuleStrategyProvider({children,onOpenStrategy,onRefresh}:{children:ReactNode;onOpenStrategy:(id:string,isCurrent:()=>boolean)=>Promise<void>;onRefresh:()=>Promise<void>}) {
+export function RuleStrategyProvider({children,onOpenStrategy,onRefresh,onPrepareOpen}:{onPrepareOpen?:PrepareStrategyOpen;children:ReactNode;onOpenStrategy:(id:string,isCurrent:()=>boolean)=>Promise<void>;onRefresh:()=>Promise<void>}) {
   const [initial]=useState(readPending);
   const [pending,setPending]=useState<Pending|null>(initial.pending),pendingRef=useRef(initial.pending);
   const [storageError,setStorageError]=useState(initial.error),[error,setError]=useState(''),[notice,setNotice]=useState('');
@@ -53,7 +54,7 @@ export function RuleStrategyProvider({children,onOpenStrategy,onRefresh}:{childr
   const [preview,setPreview]=useState<RuleStrategyPreview|null>(null),[reviewed,setReviewed]=useState(false);
   const [busy,setBusy]=useState(false),[absent,setAbsent]=useState(false),[receipt,setReceipt]=useState<Receipt|null>(null);
   const alive=useRef(true),epoch=useRef(0),lock=useRef(false),readLock=useRef(false);
-  const callbacks=useRef({onOpenStrategy,onRefresh});callbacks.current={onOpenStrategy,onRefresh};
+  const callbacks=useRef({onOpenStrategy,onRefresh,onPrepareOpen});callbacks.current={onOpenStrategy,onRefresh,onPrepareOpen};
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;++epoch.current;};},[]);
   function retain(value:Pending|null) {
     try {
@@ -84,14 +85,14 @@ export function RuleStrategyProvider({children,onOpenStrategy,onRefresh}:{childr
     } catch(error) {if(alive.current&&current===epoch.current)setError(message(error));}
     finally {readLock.current=false;if(alive.current)setBusy(false);}
   }
-  async function accept(value:Receipt,current?:number) {
+  async function accept(value:Receipt,current?:number,open=callbacks.current.onOpenStrategy) {
     // Capture the accepted receipt even when local cleanup or editor refresh fails.
     if(alive.current){setReceipt(value);setAbsent(false);setNotice('Strategy saved independently. Its frozen source and existing run snapshots are preserved.');}
     retain(null);
     try {
       await callbacks.current.onRefresh();
       if(alive.current&&current!==undefined&&current===epoch.current&&reviewRef.current) {
-        await callbacks.current.onOpenStrategy(value.strategy_id,()=>alive.current&&current===epoch.current);
+        await open(value.strategy_id,()=>alive.current&&current===epoch.current);
         if(alive.current&&current===epoch.current)cancelReview();
       }
     } catch(error) {if(alive.current)setError('The strategy was saved, but the editor or library could not refresh. Use Open created strategy. '+message(error));}
@@ -110,19 +111,19 @@ export function RuleStrategyProvider({children,onOpenStrategy,onRefresh}:{childr
   async function create(original?:Pending) {
     if(lock.current||storageError||(!original&&pendingRef.current)||(!original&&(!review||!preview||!reviewed)))return;
     const operation:Pending=original??{version:1,params:{rule_id:preview!.rule.id,revision:preview!.rule.revision,name:preview!.name,direction:preview!.direction,preview_hash:preview!.preview_hash,request_id:alertIdentity()},createdAt:new Date().toISOString(),hadUnknown:false};
-    const current=epoch.current;lock.current=true;setBusy(true);setError('');setAbsent(false);setReviewed(false);
+    const current=epoch.current,open=callbacks.current.onPrepareOpen?.()??callbacks.current.onOpenStrategy;lock.current=true;setBusy(true);setError('');setAbsent(false);setReviewed(false);
     let submitted=false;
     try {
       retain(operation); // Synchronous durable write must succeed before transmission.
       submitted=true;
       const value=await api<Receipt>('alert_strategy_create',operation.params);
-      await accept(checkedReceipt(value,operation.params.request_id),original?undefined:current);
+      await accept(checkedReceipt(value,operation.params.request_id),original?undefined:current,open);
     } catch(error) {
       if(!submitted){if(alive.current)setError(message(error));return;}
       // Even a completed error can follow a committed write; read its identity.
       try {
         const value=await api<Receipt|null>('alert_strategy_request',{request_id:operation.params.request_id});
-        if(value){await accept(checkedReceipt(value,operation.params.request_id),original?undefined:current);return;}
+        if(value){await accept(checkedReceipt(value,operation.params.request_id),original?undefined:current,open);return;}
         if((error as any)?.definiteRejection&&!operation.hadUnknown) {
           retain(null);if(alive.current){setPreview(null);setError('Strategy creation was rejected; no accepted request is recorded. Preview and review again. '+message(error));}
         } else {

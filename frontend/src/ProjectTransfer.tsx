@@ -5,8 +5,8 @@ import {api,transportCapabilities} from './api';
 import ProjectExport from './ProjectExport';
 import {ImportReceiptDetails,type ImportReceipt,type ImportPage,type ImportCursor} from './ImportReceipts';
 
-type Props={strategy:()=>any;profile:any;runIds:string[];onImported:(result:any,isCurrent:()=>boolean)=>Promise<void>;onOpenReport?:(id:string,isCurrent:()=>boolean)=>Promise<void>;onOpenStrategy?:(id:string,isCurrent:()=>boolean)=>Promise<void>};
-export default function ProjectTransfer({strategy,profile,runIds,onImported,onOpenReport,onOpenStrategy}:Props){
+type Props={onPrepareImport?:()=>Props['onImported'];strategy:()=>any;profile:any;runIds:string[];onImported:(result:any,isCurrent:()=>boolean)=>Promise<void>;onOpenReport?:(id:string,isCurrent:()=>boolean)=>Promise<void>;onOpenStrategy?:(id:string,isCurrent:()=>boolean)=>Promise<void>};
+export default function ProjectTransfer({strategy,profile,runIds,onImported,onOpenReport,onOpenStrategy,onPrepareImport}:Props){
   const [watch,setWatch]=useState(0),[recovering,setRecovering]=useState(false),[recoveryId,setRecoveryId]=useState('');
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
   const [operation,setOperation]=useState(''),[phase,setPhase]=useState<'idle'|'uploading'|'finalizing'|'known'>('idle');
@@ -14,7 +14,7 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported,onOp
   const [recent,setRecent]=useState<ImportPage|null>(null),[listError,setListError]=useState(''),[listing,setListing]=useState(false);
   const [opening,setOpening]=useState(false),[openingError,setOpeningError]=useState('');
   const generation=useRef(0),listGeneration=useRef(0),cancelled=useRef(false),finishSent=useRef(false);
-  const mounted=useRef(true), autoOpen=useRef<{id:string;generation:number}|null>(null), recoveryTransfer=useRef<string|null>(null), resumeKey=useRef<{id:string;revision:number;key:string}|null>(null);
+  const mounted=useRef(true), autoOpen=useRef<{id:string;generation:number;complete:Props['onImported']}|null>(null), recoveryTransfer=useRef<string|null>(null), resumeKey=useRef<{id:string;revision:number;key:string}|null>(null);
   function acceptReceipt(value:ImportReceipt){
     setReceipt(value);
     setRecent(previous=>previous?{...previous,rows:previous.rows.map(row=>row.operation_id===value.operation_id?{...row,phase:value.phase,outcome:value.outcome}:row)}:previous);
@@ -27,9 +27,9 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported,onOp
       if(value.execution?.state==='terminal'||(!value.execution&&value.phase==='terminal')){
         setPhase('known');setBusy(false);setMessage(`Saved receipt confirms ${value.outcome}. Published reports are retained.`);
         if(value.outcome==='completed'&&autoOpen.current?.id===operation&&autoOpen.current.generation===request){
-          autoOpen.current=null;setOpening(true);
+          const complete=autoOpen.current.complete;autoOpen.current=null;setOpening(true);
           const result={operation_id:operation,receipt:value,strategy_id:value.items.find(item=>item.kind==='strategy')?.destination_id,note:'Import completed. Python was not executed and no trust was granted.'};
-          void onImported(result,isCurrent).catch(e=>{if(isCurrent())setOpeningError(`Import completed, but refreshing or opening the strategy failed: ${String(e)}. The saved receipt is unchanged.`);}).finally(()=>{if(isCurrent())setOpening(false);});
+          void complete(result,isCurrent).catch(e=>{if(isCurrent())setOpeningError(`Import completed, but refreshing or opening the strategy failed: ${String(e)}. The saved receipt is unchanged.`);}).finally(()=>{if(isCurrent())setOpening(false);});
         }
       }
     },e=>{if(isCurrent())setInspectionError(`Status unavailable; the import may still be running. ${String(e)}`);},500);
@@ -64,7 +64,7 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported,onOp
     catch(e){if(isCurrent())setError(`Cancellation outcome is unknown. Inspect this import. ${String(e)}`);}
   }
   async function importProject(file:File){
-    const request=++generation.current,isCurrent=()=>mounted.current&&request===generation.current;
+    const complete=onPrepareImport?.()??onImported,request=++generation.current,isCurrent=()=>mounted.current&&request===generation.current;
     setWatch(request);setInspecting(false);setReceipt(null);setInspectionError('');setOpeningError('');setOperation('');
     setBusy(true);setPhase('uploading');setError('');setMessage('');cancelled.current=false;finishSent.current=false;
     let id='';
@@ -87,7 +87,7 @@ export default function ProjectTransfer({strategy,profile,runIds,onImported,onOp
       }
       finishSent.current=true;setPhase('finalizing');
       setMessage('Starting background import. You can inspect progress or request cancellation.');
-      autoOpen.current={id,generation:request};
+      autoOpen.current={id,generation:request,complete};
       const started=await api<ImportReceipt>('archive_import_start',{operation_id:id});
       if(isCurrent())acceptReceipt(started);
     }catch(e){

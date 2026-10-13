@@ -1,6 +1,6 @@
 # Current implementation status
 
-Updated 2026-10-12. This is a concise current-state summary, not a chronological
+Updated 2026-10-13. This is a concise current-state summary, not a chronological
 work log. [PROJECT.md](../PROJECT.md) remains the product specification. Detailed
 contracts, reproducible checks and qualifications live in the linked documents.
 
@@ -27,7 +27,22 @@ Recovered pane/alert/agreement/history scope is recorded in
 Recovery reconstructed documented behavior; it does not establish byte identity
 with unavailable former source or compatibility with unavailable old databases.
 
-## Current bounded slice: latest daily BTC sentiment
+## Current bounded slice: safe strategy draft replacement
+
+The editor now uses a shared Save/Discard/Cancel guard for saved Open, New, Copy,
+Lab customization, experiment copies, imports and converted-rule opening. Draft
+fields and Undo/Redo survive cancellation and failed loading/saving. Synchronous
+revision, replacement-generation and intent checks prevent late work from
+replacing newer edits. Pending/uncertain saves conservatively invalidate the old
+saved baseline. Created conversion receipts remain reopenable.
+
+Focused verification passed 80 frontend checks across 8 files, TypeScript and
+production build. Existing published tests are unchanged; added tests belong to
+the private version-linked archive. Actual own-cloud GUI/screenshot acceptance
+is blocked by a current loopback connection refusal. No full suite, Windows or
+owner acceptance is claimed. See [workflow and limits](STRATEGY_DRAFTS.md).
+
+## Preserved latest daily BTC sentiment
 
 Market now includes a small collapsible Fear & Greed semicircle with a latest
 BTC/daily label, exact UTC source date and adjacent Alternative.me attribution.
@@ -44,8 +59,8 @@ uptime guarantee. The existing bundle-size advisory remains.
 
 Actual production-browser visual/keyboard/layout acceptance is blocked by the
 current own-cloud control route. No screenshot, Windows/native, full-product or
-owner acceptance is claimed. New/modified tests remain outside Git; the private
-version-linked archive and final remote verification are pending at this point.
+owner acceptance is claimed. New/modified tests remain outside Git; its private version-linked archive and
+remote checkpoint were independently verified.
 
 ## Preserved saved comparison conditions
 
