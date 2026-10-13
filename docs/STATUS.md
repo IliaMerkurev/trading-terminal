@@ -27,7 +27,22 @@ Recovered pane/alert/agreement/history scope is recorded in
 Recovery reconstructed documented behavior; it does not establish byte identity
 with unavailable former source or compatibility with unavailable old databases.
 
-## Current bounded slice: safe strategy draft replacement
+## Current bounded slice: compatible custom-backtest history
+
+Custom history choices now share Lab's market/instrument/execution-resolution
+checks, with disabled mismatches and visible reasons. Counts are stored bars,
+with native timeframe, source and actual UTC coverage; missing metadata remains
+unknown. Profile/list changes revalidate selection, stale refreshes cannot erase
+newer choices, and unavailable observation sources block Lab review/start.
+Data estimates are labeled total requested candles before local reuse.
+
+Focused frontend and backend regression, TypeScript and production build were
+checked. Existing published tests stay unchanged; private asynchronous timing
+corrections and added regression tests are in the version-linked archive.
+Actual GUI/native acceptance remains unestablished. See the [history selection
+contract and verification limits](BACKTEST_HISTORY.md).
+
+## Preserved safe strategy draft replacement
 
 The editor now uses a shared Save/Discard/Cancel guard for saved Open, New, Copy,
 Lab customization, experiment copies, imports and converted-rule opening. Draft

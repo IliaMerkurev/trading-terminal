@@ -1,9 +1,10 @@
 import {useState} from 'react';
 import type {Profile} from './model';
 import {dateOnly,dateTime,timeframe} from './research';
+import {historyExecutionMinutes} from './historyCompatibility';
 
 export default function HistoryWorkspace({datasets,profile,status,onPrepare,onCancel,onUse,disabled,onBack,returnLabel,onObserve}:{onObserve?:(d:any)=>void;onBack?:()=>void;returnLabel?:string;datasets:any[];profile:Profile;status:any;onPrepare:(p:any)=>void;onCancel:()=>void;onUse:(d:any)=>void;disabled:boolean}){
- const [market,setMarket]=useState(profile.market),[symbol,setSymbol]=useState(profile.symbol),[minutes,setMinutes]=useState(Number(profile.execution_minutes??60));
+ const [market,setMarket]=useState(profile.market),[symbol,setSymbol]=useState(profile.symbol),[minutes,setMinutes]=useState(historyExecutionMinutes(profile)??1);
  const [start,setStart]=useState(dateOnly(Math.floor(Date.now()/86400000)*86400-2*365*86400)),[end,setEnd]=useState(dateOnly(Math.floor(Date.now()/86400000)*86400));
  const complete=(d:any)=>d.coverage.trade.complete&&(d.market==='spot'||d.coverage.mark?.complete&&d.coverage.funding?.complete_against_current_interval);
  const ready=status?.status==='completed'?datasets.find(d=>d.id===status.dataset_id&&complete(d)):undefined;
@@ -17,7 +18,7 @@ export default function HistoryWorkspace({datasets,profile,status,onPrepare,onCa
    <label className="field">Instrument<input aria-label="History instrument" value={symbol} onChange={e=>setSymbol(e.target.value.toUpperCase())}/></label>
    <label className="field">Candle resolution<select aria-label="History resolution" value={minutes} onChange={e=>setMinutes(Number(e.target.value))}>{(market==='spot'?[60,240,1440,15,5,1]:[1]).map(m=><option key={m} value={m}>{timeframe(m)}{m===1?' · detailed execution':''}</option>)}</select></label>
    <div className="two-columns"><label className="field">From · UTC<input aria-label="History from" type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label className="field">Until · exclusive UTC<input aria-label="History until" type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label></div>
-   <div className="history-estimate"><strong>{valid?Math.round((Date.parse(end)-Date.parse(start))/(minutes*60000)).toLocaleString():'—'}</strong><span>source candles · missing ranges only</span></div>
+   <div className="history-estimate"><strong>{valid?Math.round((Date.parse(end)-Date.parse(start))/(minutes*60000)).toLocaleString():'—'}</strong><span>total requested candles · before local reuse</span></div>
    <button className="primary full-width" disabled={disabled||active||!valid} onClick={()=>onPrepare({market,symbol,minutes,start:Date.parse(start+'T00:00:00Z')/1000,end:Date.parse(end+'T00:00:00Z')/1000})}>Prepare / reuse history</button>
    <p className="muted">Public Bybit data. Coarse history is for spot closed-bar research. Perpetuals include separate M1 mark and funding history. Original snapshots stay intact.</p>
   </section><section className="history-snapshots"><h2>Saved history</h2>

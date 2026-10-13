@@ -14,6 +14,7 @@ import type {Profile} from './model';
 import ResearchSettings from './ResearchSettings';
 import TestSetupSurface from './TestSetupSurface';
 import {timeframe,MAX_LIBRARY_ROWS} from './research';
+import {historyMatchesProfile,historyMismatch} from './historyCompatibility';
 
 export const canonical=(value:any):string=>JSON.stringify(value,(_key,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
 const utc=(value:number)=>new Date(value*1000).toISOString().slice(0,16);
@@ -83,16 +84,18 @@ export default function LibraryResearch({selections,datasets,profile,onActive,on
  function closeEquity(){const trigger=equity?.trigger;setEquity(null);if(document.querySelector('dialog[open]'))return;const destination=trigger?.isConnected&&!trigger.closest('[hidden]')?trigger:resultsTable.current;if(destination&&!destination.closest('[hidden]')){destination.focus({preventScroll:true});destination.scrollIntoView?.({block:'nearest'});}}
  useEffect(()=>{if(view==='catalog'||suspendSetup)setEquity(null);},[view,suspendSetup]);
  const editedRange=useRef(false),profileRef=useRef(profile);profileRef.current=profile;
- const compatible=datasets.filter(d=>d.market===profile.market&&d.symbol===profile.symbol&&(d.interval_seconds??60)===Number(profile.execution_minutes??1)*60);
+ const chosenDataset=datasets.find(d=>d.id===dataset);
+ const sourceIssue=dataset?historyMismatch(chosenDataset,profile):null;
+ const compatible=datasets.filter(d=>historyMatchesProfile(d,profile));
  const incompatible=selections.filter(s=>s.minutes%Number(profile.execution_minutes??1)!==0);
  const selectedStrategyCount=new Set(selections.map(s=>s.entry_id)).size,selectedTimeframeCount=new Set(selections.map(s=>s.minutes)).size;
  const suggestedResolution=[1440,240,60,15,5,1].find(m=>selections.every(s=>s.minutes%m===0))??1;
  const request={selections,dataset_id:dataset,profile:researchProfileSnapshot(profile),start:Date.parse(range[0]+'Z')/1000,end:Date.parse(range[1]+'Z')/1000,interval,spot_dataset_id:profile.market==='spot'?null:spot||null,...(profile.market==='linear'&&spotDraft?.datasetId===spot&&spotDraft.value?{spot_benchmark:spotDraft.value}:{})};
  const requestKey=canonical(request),stale=!!report&&canonical(report.snapshot.inputs)!==requestKey;
- const reviewKey=canonical([requestKey,spotDraft?.key,setupOpen,suspendSetup,view,setupRequest]);
+ const reviewKey=canonical([requestKey,sourceIssue,spotDraft?.key,setupOpen,suspendSetup,view,setupRequest]);
  const reviewRef=useRef(reviewKey);reviewRef.current=reviewKey;
  // Modal visibility invalidates in-flight delivery, but preserves a completed review of unchanged inputs.
- useEffect(()=>{setPreview(null);},[requestKey,spotDraft?.key,suspendSetup,view,setupRequest]);
+ useEffect(()=>{setPreview(null);},[requestKey,sourceIssue,spotDraft?.key,suspendSetup,view,setupRequest]);
  async function review(){const key=reviewRef.current;setPreview(null);try{const result=await api('library_batch_preview',request);if(reviewRef.current===key)setPreview(result);}catch(e){if(reviewRef.current===key)throw e;}}
  useEffect(()=>{if(error&&setupVisible){setupError.current?.focus({preventScroll:true});setupError.current?.scrollIntoView?.({block:'nearest'});}},[error,setupVisible]);
  const active=report?.active_id??(starting?selected:null),holdout=report?.snapshot.phase==='out_of_sample';
@@ -110,7 +113,7 @@ export default function LibraryResearch({selections,datasets,profile,onActive,on
  useEffect(()=>{if(!selected||(suspendSetup&&!active))return;return poll(()=>api<any>('library_batch_status',{batch_id:selected}),r=>{setReport(r);setStarting(false);setList(rows=>rows.map(row=>row.id===r.id?{...row,status:r.status}:row));onActive(r.active_id);},e=>setError(String(e)),700);},[selected,suspendSetup,!!active]);
  function choose(id:string){setHistoryRequest(v=>v+1);editedRange.current=false;setDataset(id);setWarmup(null);const d=datasets.find(d=>d.id===id);if(d)setRange([utc(d.range[0]),utc(d.range[1])]);}
  useEffect(()=>{if(!preferredDataset?.id)return;const d=datasets.find(d=>d.id===preferredDataset.id);if(!d)return;
-  if(preferredDataset.target==='later'){setConfigure(true);const p=report?.snapshot.inputs?.profile;if(p&&(d.market!==p.market||d.symbol!==p.symbol||(d.interval_seconds??60)!==Number(p.execution_minutes??1)*60)){setError('Later-period history must match the frozen candidate market, instrument and execution resolution. Prepare matching history.');return;}setLater(v=>({...v,dataset:d.id,range:[utc(Math.max(d.range[0],report?.snapshot.end??d.range[0])),utc(d.range[1])]}));return;}
+  if(preferredDataset.target==='later'){setConfigure(true);const p=report?.snapshot.inputs?.profile;if(p&&!historyMatchesProfile(d,p)){setError('Later-period history must match the frozen candidate market, instrument and execution resolution. Prepare matching history.');return;}setLater(v=>({...v,dataset:d.id,range:[utc(Math.max(d.range[0],report?.snapshot.end??d.range[0])),utc(d.range[1])]}));return;}
   setSetupOpen(true);returnToSetup.current=false;
   if(!compatible.some(v=>v.id===d.id)){setError('This history does not match the Lab market, instrument and execution resolution. Choose matching history or change your test settings first.');return;}
   if(preferredDataset.observation){const o=preferredDataset.observation;editedRange.current=true;setObservation(o);setHistoryRequest(v=>v+1);setDataset(d.id);setWarmup(null);setRange([utc(o.start),utc(o.end)]);setPreview(null);}
@@ -118,13 +121,12 @@ export default function LibraryResearch({selections,datasets,profile,onActive,on
   else choose(d.id);
  },[preferredDataset?.request]);
  useEffect(()=>{if(!suspendSetup&&returnToSetup.current){returnToSetup.current=false;setSetupOpen(true);}},[suspendSetup]);
- useEffect(()=>{setDataset(current=>observation?observation.source.id:compatible.some(d=>d.id===current)?current:'');},[profile.market,profile.symbol,profile.execution_minutes,observation?.id]);
+ useEffect(()=>{setDataset(current=>observation?observation.source.id:compatible.some(d=>d.id===current)?current:'');},[datasets,profile.market,profile.symbol,profile.execution_minutes,observation?.id]);
  useEffect(()=>{let current=true;setWarmup(null);setWarmupLoading(false);if(!dataset||!selections.length||selections.length>MAX_LIBRARY_ROWS||incompatible.length)return;setWarmupLoading(true);api<any>('library_warmup',{selections,dataset_id:dataset}).then(v=>{if(current&&Number.isFinite(v.start)){setWarmup(v);if(!editedRange.current)setRange([utc(v.start),utc(v.end)]);}}).catch(e=>{if(current)setError(String(e));}).finally(()=>{if(current)setWarmupLoading(false);});return()=>{current=false;};},[dataset,canonical(selections),historyRequest,profile.execution_minutes]);
  useEffect(()=>{setMetadataLoading(false);setMetadataError('');if(!dataset||!onProfile)return;let current=true;setMetadataLoading(true);api<any>('dataset_profile',{dataset_id:dataset}).then(fields=>{if(current&&fields?.tick_size)onProfile({...profileRef.current,...fields});}).catch(e=>{if(current)setMetadataError(String(e instanceof Error?e.message:e));}).finally(()=>{if(current)setMetadataLoading(false);});return()=>{current=false;};},[dataset]);
- const chosenDataset=datasets.find(d=>d.id===dataset);
  const rangeStart=request.start,rangeEnd=request.end,resolutionSeconds=Number(profile.execution_minutes??1)*60;
  const observationMismatch=!!observation&&(dataset!==observation.source.id||request.start!==observation.start||request.end!==observation.end||profile.market!==observation.source.market||profile.symbol!==observation.source.symbol||resolutionSeconds!==observation.source.interval_seconds);
- const setupIssue=observationMismatch?'Observation source and period are fixed. Restore its market, instrument and resolution, or explicitly detach it.':!dataset?'':!Number.isFinite(rangeStart)||!Number.isFinite(rangeEnd)||rangeEnd<=rangeStart?'Choose a valid increasing UTC evaluation period.':
+ const setupIssue=sourceIssue?`Selected history unavailable: ${sourceIssue}. Prepare matching history or choose another source.`:observationMismatch?'Observation source and period are fixed. Restore its market, instrument and resolution, or explicitly detach it.':!dataset?'':!Number.isFinite(rangeStart)||!Number.isFinite(rangeEnd)||rangeEnd<=rangeStart?'Choose a valid increasing UTC evaluation period.':
  chosenDataset&&(rangeStart<chosenDataset.range[0]||rangeEnd>chosenDataset.range[1])?'Evaluation dates must fit inside the selected history. Prepare a longer range or change the dates.':
  rangeStart%resolutionSeconds||rangeEnd%resolutionSeconds?'Align the evaluation dates to source candle boundaries.':
  warmup&&(warmup.available===false||rangeStart<warmup.start)?'Not enough preceding warmup. Use the suggested period or prepare earlier history.':
@@ -164,7 +166,7 @@ export default function LibraryResearch({selections,datasets,profile,onActive,on
 
  <details className="date-settings" open={!!dataset}><summary>Test period & warmup</summary>{['Evaluation start (UTC)','Evaluation end, exclusive (UTC)'].map((label,i)=><label className="field" key={label}>{label}<input aria-label={label} type="datetime-local" disabled={!!observation||busy} value={range[i]} onChange={e=>{editedRange.current=true;setRange(r=>r.map((v,j)=>i===j?e.target.value:v));}}/></label>)}
  {warmup&&<p className={warmup.available?'warmup-note':'warning-text'}>{warmup.available?`Warmup reserved. Suggested start: ${utc(warmup.start).replace('T',' ')} UTC.`:'Not enough preceding history for these parameters. Prepare a longer range.'}<button disabled={!!observation||busy} onClick={()=>{editedRange.current=false;setRange([utc(warmup.start),utc(warmup.end)]);}}>Use suggested period</button></p>}</details>
- <details><summary>Passive comparisons</summary> {profile.market!=='spot'&&<label className="field">Spot alternative dataset<select aria-label="Spot alternative dataset" value={spot} onChange={e=>setSpot(e.target.value)}><option value="">Unavailable · N/A</option>{datasets.filter(d=>d.market==='spot'&&d.symbol===profile.symbol&&(d.interval_seconds??60)===Number(profile.execution_minutes??1)*60&&(!chosenDataset||d.source===chosenDataset.source)).map(d=><option key={d.id} value={d.id}>{historyLabel(d)}</option>)}</select></label>}{profile.market==='linear'&&<SpotBenchmarkSettings key={`${spot}:${profile.symbol}:${profile.execution_minutes??1}`} datasetId={spot} strategy={profile} onChange={setSpotDraft}/>}<label>DCA schedule<select aria-label="DCA schedule" value={interval} onChange={e=>setInterval(e.target.value)}>{['daily','weekly','monthly'].map(v=><option key={v}>{v}</option>)}</select></label>
+ <details><summary>Passive comparisons</summary> {profile.market!=='spot'&&<label className="field">Spot alternative dataset<select aria-label="Spot alternative dataset" value={spot} onChange={e=>setSpot(e.target.value)}><option value="">Unavailable · N/A</option>{datasets.filter(d=>historyMatchesProfile(d,{...profile,market:'spot'})&&(!chosenDataset||d.source===chosenDataset.source)).map(d=><option key={d.id} value={d.id}>{historyLabel(d)}</option>)}</select></label>}{profile.market==='linear'&&<SpotBenchmarkSettings key={`${spot}:${profile.symbol}:${profile.execution_minutes??1}`} datasetId={spot} strategy={profile} onChange={setSpotDraft}/>}<label>DCA schedule<select aria-label="DCA schedule" value={interval} onChange={e=>setInterval(e.target.value)}>{['daily','weekly','monthly'].map(v=><option key={v}>{v}</option>)}</select></label>
  <p className="baseline-note">Includes Buy &amp; Hold + DCA with the same initial capital, evaluation dates and full close. Spot-origin tests retain their declared costs. Linear-origin comparisons use separately reviewed spot costs and limits; unavailable settings remain N/A. Annualized return is N/A below one year.</p></details>
  {selections.length>MAX_LIBRARY_ROWS&&<p className="warning-text">Select at most {MAX_LIBRARY_ROWS} strategy/timeframe tests.</p>}
  {(warmupLoading||metadataLoading)&&<p role="status">Preparing warmup and instrument settings…</p>}
